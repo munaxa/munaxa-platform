@@ -8,7 +8,8 @@
     "base.js",
     "nest.js",
     "next.js",
-    "root.js"
+    "root.js",
+    "scripts.js"
   ],
   "dependencies": {
     "@eslint/js": "^9.17.0",

@@ -1,0 +1,77 @@
+/**
+ * Workaxa product palette — the complete set of values for the theme contract, in oklch.
+ *
+ * Never imported on its own: the theme entry point (`themes/workaxa/index.css`) pairs it with
+ * the contract in `themes/base.css`. Light = :root, dark = .dark.
+ *
+ * Brand: violet. Neutrals carry a low-chroma violet tint so surfaces sit with the brand hue
+ * instead of reading as pure grey.
+ */
+
+:root {
+  /* Brand tints consumed by the shared elevation geometry in base.css (R G B channels). */
+  --shadow-tint: 40 12 90;
+  --glow-tint: 122 63 255;
+
+  --primary: oklch(0.52 0.19 292);
+  --primary-foreground: oklch(0.985 0.008 292);
+  --accent-warm: #f0568c;
+  --accent-cool: #14b8a6;
+  --chart-1: oklch(0.872 0.05 292);
+  --chart-2: oklch(0.7 0.13 292);
+  --chart-3: oklch(0.56 0.18 292);
+  --chart-4: oklch(0.43 0.15 292);
+  --chart-5: oklch(0.32 0.1 292);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.152 0.006 292);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.152 0.006 292);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.152 0.006 292);
+  --secondary: oklch(0.967 0.003 292);
+  --secondary-foreground: oklch(0.21 0.008 292);
+  --muted: oklch(0.963 0.004 292);
+  --muted-foreground: oklch(0.56 0.022 292);
+  --accent: oklch(0.963 0.004 292);
+  --accent-foreground: oklch(0.218 0.01 292);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: #ffffff;
+  --border: oklch(0.925 0.006 292);
+  --input: oklch(0.925 0.006 292);
+  --ring: oklch(0.723 0.016 292);
+  --success: #0d9488;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+}
+
+.dark {
+  --primary: oklch(0.58 0.2 292);
+  --primary-foreground: oklch(0.985 0.008 292);
+  --accent-warm: #ff8fb4;
+  --accent-cool: #4df4e1;
+  --chart-1: oklch(0.872 0.05 292);
+  --chart-2: oklch(0.7 0.13 292);
+  --chart-3: oklch(0.56 0.18 292);
+  --chart-4: oklch(0.43 0.15 292);
+  --chart-5: oklch(0.32 0.1 292);
+  --background: oklch(0.152 0.006 292);
+  --foreground: oklch(0.987 0.003 292);
+  --card: oklch(0.218 0.012 292);
+  --card-foreground: oklch(0.987 0.003 292);
+  --popover: oklch(0.218 0.012 292);
+  --popover-foreground: oklch(0.987 0.003 292);
+  --secondary: oklch(0.274 0.014 292);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.275 0.014 292);
+  --muted-foreground: oklch(0.723 0.016 292);
+  --accent: oklch(0.275 0.014 292);
+  --accent-foreground: oklch(0.987 0.003 292);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: #ffffff;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.56 0.022 292);
+  --success: #4df4e1;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+}

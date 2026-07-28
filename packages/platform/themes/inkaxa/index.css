@@ -1,0 +1,8 @@
+/**
+ * Inkaxa theme entry point.
+ *
+ *   @import 'tailwindcss';
+ *   @import '@axa/platform/css/themes/inkaxa';
+ */
+@import '../base/base.css';
+@import './palette.css';

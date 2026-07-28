@@ -1,0 +1,65 @@
+/**
+ * Primitive tokens — the structural scales, as CSS custom properties.
+ *
+ * Pulled in by every theme entry point (`themes/<product>/index.css`), or directly for non-TS
+ * consumers (plain CSS, print stylesheets, email templates):
+ *
+ *   @import '@axa/platform/css/tokens';
+ *
+ * These mirror the values exported from the TypeScript token modules under `tokens/`, so both
+ * sides share one source of truth. Everything here is *theme-independent* — a scale step never
+ * branches by product or by light/dark. Colour lives in `themes/<product>/palette.css`.
+ */
+:root {
+  /* Spacing */
+  --axa-space-0: 0;
+  --axa-space-1: 0.25rem;
+  --axa-space-2: 0.5rem;
+  --axa-space-3: 0.75rem;
+  --axa-space-4: 1rem;
+  --axa-space-5: 1.25rem;
+  --axa-space-6: 1.5rem;
+  --axa-space-8: 2rem;
+  --axa-space-10: 2.5rem;
+  --axa-space-12: 3rem;
+  --axa-space-16: 4rem;
+  --axa-space-24: 6rem;
+
+  /* Radius */
+  --axa-radius-none: 0;
+  --axa-radius-sm: 0.5rem;
+  --axa-radius-md: 0.75rem;
+  --axa-radius-lg: 0.875rem;
+  --axa-radius-xl: 1.375rem;
+  --axa-radius-2xl: 2rem;
+  --axa-radius-full: 9999px;
+
+  /* Elevation */
+  --axa-shadow-sm: 0 1px 2px rgb(var(--shadow-tint) / 0.06);
+  --axa-shadow-md: 0 4px 12px rgb(var(--shadow-tint) / 0.1);
+  --axa-shadow-lg: 0 12px 28px rgb(var(--shadow-tint) / 0.14);
+  --axa-shadow-focus: 0 0 0 3px rgb(var(--glow-tint) / 0.28);
+
+  /* Motion */
+  --axa-duration-fast: 120ms;
+  --axa-duration-normal: 200ms;
+  --axa-duration-slow: 300ms;
+  --axa-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --axa-easing-enter: cubic-bezier(0, 0, 0, 1);
+  --axa-easing-exit: cubic-bezier(0.3, 0, 1, 1);
+
+  /* Z-index layering */
+  --axa-z-base: 0;
+  --axa-z-sticky: 10;
+  --axa-z-dropdown: 20;
+  --axa-z-overlay: 30;
+  --axa-z-modal: 40;
+  --axa-z-toast: 50;
+
+  /* Breakpoints (reference) */
+  --axa-bp-sm: 640px;
+  --axa-bp-md: 768px;
+  --axa-bp-lg: 1024px;
+  --axa-bp-xl: 1280px;
+  --axa-bp-2xl: 1536px;
+}

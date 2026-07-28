@@ -1,0 +1,107 @@
+/**
+ * The AXA theme contract — the Tailwind v4 layer every product theme is expressed against.
+ *
+ * This file is product-agnostic: it declares *which* semantic variables exist and how they map
+ * onto Tailwind's token namespaces, but never what colour they are. Values come from a product
+ * palette (`themes/<product>/palette.css`).
+ *
+ * Applications never import this file directly — they import a theme entry point, which pairs
+ * the contract with exactly one palette:
+ *
+ *   @import 'tailwindcss';
+ *   @import '@axa/platform/css/themes/<product>';
+ *
+ * Applications add only their own structural vars (the `--radius` value, fonts, page gradients).
+ */
+@import '../../tokens/css/primitives.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Radius — sm/md/lg derive from the app-level `--radius`; xl/2xl/3xl keep Tailwind defaults
+     (apps that customise them override locally). */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+
+  /* Type families (provided per app, e.g. via next/font CSS vars). */
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  /* Colors — bound to the semantic vars supplied by the active product palette. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-cool: var(--accent-cool);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  /* Data-visualisation ramp — ordered, categorical series colours. */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Elevation. The tints are brand values supplied by the palette; the geometry is shared.
+     `--shadow-card` may still be overridden per app. */
+  --shadow-card: 0 24px 50px -30px rgb(var(--shadow-tint) / 0.25), 0 0 0 1px var(--border) inset;
+  --shadow-glow: 0 14px 40px -16px rgb(var(--glow-tint) / 0.55);
+  --shadow-focus: 0 0 0 3px rgb(var(--glow-tint) / 0.28);
+}
+
+/*
+ * v3-compat shims: the component library is authored with a few Tailwind-v3 class names that v4
+ * renamed or recalibrated. These recreate them with their exact v3 values so components render
+ * identically under v4. (z-index is not a v4 theme namespace; the recalibrated shadows keep
+ * their v3 sizes.)
+ */
+@utility z-base {
+  z-index: 0;
+}
+@utility z-sticky {
+  z-index: 10;
+}
+@utility z-dropdown {
+  z-index: 20;
+}
+@utility z-overlay {
+  z-index: 30;
+}
+@utility z-modal {
+  z-index: 40;
+}
+@utility z-toast {
+  z-index: 50;
+}
+@utility shadow {
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.1),
+    0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+@utility shadow-sm {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+@utility backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+}

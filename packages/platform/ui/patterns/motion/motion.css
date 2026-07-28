@@ -1,0 +1,29 @@
+/**
+ * Companion stylesheet for the motion patterns (`Reveal`, `CountUp`).
+ *
+ *   @import '@axa/platform/css/motion';
+ *
+ * Progressive enhancement: content is fully visible with no JavaScript and under
+ * `prefers-reduced-motion`. The transition only engages once the host document carries the
+ * `js` class (set by the application's no-flash boot script) and the reader has not asked
+ * for reduced motion.
+ */
+@layer base {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .js .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition:
+        opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .js .reveal[data-shown='true'] {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
