@@ -1,0 +1,22 @@
+{
+  "name": "@axa/config-eslint",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "base.js",
+  "files": [
+    "base.js",
+    "nest.js",
+    "next.js",
+    "root.js"
+  ],
+  "dependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "typescript-eslint": "^8.19.1",
+    "globals": "^15.14.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.17.0"
+  }
+}
