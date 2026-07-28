@@ -6,8 +6,11 @@ The platform is consumed by every AXA product. A mistake here is a mistake in Mu
 Inkaxa and everything that follows, so the bar is deliberately higher than in a product folder.
 When this document and a habit disagree, this document wins.
 
-Reasoning behind these rules lives in [`architecture/`](./architecture/README.md). This file is
-the operational checklist.
+This file is the operational checklist for changing the platform. It sits underneath the
+repository-wide rulebook, [`/PLATFORM_ENGINEERING_STANDARDS.md`](../PLATFORM_ENGINEERING_STANDARDS.md),
+which governs all contribution and wins on any conflict. The reasoning behind the rules lives in
+[`architecture/`](./architecture/README.md); every document in the repository is indexed at
+[`/docs/README.md`](../docs/README.md).
 
 ---
 

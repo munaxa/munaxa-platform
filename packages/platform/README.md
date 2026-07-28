@@ -8,11 +8,16 @@ It is **product-agnostic by construction**: no school, HR, finance or any other 
 terminology, no business rules, and no product names outside the `themes/` and `assets/` layers,
 where naming a product is the entire point.
 
-| Start here                                  | For                                        |
-| ------------------------------------------- | ------------------------------------------ |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md)      | **The mandatory standard.** Read it first.  |
-| [`architecture/`](./architecture/README.md) | Why the platform is shaped this way         |
-| §3 below                                    | Consuming it from a product                 |
+| Start here                                                          | For                                          |
+| ------------------------------------------------------------------- | -------------------------------------------- |
+| [`/PLATFORM_ENGINEERING_STANDARDS.md`](../PLATFORM_ENGINEERING_STANDARDS.md) | **The mandatory rulebook.** Read it first. |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md)                              | The checklist for changing the platform       |
+| [`architecture/`](./architecture/README.md)                         | Why the platform is shaped this way           |
+| [`/docs/README.md`](../docs/README.md)                              | Every document in the repository              |
+| §3 below                                                            | Consuming it from a product                   |
+
+> **The platform is frozen.** It changes only when a genuine cross-product need is proven — see
+> the rulebook, §3.
 
 ---
 
