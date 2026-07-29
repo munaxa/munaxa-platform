@@ -35,6 +35,7 @@ export * from './ui/components/feedback/index.js';
 export * from './ui/components/navigation/index.js';
 export * from './ui/components/layout/index.js';
 export * from './ui/components/data-display/index.js';
+export * from './ui/components/overlays/index.js';
 
 // Layout primitives — arrangement, measure and page structure.
 export * from './ui/layouts/index.js';

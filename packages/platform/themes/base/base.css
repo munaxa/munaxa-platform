@@ -160,3 +160,81 @@
 @utility backdrop-blur-sm {
   backdrop-filter: blur(4px);
 }
+
+/*
+ * Overlay and disclosure motion.
+ *
+ * Defined here rather than pulled from `tailwindcss-animate`, so a product gets working overlays
+ * from the theme import alone and nothing depends on an extra package being installed and imported
+ * in the right order. Radix sets `data-state` and `data-side` on every anchored layer; these read
+ * those attributes, so a component needs one class rather than eight.
+ *
+ * Every animation is removed — not shortened — under `prefers-reduced-motion`, and the end state is
+ * identical either way.
+ */
+@keyframes axa-overlay-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes axa-overlay-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@keyframes axa-collapse-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--axa-collapse-height);
+  }
+}
+@keyframes axa-collapse-up {
+  from {
+    height: var(--axa-collapse-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/** Open/close motion for any Radix-anchored layer. */
+@utility axa-overlay-motion {
+  &[data-state='open'] {
+    animation: axa-overlay-in var(--axa-duration-fast) var(--axa-easing-enter);
+  }
+  &[data-state='closed'] {
+    animation: axa-overlay-out var(--axa-duration-fast) var(--axa-easing-exit);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/** Height motion for accordion and collapsible panels. */
+@utility axa-collapse-motion {
+  --axa-collapse-height: var(
+    --radix-accordion-content-height,
+    var(--radix-collapsible-content-height)
+  );
+  &[data-state='open'] {
+    animation: axa-collapse-down var(--axa-duration-normal) var(--axa-easing-standard);
+  }
+  &[data-state='closed'] {
+    animation: axa-collapse-up var(--axa-duration-normal) var(--axa-easing-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

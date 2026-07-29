@@ -42,3 +42,14 @@ export {
   type NavigationGroup,
   type RenderNavigationLink,
 } from './navigation.js';
+export {
+  UserMenu,
+  OrganizationSwitcher,
+  NotificationMenu,
+  type UserMenuProps,
+  type UserMenuAction,
+  type OrganizationSwitcherProps,
+  type Organization,
+  type NotificationMenuProps,
+  type NotificationEntry,
+} from './menus.js';
