@@ -99,3 +99,7 @@ Everything else, and specifically:
 Munaxa's `AppShell`, `Shell`, `PrivacyProvider`, `StatusBadge`, `GlobalSearch`, `Logo`,
 `NavIcon`, `I18nProvider` and every `components/domain/*` are correct where they are and must
 not move. If a change would make one of them shared, the change is wrong.
+
+- [`completion-audit.md`](./completion-audit.md) — the Platform Completion Audit:
+  what the legacy design system still holds, what has been superseded, and what
+  remains before it can be deleted.
