@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { cn } from '../../lib/cn.js';
+import { useEffect, useMemo, useState } from 'react';
+import { Autocomplete } from './autocomplete.js';
+import type { ComboboxOption } from './combobox.js';
 import { Input } from './input.js';
 
 export interface PickerOption {
@@ -10,12 +11,30 @@ export interface PickerOption {
   sublabel?: string;
 }
 
+export interface EntityPickerProps {
+  value: string;
+  onChange: (id: string) => void;
+  load: () => Promise<PickerOption[]>;
+  placeholder?: string;
+  noMatchesLabel?: string;
+}
+
 /**
- * Searchable entity picker (ARIA combobox) backed by a list API. Loads options once; while options
- * are available it offers type-to-filter selection with full keyboard support (↑/↓ to move, Enter to
- * select, Esc to close) and screen-reader semantics (combobox + listbox/option, aria-activedescendant).
- * If the list can't be loaded (e.g. the signed-in role lacks the list permission), it gracefully
- * falls back to a plain ID input so the flow still works. Returns the selected entity id via `onChange`.
+ * Searchable entity picker backed by a list API.
+ *
+ * This is now a thin adapter over `Autocomplete`: it owns the *loading* concern — call the API
+ * once, map the result, and fall back to manual id entry when the list cannot be fetched — and
+ * delegates every bit of interaction. The 120 lines it used to carry (arrow-key movement,
+ * `aria-activedescendant`, blur timers, the open/close state machine) were a second implementation
+ * of that pattern, and a second implementation is a second set of keyboard bugs.
+ *
+ * `Autocomplete` rather than `Combobox` because those are two different interactions, not two
+ * skins: this field *is* the search box — focus it and type — whereas a `Combobox` is a button that
+ * opens a panel with its own search box. Swapping in the wrong one would have changed how the
+ * control behaves for every existing caller.
+ *
+ * The public API is unchanged: same props, same `onChange(id)` contract, same graceful fallback
+ * when the signed-in role lacks the list permission.
  */
 export function EntityPicker({
   value,
@@ -23,20 +42,9 @@ export function EntityPicker({
   load,
   placeholder = 'Search…',
   noMatchesLabel = 'No matches.',
-}: {
-  value: string;
-  onChange: (id: string) => void;
-  load: () => Promise<PickerOption[]>;
-  placeholder?: string;
-  noMatchesLabel?: string;
-}) {
+}: EntityPickerProps) {
   const [options, setOptions] = useState<PickerOption[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const listId = useId();
 
   useEffect(() => {
     let active = true;
@@ -48,117 +56,34 @@ export function EntityPicker({
     };
   }, [load]);
 
-  const selected = useMemo(() => options?.find((o) => o.id === value) ?? null, [options, value]);
+  const comboboxOptions = useMemo<ComboboxOption[]>(
+    () =>
+      (options ?? []).map((option) => ({
+        value: option.id,
+        label: option.label,
+        ...(option.sublabel === undefined ? {} : { description: option.sublabel }),
+      })),
+    [options],
+  );
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = options ?? [];
-    if (!q) return list.slice(0, 50);
-    return list
-      .filter((o) => `${o.label} ${o.sublabel ?? ''}`.toLowerCase().includes(q))
-      .slice(0, 50);
-  }, [options, query]);
-
-  function choose(id: string) {
-    onChange(id);
-    setQuery('');
-    setOpen(false);
-  }
-
-  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!open) setOpen(true);
-      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter') {
-      if (open && filtered[activeIndex]) {
-        e.preventDefault();
-        choose(filtered[activeIndex].id);
-      }
-    } else if (e.key === 'Escape') {
-      setOpen(false);
-    }
-  }
-
-  // Fallback: manual id entry when the list isn't available.
+  // The list is unavailable — most often because the role cannot call it. Degrading to manual id
+  // entry keeps the surrounding flow completable instead of blocking it behind a permission.
   if (failed) {
     return (
       <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Paste ID" />
     );
   }
 
-  const display = open ? query : (selected?.label ?? query);
-  const activeId =
-    open && filtered[activeIndex] ? `${listId}-opt-${filtered[activeIndex].id}` : undefined;
-
   return (
-    <div className="relative">
-      <Input
-        type="search"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={listId}
-        aria-autocomplete="list"
-        aria-activedescendant={activeId}
-        value={display}
-        placeholder={options ? placeholder : 'Loading…'}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setActiveIndex(0);
-          setOpen(true);
-        }}
-        onFocus={() => {
-          setQuery('');
-          setActiveIndex(0);
-          setOpen(true);
-        }}
-        onKeyDown={onKeyDown}
-        onBlur={() => {
-          blurTimer.current = setTimeout(() => setOpen(false), 120);
-        }}
-      />
-      {open && options ? (
-        // A listbox must own its options directly: `role="listbox"` replaces a `<ul>`'s implicit
-        // list role, which orphans any `<li>` inside it, and an option may not contain a control.
-        // Options are therefore plain elements — keyboard focus stays on the input and moves
-        // through `aria-activedescendant`, which is the APG combobox pattern.
-        <div
-          id={listId}
-          role="listbox"
-          className="absolute z-dropdown mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-card p-1 shadow-card"
-          onMouseDown={() => blurTimer.current && clearTimeout(blurTimer.current)}
-        >
-          {filtered.map((o, i) => (
-            <div
-              key={o.id}
-              id={`${listId}-opt-${o.id}`}
-              role="option"
-              aria-selected={o.id === value}
-              onClick={() => choose(o.id)}
-              onMouseEnter={() => setActiveIndex(i)}
-              className={cn(
-                'flex w-full cursor-pointer flex-col items-start rounded-md px-2 py-1.5 text-start text-sm',
-                i === activeIndex
-                  ? 'bg-secondary/80 text-foreground'
-                  : o.id === value
-                    ? 'bg-secondary/50 text-foreground'
-                    : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-              )}
-            >
-              <span>{o.label}</span>
-              {o.sublabel ? (
-                <span className="font-mono text-[10px] text-muted-foreground/70">{o.sublabel}</span>
-              ) : null}
-            </div>
-          ))}
-          {filtered.length === 0 ? (
-            <div className="px-2 py-1.5 text-sm text-muted-foreground">{noMatchesLabel}</div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+    <Autocomplete
+      options={comboboxOptions}
+      value={value}
+      onChange={onChange}
+      labels={{
+        placeholder: options ? placeholder : 'Loading…',
+        searchPlaceholder: placeholder,
+        empty: noMatchesLabel,
+      }}
+    />
   );
 }
