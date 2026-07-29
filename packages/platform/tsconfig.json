@@ -1,8 +1,10 @@
 {
+  "//": "Editor, lint and typecheck config — covers everything, including stories, tests and tooling. Emit is done by tsconfig.build.json, which narrows this to shipped source.",
   "extends": "@axa/config-typescript/react-library.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
   "include": [
     "index.ts",
@@ -11,6 +13,10 @@
     "themes/**/*.ts",
     "icons/**/*.ts",
     "ui/**/*.ts",
-    "ui/**/*.tsx"
+    "ui/**/*.tsx",
+    "test/**/*.ts",
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "vitest.config.ts"
   ]
 }

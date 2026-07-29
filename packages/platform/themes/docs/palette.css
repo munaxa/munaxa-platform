@@ -54,8 +54,11 @@
   --accent-warm: #e68c2d;
   --accent-cool: #00b1d2;
   --success: #2e7d32;
+  --success-strong: #2e7d32;
   --warning: #f59e0b;
+  --warning-strong: #b36100;
   --info: #0284c7;
+  --info-strong: #007cbf;
 
   /* Data-visualisation ramp */
   --chart-1: #6b8e62;
@@ -94,4 +97,7 @@
   --ring: #6b8e62;
   --accent-warm: #ffb876;
   --accent-cool: #64d6f2;
+  --success-strong: #3d8b3f;
+  --warning-strong: #f59e0b;
+  --info-strong: #0284c7;
 }

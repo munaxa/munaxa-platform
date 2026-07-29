@@ -58,9 +58,14 @@
   --color-ring: var(--ring);
   --color-accent-warm: var(--accent-warm);
   --color-accent-cool: var(--accent-cool);
+  /* Status colours follow the same fill/text split as the brand: the plain role is a fill, the
+     `-strong` form is the AA-safe text colour. `bg-success` + `text-success-strong`. */
   --color-success: var(--success);
+  --color-success-strong: var(--success-strong);
   --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
   --color-info: var(--info);
+  --color-info-strong: var(--info-strong);
 
   /* Primary scale — the brand ramp, supplied by the active palette. */
   --color-primary-50: var(--primary-50);

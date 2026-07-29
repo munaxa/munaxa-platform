@@ -112,10 +112,28 @@ toggle `.dark`.
 
 The platform is a UI library with no product data, so tests are targeted rather than broad.
 
+Run them with:
+
+```bash
+pnpm --filter @axa/platform test           # unit + accessibility
+pnpm --filter @axa/platform test:watch     # while working
+pnpm --filter @axa/platform storybook      # the component workbench, on :6006
+```
+
+Storybook renders against the **real** design system — the same Tailwind build and the same theme
+contract a product gets, loaded by `.storybook/preview.css`. There are no mock styles, so a story
+that looks right is a component that is right. The toolbar switches colour scheme and writing
+direction, because dark mode and RTL are requirements nobody checks unless they are one click away.
+
 **Required:**
 
 - [ ] `pnpm validate` passes — the theme contract and token mirrors are machine-checked and are
       non-negotiable. Adding a role to `base.css` without supplying it in every palette fails.
+- [ ] Every component has a `.stories.tsx` next to it, covering its variants and its real states —
+      loading, empty, error, disabled, read-only, invalid — not just the happy path.
+- [ ] Every component has a `.test.tsx` next to it that ends with an `expectNoA11yViolations`
+      assertion. That helper is in `test/setup.ts`; it runs axe over the rendered output.
+- [ ] Anything with keyboard behaviour has that behaviour tested by key, not by click.
 - [ ] `pnpm turbo run build lint typecheck --filter=@axa/platform` passes.
 - [ ] Every consuming product still builds: `pnpm build`.
 - [ ] For any change that touches CSS output, diff the emitted stylesheet before and after:

@@ -76,6 +76,35 @@ for (const t of THEMES) {
   const accentCool = at(220, 0.70, 0.13);
   const accentWarmDark = at(65, 0.84, 0.12);
   const accentCoolDark = at(220, 0.82, 0.11);
+
+  /*
+   * Status colours have the same fill-vs-text split as the brand. The board values are chosen to
+   * be read *against* — #22C55E is 2.28:1 on white — so a badge that renders its label in the raw
+   * status colour is unreadable. Each `-strong` is the same hue darkened until it clears AA, found
+   * by measurement rather than by eye.
+   */
+  const darkenToAA = (hex, bg) => {
+    const c = toLch(hex);
+    for (let L = c.L; L > 0.15; L -= 0.005) {
+      const candidate = fromLch({ L, C: c.C, h: c.h });
+      if (contrast(candidate, bg) >= 4.5) return candidate;
+    }
+    return INK;
+  };
+  const lightenToAA = (hex, bg) => {
+    const c = toLch(hex);
+    for (let L = c.L; L < 0.98; L += 0.005) {
+      const candidate = fromLch({ L, C: c.C, h: c.h });
+      if (contrast(candidate, bg) >= 4.5) return candidate;
+    }
+    return WHITE;
+  };
+  const strong = Object.fromEntries(
+    Object.entries(t.semantic).map(([k, v]) => [k, darkenToAA(v, WHITE)]),
+  );
+  const strongDark = Object.fromEntries(
+    Object.entries(t.semantic).map(([k, v]) => [k, lightenToAA(v, NEUTRAL[950])]),
+  );
   const [, primaryFgDark]    = bestFg(primaryDark, [WHITE, INK]);
   const [, destructiveFg]    = bestFg(t.semantic.error, [WHITE, INK]);
 
@@ -131,8 +160,11 @@ ${scale}
   --accent-warm: ${accentWarm};
   --accent-cool: ${accentCool};
   --success: ${t.semantic.success};
+  --success-strong: ${strong.success};
   --warning: ${t.semantic.warning};
+  --warning-strong: ${strong.warning};
   --info: ${t.semantic.info};
+  --info-strong: ${strong.info};
 
   /* Data-visualisation ramp */
 ${chartVars(charts)}
@@ -162,6 +194,9 @@ ${chartVars(charts)}
   --ring: ${t.ring};
   --accent-warm: ${accentWarmDark};
   --accent-cool: ${accentCoolDark};
+  --success-strong: ${strongDark.success};
+  --warning-strong: ${strongDark.warning};
+  --info-strong: ${strongDark.info};
 }
 `;
   mkdirSync(`${OUT}/${t.id}`, { recursive: true });

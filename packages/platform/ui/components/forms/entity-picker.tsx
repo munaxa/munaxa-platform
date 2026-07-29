@@ -121,43 +121,43 @@ export function EntityPicker({
         }}
       />
       {open && options ? (
-        <ul
+        // A listbox must own its options directly: `role="listbox"` replaces a `<ul>`'s implicit
+        // list role, which orphans any `<li>` inside it, and an option may not contain a control.
+        // Options are therefore plain elements — keyboard focus stays on the input and moves
+        // through `aria-activedescendant`, which is the APG combobox pattern.
+        <div
           id={listId}
           role="listbox"
           className="absolute z-dropdown mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-card p-1 shadow-card"
           onMouseDown={() => blurTimer.current && clearTimeout(blurTimer.current)}
         >
           {filtered.map((o, i) => (
-            <li key={o.id}>
-              <button
-                type="button"
-                id={`${listId}-opt-${o.id}`}
-                role="option"
-                aria-selected={o.id === value}
-                onClick={() => choose(o.id)}
-                onMouseEnter={() => setActiveIndex(i)}
-                className={cn(
-                  'flex w-full flex-col items-start rounded-md px-2 py-1.5 text-start text-sm',
-                  i === activeIndex
-                    ? 'bg-secondary/80 text-foreground'
-                    : o.id === value
-                      ? 'bg-secondary/50 text-foreground'
-                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-                )}
-              >
-                <span>{o.label}</span>
-                {o.sublabel ? (
-                  <span className="font-mono text-[10px] text-muted-foreground/70">
-                    {o.sublabel}
-                  </span>
-                ) : null}
-              </button>
-            </li>
+            <div
+              key={o.id}
+              id={`${listId}-opt-${o.id}`}
+              role="option"
+              aria-selected={o.id === value}
+              onClick={() => choose(o.id)}
+              onMouseEnter={() => setActiveIndex(i)}
+              className={cn(
+                'flex w-full cursor-pointer flex-col items-start rounded-md px-2 py-1.5 text-start text-sm',
+                i === activeIndex
+                  ? 'bg-secondary/80 text-foreground'
+                  : o.id === value
+                    ? 'bg-secondary/50 text-foreground'
+                    : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+              )}
+            >
+              <span>{o.label}</span>
+              {o.sublabel ? (
+                <span className="font-mono text-[10px] text-muted-foreground/70">{o.sublabel}</span>
+              ) : null}
+            </div>
           ))}
           {filtered.length === 0 ? (
-            <li className="px-2 py-1.5 text-sm text-muted-foreground">{noMatchesLabel}</li>
+            <div className="px-2 py-1.5 text-sm text-muted-foreground">{noMatchesLabel}</div>
           ) : null}
-        </ul>
+        </div>
       ) : null}
     </div>
   );

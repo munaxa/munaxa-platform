@@ -1,0 +1,28 @@
+/*
+ * Storybook renders against the real design system — the same Tailwind build and the same theme
+ * contract a product gets. Nothing here is a mock or a Storybook-only approximation; if a story
+ * looks right, the component is right.
+ */
+@import 'tailwindcss';
+@import '../themes/school/index.css';
+
+/* Tailwind v4 must scan the platform's sources to emit the classes its components use. */
+@source '../ui';
+
+@layer base {
+  :root {
+    /* The radius base an application supplies. The contract derives sm/md/lg from it. */
+    --radius: 0.5rem;
+    /* Storybook loads no webfonts, so the type roles fall back to the system stack. */
+    --font-display: ui-sans-serif, system-ui, sans-serif;
+    --font-body: ui-sans-serif, system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+}

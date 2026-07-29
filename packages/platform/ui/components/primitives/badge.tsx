@@ -3,10 +3,16 @@ import { cn } from '../../lib/cn.js';
 
 export type Tone = 'default' | 'success' | 'warning' | 'danger' | 'muted';
 
+/*
+ * A badge is a tinted wash with a label on top, so the label needs the `-strong` form of each
+ * role: the plain status colours are fills and sit at ~2.2:1 on a light surface. `success` and
+ * `warning` previously borrowed the decorative accent roles, which is a different question
+ * entirely — an accent is ornament, a status carries meaning.
+ */
 const toneClass: Record<Tone, string> = {
   default: 'border-primary/30 bg-primary/15 text-primary-strong',
-  success: 'border-accent-cool/30 bg-accent-cool/15 text-accent-cool',
-  warning: 'border-accent-warm/30 bg-accent-warm/15 text-accent-warm',
+  success: 'border-success/30 bg-success/15 text-success-strong',
+  warning: 'border-warning/30 bg-warning/15 text-warning-strong',
   danger: 'border-destructive/30 bg-destructive/15 text-destructive',
   muted: 'border-border bg-secondary/60 text-muted-foreground',
 };
