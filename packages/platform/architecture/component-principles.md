@@ -72,6 +72,7 @@ same screen skeleton.
 | `data-display/` | Presenting structured, read-mostly data                      |
 | `overlays/`     | Layers anchored to a trigger — popover, menu, hover card      |
 | `date/`         | The calendar and date controls, built on the `ui/date` engine |
+| `data-grid/`    | The enterprise grid and its headless state hook                |
 
 Categories are an internal filing system. The public surface is the flat root barrel, so a
 component can be re-filed without breaking a single consumer.

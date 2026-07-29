@@ -17,3 +17,4 @@ export {
   type AvatarSize,
   type AvatarGroupProps,
 } from './avatar.js';
+export { Sparkline, type SparklineProps, type SparklineTone } from './sparkline.js';

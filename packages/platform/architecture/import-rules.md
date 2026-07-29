@@ -86,6 +86,9 @@ templates → patterns → components → hooks/lib → icons → typography/tok
   from `ui/components/`. The dependency runs one way — `ui/components/date/` reads the engine, and
   the engine never reaches back into the UI. That is what lets a product use the parsers and
   formatters on a server, or in a table cell, without pulling in a calendar.
+- `ui/charts/` may import components (it composes `Skeleton` and `EmptyState`) and is the only
+  place allowed to import `echarts` — and it does so with a dynamic `import()`, so the library
+  never lands in a bundle for a page that has no chart on it. Nothing else imports `echarts`.
 - Cross-category component imports are fine (`forms/entity-picker.tsx` imports
   `forms/input.tsx`); cross-*layer* upward imports are not.
 

@@ -18,7 +18,8 @@ where naming a product is the entire point.
 | §4 below                                                            | The layout and responsive system              |
 | §5 below                                                            | The application shell                         |
 | §6 below                                                            | The calendar and date system                  |
-| §7 below                                                            | Brand colour: when to use fill vs text        |
+| §7 below                                                            | Data presentation: grid, charts, dashboards   |
+| §8 below                                                            | Brand colour: when to use fill vs text        |
 
 > **The platform is frozen.** It changes only when a genuine cross-product need is proven — see
 > the rulebook, §3.
@@ -79,6 +80,7 @@ platform/
 │   ├── hooks/                use-theme · use-media-query · use-breakpoint · use-focus-trap
 │   ├── date/                 the date engine: CalendarAdapter · DateParser · DateFormatter ·
 │   │                         TimeFormatter · LocaleProvider (no components — see §6)
+│   ├── charts/               Chart · LineChart · AreaChart · BarChart · PieChart, on ECharts
 │   ├── components/
 │   │   ├── primitives/       Button, Badge, Tag
 │   │   ├── forms/            Input, Select, Textarea, Checkbox, Radio, Switch, Label, Field,
@@ -87,15 +89,17 @@ platform/
 │   │   ├── feedback/         Spinner, EmptyState, ErrorState, Tooltip, Dialog, Drawer, Toast
 │   │   ├── overlays/         Popover, DropdownMenu, ContextMenu, HoverCard
 │   │   ├── date/             Calendar, DatePicker, DateRangePicker, TimePicker, DateTimePicker
+│   │   ├── data-grid/        DataGrid, useDataGrid, useVirtualRows
 │   │   ├── navigation/       Tabs, Pagination
 │   │   ├── layout/           Card
-│   │   └── data-display/     Table, Timeline
+│   │   └── data-display/     Table, Timeline, Accordion, Avatar, Sparkline
 │   ├── layouts/              Stack · Inline · Cluster · Container · Grid · Center · Cover ·
 │   │                         Surface · Page · PageHeader · Section · Split · SidebarLayout ·
 │   │                         InspectorLayout · Panel · Toolbar · Workspace · ResizablePanels
 │   ├── shell/                AppShellProvider · AppShell · Sidebar · SidebarNav ·
 │   │                         TopBar · SidebarTrigger · NavigationDrawer · SkipLink
-│   ├── patterns/             StatCard, Stepper, Progress, TokenReference, motion/
+│   ├── patterns/             StatCard, KpiGrid, ChartCard, Stepper, Progress, TokenReference,
+│   │                         motion/
 │   └── templates/            reserved — see ui/templates/README.md
 ├── assets/<product>/         logos · favicon · social · illustrations
 └── scripts/                  validate-contract.mjs · validate-tokens.mjs
@@ -176,6 +180,7 @@ import { themes } from '@axa/platform/themes';
 | `@axa/platform/icons`           | the shared icon set                          |
 | `@axa/platform/hooks`           | UI hooks                                     |
 | `@axa/platform/date`            | the date engine, without any components      |
+| `@axa/platform/charts`          | ECharts wrappers (loaded lazily)             |
 | `@axa/platform/patterns`        | patterns only                                |
 | `@axa/platform/css/themes/<id>` | a theme (contract + palette)                 |
 | `@axa/platform/css/tokens`      | the structural scales as CSS variables       |
@@ -321,7 +326,85 @@ A few consequences worth knowing:
 - **Displayed hour cycle never changes the stored value.** `TimePicker` shows `9:05 PM` or `21:05`
   and reports `"21:05"` either way.
 
-## 7. Brand colour: fill vs text
+## 7. Data presentation
+
+Three pieces, and the boundary between them is the interesting part.
+
+### `DataGrid` — and why `Table` stays
+
+`Table` is the right answer for a dozen rows of static content and is not going anywhere.
+`DataGrid` is the one that windows fifty thousand rows, sorts with a collator, resizes columns and
+has to be driven from a keyboard. Keeping both means neither has to apologise for the other's cost:
+a settings page does not load a grid engine, and a payroll screen does not hand-roll pagination.
+
+It is a real `<table role="grid">`, not the div soup grids usually become. ARIA has exactly the pair
+virtualization needs — `aria-rowcount` describes the *dataset* and `aria-rowindex` the row's place
+in it — so a screen reader announces "row 4,201 of 50,000" while forty rows exist in the DOM.
+
+```tsx
+<DataGrid
+  aria-label="Employees"
+  rows={rows}
+  columns={columns}
+  getRowId={(row) => row.id}
+  height="60vh"          // a bounded viewport is what turns virtualization on
+  paginated={false}
+/>
+```
+
+A few decisions worth knowing:
+
+- **`value` and `cell` are different things.** `cell` is what a column *looks like* — a badge, a
+  formatted currency. `value` is what it *is*, and it is what sorting, searching and export use. A
+  status column renders a coloured pill and sorts by the word behind it.
+- **Virtualization is tied to `height`, not to a boolean.** Windowing needs a viewport to window
+  against; a `virtualized` flag with no bounded height would typecheck and silently do nothing.
+- **`mode="server"` changes one word.** It turns off every bit of local sorting, searching and
+  slicing, and reports state changes for the caller to put in a query. The rest of the props are
+  identical.
+- **`useDataGrid` is exported.** The state and derivation have no DOM in them, so a product can
+  drive saved views, mirror state into the URL, or render the same data as cards on a phone.
+
+### Charts — ECharts, and no colours
+
+`@axa/platform/charts` is a separate entry point, and `Chart` imports ECharts with a dynamic
+`import()`, so a page with no chart on it never loads the library.
+
+**No chart file contains a colour.** The ECharts theme is built by reading `--chart-1` … `--chart-10`
+and the semantic roles off the live document, which is the whole reason the platform owns charting:
+a chart has to match the badge beside it, flip with dark mode, and change when a different product
+imports a different palette. A hex list in a chart config breaks at least one of those.
+
+**The picture is not the content.** Every chart renders its numbers as a visually-hidden table
+alongside the graphic, and the wrappers derive it from the same `categories` and `series` the chart
+was drawn from, so nobody has to remember. `aria-label` can say "revenue by month"; only a table can
+say what the numbers are.
+
+`LineChart`, `AreaChart`, `BarChart` and `PieChart` cover what a business application draws.
+Anything else goes to `Chart` with a raw option and still gets the theme, the resizing, the states
+and the table — a wrapper is never a bottleneck.
+
+**Sparklines are deliberately not ECharts.** An instance for a sixty-pixel line, twenty to a
+dashboard, is an order of magnitude more machinery than the drawing needs. `Sparkline` is plain SVG.
+
+### KPI cards and dashboards
+
+`StatCard` gained `delta` and `trend` rather than a parallel `KpiCard` appearing beside it. The
+field that matters is `delta.goodWhen`:
+
+```tsx
+<StatCard label="Absences" value="31" delta={{ value: 4, goodWhen: 'down' }} />
+```
+
+A rise is not inherently good news. Attendance going up is good; absences going up is not, and
+colouring every increase green tells half the dashboard the opposite of the truth.
+
+`KpiGrid` and `ChartCard` fix the two decisions every dashboard re-makes slightly differently — how
+many tiles fit at each breakpoint, and where a chart's title, controls and footnote go. `ChartCard`
+is a `<section>` with a real heading, because a dashboard is a dozen panels and the headings are how
+a screen-reader user moves between them.
+
+## 8. Brand colour: fill vs text
 
 The brand exists twice in the contract, on purpose.
 
@@ -349,7 +432,7 @@ so nothing is lost by always reaching for it.
 > Rule of thumb: if the colour is behind something, `bg-primary`. If it **is** the thing you
 > read, `text-primary-strong`.
 
-## 8. Adding a product theme
+## 9. Adding a product theme
 
 Palettes are **generated**, not hand-written, so every brand ramp is perceptually even and every
 foreground is contrast-checked:
@@ -367,13 +450,13 @@ themes/newproduct/
 ```
 
 The generator anchors the 50–950 ramp exactly on the brand hex, then picks `--primary-foreground`
-and `--primary-strong` by measured WCAG contrast rather than by eye — see §7.
+and `--primary-strong` by measured WCAG contrast rather than by eye — see §8.
 
 Then one entry in `themes/index.ts` and one line in `package.json` `exports`. **No component
 changes** — that is the test of whether the layering is intact. `pnpm validate` will tell you
 immediately if the palette is incomplete.
 
-## 9. Validation
+## 10. Validation
 
 ```bash
 pnpm validate                          # both validators, via turbo
