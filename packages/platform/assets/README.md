@@ -42,8 +42,8 @@ palettes drift. Anything that needs a raw hex reads the typed registry:
 
 ```ts
 import { themes } from '@axa/platform/themes';
-themes.munaxa.brand.color.DEFAULT; // '#007595'
-themes.munaxa.brand.neutral.ink; //   '#090B0C'
+themes.school.brand.color.DEFAULT; // '#00CFC1'
+themes.school.brand.neutral.ink; //   '#101828'
 ```
 
 **No shared/unbranded bucket.** An asset that is not product-specific is either an icon (it
@@ -54,9 +54,10 @@ active palette.
 
 | Product     | Logos | Favicon | Social | Illustrations |
 | ----------- | ----- | ------- | ------ | ------------- |
-| **munaxa**  | 4     | 2       | —      | —             |
-| **workaxa** | —     | —       | —      | —             |
-| **inkaxa**  | —     | —       | —      | —             |
+| **group**   | —     | —       | —      | —             |
+| **school**  | 4     | 2       | —      | —             |
+| **work**    | —     | —       | —      | —             |
+| **docs**    | —     | —       | —      | —             |
 
 Workaxa and Inkaxa have authored palettes but no artwork yet; their folders are reserved so the
 structure is settled before the work lands. Empty buckets carry a `.gitkeep` — delete it when

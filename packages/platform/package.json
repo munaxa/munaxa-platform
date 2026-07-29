@@ -36,9 +36,10 @@
     "./css/tokens": "./tokens/css/primitives.css",
     "./css/motion": "./ui/patterns/motion/motion.css",
     "./css/base": "./themes/base/base.css",
-    "./css/themes/munaxa": "./themes/munaxa/index.css",
-    "./css/themes/workaxa": "./themes/workaxa/index.css",
-    "./css/themes/inkaxa": "./themes/inkaxa/index.css",
+    "./css/themes/group": "./themes/group/index.css",
+    "./css/themes/school": "./themes/school/index.css",
+    "./css/themes/work": "./themes/work/index.css",
+    "./css/themes/docs": "./themes/docs/index.css",
     "./source": "./index.ts"
   },
   "main": "./dist/index.js",

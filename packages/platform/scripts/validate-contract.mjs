@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const THEMES = join(ROOT, 'themes');
 const BASE = join(THEMES, 'base', 'base.css');
+const NEUTRALS = join(THEMES, 'base', 'neutrals.css');
 const PRIMITIVES = join(ROOT, 'tokens', 'css', 'primitives.css');
 
 /**
@@ -98,14 +99,40 @@ if (themeBlock === null) {
 }
 const contract = new Set([...referencedVars(themeBlock)].filter((v) => !APP_SUPPLIED.has(v)));
 
-// The base theme must stay product-agnostic: no literal colours, no product names.
-const PRODUCTS = /\b(munaxa|workaxa|inkaxa)\b/i;
+/**
+ * Roles supplied centrally rather than per-brand. The neutral ramp is *structure*: every product
+ * renders the same greys, and only the brand hue changes between themes. They are still part of
+ * the contract — components may use them — but a palette must not restate them, because that is
+ * how four themes quietly become four different greyscales.
+ */
+if (!existsSync(NEUTRALS)) {
+  console.error('\u2716 contract: themes/base/neutrals.css is missing — the shared neutral ramp has no home.');
+  process.exit(1);
+}
+const SHARED = new Set(declaredVars(strip(readFileSync(NEUTRALS, 'utf8'))));
+for (const v of SHARED) {
+  if (!contract.has(v)) {
+    fail(`base/neutrals.css: \`--${v}\` is declared but never bound in the contract — dead value.`);
+  }
+}
+/** What each product palette must answer for itself. */
+const brandContract = new Set([...contract].filter((v) => !SHARED.has(v)));
+
+// The base theme must stay product-agnostic: no literal colours, no product names. The product
+// list is read off disk rather than hardcoded, so renaming or adding a theme cannot leave this
+// check silently guarding a name that no longer exists.
 if (/#[0-9a-fA-F]{3,8}\b/.test(themeBlock)) {
   fail('base.css: the theme contract must not contain a literal colour — colour is a palette.');
 }
-for (const [, line] of baseCss.split('\n').entries()) {
-  if (PRODUCTS.test(line) && !line.trim().startsWith('*')) {
-    fail(`base.css: the theme contract must not name a product — found: ${line.trim()}`);
+const themeIds = readdirSync(THEMES)
+  .filter((d) => d !== 'base' && statSync(join(THEMES, d)).isDirectory())
+  .sort();
+// Only declaration lines can leak branding; prose in the doc comment legitimately says "product".
+for (const line of baseCss.split('\n')) {
+  if (!line.includes('--')) continue;
+  const named = themeIds.find((id) => new RegExp(`\\b${id}\\b`, 'i').test(line));
+  if (named) {
+    fail(`base.css: the theme contract must not name a product ("${named}") — found: ${line.trim()}`);
   }
 }
 
@@ -156,7 +183,13 @@ for (const product of products) {
       if (seen.has(v)) fail(`${label}/palette.css ${scheme}: \`--${v}\` is declared twice.`);
       seen.add(v);
 
-      if (!contract.has(v)) {
+      if (SHARED.has(v)) {
+        fail(
+          `${label}/palette.css ${scheme}: \`--${v}\` belongs to the shared neutral ramp ` +
+            `(themes/base/neutrals.css). A theme overrides branding only — it must not fork ` +
+            `the greyscale every product shares.`,
+        );
+      } else if (!contract.has(v)) {
         fail(
           `${label}/palette.css ${scheme}: \`--${v}\` is not part of the theme contract. ` +
             `A product may not invent a semantic role — add it to themes/base/base.css first, ` +
@@ -178,7 +211,7 @@ for (const product of products) {
   // a role it leaves out is inherited through the cascade, which is how a theme says
   // "this value is the same in both schemes" without duplicating it.
   const lightSet = new Set(lightVars);
-  for (const required of [...contract].sort()) {
+  for (const required of [...brandContract].sort()) {
     if (!lightSet.has(required)) {
       fail(`${label}/palette.css light (:root): missing required role \`--${required}\`.`);
     }
@@ -218,13 +251,15 @@ if (errors.length > 0) {
   console.error(`\n✖ Theme contract validation failed (${errors.length} problem(s)):\n`);
   for (const e of errors) console.error(`  • ${e}`);
   console.error(
-    `\nThe contract is ${contract.size} semantic roles, derived from the \`@theme inline\` ` +
-      `block of themes/base/base.css.\nSee platform/architecture/theming.md.\n`,
+    `\nThe contract is ${contract.size} semantic roles (${brandContract.size} per-brand, ` +
+      `${SHARED.size} shared), derived from the \`@theme inline\` block of ` +
+      `themes/base/base.css.\nSee platform/architecture/theming.md.\n`,
   );
   process.exit(1);
 }
 
 console.log(
-  `✔ Theme contract: ${contract.size} semantic roles satisfied by ${products.length} product theme(s) ` +
+  `✔ Theme contract: ${contract.size} semantic roles (${brandContract.size} per-brand + ` +
+    `${SHARED.size} shared neutral) satisfied by ${products.length} product theme(s) ` +
     `(${products.join(', ')}) in both colour schemes.`,
 );

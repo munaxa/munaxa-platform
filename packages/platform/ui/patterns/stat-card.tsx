@@ -3,7 +3,7 @@ import { cn } from '../lib/cn.js';
 import type { Tone } from '../components/primitives/badge.js';
 
 const toneAccent: Record<Tone, string> = {
-  default: 'text-primary',
+  default: 'text-primary-strong',
   success: 'text-accent-cool',
   warning: 'text-accent-warm',
   danger: 'text-destructive',

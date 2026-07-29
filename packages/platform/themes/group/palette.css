@@ -1,0 +1,97 @@
+/**
+ * Group palette — the complete set of values for the theme contract.
+ *
+ * THE single physical colour file for the Group brand. Never imported on its own: the theme
+ * entry point (`themes/group/index.css`) pairs it with the contract in `themes/base/base.css`
+ * and the shared neutral ramp in `themes/base/neutrals.css`.
+ *
+ * Only branding lives here. Structure — spacing, radius, elevation, motion, the neutral ramp —
+ * is shared by every theme and must never be forked into this file. Light = :root, dark = .dark.
+ *
+ * GENERATED from the brand hex #2B3A67 by scripts/generate-palettes.mjs. Re-run that script
+ * rather than hand-editing a scale step, so the ramp stays perceptually even.
+ */
+
+:root {
+  /* Brand tints consumed by the shared elevation geometry in base.css (R G B channels). */
+  --shadow-tint: 31 43 77;
+  --glow-tint: 43 58 103;
+
+  /* Primary scale */
+  --primary-50: #f4f7fe;
+  --primary-100: #d7ddec;
+  --primary-200: #b9c4e0;
+  --primary-300: #9babd5;
+  --primary-400: #7e93c9;
+  --primary-500: #637abb;
+  --primary-600: #4e64a1;
+  --primary-700: #3c4e85;
+  --primary-800: #2b3a67;
+  --primary-900: #1f2b4d;
+  --primary-950: #141d35;
+
+  /* Semantic roles — light */
+  --background: #ffffff;
+  --foreground: #101828;
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --popover: #ffffff;
+  --popover-foreground: #101828;
+  --primary: #2b3a67;
+  --primary-foreground: #ffffff;
+  --primary-strong: #2b3a67;
+  --secondary: #f2f4f7;
+  --secondary-foreground: #1d2939;
+  --muted: #f2f4f7;
+  --muted-foreground: #667085;
+  --accent: #f4f7fe;
+  --accent-foreground: #2b3a67;
+  --destructive: #ef4444;
+  --destructive-foreground: #101828;
+  --border: #e4e7ec;
+  --input: #e4e7ec;
+  --ring: #6366f1;
+  --accent-warm: #dd9313;
+  --accent-cool: #1eaddd;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --info: #0ea5e9;
+
+  /* Data-visualisation ramp */
+  --chart-1: #2b3a67;
+  --chart-2: #7e93c9;
+  --chart-3: #0ea5e9;
+  --chart-4: #f59e0b;
+  --chart-5: #22c55e;
+  --chart-6: #8b5cf6;
+  --chart-7: #ec4899;
+  --chart-8: #14b8a6;
+  --chart-9: #f97316;
+  --chart-10: #64748b;
+}
+
+.dark {
+  --shadow-tint: 0 0 0;
+
+  --background: #0a0f1a;
+  --foreground: #fafbfc;
+  --card: #101828;
+  --card-foreground: #fafbfc;
+  --popover: #101828;
+  --popover-foreground: #fafbfc;
+  --primary: #7e93c9;
+  --primary-foreground: #101828;
+  --primary-strong: #7e93c9;
+  --secondary: #1d2939;
+  --secondary-foreground: #fafbfc;
+  --muted: #1d2939;
+  --muted-foreground: #98a2b3;
+  --accent: #1d2939;
+  --accent-foreground: #fafbfc;
+  --destructive: #ef4444;
+  --border: rgb(255 255 255 / 0.12);
+  --input: rgb(255 255 255 / 0.16);
+  --ring: #6366f1;
+  --accent-warm: #fbbe6e;
+  --accent-cool: #6ed2fc;
+}

@@ -71,7 +71,7 @@ export interface ReadinessRingProps {
 }
 
 const ringStroke: Record<Tone, string> = {
-  default: 'stroke-primary',
+  default: 'stroke-primary-strong',
   success: 'stroke-accent-cool',
   warning: 'stroke-accent-warm',
   danger: 'stroke-destructive',

@@ -1,11 +1,21 @@
-/** Munaxa border-radius scale: 8 / 12 / 14 / 22 / 32px. */
+/**
+ * Border-radius scale — 4 · 6 · 8 · 12 · 16 · 20 · 24 · 32 px, plus a full pill.
+ *
+ * This is the *structural* ramp. The three radii bound to Tailwind's `rounded-sm/md/lg`
+ * utilities are derived per application from its own `--radius` base — see
+ * `themes/base/base.css` — so a product can tighten or loosen its corners without forking
+ * this scale.
+ */
 export const radius = {
   none: '0',
-  sm: '0.5rem',
-  md: '0.75rem',
-  lg: '0.875rem',
-  xl: '1.375rem',
-  '2xl': '2rem',
+  xs: '0.25rem',
+  sm: '0.375rem',
+  md: '0.5rem',
+  lg: '0.75rem',
+  xl: '1rem',
+  '2xl': '1.25rem',
+  '3xl': '1.5rem',
+  '4xl': '2rem',
   full: '9999px',
 } as const;
 

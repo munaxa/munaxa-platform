@@ -1,0 +1,22 @@
+/**
+ * The shared neutral ramp.
+ *
+ * Greyscale is *structure*, not branding: every product renders the same surfaces, borders and
+ * text greys, and only the brand hue changes between themes. Keeping the ramp here — rather than
+ * copying it into each palette — is what makes "a theme overrides only branding" true.
+ *
+ * Imported by `base.css`; never imported directly by an application.
+ */
+:root {
+  --neutral-50: #fafbfc;
+  --neutral-100: #f2f4f7;
+  --neutral-200: #e4e7ec;
+  --neutral-300: #d0d5dd;
+  --neutral-400: #98a2b3;
+  --neutral-500: #667085;
+  --neutral-600: #475467;
+  --neutral-700: #344054;
+  --neutral-800: #1d2939;
+  --neutral-900: #101828;
+  --neutral-950: #0a0f1a;
+}

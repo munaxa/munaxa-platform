@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn.js';
 export type Tone = 'default' | 'success' | 'warning' | 'danger' | 'muted';
 
 const toneClass: Record<Tone, string> = {
-  default: 'border-primary/30 bg-primary/15 text-primary',
+  default: 'border-primary/30 bg-primary/15 text-primary-strong',
   success: 'border-accent-cool/30 bg-accent-cool/15 text-accent-cool',
   warning: 'border-accent-warm/30 bg-accent-warm/15 text-accent-warm',
   danger: 'border-destructive/30 bg-destructive/15 text-destructive',

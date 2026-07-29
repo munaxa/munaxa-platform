@@ -21,7 +21,12 @@ const GROUPS: Group[] = [
   {
     title: 'Brand & accents',
     tokens: [
-      { varName: '--primary', use: 'bg-primary · text-primary', kind: 'fill', cls: 'bg-primary' },
+      {
+        varName: '--primary',
+        use: 'bg-primary · text-primary-strong',
+        kind: 'fill',
+        cls: 'bg-primary',
+      },
       { varName: '--accent', use: 'bg-accent', kind: 'fill', cls: 'bg-accent' },
       {
         varName: '--accent-warm',
@@ -188,7 +193,7 @@ export function TokenReference() {
                     <code className="font-mono text-xs">{token.varName}</code>
                   </th>
                   <td className="py-2">
-                    <code className="font-mono text-xs text-primary">{token.use}</code>
+                    <code className="font-mono text-xs text-primary-strong">{token.use}</code>
                   </td>
                   <td className="py-2">
                     <code className="font-mono text-xs text-muted-foreground">

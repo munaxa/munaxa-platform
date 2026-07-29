@@ -112,8 +112,8 @@ custom properties — HTML email, OG images, favicons, PDF output.
 
 ```ts
 import { themes } from '@axa/platform/themes';
-themes.munaxa.brand.color.DEFAULT; // '#007595'
-themes.munaxa.brand.neutral.ink; //   '#090B0C'
+themes.school.brand.color.DEFAULT; // '#00CFC1'
+themes.school.brand.neutral.ink; //   '#101828'
 ```
 
 Anything rendered in a browser reads the contract. If you are reaching for `brand.ts` inside a
@@ -136,7 +136,7 @@ fix the contract, not the component.
 
 ```css
 @import 'tailwindcss';
-@import '@axa/platform/css/themes/munaxa';
+@import '@axa/platform/css/themes/school';
 
 /* Tailwind v4 must scan the platform's sources to emit the classes its components use. */
 @source '../../../../../platform/ui';
@@ -157,3 +157,28 @@ One theme per application, chosen at build time. Light/dark switching *within* a
 Render `<TokenReference />` on an internal page. It reads the live custom properties off the
 document with `getComputedStyle`, so it cannot drift: every swatch is the value the app is
 actually serving, in the scheme it is actually in.
+
+## The brand exists twice
+
+`--primary` is a **fill**; `--primary-strong` is the same brand at **text** weight.
+
+A light, high-chroma brand is fine behind text and unusable as text: School's `#00CFC1` carries
+dark text at 9.0:1, but *is* 1.96:1 against white. `--primary-strong` is the nearest step on the
+brand ramp that clears 4.5:1 on the page background, computed per theme and per colour scheme by
+`scripts/generate-palettes.mjs`. Use `bg-primary` for anything the eye reads *over*, and
+`text-primary-strong` for anything the eye reads *directly*.
+
+## The neutral ramp is shared, not themed
+
+`--neutral-50 … --neutral-950` live in `themes/base/neutrals.css`, once, for every theme. Greyscale
+is structure: every product renders the same surfaces, borders and text greys, and only the brand
+hue changes between them. A palette that declares a `--neutral-*` role fails
+`validate-contract.mjs` — that rule is what makes "a theme overrides branding only" a fact rather
+than an aspiration.
+
+## Palettes are generated
+
+Hand-authoring eleven ramp steps by eye produces ramps that drift and foregrounds that fail
+contrast. `scripts/generate-palettes.mjs` anchors the ramp exactly on the brand hex, spaces the
+remaining steps evenly in OKLCH, and picks `--primary-foreground` and `--primary-strong` by
+measured WCAG contrast. Re-run it rather than editing a step by hand.

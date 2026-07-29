@@ -1,18 +1,21 @@
 /**
- * The typed registry of product themes shipped by the design system.
+ * The typed registry of product themes shipped by the platform.
  *
- * A *theme* is a complete set of values for the contract declared in `themes/base.css`,
+ * A *theme* is a complete set of values for the contract declared in `themes/base/base.css`,
  * authored as CSS custom properties in `themes/<id>/palette.css`. This registry is the
  * TypeScript-side mirror: it lets tooling (theme switchers, docs pages, screenshot harnesses,
  * email/OG-image generators) enumerate the available themes, their CSS entry points and their
  * raw brand hexes without hardcoding strings.
  *
- * Adding a product theme means adding a folder under `themes/` and one entry here — no change
- * to any component. Components read semantic variables only, so they inherit every theme.
+ * A theme overrides **branding only**. Spacing, radius, elevation, motion, typography and the
+ * neutral ramp are shared by every product and live in `tokens/` and `themes/base/`. Adding a
+ * product theme means adding a folder under `themes/` and one entry here — no change to any
+ * component, because components read semantic roles and inherit every theme.
  */
-import { brand as munaxaBrand } from './munaxa/brand.js';
-import { brand as workaxaBrand } from './workaxa/brand.js';
-import { brand as inkaxaBrand } from './inkaxa/brand.js';
+import { brand as groupBrand } from './group/brand.js';
+import { brand as schoolBrand } from './school/brand.js';
+import { brand as workBrand } from './work/brand.js';
+import { brand as docsBrand } from './docs/brand.js';
 
 /** Raw brand values a semantic palette has no slot for: the brand hexes and gradient stops. */
 export interface Brand {
@@ -36,7 +39,7 @@ export interface Brand {
   };
 }
 
-/** A product theme shipped by the design system. */
+/** A product theme shipped by the platform. */
 export interface Theme {
   /** Stable identifier, matching the folder name under `themes/`. */
   id: string;
@@ -50,32 +53,40 @@ export interface Theme {
   brand: Brand;
 }
 
-const munaxa = {
-  id: 'munaxa',
-  name: 'Munaxa',
-  cssEntry: '@axa/platform/css/themes/munaxa',
-  description: 'Teal brand with cool, low-chroma neutrals.',
-  brand: munaxaBrand,
+const group = {
+  id: 'group',
+  name: 'Group',
+  cssEntry: '@axa/platform/css/themes/group',
+  description: 'Deep slate-blue corporate brand — the group-level identity.',
+  brand: groupBrand,
 } as const satisfies Theme;
 
-const workaxa = {
-  id: 'workaxa',
-  name: 'Workaxa',
-  cssEntry: '@axa/platform/css/themes/workaxa',
-  description: 'Violet brand with violet-tinted neutrals.',
-  brand: workaxaBrand,
+const school = {
+  id: 'school',
+  name: 'School',
+  cssEntry: '@axa/platform/css/themes/school',
+  description: 'Bright teal brand for the education platform.',
+  brand: schoolBrand,
 } as const satisfies Theme;
 
-const inkaxa = {
-  id: 'inkaxa',
-  name: 'Inkaxa',
-  cssEntry: '@axa/platform/css/themes/inkaxa',
-  description: 'Indigo-ink brand with indigo-tinted neutrals.',
-  brand: inkaxaBrand,
+const work = {
+  id: 'work',
+  name: 'Work',
+  cssEntry: '@axa/platform/css/themes/work',
+  description: 'Raspberry brand for the human-capital platform.',
+  brand: workBrand,
+} as const satisfies Theme;
+
+const docs = {
+  id: 'docs',
+  name: 'Docs',
+  cssEntry: '@axa/platform/css/themes/docs',
+  description: 'Olive-green brand for the document and knowledge platform.',
+  brand: docsBrand,
 } as const satisfies Theme;
 
 /** Every product theme, keyed by id. */
-export const themes = { munaxa, workaxa, inkaxa } as const;
+export const themes = { group, school, work, docs } as const;
 
 /** Union of the available theme ids. */
 export type ThemeId = keyof typeof themes;

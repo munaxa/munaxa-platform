@@ -15,6 +15,7 @@ where naming a product is the entire point.
 | [`architecture/`](./architecture/README.md)                         | Why the platform is shaped this way           |
 | [`/docs/README.md`](../docs/README.md)                              | Every document in the repository              |
 | §3 below                                                            | Consuming it from a product                   |
+| §4 below                                                            | Brand colour: when to use fill vs text        |
 
 > **The platform is frozen.** It changes only when a genuine cross-product need is proven — see
 > the rulebook, §3.
@@ -57,16 +58,18 @@ platform/
 │                             accessibility · naming-conventions · import-rules
 ├── tokens/
 │   ├── index.ts              typed token aggregate
-│   ├── spacing/ radius/ elevation/ borders/ motion/
+│   ├── spacing/ radius/ elevation/ borders/ motion/ opacity/
 │   ├── transitions/ z-index/ breakpoints/
 │   └── css/primitives.css    the same scales as CSS custom properties (--axa-*)
 ├── typography/index.ts       families, sizes, weights, line-heights
 ├── themes/
 │   ├── index.ts              typed registry of every product theme
 │   ├── base/base.css         THE CONTRACT: @theme mapping + dark variant + utilities
-│   ├── munaxa/               palette.css · brand.ts · index.css
-│   ├── workaxa/              palette.css · brand.ts · index.css
-│   └── inkaxa/               palette.css · brand.ts · index.css
+│   ├── base/neutrals.css     the shared greyscale — themes override branding only
+│   ├── group/                palette.css · brand.ts · index.css
+│   ├── school/               palette.css · brand.ts · index.css
+│   ├── work/                 palette.css · brand.ts · index.css
+│   └── docs/                 palette.css · brand.ts · index.css
 ├── icons/index.ts            the curated lucide re-export
 ├── ui/
 │   ├── lib/cn.ts             clsx + tailwind-merge
@@ -126,7 +129,7 @@ Munaxa keeps, and must keep, everything domain-shaped: `AppShell`, `Shell`, `Pri
 
 ```css
 @import 'tailwindcss';
-@import '@axa/platform/css/themes/munaxa'; /* or workaxa / inkaxa */
+@import '@axa/platform/css/themes/school'; /* or group / work / docs */
 
 /* Tailwind v4 must scan the platform's sources to emit the classes its components use. */
 @source '../../../../../platform/ui';
@@ -169,20 +172,59 @@ Never deep-import a file path. See [import-rules.md](./architecture/import-rules
 **4. Verify your theme.** Render `<TokenReference />` on an internal page — it reads the live
 custom properties off the document, so every swatch is the value your app is actually serving.
 
-## 4. Adding a product theme
+## 4. Brand colour: fill vs text
+
+The brand exists twice in the contract, on purpose.
+
+| Role                | Use it for                                   | Paired with            |
+| ------------------- | -------------------------------------------- | ---------------------- |
+| `--primary`         | **Fills** — button backgrounds, badges, bars | `--primary-foreground` |
+| `--primary-strong`  | **Text**, links, icon strokes, focus borders | the page background    |
+
+The two are not interchangeable, and the reason is contrast. A light, high-chroma brand works
+beautifully as a fill — School's `#00CFC1` carries dark text at 9.0:1 — while the same hex used
+as text on white is **1.96:1**, which fails WCAG AA by a wide margin. `--primary-strong` is the
+nearest step on the same brand ramp that clears 4.5:1 against the page background, computed per
+theme and per colour scheme:
+
+| Theme  | Fill      | on fill   | Text (light) | Text (dark) |
+| ------ | --------- | --------- | ------------ | ----------- |
+| group  | `#2B3A67` | 11.03:1   | 11.03:1      | 6.30:1      |
+| school | `#00CFC1` | 9.04:1    | 5.10:1       | 9.76:1      |
+| work   | `#6E1E43` | 10.88:1   | 10.88:1      | 6.11:1      |
+| docs   | `#6B8E62` | 4.79:1    | 5.07:1       | 6.88:1      |
+
+For brands that are already dark enough — group and work — `--primary-strong` *is* the brand hex,
+so nothing is lost by always reaching for it.
+
+> Rule of thumb: if the colour is behind something, `bg-primary`. If it **is** the thing you
+> read, `text-primary-strong`.
+
+## 5. Adding a product theme
+
+Palettes are **generated**, not hand-written, so every brand ramp is perceptually even and every
+foreground is contrast-checked:
+
+```bash
+# add the brand to the THEMES array in scripts/generate-palettes.mjs, then
+node scripts/generate-palettes.mjs themes
+```
 
 ```
 themes/newproduct/
-├── palette.css   copy an existing palette, replace every value
+├── palette.css   GENERATED — primary ramp, semantic roles, chart series
 ├── brand.ts      brand hexes, gradient stops, static neutral scale
 └── index.css     @import '../base/base.css';  @import './palette.css';
 ```
+
+The generator anchors the 50–950 ramp exactly on the brand hex, then picks `--primary-foreground`
+and `--primary-strong` by measured WCAG contrast rather than by eye — see §4.
 
 Then one entry in `themes/index.ts` and one line in `package.json` `exports`. **No component
 changes** — that is the test of whether the layering is intact. `pnpm validate` will tell you
 immediately if the palette is incomplete.
 
-## 5. Validation
+## 6. Validation
 
 ```bash
 pnpm validate                          # both validators, via turbo
@@ -192,10 +234,15 @@ pnpm --filter @axa/platform validate:tokens
 
 `validate-contract.mjs` derives the required role set from the `@theme inline` block of
 `themes/base/base.css` — the contract is never written down twice — and fails when a palette
-misses a role, invents one, redefines a structural scale, declares a role twice, skips a colour
-scheme, redeclares the contract in its entry point, or exists on disk without being registered
-in `themes/index.ts`. It also fails when `base.css` itself contains a literal colour or a
-product name.
+misses a role, invents one, redefines a structural scale, forks the shared neutral ramp,
+declares a role twice, skips a colour scheme, redeclares the contract in its entry point, or
+exists on disk without being registered in `themes/index.ts`. It also fails when `base.css`
+itself contains a literal colour or names a product (the product list is read off disk, so a
+renamed theme cannot leave the check guarding a name that no longer exists).
+
+The contract is **59 roles: 48 answered per brand, 11 shared**. The shared eleven are the
+neutral ramp in `themes/base/neutrals.css` — greyscale is structure, and a theme that forked it
+would stop being "branding only".
 
 `validate-tokens.mjs` asserts the typed token modules and their CSS mirrors in
 `tokens/css/primitives.css` are value-identical in both directions, so spacing, radius, shadow,

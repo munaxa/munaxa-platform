@@ -19,7 +19,7 @@
  *   `@axa/platform/patterns`    composite patterns
  *
  * The CSS side is consumed through the theme entry points, e.g.
- *   `@import '@axa/platform/css/themes/munaxa';`
+ *   `@import '@axa/platform/css/themes/school';`
  */
 
 // Helpers

@@ -1,8 +1,8 @@
 /**
- * Workaxa theme entry point.
+ * Docs theme entry point.
  *
  *   @import 'tailwindcss';
- *   @import '@axa/platform/css/themes/workaxa';
+ *   @import '@axa/platform/css/themes/docs';
  */
 @import '../base/base.css';
 @import './palette.css';

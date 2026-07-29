@@ -138,6 +138,13 @@ compare(
   Object.entries(breakpoints).map(([k, v]) => [`breakpoints.${k}`, `axa-bp-${k}`, v]),
 );
 
+const opacity = readTyped('opacity', 'opacity');
+compare(
+  'opacity',
+  'axa-opacity-',
+  Object.entries(opacity).map(([k, v]) => [`opacity.${k}`, `axa-opacity-${k}`, v]),
+);
+
 const motion = readTyped('motion', 'motion');
 compare(
   'motion durations',
