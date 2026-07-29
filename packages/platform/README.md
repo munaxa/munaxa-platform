@@ -1,6 +1,6 @@
 # @axa/platform
 
-The shared engineering foundation for every AXA product — Munaxa, Workaxa, Inkaxa and whatever
+The shared engineering foundation for every Munaxa product — School, Work, Docs and whatever
 comes next. Design tokens, product themes, typography, icons, UI components and patterns, plus
 the standards and machine-checked contracts that keep them coherent as the ecosystem grows.
 

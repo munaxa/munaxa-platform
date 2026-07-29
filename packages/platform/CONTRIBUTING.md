@@ -2,8 +2,8 @@
 
 **This document is the mandatory standard for all work in `platform/`, human or AI-assisted.**
 
-The platform is consumed by every AXA product. A mistake here is a mistake in Munaxa, Workaxa,
-Inkaxa and everything that follows, so the bar is deliberately higher than in a product folder.
+The platform is consumed by every Munaxa product. A mistake here is a mistake in School, Work,
+Docs and everything that follows, so the bar is deliberately higher than in a product folder.
 When this document and a habit disagree, this document wins.
 
 This file is the operational checklist for changing the platform. It sits underneath the
@@ -121,7 +121,7 @@ The platform is a UI library with no product data, so tests are targeted rather 
 - [ ] For any change that touches CSS output, diff the emitted stylesheet before and after:
 
       ```bash
-      cd munaxa/apps/admin && npx @tailwindcss/cli -i src/app/globals.css -o /tmp/after.css
+      cd school/apps/admin && npx @tailwindcss/cli -i src/app/globals.css -o /tmp/after.css
       diff <(sort /tmp/before.css) <(sort /tmp/after.css)
       ```
 
@@ -141,7 +141,7 @@ Full reference: [`architecture/import-rules.md`](./architecture/import-rules.md)
 
 - [ ] Products import from a public entry point (`@axa/platform`, `@axa/platform/icons`, …) —
       **never** a deep file path, never a relative path into `platform/`.
-- [ ] The platform imports **nothing** from any product. No `@munaxa/*`, no path climbing out
+- [ ] The platform imports **nothing** from any product. No `@school/*`, no path climbing out
       of `platform/`.
 - [ ] No `next/*`, no router, no data client, no i18n library inside the platform.
 - [ ] `lucide-react` is imported only by `icons/index.ts`.

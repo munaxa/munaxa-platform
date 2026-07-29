@@ -59,7 +59,7 @@ active palette.
 | **work**    | —     | —       | —      | —             |
 | **docs**    | —     | —       | —      | —             |
 
-Workaxa and Inkaxa have authored palettes but no artwork yet; their folders are reserved so the
+Group, Work and Docs have authored palettes but no artwork yet; their folders are reserved so the
 structure is settled before the work lands. Empty buckets carry a `.gitkeep` — delete it when
 you add the first real file.
 

@@ -52,7 +52,7 @@ barrels were deleted in the Phase 1 refactor. Do not reintroduce them.
 
 **The platform imports nothing from any product. There is no exception.**
 
-An import of `@munaxa/*` — or any relative path that climbs out of `platform/` — makes the
+An import of `@school/*` — or any relative path that climbs out of `platform/` — makes the
 platform unbuildable for the next product and is the single failure that would undo this
 architecture. If a component seems to need something from a product, it needs a prop instead.
 
@@ -111,7 +111,7 @@ is not in the root barrel does not exist as far as products are concerned.
 
 - ESLint runs type-aware across `platform/` and fails on a hex literal in `ui/` or `tokens/`.
 - `pnpm validate` fails when a theme breaks the contract or a token mirror drifts.
-- The `@munaxa/*` packages are not dependencies of `@axa/platform`, so a product import fails at
+- The `@school/*` packages are not dependencies of `@axa/platform`, so a product import fails at
   install and resolution time, not just review.
 - Everything else here is a review responsibility — see
   [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
