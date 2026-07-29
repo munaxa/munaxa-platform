@@ -288,7 +288,7 @@ function Branch<T extends OrgNode>({
             onFocus={() => onFocusNode(node.id)}
             onClick={() => onSelect?.(node)}
             className={cn(
-              'min-w-40 cursor-default rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-sm',
+              'min-w-40 cursor-default rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-xs',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               selectedId === node.id && 'border-primary ring-2 ring-primary/40',
             )}

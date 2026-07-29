@@ -321,7 +321,7 @@ function Card({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'group flex items-start gap-1 rounded-lg border border-border bg-card p-2 shadow-sm',
+        'group flex items-start gap-1 rounded-lg border border-border bg-card p-2 shadow-xs',
         // The original stays in the flow at low opacity so the list does not collapse under the
         // cursor; the overlay is what the user is actually moving.
         isDragging && 'opacity-40',

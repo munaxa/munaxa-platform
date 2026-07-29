@@ -58,7 +58,7 @@ export function Drawer({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" aria-hidden="true" />
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-xs" aria-hidden="true" />
       <div
         ref={panelRef}
         role="dialog"

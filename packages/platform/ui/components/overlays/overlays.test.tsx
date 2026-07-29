@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './dropdown-menu.js';
+import { Tooltip } from '../feedback/tooltip.js';
 import { Button } from '../primitives/button.js';
 import { expectNoA11yViolations } from '../../../test/setup.js';
 
@@ -174,6 +175,50 @@ describe('DropdownMenu', () => {
     const { baseElement } = setup();
     await user.click(screen.getByRole('button', { name: 'Actions' }));
     await screen.findByRole('menu');
+    await expectNoA11yViolations(baseElement, { radixOverlay: true });
+  });
+});
+
+describe('Tooltip', () => {
+  it('keeps its original API and describes the trigger itself, not a wrapper', async () => {
+    const user = userEvent.setup();
+    render(
+      <Tooltip content="Grants read access to finance">
+        <button type="button">finance:read</button>
+      </Tooltip>,
+    );
+    const trigger = screen.getByRole('button', { name: 'finance:read' });
+    // `asChild` means the trigger *is* the button, so the description lands where a screen reader
+    // actually is rather than on a span around it.
+    await user.hover(trigger);
+    await waitFor(() =>
+      expect(trigger).toHaveAccessibleDescription('Grants read access to finance'),
+    );
+  });
+
+  it('opens on keyboard focus, and Escape closes it', async () => {
+    const user = userEvent.setup();
+    render(
+      <Tooltip content="Hint">
+        <button type="button">Trigger</button>
+      </Tooltip>,
+    );
+    await user.tab();
+    await waitFor(() => expect(screen.getAllByText('Hint').length).toBeGreaterThan(0));
+    // The old hand-rolled version had no dismissal at all except moving the pointer.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByText('Hint')).not.toBeInTheDocument());
+  });
+
+  it('has no accessibility violations while open', async () => {
+    const user = userEvent.setup();
+    const { baseElement } = render(
+      <Tooltip content="Hint">
+        <button type="button">Trigger</button>
+      </Tooltip>,
+    );
+    await user.tab();
+    await waitFor(() => expect(screen.getAllByText('Hint').length).toBeGreaterThan(0));
     await expectNoA11yViolations(baseElement, { radixOverlay: true });
   });
 });

@@ -265,7 +265,7 @@ export function WorkflowCanvas({
                   onFocus={() => setFocusedIndex(index)}
                   onClick={() => onSelect?.(node)}
                   className={cn(
-                    'flex min-h-16 cursor-default flex-col gap-0.5 rounded-lg border-2 bg-card p-3 shadow-sm',
+                    'flex min-h-16 cursor-default flex-col gap-0.5 rounded-lg border-2 bg-card p-3 shadow-xs',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     TONE[node.tone ?? 'default'],
                     selectedId === node.id && 'ring-2 ring-primary',

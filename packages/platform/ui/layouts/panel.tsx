@@ -82,7 +82,7 @@ export const Toolbar = forwardRef<HTMLDivElement, ToolbarProps>(function Toolbar
       aria-label={label}
       className={cn(
         'flex flex-wrap items-center justify-between gap-3',
-        sticky && 'sticky top-0 z-sticky bg-background/95 py-2 backdrop-blur-sm',
+        sticky && 'sticky top-0 z-sticky bg-background/95 py-2 backdrop-blur-xs',
         className,
       )}
       {...props}

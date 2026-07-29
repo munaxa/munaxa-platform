@@ -14,7 +14,7 @@ const TONE: Record<SurfaceTone, string> = {
 
 const ELEVATION: Record<SurfaceElevation, string> = {
   none: '',
-  sm: 'shadow-sm',
+  sm: 'shadow-xs',
   md: 'shadow-md',
   card: 'shadow-card',
 };
