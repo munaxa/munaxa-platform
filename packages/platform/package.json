@@ -33,6 +33,10 @@
       "types": "./dist/ui/patterns/index.d.ts",
       "default": "./dist/ui/patterns/index.js"
     },
+    "./layouts": {
+      "types": "./dist/ui/layouts/index.d.ts",
+      "default": "./dist/ui/layouts/index.js"
+    },
     "./css/tokens": "./tokens/css/primitives.css",
     "./css/motion": "./ui/patterns/motion/motion.css",
     "./css/base": "./themes/base/base.css",

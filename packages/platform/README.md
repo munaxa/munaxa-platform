@@ -15,7 +15,8 @@ where naming a product is the entire point.
 | [`architecture/`](./architecture/README.md)                         | Why the platform is shaped this way           |
 | [`/docs/README.md`](../docs/README.md)                              | Every document in the repository              |
 | §3 below                                                            | Consuming it from a product                   |
-| §4 below                                                            | Brand colour: when to use fill vs text        |
+| §4 below                                                            | The layout and responsive system              |
+| §5 below                                                            | Brand colour: when to use fill vs text        |
 
 > **The platform is frozen.** It changes only when a genuine cross-product need is proven — see
 > the rulebook, §3.
@@ -73,7 +74,7 @@ platform/
 ├── icons/index.ts            the curated lucide re-export
 ├── ui/
 │   ├── lib/cn.ts             clsx + tailwind-merge
-│   ├── hooks/use-theme.ts    light/dark switching
+│   ├── hooks/                use-theme · use-media-query · use-breakpoint
 │   ├── components/
 │   │   ├── primitives/       Button, Badge
 │   │   ├── forms/            Input, Select, Textarea, Checkbox, Radio, Switch, Label,
@@ -82,6 +83,9 @@ platform/
 │   │   ├── navigation/       Tabs, Pagination
 │   │   ├── layout/           Card
 │   │   └── data-display/     Table, Timeline
+│   ├── layouts/              Stack · Inline · Cluster · Container · Grid · Center · Cover ·
+│   │                         Surface · Page · PageHeader · Section · Split · SidebarLayout ·
+│   │                         InspectorLayout · Panel · Toolbar · Workspace · ResizablePanels
 │   ├── patterns/             StatCard, Stepper, Progress, TokenReference, motion/
 │   └── templates/            reserved — see ui/templates/README.md
 ├── assets/<product>/         logos · favicon · social · illustrations
@@ -172,7 +176,59 @@ Never deep-import a file path. See [import-rules.md](./architecture/import-rules
 **4. Verify your theme.** Render `<TokenReference />` on an internal page — it reads the live
 custom properties off the document, so every swatch is the value your app is actually serving.
 
-## 4. Brand colour: fill vs text
+## 4. Layout and the responsive system
+
+Applications compose screens from layout primitives rather than hand-assembling `flex`, `max-w-*`
+and `space-y-*` on every page. That is not a style preference — before this existed, the school
+admin app carried **fourteen different page measures**, **283 hand-written responsive grids** and
+the same `<h1 className="font-display text-2xl font-semibold">` on **61 screens**, with no way to
+change any of them centrally.
+
+| Reach for            | When                                                              |
+| -------------------- | ----------------------------------------------------------------- |
+| `Stack`              | One axis, one gap step. Most layouts are this                       |
+| `Inline` / `Cluster` | A row that wraps — chips, filters, action groups                    |
+| `Grid`               | Two dimensions, with a responsive column count                      |
+| `Container`          | A named page measure and the responsive gutter                      |
+| `Center` / `Cover`   | Empty states, loading screens, sign-in pages                        |
+| `Surface`            | A themed background with border, elevation and padding              |
+| `Page` / `Section`   | The page frame and its labelled regions                             |
+| `Split`              | Two panes at a ratio, stacking on narrow viewports                  |
+| `SidebarLayout`      | Fixed navigation column beside fluid content                        |
+| `InspectorLayout`    | Content with a contextual detail panel                              |
+| `Panel` / `Toolbar`  | A bordered region; a row of controls acting on what is below        |
+| `Workspace`          | The scrolling content region, and the `main` landmark               |
+| `ResizablePanels`    | A draggable — and keyboard-operable — separator                     |
+
+Three properties hold across all of them:
+
+- **Spacing is a token, not a number.** `gap` accepts only steps that exist on the shared scale,
+  so `gap={5}` does not compile.
+- **RTL is free.** Horizontal arrangements use flex row and logical properties, and the pane props
+  are `start` / `end` rather than `left` / `right`, so nothing needs a second code path.
+- **Class names are literals.** Tailwind finds classes by scanning source text, so a class built at
+  runtime is never emitted and the layout silently collapses. Every scale is written out in
+  `ui/layouts/scales.ts` for exactly that reason.
+
+### Breakpoints
+
+`useBreakpoint`, `useViewport`, `useIsMobile` and `usePrefersReducedMotion` build their queries
+from `tokens/breakpoints`, so JS and CSS cannot disagree about where a breakpoint sits.
+
+```tsx
+const compact = useIsMobile();          // below md — navigation becomes a drawer
+const viewport = useViewport();         // 'base' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
+```
+
+They report `false` until mount so server and client markup agree. Use them for **behaviour**
+— whether to render a drawer or a rail — and CSS for **appearance**, which has to be right in the
+first paint.
+
+> `Grid`'s responsive `cols` prop stops at `xl`. Tailwind's scanner will not extract a candidate
+> whose variant starts with a digit, so `2xl:grid-cols-*` is never emitted — from a map, from a
+> literal, or from `@source inline(...)`. Offering the key would typecheck and do nothing.
+
+## 5. Brand colour: fill vs text
 
 The brand exists twice in the contract, on purpose.
 
@@ -200,7 +256,7 @@ so nothing is lost by always reaching for it.
 > Rule of thumb: if the colour is behind something, `bg-primary`. If it **is** the thing you
 > read, `text-primary-strong`.
 
-## 5. Adding a product theme
+## 6. Adding a product theme
 
 Palettes are **generated**, not hand-written, so every brand ramp is perceptually even and every
 foreground is contrast-checked:
@@ -218,13 +274,13 @@ themes/newproduct/
 ```
 
 The generator anchors the 50–950 ramp exactly on the brand hex, then picks `--primary-foreground`
-and `--primary-strong` by measured WCAG contrast rather than by eye — see §4.
+and `--primary-strong` by measured WCAG contrast rather than by eye — see §5.
 
 Then one entry in `themes/index.ts` and one line in `package.json` `exports`. **No component
 changes** — that is the test of whether the layering is intact. `pnpm validate` will tell you
 immediately if the palette is incomplete.
 
-## 6. Validation
+## 7. Validation
 
 ```bash
 pnpm validate                          # both validators, via turbo

@@ -6,8 +6,8 @@
  *   import { Button, Card, cn } from '@axa/platform';
  *
  * Never deep-import an internal file path. Components are organised internally by category
- * (primitives / forms / feedback / navigation / layout / data-display) with composite
- * `patterns` and page-level `templates` kept separate; the public surface is this flat
+ * (primitives / forms / feedback / navigation / layout / data-display), with the layout
+ * primitives in `ui/layouts`, composite `patterns` and page-level `templates` kept separate; the public surface is this flat
  * barrel, so the internal taxonomy can evolve without breaking consumers.
  *
  * Narrower entry points exist for consumers that want only part of the system:
@@ -35,6 +35,9 @@ export * from './ui/components/feedback/index.js';
 export * from './ui/components/navigation/index.js';
 export * from './ui/components/layout/index.js';
 export * from './ui/components/data-display/index.js';
+
+// Layout primitives — arrangement, measure and page structure.
+export * from './ui/layouts/index.js';
 
 // Composite patterns built on top of the components.
 export * from './ui/patterns/index.js';
