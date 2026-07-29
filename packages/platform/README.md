@@ -19,7 +19,8 @@ where naming a product is the entire point.
 | §5 below                                                            | The application shell                         |
 | §6 below                                                            | The calendar and date system                  |
 | §7 below                                                            | Data presentation: grid, charts, dashboards   |
-| §8 below                                                            | Brand colour: when to use fill vs text        |
+| §8 below                                                            | Enterprise workspace components               |
+| §9 below                                                            | Brand colour: when to use fill vs text        |
 
 > **The platform is frozen.** It changes only when a genuine cross-product need is proven — see
 > the rulebook, §3.
@@ -76,7 +77,7 @@ platform/
 │   └── docs/                 palette.css · brand.ts · index.css
 ├── icons/index.ts            the curated lucide re-export
 ├── ui/
-│   ├── lib/cn.ts             clsx + tailwind-merge
+│   ├── lib/                  cn (clsx + tailwind-merge) · isRtlElement
 │   ├── hooks/                use-theme · use-media-query · use-breakpoint · use-focus-trap
 │   ├── date/                 the date engine: CalendarAdapter · DateParser · DateFormatter ·
 │   │                         TimeFormatter · LocaleProvider (no components — see §6)
@@ -90,6 +91,7 @@ platform/
 │   │   ├── overlays/         Popover, DropdownMenu, ContextMenu, HoverCard
 │   │   ├── date/             Calendar, DatePicker, DateRangePicker, TimePicker, DateTimePicker
 │   │   ├── data-grid/        DataGrid, useDataGrid, useVirtualRows
+│   │   ├── board/            Kanban, Gantt, OrgChart, DragDropProvider
 │   │   ├── navigation/       Tabs, Pagination
 │   │   ├── layout/           Card
 │   │   └── data-display/     Table, Timeline, Accordion, Avatar, Sparkline
@@ -404,7 +406,62 @@ many tiles fit at each breakpoint, and where a chart's title, controls and footn
 is a `<section>` with a real heading, because a dashboard is a dozen panels and the headings are how
 a screen-reader user moves between them.
 
-## 8. Brand colour: fill vs text
+## 8. Enterprise workspace components
+
+The surfaces where work is *arranged* rather than listed: `Kanban`, `Gantt`, `OrgChart`.
+
+### One drag-and-drop foundation
+
+`DragDropProvider` wraps dnd-kit with the platform's sensors and — the part dnd-kit does not ship
+— live announcements for the whole drag lifecycle. Without them a screen-reader user hears nothing
+at all through a drag, and every board in every product would otherwise write its own set, or more
+likely none. Supplying them once makes an accessible drag the path of least resistance.
+
+`ui/components/board/dnd.tsx` is the only file allowed to import `@dnd-kit/*`. A second drag
+implementation means a second set of keyboard behaviours, and that is how a product ends up with
+one board a keyboard user can reorder and one they cannot.
+
+### Arrangement here, meaning in the product
+
+None of these components decides whether a move is *allowed*. A Kanban column's `limit` is
+displayed and flagged; it is never enforced. `onMove` reports what the user did and the product
+updates its state — or declines to:
+
+```tsx
+<Kanban
+  columns={columns}
+  items={cards}
+  onMove={(move) => { if (allowed(move)) setCards(apply(move)); }}
+  renderCard={(card) => <Card {...card} />}
+/>
+```
+
+That single boundary is why a WIP limit can be advisory in one product and hard in another without
+a `strictLimits` prop ever appearing here.
+
+### They are real markup, not pictures
+
+Each of these is a component usually shipped as an opaque diagram, and a diagram conveys nothing to
+a screen reader:
+
+- **Kanban** is `<section>`s with real headings and `<ul>`s of cards, so it is navigable by heading
+  and by list with nothing being dragged. Every card has a named drag handle rather than the whole
+  card being draggable — a card is usually clickable too, and a whole-card drag makes opening a
+  record a coin toss.
+- **Gantt** is a `<table>`: one row per task, the task name as its row header, and every bar a
+  button named "Fit out east wing, 3 April 2026 to 12 April 2026". Its axis is built with the date
+  engine from §6, so a Gantt inside a `LocaleProvider` with a different calendar adapter is drawn
+  against that calendar's months without the file knowing what a month is. Editing is optional and
+  keyboard-first: arrows move a task, Shift with them changes its duration.
+- **OrgChart** is the APG `tree` — nested lists with `aria-level`, `aria-setsize` and
+  `aria-posinset`, connectors drawn in CSS on top. Each `treeitem` is named explicitly from
+  `OrgNode.label`, because a name computed from content would announce the chief executive followed
+  by everyone in the company. Full APG keyboard including typeahead.
+
+Horizontal arrow keys mirror in a right-to-left layout throughout, via `isRtlElement` in `ui/lib`
+— shared with `DataGrid`, so the grid and the tree agree about which way "forward" is.
+
+## 9. Brand colour: fill vs text
 
 The brand exists twice in the contract, on purpose.
 
@@ -432,7 +489,7 @@ so nothing is lost by always reaching for it.
 > Rule of thumb: if the colour is behind something, `bg-primary`. If it **is** the thing you
 > read, `text-primary-strong`.
 
-## 9. Adding a product theme
+## 10. Adding a product theme
 
 Palettes are **generated**, not hand-written, so every brand ramp is perceptually even and every
 foreground is contrast-checked:
@@ -450,13 +507,13 @@ themes/newproduct/
 ```
 
 The generator anchors the 50–950 ramp exactly on the brand hex, then picks `--primary-foreground`
-and `--primary-strong` by measured WCAG contrast rather than by eye — see §8.
+and `--primary-strong` by measured WCAG contrast rather than by eye — see §9.
 
 Then one entry in `themes/index.ts` and one line in `package.json` `exports`. **No component
 changes** — that is the test of whether the layering is intact. `pnpm validate` will tell you
 immediately if the palette is incomplete.
 
-## 10. Validation
+## 11. Validation
 
 ```bash
 pnpm validate                          # both validators, via turbo

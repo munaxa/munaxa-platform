@@ -89,6 +89,10 @@ templates → patterns → components → hooks/lib → icons → typography/tok
 - `ui/charts/` may import components (it composes `Skeleton` and `EmptyState`) and is the only
   place allowed to import `echarts` — and it does so with a dynamic `import()`, so the library
   never lands in a bundle for a page that has no chart on it. Nothing else imports `echarts`.
+- `ui/components/board/` is the only place allowed to import `@dnd-kit/*`, and only through
+  `board/dnd.tsx`. A second drag implementation would mean a second set of keyboard behaviours and
+  a second set of live announcements — which is exactly how a product ends up with one board a
+  keyboard user can reorder and one they cannot.
 - Cross-category component imports are fine (`forms/entity-picker.tsx` imports
   `forms/input.tsx`); cross-*layer* upward imports are not.
 

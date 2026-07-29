@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cn } from '../../lib/cn.js';
+import { forwardStep } from '../../lib/direction.js';
 import { ArrowDown, ArrowUp, ChevronsUpDown, Columns3, Search } from '../../../icons/index.js';
 import { Checkbox } from '../forms/checkbox.js';
 import { Input } from '../forms/input.js';
@@ -229,11 +230,11 @@ export function DataGrid<T>({
       case 'ArrowRight':
         event.preventDefault();
         // Cell movement follows the writing direction, matching the order the columns are read in.
-        moveFocus(row, col + (isRtl(gridRef.current) ? -1 : 1));
+        moveFocus(row, col + forwardStep(gridRef.current));
         return;
       case 'ArrowLeft':
         event.preventDefault();
-        moveFocus(row, col + (isRtl(gridRef.current) ? 1 : -1));
+        moveFocus(row, col - forwardStep(gridRef.current));
         return;
       case 'ArrowDown':
         event.preventDefault();
@@ -727,11 +728,6 @@ function renderValue(value: CellValue): ReactNode {
   if (value === null || value === undefined || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   return value;
-}
-
-function isRtl(element: Element | null): boolean {
-  if (!element || typeof getComputedStyle === 'undefined') return false;
-  return getComputedStyle(element).direction === 'rtl';
 }
 
 function readViewport(element: HTMLElement | null): number {
