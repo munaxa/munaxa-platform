@@ -17,7 +17,8 @@ where naming a product is the entire point.
 | §3 below                                                            | Consuming it from a product                   |
 | §4 below                                                            | The layout and responsive system              |
 | §5 below                                                            | The application shell                         |
-| §6 below                                                            | Brand colour: when to use fill vs text        |
+| §6 below                                                            | The calendar and date system                  |
+| §7 below                                                            | Brand colour: when to use fill vs text        |
 
 > **The platform is frozen.** It changes only when a genuine cross-product need is proven — see
 > the rulebook, §3.
@@ -75,12 +76,17 @@ platform/
 ├── icons/index.ts            the curated lucide re-export
 ├── ui/
 │   ├── lib/cn.ts             clsx + tailwind-merge
-│   ├── hooks/                use-theme · use-media-query · use-breakpoint
+│   ├── hooks/                use-theme · use-media-query · use-breakpoint · use-focus-trap
+│   ├── date/                 the date engine: CalendarAdapter · DateParser · DateFormatter ·
+│   │                         TimeFormatter · LocaleProvider (no components — see §6)
 │   ├── components/
-│   │   ├── primitives/       Button, Badge
-│   │   ├── forms/            Input, Select, Textarea, Checkbox, Radio, Switch, Label,
-│   │   │                     Field, EntityPicker
+│   │   ├── primitives/       Button, Badge, Tag
+│   │   ├── forms/            Input, Select, Textarea, Checkbox, Radio, Switch, Label, Field,
+│   │   │                     Command, Combobox, MultiSelect, Autocomplete, TokenInput,
+│   │   │                     EntityPicker
 │   │   ├── feedback/         Spinner, EmptyState, ErrorState, Tooltip, Dialog, Drawer, Toast
+│   │   ├── overlays/         Popover, DropdownMenu, ContextMenu, HoverCard
+│   │   ├── date/             Calendar, DatePicker, DateRangePicker, TimePicker, DateTimePicker
 │   │   ├── navigation/       Tabs, Pagination
 │   │   ├── layout/           Card
 │   │   └── data-display/     Table, Timeline
@@ -169,6 +175,7 @@ import { themes } from '@axa/platform/themes';
 | `@axa/platform/themes`          | the typed theme registry + brand hexes       |
 | `@axa/platform/icons`           | the shared icon set                          |
 | `@axa/platform/hooks`           | UI hooks                                     |
+| `@axa/platform/date`            | the date engine, without any components      |
 | `@axa/platform/patterns`        | patterns only                                |
 | `@axa/platform/css/themes/<id>` | a theme (contract + palette)                 |
 | `@axa/platform/css/tokens`      | the structural scales as CSS variables       |
@@ -271,7 +278,50 @@ the scrim close it, and focus returns to the trigger. Both read the shell contex
 width at which both are mounted, and widening past the breakpoint closes an open drawer rather than
 leaving its focus trap armed over a visible rail.
 
-## 6. Brand colour: fill vs text
+## 6. The date system
+
+Dates are not one utility module. They are five layers, and each one changes for a different reason:
+
+```
+LocaleProvider          which locale, calendar, zone and hour cycle the product is in
+     ├── CalendarAdapter    the calendar system itself — Gregorian by default
+     ├── DateParser         what the user typed → a date
+     ├── DateFormatter      a date → what the user reads
+     └── TimeFormatter      a wall-clock time → what the user reads
+```
+
+They live in `ui/date/` and ship separately as `@axa/platform/date`, because a table cell that
+formats a date should not have to import a calendar.
+
+**The rule that holds it together: every value crossing a public API is an ISO-8601 Gregorian
+string.** `DatePicker` emits `"2026-04-15"`. `Calendar` emits `"2026-04-15"`. What the user is
+*looking at* is presentation, decided by the adapter. That is the whole reason an alternative
+calendar is additive rather than breaking:
+
+```tsx
+<LocaleProvider locale="ar-JO" calendar={hijriAdapter} timeZone="Asia/Amman">
+  <DatePicker value={enrolledOn} onChange={setEnrolledOn} />
+</LocaleProvider>
+```
+
+Nothing in `DatePicker`, `Calendar` or the parser knows what a month is called or how many days it
+has — that is asked of the adapter every time. The Storybook story *A different calendar system*
+proves it with a hand-written thirteen-month calendar, and no component was changed to support it.
+
+A few consequences worth knowing:
+
+- **`CalendarDate` is a triple, not an instant.** No time, no zone. `Date` is used for `today()`
+  and for `Intl`, never for arithmetic — a local-midnight instant shifts a day across a timezone,
+  which is where most date bugs come from.
+- **Typing is a first-class path**, not a fallback. The parser reads the field order out of `Intl`,
+  so `3/4/2026` is April in `en-GB` and March in `en-US` without the platform choosing for anyone.
+  It also reads Eastern Arabic digits, and accepts ISO in every locale.
+- **The week starts where the locale says.** Saturday in `ar-JO`, Sunday in `en-US`, Monday in
+  `en-GB`, resolved from `Intl.Locale`. Getting this wrong is not cosmetic.
+- **Displayed hour cycle never changes the stored value.** `TimePicker` shows `9:05 PM` or `21:05`
+  and reports `"21:05"` either way.
+
+## 7. Brand colour: fill vs text
 
 The brand exists twice in the contract, on purpose.
 
@@ -299,7 +349,7 @@ so nothing is lost by always reaching for it.
 > Rule of thumb: if the colour is behind something, `bg-primary`. If it **is** the thing you
 > read, `text-primary-strong`.
 
-## 7. Adding a product theme
+## 8. Adding a product theme
 
 Palettes are **generated**, not hand-written, so every brand ramp is perceptually even and every
 foreground is contrast-checked:
@@ -317,13 +367,13 @@ themes/newproduct/
 ```
 
 The generator anchors the 50–950 ramp exactly on the brand hex, then picks `--primary-foreground`
-and `--primary-strong` by measured WCAG contrast rather than by eye — see §6.
+and `--primary-strong` by measured WCAG contrast rather than by eye — see §7.
 
 Then one entry in `themes/index.ts` and one line in `package.json` `exports`. **No component
 changes** — that is the test of whether the layering is intact. `pnpm validate` will tell you
 immediately if the palette is incomplete.
 
-## 8. Validation
+## 9. Validation
 
 ```bash
 pnpm validate                          # both validators, via turbo

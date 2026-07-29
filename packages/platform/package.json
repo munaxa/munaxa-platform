@@ -41,6 +41,10 @@
       "types": "./dist/ui/shell/index.d.ts",
       "default": "./dist/ui/shell/index.js"
     },
+    "./date": {
+      "types": "./dist/ui/date/index.d.ts",
+      "default": "./dist/ui/date/index.js"
+    },
     "./css/tokens": "./tokens/css/primitives.css",
     "./css/motion": "./ui/patterns/motion/motion.css",
     "./css/base": "./themes/base/base.css",

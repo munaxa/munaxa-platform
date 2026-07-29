@@ -82,6 +82,10 @@ templates → patterns → components → hooks/lib → icons → typography/tok
 - A **pattern** may import anything a component may, plus components.
 - A **template** may import anything, plus patterns.
 - `tokens/`, `typography/` and `themes/` import nothing from `ui/` and have no React dependency.
+- `ui/date/` is an *engine*, not a component layer: it may import `tokens/` and React, and nothing
+  from `ui/components/`. The dependency runs one way — `ui/components/date/` reads the engine, and
+  the engine never reaches back into the UI. That is what lets a product use the parsers and
+  formatters on a server, or in a table cell, without pulling in a calendar.
 - Cross-category component imports are fine (`forms/entity-picker.tsx` imports
   `forms/input.tsx`); cross-*layer* upward imports are not.
 

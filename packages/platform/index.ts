@@ -36,6 +36,11 @@ export * from './ui/components/navigation/index.js';
 export * from './ui/components/layout/index.js';
 export * from './ui/components/data-display/index.js';
 export * from './ui/components/overlays/index.js';
+export * from './ui/components/date/index.js';
+
+// The date engine — adapters, parsers, formatters and the locale provider the date controls read.
+// Also available on its own at `@axa/platform/date` for code that needs the logic without the UI.
+export * from './ui/date/index.js';
 
 // Layout primitives — arrangement, measure and page structure.
 export * from './ui/layouts/index.js';

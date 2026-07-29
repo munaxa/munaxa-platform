@@ -70,6 +70,8 @@ same screen skeleton.
 | `navigation/`   | Moving between views or pages within a view                  |
 | `layout/`       | Containers that arrange other content                        |
 | `data-display/` | Presenting structured, read-mostly data                      |
+| `overlays/`     | Layers anchored to a trigger — popover, menu, hover card      |
+| `date/`         | The calendar and date controls, built on the `ui/date` engine |
 
 Categories are an internal filing system. The public surface is the flat root barrel, so a
 component can be re-filed without breaking a single consumer.

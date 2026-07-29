@@ -26,6 +26,12 @@ export {
 } from './command.js';
 export { Autocomplete, type AutocompleteProps } from './autocomplete.js';
 export {
+  TokenInput,
+  type TokenInputProps,
+  type TokenInputLabels,
+  type TokenRejection,
+} from './token-input.js';
+export {
   Combobox,
   MultiSelect,
   type ComboboxProps,
