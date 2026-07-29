@@ -39,6 +39,9 @@ export * from './ui/components/overlays/index.js';
 export * from './ui/components/date/index.js';
 export * from './ui/components/data-grid/index.js';
 export * from './ui/components/board/index.js';
+export * from './ui/components/files/index.js';
+export * from './ui/components/flow/index.js';
+export * from './ui/components/query/index.js';
 
 // The date engine — adapters, parsers, formatters and the locale provider the date controls read.
 // Also available on its own at `@axa/platform/date` for code that needs the logic without the UI.

@@ -92,7 +92,10 @@ templates → patterns → components → hooks/lib → icons → typography/tok
 - `ui/components/board/` is the only place allowed to import `@dnd-kit/*`, and only through
   `board/dnd.tsx`. A second drag implementation would mean a second set of keyboard behaviours and
   a second set of live announcements — which is exactly how a product ends up with one board a
-  keyboard user can reorder and one they cannot.
+  keyboard user can reorder and one they cannot. `flow/approval-flow.tsx` reaches `board/dnd.js`
+  for exactly that reason rather than wiring its own sortable.
+- `query/types.ts` has no React import and never will: the condition model is plain data so a
+  product can build, validate and serialise a filter on a server without pulling in a component.
 - Cross-category component imports are fine (`forms/entity-picker.tsx` imports
   `forms/input.tsx`); cross-*layer* upward imports are not.
 

@@ -92,6 +92,9 @@ platform/
 │   │   ├── date/             Calendar, DatePicker, DateRangePicker, TimePicker, DateTimePicker
 │   │   ├── data-grid/        DataGrid, useDataGrid, useVirtualRows
 │   │   ├── board/            Kanban, Gantt, OrgChart, DragDropProvider
+│   │   ├── files/            Dropzone, FileManager
+│   │   ├── flow/             WorkflowCanvas, ApprovalFlow
+│   │   ├── query/            FilterBuilder, SearchBuilder, the condition model
 │   │   ├── navigation/       Tabs, Pagination
 │   │   ├── layout/           Card
 │   │   └── data-display/     Table, Timeline, Accordion, Avatar, Sparkline
@@ -460,6 +463,69 @@ a screen reader:
 
 Horizontal arrow keys mirror in a right-to-left layout throughout, via `isRtlElement` in `ui/lib`
 — shared with `DataGrid`, so the grid and the tree agree about which way "forward" is.
+
+### Files — storage-agnostic
+
+`Dropzone` hands over raw `File` objects. `FileManager` renders the folder it was given and reports
+navigation and selection by id. Neither fetches, uploads, signs a URL, or knows a storage backend:
+
+```tsx
+<FileManager items={items} path={path} onNavigate={open} onUpload={(files) => upload(files)} />
+```
+
+A file manager that assumed S3, or a signed upload, or a document API would be unusable for the next
+product, so the boundary is drawn at `File` objects and ids and nothing crosses it in either
+direction. The list view is the `DataGrid` from §7 and the path is the `Breadcrumb`, so sorting,
+keyboard cell navigation and selection are the ones already tested rather than a second set.
+
+The dropzone is a real `<button>` with a hidden input behind it. Drag is inherently a pointer
+gesture, so the keyboard path has to be a genuine focusable control or there is no way in at all.
+
+### Flow editors — presentation only
+
+`WorkflowCanvas` is a graph; `ApprovalFlow` is an ordered chain. Two components, because there are
+two problems: an approval *is* a list, and forcing it through a node canvas would make "move finance
+before legal" a matter of dragging boxes and redrawing arrows.
+
+Both own layout, selection and keyboard interaction, and nothing else. They do not know what a step
+type means, cannot validate a workflow, will not add or delete a node, and have no idea how any of it
+executes. That is not squeamishness about scope: a canvas that knew about approval steps would *be*
+an approval editor, and the next product's process would need a fork of it.
+
+**A diagram is not the content.** The only thing a workflow picture conveys is what leads to what —
+exactly what a picture cannot say. So the nodes are a real list, each described by its outgoing
+connections in text ("Manager approval leads to Finance review, Rejected"), and the SVG carrying the
+lines is `aria-hidden`, because the lines are a redundant rendering of information already in words.
+
+`ApprovalFlow` in `readOnly` with a `status` per step is how a live request renders — so the shape a
+designer built is literally the shape a requester sees.
+
+### Query builders — generic
+
+`FilterBuilder` edits nested groups of `field operator value`. `SearchBuilder` is the bar above a
+grid: free text, the editor in a popover, removable chips for what is applied. It **composes** the
+builder rather than inventing a `status:active grade:>9` syntax — that would be a parser, an
+autocomplete grammar, an error-reporting story and a language users have to learn, all to express
+what a condition editor expresses without any of it.
+
+`FilterField[]` is the only product-specific input and it is plain data, so School filtering students
+and Work filtering timesheets are the same components with different fields:
+
+```tsx
+<SearchBuilder fields={fields} value={query} onChange={setQuery} />
+```
+
+**The value is JSON.** A `FilterGroup` survives `JSON.stringify`, which is what makes a saved view, a
+shareable URL and a server-side query all speak the same thing. `query/types.ts` imports no React, so
+a product can build and validate a filter on a server without pulling in a component.
+
+**Editing and applying are separate**, via `pruneFilter`. A half-typed clause — a field chosen with
+no value yet — must stay visible so the user can finish it, and must never reach a query, where it
+would silently filter everything away.
+
+Each group is a `<fieldset>` with a `<legend>` carrying its combinator. Nesting is what makes these
+unusable with a screen reader: a stack of divs gives no indication where one group ends, and "OR"
+floating between two rows means nothing.
 
 ## 9. Brand colour: fill vs text
 
