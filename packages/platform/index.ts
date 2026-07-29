@@ -39,6 +39,9 @@ export * from './ui/components/data-display/index.js';
 // Layout primitives — arrangement, measure and page structure.
 export * from './ui/layouts/index.js';
 
+// The application shell — the frame a product's screens sit inside.
+export * from './ui/shell/index.js';
+
 // Composite patterns built on top of the components.
 export * from './ui/patterns/index.js';
 

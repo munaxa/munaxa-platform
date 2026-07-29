@@ -16,7 +16,8 @@ where naming a product is the entire point.
 | [`/docs/README.md`](../docs/README.md)                              | Every document in the repository              |
 | §3 below                                                            | Consuming it from a product                   |
 | §4 below                                                            | The layout and responsive system              |
-| §5 below                                                            | Brand colour: when to use fill vs text        |
+| §5 below                                                            | The application shell                         |
+| §6 below                                                            | Brand colour: when to use fill vs text        |
 
 > **The platform is frozen.** It changes only when a genuine cross-product need is proven — see
 > the rulebook, §3.
@@ -86,6 +87,8 @@ platform/
 │   ├── layouts/              Stack · Inline · Cluster · Container · Grid · Center · Cover ·
 │   │                         Surface · Page · PageHeader · Section · Split · SidebarLayout ·
 │   │                         InspectorLayout · Panel · Toolbar · Workspace · ResizablePanels
+│   ├── shell/                AppShellProvider · AppShell · Sidebar · SidebarNav ·
+│   │                         TopBar · SidebarTrigger · NavigationDrawer · SkipLink
 │   ├── patterns/             StatCard, Stepper, Progress, TokenReference, motion/
 │   └── templates/            reserved — see ui/templates/README.md
 ├── assets/<product>/         logos · favicon · social · illustrations
@@ -228,7 +231,47 @@ first paint.
 > whose variant starts with a digit, so `2xl:grid-cols-*` is never emitted — from a map, from a
 > literal, or from `@source inline(...)`. Offering the key would typecheck and do nothing.
 
-## 5. Brand colour: fill vs text
+## 5. The application shell
+
+The frame a product's screens sit inside, decomposed rather than monolithic. `AppShellProvider`
+owns the state its parts share — collapsed, drawer, breakpoint, the main region's id — and
+`AppShell`, `Sidebar`, `SidebarNav`, `TopBar`, `SidebarTrigger`, `NavigationDrawer` and `SkipLink`
+each do one thing. A product composes them, replaces any one, or uses the provider's state to build
+its own; none of that is possible with a single 800-line component.
+
+```tsx
+<AppShellProvider collapsed={collapsed} onCollapsedChange={persist}>
+  <AppShell
+    skipLinkLabel="Skip to content"
+    sidebar={<Sidebar brand={brand} footer={session}><SidebarNav groups={groups} label="Main" renderLink={link} /></Sidebar>}
+    drawer={<NavigationDrawer label="Navigation"><SidebarNav groups={groups} label="Main" renderLink={link} collapsed={false} /></NavigationDrawer>}
+    topBar={<TopBar actions={<UserMenu />}><SidebarTrigger /><Search /></TopBar>}
+  >
+    {children}
+  </AppShell>
+</AppShellProvider>
+```
+
+Three boundaries make it product-agnostic, and all three are load-bearing:
+
+- **Navigation arrives resolved.** `NavigationGroup[]` carries labels, icons and `active` flags that
+  the application has already worked out. Whether an item is visible depends on permissions and
+  feature flags; what its label says depends on the locale. Those are business rules, and a shell
+  that evaluated them would need editing before the second product could use it.
+- **It persists nothing.** The provider holds `collapsed` but never writes it. Where a preference
+  lives — `localStorage`, a cookie, a user record — is an application decision, and a shared package
+  storing it would have to invent a key name or bake a product's name into code four products share.
+  Pass `collapsed` + `onCollapsedChange` to own it.
+- **It imports no router.** `renderLink` supplies the element, so `next/link`, `react-router`,
+  `wouter` and a plain `<a>` all work.
+
+Below `md` the rail is not rendered at all and the same navigation appears in `NavigationDrawer` —
+a real modal, sharing `useFocusTrap` with `Dialog`, so focus moves in, Tab is trapped, Escape and
+the scrim close it, and focus returns to the trigger. Both read the shell context, so there is no
+width at which both are mounted, and widening past the breakpoint closes an open drawer rather than
+leaving its focus trap armed over a visible rail.
+
+## 6. Brand colour: fill vs text
 
 The brand exists twice in the contract, on purpose.
 
@@ -256,7 +299,7 @@ so nothing is lost by always reaching for it.
 > Rule of thumb: if the colour is behind something, `bg-primary`. If it **is** the thing you
 > read, `text-primary-strong`.
 
-## 6. Adding a product theme
+## 7. Adding a product theme
 
 Palettes are **generated**, not hand-written, so every brand ramp is perceptually even and every
 foreground is contrast-checked:
@@ -274,13 +317,13 @@ themes/newproduct/
 ```
 
 The generator anchors the 50–950 ramp exactly on the brand hex, then picks `--primary-foreground`
-and `--primary-strong` by measured WCAG contrast rather than by eye — see §5.
+and `--primary-strong` by measured WCAG contrast rather than by eye — see §6.
 
 Then one entry in `themes/index.ts` and one line in `package.json` `exports`. **No component
 changes** — that is the test of whether the layering is intact. `pnpm validate` will tell you
 immediately if the palette is incomplete.
 
-## 7. Validation
+## 8. Validation
 
 ```bash
 pnpm validate                          # both validators, via turbo

@@ -37,6 +37,10 @@
       "types": "./dist/ui/layouts/index.d.ts",
       "default": "./dist/ui/layouts/index.js"
     },
+    "./shell": {
+      "types": "./dist/ui/shell/index.d.ts",
+      "default": "./dist/ui/shell/index.js"
+    },
     "./css/tokens": "./tokens/css/primitives.css",
     "./css/motion": "./ui/patterns/motion/motion.css",
     "./css/base": "./themes/base/base.css",

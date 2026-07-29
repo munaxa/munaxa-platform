@@ -17,3 +17,4 @@ export {
   VIEWPORT_ORDER,
   type Viewport,
 } from './use-breakpoint.js';
+export { useFocusTrap, getFocusable, type UseFocusTrapOptions } from './use-focus-trap.js';
