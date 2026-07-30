@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "platform-storybook",
+  "compatibility_date": "2026-07-30",
+  // Static-assets Worker for the Platform documentation site. `pnpm build-storybook`
+  // emits a self-contained static bundle to `storybook-static/`; Cloudflare serves it
+  // directly, so there is no Worker script — assets only.
+  //
+  // NOTE: `name` must match the Cloudflare project this deploys to. The failed build
+  // auto-detected the project as "platform"; rename this to whatever the project is
+  // actually called, or the deploy targets a different Worker.
+  "assets": {
+    "directory": "./storybook-static",
+    // Storybook deep links live in query params on index.html, and iframe.html is a
+    // real file, so nothing here relies on rewrites — the SPA fallback only keeps an
+    // unknown path from returning a bare 404.
+    "not_found_handling": "single-page-application",
+  },
+}
