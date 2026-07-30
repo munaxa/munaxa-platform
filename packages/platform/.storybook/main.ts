@@ -7,7 +7,10 @@ const require = createRequire(import.meta.url);
 const addon = (value: string) => dirname(require.resolve(join(value, 'package.json')));
 
 const config: StorybookConfig = {
-  stories: ['../ui/**/*.stories.@(ts|tsx)', '../docs/**/*.mdx'],
+  // `ui/` holds each component's own story next to its source. `docs/` holds the pages that
+  // document the system rather than a component — foundations, tokens and the brand themes —
+  // kept out of `ui/` because they are documentation and must never reach the published build.
+  stories: ['../ui/**/*.stories.@(ts|tsx)', '../docs/**/*.stories.@(ts|tsx)', '../docs/**/*.mdx'],
   addons: [addon('@storybook/addon-docs'), addon('@storybook/addon-a11y')],
   framework: {
     name: addon('@storybook/react-vite') as '@storybook/react-vite',

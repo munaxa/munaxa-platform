@@ -46,7 +46,9 @@ import { Section } from '../../layouts/page.js';
 import { Surface } from '../../layouts/surface.js';
 
 const meta = {
-  title: 'Foundation/Primitives',
+  // Under `Primitives`, not a singular `Foundation` section: these are primitive components, and
+  // a top-level entry one letter away from `Foundations` reads as a mistake in a docs site.
+  title: 'Primitives/Foundation',
   parameters: {
     docs: {
       description: {

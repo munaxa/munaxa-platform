@@ -2,7 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TokenReference } from './token-reference.js';
 
 const meta = {
-  title: 'Foundations/Tokens',
+  // The *component's* own story. `Foundations/Tokens` documents the token system itself; this
+  // documents the shipped `TokenReference` pattern that products embed in their styleguides.
+  title: 'Patterns/Token Reference',
   component: TokenReference,
   parameters: {
     layout: 'fullscreen',

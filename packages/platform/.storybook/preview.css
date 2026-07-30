@@ -2,9 +2,15 @@
  * Storybook renders against the real design system — the same Tailwind build and the same theme
  * contract a product gets. Nothing here is a mock or a Storybook-only approximation; if a story
  * looks right, the component is right.
+ *
+ * Only the *contract* is imported here, never a palette. An application imports one theme entry
+ * point (contract + one palette on `:root`); the documentation site has to show all four brands
+ * in one document, so the palettes are installed at runtime by `brand-themes.ts`, each re-scoped
+ * to `[data-brand="<id>"]`. The toolbar's Brand control then swaps every component's colours by
+ * setting a single attribute — which is the claim this site exists to demonstrate.
  */
 @import 'tailwindcss';
-@import '../themes/school/index.css';
+@import '../themes/base/base.css';
 
 /* Tailwind v4 must scan the platform's sources to emit the classes its components use. */
 @source '../ui';
