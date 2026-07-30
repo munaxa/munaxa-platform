@@ -1,7 +1,10 @@
 {
   "name": "@axa/platform",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "description": "The AXA shared platform foundation: design tokens, product themes, typography, icons, UI components, patterns and templates, plus the engineering standards every product builds against. Single source of truth for Munaxa, Workaxa, Inkaxa and future AXA products. Contains no product terminology and no business logic.",
   "type": "module",
   "exports": {
@@ -99,7 +102,6 @@
     "@radix-ui/react-scroll-area": "^1.2.18",
     "@radix-ui/react-separator": "^1.1.15",
     "@radix-ui/react-tooltip": "^1.2.16",
-    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "echarts": "^6.1.0",

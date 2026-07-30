@@ -12,6 +12,9 @@ where naming a product is the entire point.
 | ------------------------------------------------------------------- | -------------------------------------------- |
 | [`/PLATFORM_ENGINEERING_STANDARDS.md`](../PLATFORM_ENGINEERING_STANDARDS.md) | **The mandatory rulebook.** Read it first. |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md)                              | The checklist for changing the platform       |
+| [`VERSIONING.md`](./VERSIONING.md)                                  | What a version number promises                |
+| [`MIGRATION.md`](./MIGRATION.md)                                    | Moving across a major version                 |
+| [`CHANGELOG.md`](./CHANGELOG.md)                                    | What changed, release by release              |
 | [`architecture/`](./architecture/README.md)                         | Why the platform is shaped this way           |
 | [`/docs/README.md`](../docs/README.md)                              | Every document in the repository              |
 | §3 below                                                            | Consuming it from a product                   |
