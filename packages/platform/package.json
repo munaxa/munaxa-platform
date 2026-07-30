@@ -79,7 +79,8 @@
     "test:coverage": "vitest run --coverage",
     "storybook": "storybook dev -p 6006 --disable-telemetry",
     "build-storybook": "storybook build -o storybook-static --disable-telemetry",
-    "deploy": "pnpm run build-storybook && wrangler deploy",
+    "cf:deploy": "pnpm run build-storybook && wrangler deploy",
+    "cf:versions": "pnpm run build-storybook && wrangler versions upload",
     "validate:contract": "node scripts/validate-contract.mjs",
     "validate:tokens": "node scripts/validate-tokens.mjs",
     "validate": "pnpm run validate:contract && pnpm run validate:tokens"
