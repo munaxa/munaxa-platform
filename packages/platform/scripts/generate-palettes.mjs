@@ -19,19 +19,19 @@ const rgbChannels=(hex)=>[0,2,4].map(i=>parseInt(hex.slice(1+i,3+i),16)).join(' 
 
 const THEMES = [
   { id:'group', name:'Group', anchor:800, brand:'#2B3A67',
-    gradient:['#2B3A67','#5768AB'], ring:'#6366F1',
+    gradient:['#2B3A67','#5768AB'],
     semantic:{success:'#22C55E',warning:'#F59E0B',error:'#EF4444',info:'#0EA5E9'},
     description:'Deep slate-blue corporate brand — the group-level identity.' },
   { id:'school', name:'School', anchor:400, brand:'#00CFC1',
-    gradient:['#00CFC1','#7FF4EC'], ring:'#6366F1',
+    gradient:['#00CFC1','#7FF4EC'],
     semantic:{success:'#22C55E',warning:'#F59E0B',error:'#EF4444',info:'#0EA5E9'},
     description:'Bright teal brand for the education platform.' },
   { id:'work', name:'Work', anchor:800, brand:'#6E1E43',
-    gradient:['#6E1E43','#B44F73'], ring:'#C026D3',
+    gradient:['#6E1E43','#B44F73'],
     semantic:{success:'#22C55E',warning:'#F59E0B',error:'#EF4444',info:'#0EA5E9'},
     description:'Raspberry brand for the human-capital platform.' },
   { id:'docs', name:'Docs', anchor:500, brand:'#6B8E62',
-    gradient:['#6B8E62','#8FBC8F'], ring:'#6B8E62',
+    gradient:['#6B8E62','#8FBC8F'],
     semantic:{success:'#2E7D32',warning:'#F59E0B',error:'#E53935',info:'#0284C7'},
     description:'Olive-green brand for the document and knowledge platform.' },
 ];
@@ -52,12 +52,28 @@ for (const t of THEMES) {
    */
   const STEPS_DARKWARD = [400, 500, 600, 700, 800, 900, 950];
   const STEPS_LIGHTWARD = [400, 300, 200, 100, 50];
-  const firstPassing = (order, bg) =>
-    order.map((s) => p[s]).find((c) => contrast(c, bg) >= 4.5) ?? bestFg(bg, [WHITE, INK])[1];
+  const firstPassing = (order, bg, ratio = 4.5) =>
+    order.map((s) => p[s]).find((c) => contrast(c, bg) >= ratio) ?? bestFg(bg, [WHITE, INK])[1];
   const primaryStrong = contrast(t.brand, WHITE) >= 4.5
     ? t.brand
     : firstPassing(STEPS_DARKWARD, WHITE);
   const primaryStrongDark = firstPassing(STEPS_LIGHTWARD, NEUTRAL[950]);
+
+  /*
+   * The focus ring is brand-derived, not a fixed accent.
+   *
+   * It used to be a hardcoded hex per theme, and three of the four had drifted off-brand — Group
+   * and School shared one indigo, Work a fuchsia, none of which appears anywhere else in their
+   * palettes. A focus ring is the most safety-critical colour in the system: it is the only thing
+   * telling a keyboard user where they are, so it has to be both unmistakably visible *and*
+   * recognisably the product's.
+   *
+   * The floor is 3:1 against the surface behind it — WCAG 2.2 SC 1.4.11, the non-text threshold —
+   * rather than the 4.5:1 used for text, because a ring is a graphical boundary and holding it to
+   * the text ratio would force every brand to a near-black ring and lose the brand entirely.
+   */
+  const ring = contrast(t.brand, WHITE) >= 3 ? t.brand : firstPassing(STEPS_DARKWARD, WHITE, 3);
+  const ringDark = firstPassing(STEPS_LIGHTWARD, NEUTRAL[950], 3);
 
   /*
    * Decorative accent pair. "Warm" and "cool" are absolute temperatures, not offsets from the
@@ -156,7 +172,7 @@ ${scale}
   --destructive-foreground: ${destructiveFg};
   --border: ${NEUTRAL[200]};
   --input: ${NEUTRAL[200]};
-  --ring: ${t.ring};
+  --ring: ${ring};
   --accent-warm: ${accentWarm};
   --accent-cool: ${accentCool};
   --success: ${t.semantic.success};
@@ -191,7 +207,7 @@ ${chartVars(charts)}
   --destructive: ${p[300] && t.semantic.error};
   --border: rgb(255 255 255 / 0.12);
   --input: rgb(255 255 255 / 0.16);
-  --ring: ${t.ring};
+  --ring: ${ringDark};
   --accent-warm: ${accentWarmDark};
   --accent-cool: ${accentCoolDark};
   --success-strong: ${strongDark.success};
