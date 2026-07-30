@@ -167,6 +167,31 @@ describe('Page, PageHeader and Section', () => {
     expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
   });
 
+  it('PageHeader aligns the actions against the title, or centres them on request', () => {
+    // `start` lines the actions up with the title rather than the middle of a two-line block.
+    const { container, rerender } = render(
+      <PageHeader title="Students" actions={<button type="button">Add</button>} />,
+    );
+    const row = () => container.querySelector('header > div') as HTMLElement;
+    expect(row().className).toContain('items-start');
+
+    rerender(
+      <PageHeader title="Students" align="center" actions={<button type="button">Add</button>} />,
+    );
+    expect(row().className).toContain('items-center');
+    expect(row().className).not.toContain('items-start');
+  });
+
+  it('PageHeader always wraps, so actions reflow instead of overflowing', () => {
+    // Not configurable: a header whose actions run off a narrow viewport is a defect, not a style.
+    const { container } = render(
+      <PageHeader title="Students" align="center" actions={<button type="button">Add</button>} />,
+    );
+    expect((container.querySelector('header > div') as HTMLElement).className).toContain(
+      'flex-wrap',
+    );
+  });
+
   it('Section is a labelled region only when it has a title', () => {
     const { rerender } = render(<Section title="Summary">body</Section>);
     expect(screen.getByRole('region', { name: 'Summary' })).toBeInTheDocument();

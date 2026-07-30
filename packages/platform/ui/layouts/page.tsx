@@ -52,7 +52,22 @@ export interface PageHeaderProps extends Omit<HTMLAttributes<HTMLElement>, 'titl
   actions?: ReactNode;
   /** Heading level. Use `h1` once per screen; nested pages may need `h2`. */
   level?: 'h1' | 'h2';
+  /**
+   * How the actions sit against the title block on the cross axis.
+   *
+   * `start` is the default and the right answer when there is a description: the actions line up
+   * with the *title*, not with the middle of a two-line block, which is what reads as deliberate.
+   * `center` is right when there is no description — a lone title and a lone button on one line look
+   * wrong optically aligned to the top.
+   *
+   * A prop rather than a rule inferred from `description` being present, because a header can have
+   * a tall custom `actions` node and want either answer. Alignment is a design decision, and the
+   * component's job is to make both expressible rather than to guess.
+   */
+  align?: 'start' | 'center';
 }
+
+const ALIGN_ITEMS = { start: 'items-start', center: 'items-center' } as const;
 
 /**
  * The title block at the top of a screen.
@@ -62,16 +77,20 @@ export interface PageHeaderProps extends Omit<HTMLAttributes<HTMLElement>, 'titl
  * that usually accompany it. The heading level is a prop rather than fixed at `h1`, because a
  * screen must have exactly one and nested layouts sometimes need `h2` — an accessible heading
  * outline cannot be enforced by a component that hardcodes its level.
+ *
+ * The row always wraps. A header whose actions run off the side of a narrow viewport is a defect,
+ * and `flex-wrap` is the difference between a title that reflows and one that overflows — so it is
+ * not configurable.
  */
 export const PageHeader = forwardRef<HTMLElement, PageHeaderProps>(function PageHeader(
-  { title, description, above, actions, level = 'h1', className, ...props },
+  { title, description, above, actions, level = 'h1', align = 'start', className, ...props },
   ref,
 ) {
   const Heading = level as ElementType;
   return (
     <header ref={ref} className={cn('flex flex-col gap-2', className)} {...props}>
       {above}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className={cn('flex flex-wrap justify-between gap-3', ALIGN_ITEMS[align])}>
         <div className="space-y-1">
           <Heading className="font-display text-2xl font-semibold">{title}</Heading>
           {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
