@@ -79,6 +79,7 @@
     "test:coverage": "vitest run --coverage",
     "storybook": "storybook dev -p 6006 --disable-telemetry",
     "build-storybook": "storybook build -o storybook-static --disable-telemetry",
+    "deploy": "pnpm run build-storybook && wrangler deploy",
     "validate:contract": "node scripts/validate-contract.mjs",
     "validate:tokens": "node scripts/validate-tokens.mjs",
     "validate": "pnpm run validate:contract && pnpm run validate:tokens"
@@ -131,6 +132,7 @@
     "tailwindcss": "^4.3.1",
     "typescript": "^5.7.3",
     "vite": "^7.3.6",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.59.2"
   }
 }
