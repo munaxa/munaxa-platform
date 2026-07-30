@@ -70,6 +70,15 @@ export interface DataGridProps<T> {
   onRowActivate?: (row: T) => void;
   /** Rendered in a trailing column. Compose `DropdownMenu` for a menu. */
   rowActions?: (row: T) => ReactNode;
+  /**
+   * Width of the trailing actions column, in pixels.
+   *
+   * The default fits the one-menu-button case the column is usually used for. It has to be stated
+   * rather than measured because the table is `table-fixed`: the column's width is decided before
+   * any cell renders, so a row of three icon buttons in a column sized for one is clipped rather
+   * than accommodated. Anything but a single control needs a number here.
+   */
+  rowActionsWidth?: number;
 
   /**
    * Bounded height for the scrolling body, e.g. `'60vh'` or `480`.
@@ -134,6 +143,7 @@ export function DataGrid<T>({
   getRowLabel,
   onRowActivate,
   rowActions,
+  rowActionsWidth = 56,
   height,
   rowHeight = 44,
   paginated = true,
@@ -399,7 +409,7 @@ export function DataGrid<T>({
               const width = api.state.columnWidths[column.id] ?? column.width;
               return <col key={column.id} {...(width === undefined ? {} : { style: { width } })} />;
             })}
-            {rowActions ? <col style={{ width: 56 }} /> : null}
+            {rowActions ? <col style={{ width: rowActionsWidth }} /> : null}
           </colgroup>
 
           <thead className="sticky top-0 z-sticky bg-muted">
@@ -501,7 +511,8 @@ export function DataGrid<T>({
                           : renderValue(column.value?.(row));
                         const props = {
                           className: cn(
-                            'truncate px-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                            'px-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                            column.multiline ? 'overflow-hidden' : 'truncate',
                             ALIGN[column.align ?? 'start'],
                             column.rowHeader && 'font-medium',
                           ),

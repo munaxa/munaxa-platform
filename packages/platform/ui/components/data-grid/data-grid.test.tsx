@@ -189,6 +189,23 @@ describe('DataGrid', () => {
     expect(await screen.findByText('Nothing to show')).toBeInTheDocument();
   });
 
+  it('clamps cells to one line, unless the column says it holds a block', () => {
+    const { rerender } = render(<Grid />);
+    const science = () => screen.getAllByRole('gridcell', { name: 'Science' })[0] as HTMLElement;
+    expect(science()).toHaveClass('truncate');
+
+    // An identity cell — a name over a secondary line — cannot render inside `truncate`.
+    rerender(
+      <Grid
+        columns={COLUMNS.map((column) =>
+          column.id === 'department' ? { ...column, multiline: true } : column,
+        )}
+      />,
+    );
+    expect(science()).not.toHaveClass('truncate');
+    expect(science()).toHaveClass('overflow-hidden');
+  });
+
   it('hides and restores a column from the column menu', async () => {
     const user = userEvent.setup();
     render(<Grid />);
