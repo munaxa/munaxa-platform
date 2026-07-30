@@ -29,7 +29,7 @@ import {
   TimelineItem,
   type ColumnDef,
 } from '../index.js';
-import { SidebarNav } from '../ui/shell/index.js';
+import { AppShellProvider, SidebarNav } from '../ui/shell/index.js';
 import { Inbox, LayoutDashboard, Settings, Users } from '../icons/index.js';
 import { Section } from './doc-kit.js';
 
@@ -223,9 +223,16 @@ export function ThemeShowcase() {
       </Section>
 
       <Section title="Sidebar">
-        <div className="w-64 rounded-xl border border-border bg-card p-3">
-          <SidebarNav label="Example" groups={NAV} />
-        </div>
+        {/*
+          `SidebarNav` reads the shell's shared state (collapsed, drawer), so it needs the provider
+          the real application frame supplies. The showcase is a fragment of a shell rather than a
+          whole one, so it brings its own.
+        */}
+        <AppShellProvider>
+          <div className="w-64 rounded-xl border border-border bg-card p-3">
+            <SidebarNav label="Example" groups={NAV} />
+          </div>
+        </AppShellProvider>
       </Section>
 
       <Section title="Dialogs and notifications">

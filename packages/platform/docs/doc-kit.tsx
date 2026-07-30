@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 
 /**
  * Presentation helpers for the documentation pages.
@@ -10,15 +10,27 @@ import { useEffect, useState, type ReactNode } from 'react';
  * a documentation concern; putting it in `ui/` would add public API for a problem no product has.
  */
 
-/** Re-read live CSS custom properties whenever the brand, scheme or direction changes. */
-export function useLiveVars(names: readonly string[]): Record<string, string> {
+/**
+ * Re-read live CSS custom properties whenever the brand, scheme or direction changes.
+ *
+ * `scope` matters more than it looks. A theme page pins its brand on a nested container, so the
+ * values that page must report live on *that* element, not on `<html>` — reading the root there
+ * would print the toolbar's brand beside a swatch painted in the pinned one, which is worse than
+ * printing nothing. Callers inside a pinned scope pass a ref to an element within it; everything
+ * else falls back to the document root, which is where the toolbar applies the brand.
+ */
+export function useLiveVars(
+  names: readonly string[],
+  scope?: RefObject<HTMLElement | null>,
+): Record<string, string> {
   const [values, setValues] = useState<Record<string, string>>({});
+  const key = names.join(',');
 
   useEffect(() => {
     const read = () => {
-      const style = getComputedStyle(document.documentElement);
+      const style = getComputedStyle(scope?.current ?? document.documentElement);
       const next: Record<string, string> = {};
-      for (const name of names) next[name] = style.getPropertyValue(name).trim();
+      for (const name of key.split(',')) next[name] = style.getPropertyValue(name).trim();
       setValues(next);
     };
     read();
@@ -31,7 +43,9 @@ export function useLiveVars(names: readonly string[]): Record<string, string> {
       attributeFilter: ['class', 'dir', 'data-brand'],
     });
     return () => observer.disconnect();
-  }, [names]);
+    // Keyed on the joined names: callers build the array inline, so a fresh identity every render
+    // would re-subscribe (and re-set state) on every render.
+  }, [key, scope]);
 
   return values;
 }
@@ -132,10 +146,15 @@ export interface TokenRow {
  * `#6E1E43` under Work without the table knowing either brand exists.
  */
 export function TokenTable({ rows }: { rows: readonly TokenRow[] }) {
-  const values = useLiveVars(rows.map((r) => r.variable));
+  // Measured from the table itself, so a pinned theme page reports its own brand.
+  const scope = useRef<HTMLDivElement>(null);
+  const values = useLiveVars(
+    rows.map((r) => r.variable),
+    scope,
+  );
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
+    <div ref={scope} className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>
