@@ -1,8 +1,23 @@
 import { afterEach, expect } from 'vitest';
 import { cleanup } from '@testing-library/react';
-import '@testing-library/jest-dom/vitest';
+import * as jestDom from '@testing-library/jest-dom/matchers';
 import { axe, toHaveNoViolations } from 'jest-axe';
 
+/**
+ * Register the DOM matchers against *this* `expect`, rather than importing
+ * `@testing-library/jest-dom/vitest` for its side effect.
+ *
+ * That entry point does `import { expect } from 'vitest'` and extends whatever it resolves. Under
+ * pnpm's isolated layout `jest-dom` does not depend on vitest itself, so it resolves a hoisted
+ * copy — and Storybook 10 brings its own `@vitest/expect@3` (chai 5) alongside the `vitest@4`
+ * (chai 6) that actually runs these tests. When the two disagree the matchers are attached to an
+ * `expect` no test ever calls, and every assertion dies with "Invalid Chai property:
+ * toBeInTheDocument" despite the import being present and correct.
+ *
+ * Extending explicitly removes the ambiguity: the matchers land on the exact `expect` the suite
+ * imports, whatever else is installed.
+ */
+expect.extend(jestDom);
 expect.extend(toHaveNoViolations);
 
 afterEach(cleanup);
