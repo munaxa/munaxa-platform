@@ -1,5 +1,11 @@
 # Platform Completion Audit
 
+> **Status — resolved.** This audit was the precondition for retiring the legacy design system.
+> Its conclusion was carried out: after the Platform Storybook was deployed as the official
+> documentation site, `school/munaxadesignsystem` was deleted along with its CI job and deploy
+> config. This document is preserved as the record of *why* that deletion was safe; the paths it
+> cites no longer exist.
+
 _Performed after Phase 9b, against three references: the original design specification, the legacy
 design system (`school/munaxadesignsystem`), and the repository as a whole._
 
