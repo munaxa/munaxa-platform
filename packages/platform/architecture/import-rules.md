@@ -52,7 +52,7 @@ barrels were deleted in the Phase 1 refactor. Do not reintroduce them.
 
 **The platform imports nothing from any product. There is no exception.**
 
-An import of `@munaxa/*` — or any relative path that climbs out of `platform/` — makes the
+An import of `@school/*` — or any relative path that climbs out of `platform/` — makes the
 platform unbuildable for the next product and is the single failure that would undo this
 architecture. If a component seems to need something from a product, it needs a prop instead.
 
@@ -82,6 +82,20 @@ templates → patterns → components → hooks/lib → icons → typography/tok
 - A **pattern** may import anything a component may, plus components.
 - A **template** may import anything, plus patterns.
 - `tokens/`, `typography/` and `themes/` import nothing from `ui/` and have no React dependency.
+- `ui/date/` is an *engine*, not a component layer: it may import `tokens/` and React, and nothing
+  from `ui/components/`. The dependency runs one way — `ui/components/date/` reads the engine, and
+  the engine never reaches back into the UI. That is what lets a product use the parsers and
+  formatters on a server, or in a table cell, without pulling in a calendar.
+- `ui/charts/` may import components (it composes `Skeleton` and `EmptyState`) and is the only
+  place allowed to import `echarts` — and it does so with a dynamic `import()`, so the library
+  never lands in a bundle for a page that has no chart on it. Nothing else imports `echarts`.
+- `ui/components/board/` is the only place allowed to import `@dnd-kit/*`, and only through
+  `board/dnd.tsx`. A second drag implementation would mean a second set of keyboard behaviours and
+  a second set of live announcements — which is exactly how a product ends up with one board a
+  keyboard user can reorder and one they cannot. `flow/approval-flow.tsx` reaches `board/dnd.js`
+  for exactly that reason rather than wiring its own sortable.
+- `query/types.ts` has no React import and never will: the condition model is plain data so a
+  product can build, validate and serialise a filter on a server without pulling in a component.
 - Cross-category component imports are fine (`forms/entity-picker.tsx` imports
   `forms/input.tsx`); cross-*layer* upward imports are not.
 
@@ -111,7 +125,7 @@ is not in the root barrel does not exist as far as products are concerned.
 
 - ESLint runs type-aware across `platform/` and fails on a hex literal in `ui/` or `tokens/`.
 - `pnpm validate` fails when a theme breaks the contract or a token mirror drifts.
-- The `@munaxa/*` packages are not dependencies of `@axa/platform`, so a product import fails at
+- The `@school/*` packages are not dependencies of `@axa/platform`, so a product import fails at
   install and resolution time, not just review.
 - Everything else here is a review responsibility — see
   [`../CONTRIBUTING.md`](../CONTRIBUTING.md).

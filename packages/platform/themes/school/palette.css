@@ -1,0 +1,103 @@
+/**
+ * School palette — the complete set of values for the theme contract.
+ *
+ * THE single physical colour file for the School brand. Never imported on its own: the theme
+ * entry point (`themes/school/index.css`) pairs it with the contract in `themes/base/base.css`
+ * and the shared neutral ramp in `themes/base/neutrals.css`.
+ *
+ * Only branding lives here. Structure — spacing, radius, elevation, motion, the neutral ramp —
+ * is shared by every theme and must never be forked into this file. Light = :root, dark = .dark.
+ *
+ * GENERATED from the brand hex #00CFC1 by scripts/generate-palettes.mjs. Re-run that script
+ * rather than hand-editing a scale step, so the ramp stays perceptually even.
+ */
+
+:root {
+  /* Brand tints consumed by the shared elevation geometry in base.css (R G B channels). */
+  --shadow-tint: 0 67 60;
+  --glow-tint: 0 207 193;
+
+  /* Primary scale */
+  --primary-50: #ebfbf8;
+  --primary-100: #ceede9;
+  --primary-200: #a3e4db;
+  --primary-300: #6fdace;
+  --primary-400: #00cfc1;
+  --primary-500: #00b7a8;
+  --primary-600: #009a8c;
+  --primary-700: #007c71;
+  --primary-800: #005f56;
+  --primary-900: #00433c;
+  --primary-950: #002924;
+
+  /* Semantic roles — light */
+  --background: #ffffff;
+  --foreground: #101828;
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --popover: #ffffff;
+  --popover-foreground: #101828;
+  --primary: #00cfc1;
+  --primary-foreground: #101828;
+  --primary-strong: #007c71;
+  --secondary: #f2f4f7;
+  --secondary-foreground: #1d2939;
+  --muted: #f2f4f7;
+  --muted-foreground: #667085;
+  --accent: #ebfbf8;
+  --accent-foreground: #005f56;
+  --destructive: #ef4444;
+  --destructive-foreground: #101828;
+  --border: #e4e7ec;
+  --input: #e4e7ec;
+  --ring: #6366f1;
+  --accent-warm: #e38e24;
+  --accent-cool: #00b0d6;
+  --success: #22c55e;
+  --success-strong: #008a22;
+  --warning: #f59e0b;
+  --warning-strong: #b36100;
+  --info: #0ea5e9;
+  --info-strong: #007cbe;
+
+  /* Data-visualisation ramp */
+  --chart-1: #00cfc1;
+  --chart-2: #a3e4db;
+  --chart-3: #0ea5e9;
+  --chart-4: #f59e0b;
+  --chart-5: #22c55e;
+  --chart-6: #8b5cf6;
+  --chart-7: #ec4899;
+  --chart-8: #14b8a6;
+  --chart-9: #f97316;
+  --chart-10: #64748b;
+}
+
+.dark {
+  --shadow-tint: 0 0 0;
+
+  --background: #0a0f1a;
+  --foreground: #fafbfc;
+  --card: #101828;
+  --card-foreground: #fafbfc;
+  --popover: #101828;
+  --popover-foreground: #fafbfc;
+  --primary: #6fdace;
+  --primary-foreground: #101828;
+  --primary-strong: #00cfc1;
+  --secondary: #1d2939;
+  --secondary-foreground: #fafbfc;
+  --muted: #1d2939;
+  --muted-foreground: #98a2b3;
+  --accent: #1d2939;
+  --accent-foreground: #fafbfc;
+  --destructive: #ef4444;
+  --border: rgb(255 255 255 / 0.12);
+  --input: rgb(255 255 255 / 0.16);
+  --ring: #6366f1;
+  --accent-warm: #ffba73;
+  --accent-cool: #67d5f6;
+  --success-strong: #22c55e;
+  --warning-strong: #f59e0b;
+  --info-strong: #0ea5e9;
+}

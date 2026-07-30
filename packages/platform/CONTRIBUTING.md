@@ -2,8 +2,8 @@
 
 **This document is the mandatory standard for all work in `platform/`, human or AI-assisted.**
 
-The platform is consumed by every AXA product. A mistake here is a mistake in Munaxa, Workaxa,
-Inkaxa and everything that follows, so the bar is deliberately higher than in a product folder.
+The platform is consumed by every Munaxa product. A mistake here is a mistake in School, Work,
+Docs and everything that follows, so the bar is deliberately higher than in a product folder.
 When this document and a habit disagree, this document wins.
 
 This file is the operational checklist for changing the platform. It sits underneath the
@@ -112,16 +112,34 @@ toggle `.dark`.
 
 The platform is a UI library with no product data, so tests are targeted rather than broad.
 
+Run them with:
+
+```bash
+pnpm --filter @axa/platform test           # unit + accessibility
+pnpm --filter @axa/platform test:watch     # while working
+pnpm --filter @axa/platform storybook      # the component workbench, on :6006
+```
+
+Storybook renders against the **real** design system — the same Tailwind build and the same theme
+contract a product gets, loaded by `.storybook/preview.css`. There are no mock styles, so a story
+that looks right is a component that is right. The toolbar switches colour scheme and writing
+direction, because dark mode and RTL are requirements nobody checks unless they are one click away.
+
 **Required:**
 
 - [ ] `pnpm validate` passes — the theme contract and token mirrors are machine-checked and are
       non-negotiable. Adding a role to `base.css` without supplying it in every palette fails.
+- [ ] Every component has a `.stories.tsx` next to it, covering its variants and its real states —
+      loading, empty, error, disabled, read-only, invalid — not just the happy path.
+- [ ] Every component has a `.test.tsx` next to it that ends with an `expectNoA11yViolations`
+      assertion. That helper is in `test/setup.ts`; it runs axe over the rendered output.
+- [ ] Anything with keyboard behaviour has that behaviour tested by key, not by click.
 - [ ] `pnpm turbo run build lint typecheck --filter=@axa/platform` passes.
 - [ ] Every consuming product still builds: `pnpm build`.
 - [ ] For any change that touches CSS output, diff the emitted stylesheet before and after:
 
       ```bash
-      cd munaxa/apps/admin && npx @tailwindcss/cli -i src/app/globals.css -o /tmp/after.css
+      cd school/apps/admin && npx @tailwindcss/cli -i src/app/globals.css -o /tmp/after.css
       diff <(sort /tmp/before.css) <(sort /tmp/after.css)
       ```
 
@@ -141,7 +159,7 @@ Full reference: [`architecture/import-rules.md`](./architecture/import-rules.md)
 
 - [ ] Products import from a public entry point (`@axa/platform`, `@axa/platform/icons`, …) —
       **never** a deep file path, never a relative path into `platform/`.
-- [ ] The platform imports **nothing** from any product. No `@munaxa/*`, no path climbing out
+- [ ] The platform imports **nothing** from any product. No `@school/*`, no path climbing out
       of `platform/`.
 - [ ] No `next/*`, no router, no data client, no i18n library inside the platform.
 - [ ] `lucide-react` is imported only by `icons/index.ts`.

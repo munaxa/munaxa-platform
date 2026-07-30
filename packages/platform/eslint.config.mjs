@@ -2,12 +2,16 @@ import base from '@axa/config-eslint/base.js';
 import scripts from '@axa/config-eslint/scripts.js';
 
 export default [
+  // Storybook's static output is build product, not source.
+  { ignores: ['storybook-static/**', 'coverage/**'] },
   ...base,
   {
     languageOptions: {
       parserOptions: {
         // The validator scripts are plain ESM outside the TypeScript project; type-aware linting
-        // still applies to them via the default project.
+        // still applies to them via the default project. tsconfig.json deliberately covers stories,
+        // tests and tooling so the project service resolves them; tsconfig.build.json is the
+        // narrower config that emits.
         projectService: { allowDefaultProject: ['scripts/*.mjs'] },
         tsconfigRootDir: import.meta.dirname,
       },

@@ -1,0 +1,17 @@
+{
+  "//": "What actually ships. Stories, tests and tooling configs are excluded so they never reach dist/ or the published type surface.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": [
+    "index.ts",
+    "tokens/**/*.ts",
+    "typography/**/*.ts",
+    "themes/**/*.ts",
+    "icons/**/*.ts",
+    "ui/**/*.ts",
+    "ui/**/*.tsx"
+  ],
+  "exclude": ["ui/**/*.test.ts", "ui/**/*.test.tsx", "ui/**/*.stories.tsx"]
+}

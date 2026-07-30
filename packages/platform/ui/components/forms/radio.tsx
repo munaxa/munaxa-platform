@@ -2,7 +2,7 @@ import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '../../lib/cn.js';
 
 const radioBase =
-  'h-4 w-4 shrink-0 border-input text-primary accent-primary ' +
+  'h-4 w-4 shrink-0 border-input text-primary-strong accent-primary ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
 

@@ -1,0 +1,8 @@
+/**
+ * Work theme entry point.
+ *
+ *   @import 'tailwindcss';
+ *   @import '@axa/platform/css/themes/work';
+ */
+@import '../base/base.css';
+@import './palette.css';

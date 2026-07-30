@@ -71,7 +71,7 @@ Rules:
 
 ## Themes and assets
 
-- Theme folder = the product id, lowercase, matching `themes/index.ts`: `themes/workaxa/`.
+- Theme folder = the product id, lowercase, matching `themes/index.ts`: `themes/work/`.
 - Asset folders mirror it: `assets/<product>/{logos,favicon,social,illustrations}/`.
 - Asset files are `kebab-case`, describing the artwork's role:
   `logos/horizontal-lockup.png`, `favicon/app-icon.png`, `social/og-default.png`.

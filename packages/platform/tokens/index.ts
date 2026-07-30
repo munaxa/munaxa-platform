@@ -8,12 +8,13 @@
  *
  * No application may hardcode a color, spacing, radius, shadow, z-index or breakpoint.
  */
-export { typography, type Typography } from '../typography/index.js';
+export { typography, type Typography, type TypeRole } from '../typography/index.js';
 export { spacing, type Spacing, type SpacingToken } from './spacing/index.js';
 export { radius, type Radius } from './radius/index.js';
 export { elevation, type Elevation } from './elevation/index.js';
 export { border, type Border } from './borders/index.js';
 export { motion, type Motion } from './motion/index.js';
+export { opacity, type Opacity, type OpacityToken } from './opacity/index.js';
 export { transitions, type Transitions } from './transitions/index.js';
 export { zIndex, type ZIndex, type ZIndexToken } from './z-index/index.js';
 export { breakpoints, type Breakpoints, type BreakpointToken } from './breakpoints/index.js';
@@ -24,6 +25,7 @@ import { radius } from './radius/index.js';
 import { elevation } from './elevation/index.js';
 import { border } from './borders/index.js';
 import { motion } from './motion/index.js';
+import { opacity } from './opacity/index.js';
 import { transitions } from './transitions/index.js';
 import { zIndex } from './z-index/index.js';
 import { breakpoints } from './breakpoints/index.js';
@@ -36,6 +38,7 @@ export const tokens = {
   elevation,
   border,
   motion,
+  opacity,
   transitions,
   zIndex,
   breakpoints,

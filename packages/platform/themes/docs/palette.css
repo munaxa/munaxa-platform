@@ -1,0 +1,103 @@
+/**
+ * Docs palette — the complete set of values for the theme contract.
+ *
+ * THE single physical colour file for the Docs brand. Never imported on its own: the theme
+ * entry point (`themes/docs/index.css`) pairs it with the contract in `themes/base/base.css`
+ * and the shared neutral ramp in `themes/base/neutrals.css`.
+ *
+ * Only branding lives here. Structure — spacing, radius, elevation, motion, the neutral ramp —
+ * is shared by every theme and must never be forked into this file. Light = :root, dark = .dark.
+ *
+ * GENERATED from the brand hex #6B8E62 by scripts/generate-palettes.mjs. Re-run that script
+ * rather than hand-editing a scale step, so the ramp stays perceptually even.
+ */
+
+:root {
+  /* Brand tints consumed by the shared elevation geometry in base.css (R G B channels). */
+  --shadow-tint: 36 54 31;
+  --glow-tint: 107 142 98;
+
+  /* Primary scale */
+  --primary-50: #f4f8f3;
+  --primary-100: #dae1d8;
+  --primary-200: #bdccb9;
+  --primary-300: #a1b79b;
+  --primary-400: #85a37e;
+  --primary-500: #6b8e62;
+  --primary-600: #56774d;
+  --primary-700: #43613c;
+  --primary-800: #334b2c;
+  --primary-900: #24361f;
+  --primary-950: #152211;
+
+  /* Semantic roles — light */
+  --background: #ffffff;
+  --foreground: #101828;
+  --card: #ffffff;
+  --card-foreground: #101828;
+  --popover: #ffffff;
+  --popover-foreground: #101828;
+  --primary: #6b8e62;
+  --primary-foreground: #101828;
+  --primary-strong: #56774d;
+  --secondary: #f2f4f7;
+  --secondary-foreground: #1d2939;
+  --muted: #f2f4f7;
+  --muted-foreground: #667085;
+  --accent: #f4f8f3;
+  --accent-foreground: #334b2c;
+  --destructive: #e53935;
+  --destructive-foreground: #ffffff;
+  --border: #e4e7ec;
+  --input: #e4e7ec;
+  --ring: #6b8e62;
+  --accent-warm: #e68c2d;
+  --accent-cool: #00b1d2;
+  --success: #2e7d32;
+  --success-strong: #2e7d32;
+  --warning: #f59e0b;
+  --warning-strong: #b36100;
+  --info: #0284c7;
+  --info-strong: #007cbf;
+
+  /* Data-visualisation ramp */
+  --chart-1: #6b8e62;
+  --chart-2: #bdccb9;
+  --chart-3: #0284c7;
+  --chart-4: #f59e0b;
+  --chart-5: #2e7d32;
+  --chart-6: #8b5cf6;
+  --chart-7: #ec4899;
+  --chart-8: #14b8a6;
+  --chart-9: #f97316;
+  --chart-10: #64748b;
+}
+
+.dark {
+  --shadow-tint: 0 0 0;
+
+  --background: #0a0f1a;
+  --foreground: #fafbfc;
+  --card: #101828;
+  --card-foreground: #fafbfc;
+  --popover: #101828;
+  --popover-foreground: #fafbfc;
+  --primary: #85a37e;
+  --primary-foreground: #101828;
+  --primary-strong: #85a37e;
+  --secondary: #1d2939;
+  --secondary-foreground: #fafbfc;
+  --muted: #1d2939;
+  --muted-foreground: #98a2b3;
+  --accent: #1d2939;
+  --accent-foreground: #fafbfc;
+  --destructive: #e53935;
+  --border: rgb(255 255 255 / 0.12);
+  --input: rgb(255 255 255 / 0.16);
+  --ring: #6b8e62;
+  --accent-warm: #ffb876;
+  --accent-cool: #64d6f2;
+  --success-strong: #3d8b3f;
+  --warning-strong: #f59e0b;
+  --info-strong: #0284c7;
+}

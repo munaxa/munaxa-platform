@@ -6,8 +6,8 @@
  *   import { Button, Card, cn } from '@axa/platform';
  *
  * Never deep-import an internal file path. Components are organised internally by category
- * (primitives / forms / feedback / navigation / layout / data-display) with composite
- * `patterns` and page-level `templates` kept separate; the public surface is this flat
+ * (primitives / forms / feedback / navigation / layout / data-display), with the layout
+ * primitives in `ui/layouts`, composite `patterns` and page-level `templates` kept separate; the public surface is this flat
  * barrel, so the internal taxonomy can evolve without breaking consumers.
  *
  * Narrower entry points exist for consumers that want only part of the system:
@@ -19,7 +19,7 @@
  *   `@axa/platform/patterns`    composite patterns
  *
  * The CSS side is consumed through the theme entry points, e.g.
- *   `@import '@axa/platform/css/themes/munaxa';`
+ *   `@import '@axa/platform/css/themes/school';`
  */
 
 // Helpers
@@ -35,6 +35,23 @@ export * from './ui/components/feedback/index.js';
 export * from './ui/components/navigation/index.js';
 export * from './ui/components/layout/index.js';
 export * from './ui/components/data-display/index.js';
+export * from './ui/components/overlays/index.js';
+export * from './ui/components/date/index.js';
+export * from './ui/components/data-grid/index.js';
+export * from './ui/components/board/index.js';
+export * from './ui/components/files/index.js';
+export * from './ui/components/flow/index.js';
+export * from './ui/components/query/index.js';
+
+// The date engine — adapters, parsers, formatters and the locale provider the date controls read.
+// Also available on its own at `@axa/platform/date` for code that needs the logic without the UI.
+export * from './ui/date/index.js';
+
+// Layout primitives — arrangement, measure and page structure.
+export * from './ui/layouts/index.js';
+
+// The application shell — the frame a product's screens sit inside.
+export * from './ui/shell/index.js';
 
 // Composite patterns built on top of the components.
 export * from './ui/patterns/index.js';

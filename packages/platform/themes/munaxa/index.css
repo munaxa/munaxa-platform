@@ -1,8 +1,0 @@
-/**
- * Munaxa theme entry point.
- *
- *   @import 'tailwindcss';
- *   @import '@axa/platform/css/themes/munaxa';
- */
-@import '../base/base.css';
-@import './palette.css';

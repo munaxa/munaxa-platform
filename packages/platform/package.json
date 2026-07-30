@@ -1,7 +1,10 @@
 {
   "name": "@axa/platform",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "description": "The AXA shared platform foundation: design tokens, product themes, typography, icons, UI components, patterns and templates, plus the engineering standards every product builds against. Single source of truth for Munaxa, Workaxa, Inkaxa and future AXA products. Contains no product terminology and no business logic.",
   "type": "module",
   "exports": {
@@ -33,12 +36,29 @@
       "types": "./dist/ui/patterns/index.d.ts",
       "default": "./dist/ui/patterns/index.js"
     },
+    "./layouts": {
+      "types": "./dist/ui/layouts/index.d.ts",
+      "default": "./dist/ui/layouts/index.js"
+    },
+    "./shell": {
+      "types": "./dist/ui/shell/index.d.ts",
+      "default": "./dist/ui/shell/index.js"
+    },
+    "./date": {
+      "types": "./dist/ui/date/index.d.ts",
+      "default": "./dist/ui/date/index.js"
+    },
+    "./charts": {
+      "types": "./dist/ui/charts/index.d.ts",
+      "default": "./dist/ui/charts/index.js"
+    },
     "./css/tokens": "./tokens/css/primitives.css",
     "./css/motion": "./ui/patterns/motion/motion.css",
     "./css/base": "./themes/base/base.css",
-    "./css/themes/munaxa": "./themes/munaxa/index.css",
-    "./css/themes/workaxa": "./themes/workaxa/index.css",
-    "./css/themes/inkaxa": "./themes/inkaxa/index.css",
+    "./css/themes/group": "./themes/group/index.css",
+    "./css/themes/school": "./themes/school/index.css",
+    "./css/themes/work": "./themes/work/index.css",
+    "./css/themes/docs": "./themes/docs/index.css",
     "./source": "./index.ts"
   },
   "main": "./dist/index.js",
@@ -51,10 +71,14 @@
     "assets"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit --tsBuildInfoFile node_modules/.cache/tsc-typecheck.tsbuildinfo",
-    "test": "pnpm run validate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "storybook": "storybook dev -p 6006 --disable-telemetry",
+    "build-storybook": "storybook build -o storybook-static --disable-telemetry",
     "validate:contract": "node scripts/validate-contract.mjs",
     "validate:tokens": "node scripts/validate-tokens.mjs",
     "validate": "pnpm run validate:contract && pnpm run validate:tokens"
@@ -64,18 +88,49 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "class-variance-authority": "^0.7.1",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/modifiers": "^9.0.0",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@radix-ui/react-accordion": "^1.2.20",
+    "@radix-ui/react-avatar": "^1.2.6",
+    "@radix-ui/react-collapsible": "^1.1.20",
+    "@radix-ui/react-context-menu": "^2.3.7",
+    "@radix-ui/react-dropdown-menu": "^2.1.24",
+    "@radix-ui/react-hover-card": "^1.1.23",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@radix-ui/react-scroll-area": "^1.2.18",
+    "@radix-ui/react-separator": "^1.1.15",
+    "@radix-ui/react-tooltip": "^1.2.16",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
+    "echarts": "^6.1.0",
     "lucide-react": "^0.469.0",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
     "@axa/config-eslint": "workspace:*",
     "@axa/config-typescript": "workspace:*",
+    "@storybook/addon-a11y": "^10.5.5",
+    "@storybook/addon-docs": "^10.5.5",
+    "@storybook/react-vite": "^10.5.5",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest-axe": "^3.5.9",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9.17.0",
+    "happy-dom": "^20.11.1",
+    "jest-axe": "^11.0.0",
     "react": "^19.0.0",
-    "typescript": "^5.7.3"
+    "storybook": "^10.5.5",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^5.7.3",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.10"
   }
 }

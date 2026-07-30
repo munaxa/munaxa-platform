@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react';
+import { useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '../../lib/cn.js';
+import { useFocusTrap } from '../../hooks/use-focus-trap.js';
 
 export interface DialogProps {
   open: boolean;
@@ -33,30 +34,7 @@ export function Dialog({
   const titleId = useId();
   const descId = useId();
 
-  // Keep the latest onClose without making the focus/scroll-lock effect depend on it: callers pass a
-  // fresh inline `onClose` on every render, and if the effect re-ran each time it would steal focus
-  // back to the panel after every keystroke (so typing in a field only registered one character).
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const handleClose = useCallback(() => onCloseRef.current(), []);
-
-  useEffect(() => {
-    if (!open) return;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
-    };
-    document.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    panelRef.current?.focus();
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
-      previouslyFocused?.focus?.();
-    };
-    // Only (re)run when the dialog opens/closes — NOT when onClose's identity changes each render.
-  }, [open, handleClose]);
+  useFocusTrap({ active: open, containerRef: panelRef, onEscape: onClose });
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -67,7 +45,7 @@ export function Dialog({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" aria-hidden="true" />
+      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-xs" aria-hidden="true" />
       <div
         ref={panelRef}
         role="dialog"

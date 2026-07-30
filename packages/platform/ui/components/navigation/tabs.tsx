@@ -105,7 +105,7 @@ export function TabsTrigger({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
         'disabled:cursor-not-allowed disabled:opacity-50',
         selected
-          ? 'bg-background text-foreground shadow-sm'
+          ? 'bg-background text-foreground shadow-xs'
           : 'text-muted-foreground hover:text-foreground',
         className,
       )}

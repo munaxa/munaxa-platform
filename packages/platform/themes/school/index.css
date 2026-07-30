@@ -1,0 +1,8 @@
+/**
+ * School theme entry point.
+ *
+ *   @import 'tailwindcss';
+ *   @import '@axa/platform/css/themes/school';
+ */
+@import '../base/base.css';
+@import './palette.css';
