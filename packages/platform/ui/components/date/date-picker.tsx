@@ -43,6 +43,13 @@ interface PickerCommonProps {
   showWeekNumbers?: boolean;
   disabled?: boolean;
   readOnly?: boolean;
+  /**
+   * Mandatory field. Enforced the way a native date input's `required` is — the text field must
+   * not be empty for the enclosing form to submit — and left to pass through to that input rather
+   * than reimplemented, so a `<form>` relying on browser validation keeps behaving exactly as it
+   * did before the calendar was attached.
+   */
+  required?: boolean;
   clearable?: boolean;
   className?: string;
   id?: string;
@@ -304,6 +311,7 @@ export function DateRangePicker({
             placeholder={parser.placeholder}
             defaultValue={show(value.start)}
             key={`start-${value.start ?? ''}`}
+            required={aria.required ?? false}
             disabled={aria.disabled ?? false}
             readOnly={aria.readOnly ?? false}
             onBlur={(event) => commit('start', event.target.value)}
@@ -321,6 +329,7 @@ export function DateRangePicker({
           placeholder={parser.placeholder}
           defaultValue={show(value.end)}
           key={`end-${value.end ?? ''}`}
+          required={aria.required ?? false}
           disabled={aria.disabled ?? false}
           readOnly={aria.readOnly ?? false}
           onBlur={(event) => commit('end', event.target.value)}

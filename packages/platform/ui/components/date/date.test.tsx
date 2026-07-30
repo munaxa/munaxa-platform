@@ -435,6 +435,13 @@ describe('DatePicker', () => {
     expect(input).toHaveAccessibleDescription('Required.');
   });
 
+  it('carries required onto the field, so a form still enforces it', () => {
+    // The prop exists so a native `<Input required>` migrated onto the picker keeps its browser
+    // validation. It reaches the same text input the user types into.
+    render(<DatePicker value="" onChange={() => {}} required aria-label="Enrolled on" />);
+    expect(screen.getByRole('textbox', { name: 'Enrolled on' })).toBeRequired();
+  });
+
   it('does not open when read-only, and stays readable', async () => {
     const user = userEvent.setup();
     render(<Harness value="2026-04-15" readOnly />);

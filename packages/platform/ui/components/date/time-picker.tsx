@@ -44,6 +44,8 @@ export interface TimePickerProps {
   labels?: TimePickerLabels;
   disabled?: boolean;
   readOnly?: boolean;
+  /** Mandatory field — passes through to the text input so native form validation is unchanged. */
+  required?: boolean;
   className?: string;
   id?: string;
   'aria-label'?: string;
@@ -221,6 +223,8 @@ export interface DateTimePickerProps {
   timeLabel?: string;
   disabled?: boolean;
   readOnly?: boolean;
+  /** Mandatory field. Applied to the date half — a datetime with no date is not a moment at all. */
+  required?: boolean;
   className?: string;
   id?: string;
   'aria-label'?: string;
@@ -252,10 +256,16 @@ export function DateTimePicker({
   timeLabel = 'Time',
   disabled,
   readOnly,
+  required,
   className,
   ...rest
 }: DateTimePickerProps) {
-  const aria = useFieldAria({ ...rest, disabled, readOnly });
+  const aria = useFieldAria({
+    ...rest,
+    disabled,
+    readOnly,
+    ...(required === undefined ? {} : { required }),
+  });
   const [datePart, timePart] = splitDateTime(value);
 
   // A time on its own is not a moment, so it is held until a date arrives rather than emitted as a
@@ -280,6 +290,7 @@ export function DateTimePicker({
           aria-label={dateLabel}
           value={datePart}
           onChange={(next) => emit(next, time)}
+          required={aria.required ?? false}
           disabled={aria.disabled ?? false}
           readOnly={aria.readOnly ?? false}
           {...(minDate === undefined ? {} : { min: minDate })}
