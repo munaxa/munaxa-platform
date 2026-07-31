@@ -1,9 +1,9 @@
 /**
- * @axa/platform — the single, canonical UI layer for every AXA product.
+ * @munaxa/platform — the single, canonical UI layer for every AXA product.
  *
  * Applications import from the package root:
  *
- *   import { Button, Card, cn } from '@axa/platform';
+ *   import { Button, Card, cn } from '@munaxa/platform';
  *
  * Never deep-import an internal file path. Components are organised internally by category
  * (primitives / forms / feedback / navigation / layout / data-display), with the layout
@@ -11,15 +11,15 @@
  * barrel, so the internal taxonomy can evolve without breaking consumers.
  *
  * Narrower entry points exist for consumers that want only part of the system:
- *   `@axa/platform/tokens`      typed design tokens
- *   `@axa/platform/typography`  the type scale
- *   `@axa/platform/themes`      the typed product-theme registry
- *   `@axa/platform/icons`       the shared icon set
- *   `@axa/platform/hooks`       UI hooks
- *   `@axa/platform/patterns`    composite patterns
+ *   `@munaxa/platform/tokens`      typed design tokens
+ *   `@munaxa/platform/typography`  the type scale
+ *   `@munaxa/platform/themes`      the typed product-theme registry
+ *   `@munaxa/platform/icons`       the shared icon set
+ *   `@munaxa/platform/hooks`       UI hooks
+ *   `@munaxa/platform/patterns`    composite patterns
  *
  * The CSS side is consumed through the theme entry points, e.g.
- *   `@import '@axa/platform/css/themes/school';`
+ *   `@import '@munaxa/platform/css/themes/school';`
  */
 
 // Helpers
@@ -44,7 +44,7 @@ export * from './ui/components/flow/index.js';
 export * from './ui/components/query/index.js';
 
 // The date engine — adapters, parsers, formatters and the locale provider the date controls read.
-// Also available on its own at `@axa/platform/date` for code that needs the logic without the UI.
+// Also available on its own at `@munaxa/platform/date` for code that needs the logic without the UI.
 export * from './ui/date/index.js';
 
 // Layout primitives — arrangement, measure and page structure.
@@ -60,5 +60,5 @@ export * from './ui/patterns/index.js';
 export { themes, type Theme, type ThemeId, type Brand } from './themes/index.js';
 
 // Design tokens — convenience namespace. The canonical import path remains
-// `@axa/platform/tokens`; this mirror lets consumers read tokens from the root.
+// `@munaxa/platform/tokens`; this mirror lets consumers read tokens from the root.
 export * as tokens from './tokens/index.js';

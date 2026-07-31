@@ -1,7 +1,7 @@
 /**
  * Companion stylesheet for the motion patterns (`Reveal`, `CountUp`).
  *
- *   @import '@axa/platform/css/motion';
+ *   @import '@munaxa/platform/css/motion';
  *
  * Progressive enhancement: content is fully visible with no JavaScript and under
  * `prefers-reduced-motion`. The transition only engages once the host document carries the

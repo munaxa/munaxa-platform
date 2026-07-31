@@ -1,7 +1,7 @@
 /**
  * Charting — Apache ECharts, wrapped in the platform's theme, states and accessibility.
  *
- * A separate entry point (`@axa/platform/charts`) because ECharts is large and most screens have
+ * A separate entry point (`@munaxa/platform/charts`) because ECharts is large and most screens have
  * no chart on it. `Chart` also imports it lazily, so a page that renders one pays for it at that
  * point and a page that does not never loads it at all.
  *

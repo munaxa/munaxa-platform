@@ -1,5 +1,5 @@
-import base from '@axa/config-eslint/base.js';
-import scripts from '@axa/config-eslint/scripts.js';
+import base from '@munaxa/config-eslint/base.js';
+import scripts from '@munaxa/config-eslint/scripts.js';
 
 export default [
   // Storybook's static output is build product, not source.

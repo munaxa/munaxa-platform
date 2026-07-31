@@ -4,7 +4,7 @@
  * Pulled in by every theme entry point (`themes/<product>/index.css`), or directly for non-TS
  * consumers (plain CSS, print stylesheets, email templates):
  *
- *   @import '@axa/platform/css/tokens';
+ *   @import '@munaxa/platform/css/tokens';
  *
  * These mirror the values exported from the TypeScript token modules under `tokens/`, so both
  * sides share one source of truth. Everything here is *theme-independent* — a scale step never

@@ -1,6 +1,6 @@
 {
   "//": "Editor, lint and typecheck config — covers everything, including stories, tests and tooling. Emit is done by tsconfig.build.json, which narrows this to shipped source.",
-  "extends": "@axa/config-typescript/react-library.json",
+  "extends": "@munaxa/config-typescript/react-library.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": ".",

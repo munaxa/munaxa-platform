@@ -1,4 +1,4 @@
-# @axa/platform
+# @munaxa/platform
 
 The shared engineering foundation for every Munaxa product — School, Work, Docs and whatever
 comes next. Design tokens, product themes, typography, icons, UI components and patterns, plus
@@ -59,7 +59,7 @@ misses a role, invents one, or forks a shared scale.
 
 ```
 platform/
-├── index.ts                  public barrel — what `@axa/platform` exports
+├── index.ts                  public barrel — what `@munaxa/platform` exports
 ├── package.json              entry points (see §3)
 ├── CONTRIBUTING.md           the mandatory standard
 ├── architecture/             component-principles · theming · responsive · motion ·
@@ -147,20 +147,20 @@ Munaxa keeps, and must keep, everything domain-shaped: `AppShell`, `Shell`, `Pri
 **1. Depend on it.**
 
 ```json
-{ "dependencies": { "@axa/platform": "workspace:*" } }
+{ "dependencies": { "@munaxa/platform": "workspace:*" } }
 ```
 
 **2. Activate exactly one theme** in `globals.css`:
 
 ```css
 @import 'tailwindcss';
-@import '@axa/platform/css/themes/school'; /* or group / work / docs */
+@import '@munaxa/platform/css/themes/school'; /* or group / work / docs */
 
 /* Tailwind v4 must scan the platform's sources to emit the classes its components use. */
 @source '../../../../../platform/ui';
 
 /* Only if the product uses the motion patterns. */
-@import '@axa/platform/css/motion';
+@import '@munaxa/platform/css/motion';
 
 @layer base {
   :root {
@@ -173,26 +173,26 @@ Munaxa keeps, and must keep, everything domain-shaped: `AppShell`, `Shell`, `Pri
 **3. Import from a public entry point.**
 
 ```tsx
-import { Button, Card, CardContent, Table, useToast, cn } from '@axa/platform';
-import { Search } from '@axa/platform/icons';
-import { tokens } from '@axa/platform/tokens';
-import { themes } from '@axa/platform/themes';
+import { Button, Card, CardContent, Table, useToast, cn } from '@munaxa/platform';
+import { Search } from '@munaxa/platform/icons';
+import { tokens } from '@munaxa/platform/tokens';
+import { themes } from '@munaxa/platform/themes';
 ```
 
 | Import                          | Gives you                                   |
 | ------------------------------- | ------------------------------------------- |
-| `@axa/platform`                 | components, patterns, hooks, `cn`, `themes` |
-| `@axa/platform/tokens`          | typed structural tokens                      |
-| `@axa/platform/typography`      | the type scale                               |
-| `@axa/platform/themes`          | the typed theme registry + brand hexes       |
-| `@axa/platform/icons`           | the shared icon set                          |
-| `@axa/platform/hooks`           | UI hooks                                     |
-| `@axa/platform/date`            | the date engine, without any components      |
-| `@axa/platform/charts`          | ECharts wrappers (loaded lazily)             |
-| `@axa/platform/patterns`        | patterns only                                |
-| `@axa/platform/css/themes/<id>` | a theme (contract + palette)                 |
-| `@axa/platform/css/tokens`      | the structural scales as CSS variables       |
-| `@axa/platform/css/motion`      | styles for the motion patterns               |
+| `@munaxa/platform`                 | components, patterns, hooks, `cn`, `themes` |
+| `@munaxa/platform/tokens`          | typed structural tokens                      |
+| `@munaxa/platform/typography`      | the type scale                               |
+| `@munaxa/platform/themes`          | the typed theme registry + brand hexes       |
+| `@munaxa/platform/icons`           | the shared icon set                          |
+| `@munaxa/platform/hooks`           | UI hooks                                     |
+| `@munaxa/platform/date`            | the date engine, without any components      |
+| `@munaxa/platform/charts`          | ECharts wrappers (loaded lazily)             |
+| `@munaxa/platform/patterns`        | patterns only                                |
+| `@munaxa/platform/css/themes/<id>` | a theme (contract + palette)                 |
+| `@munaxa/platform/css/tokens`      | the structural scales as CSS variables       |
+| `@munaxa/platform/css/motion`      | styles for the motion patterns               |
 
 Never deep-import a file path. See [import-rules.md](./architecture/import-rules.md).
 
@@ -303,7 +303,7 @@ LocaleProvider          which locale, calendar, zone and hour cycle the product 
      └── TimeFormatter      a wall-clock time → what the user reads
 ```
 
-They live in `ui/date/` and ship separately as `@axa/platform/date`, because a table cell that
+They live in `ui/date/` and ship separately as `@munaxa/platform/date`, because a table cell that
 formats a date should not have to import a calendar.
 
 **The rule that holds it together: every value crossing a public API is an ISO-8601 Gregorian
@@ -375,7 +375,7 @@ A few decisions worth knowing:
 
 ### Charts — ECharts, and no colours
 
-`@axa/platform/charts` is a separate entry point, and `Chart` imports ECharts with a dynamic
+`@munaxa/platform/charts` is a separate entry point, and `Chart` imports ECharts with a dynamic
 `import()`, so a page with no chart on it never loads the library.
 
 **No chart file contains a colour.** The ECharts theme is built by reading `--chart-1` … `--chart-10`
@@ -586,8 +586,8 @@ immediately if the palette is incomplete.
 
 ```bash
 pnpm validate                          # both validators, via turbo
-pnpm --filter @axa/platform validate:contract
-pnpm --filter @axa/platform validate:tokens
+pnpm --filter @munaxa/platform validate:contract
+pnpm --filter @munaxa/platform validate:tokens
 ```
 
 `validate-contract.mjs` derives the required role set from the `@theme inline` block of

@@ -1,7 +1,6 @@
 {
-  "name": "@axa/config-eslint",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@munaxa/config-eslint",
+  "version": "1.0.0",
   "type": "module",
   "main": "base.js",
   "files": [
@@ -19,5 +18,15 @@
   },
   "peerDependencies": {
     "eslint": "^9.17.0"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tam2om/munaxa-platform.git",
+    "directory": "tooling/config-eslint"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
   }
 }

@@ -1,0 +1,52 @@
+{
+  "name": "@munaxa/utils",
+  "version": "1.0.0",
+  "description": "Munaxa shared utilities — framework-agnostic helpers shared across products, including the `cn` class-name merger.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": [
+    "**/*.js",
+    "**/*.d.ts",
+    "**/*.css"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tam2om/munaxa-platform.git",
+    "directory": "packages/utils"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "dependencies": {
+    "@munaxa/platform": "workspace:^"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "echo 'buildless façade — nothing to compile' >/dev/null",
+    "lint": "echo 'buildless façade — nothing to lint' >/dev/null",
+    "typecheck": "echo 'buildless façade — types re-exported from @munaxa/platform' >/dev/null"
+  }
+}

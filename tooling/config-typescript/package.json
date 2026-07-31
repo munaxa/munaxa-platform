@@ -1,11 +1,20 @@
 {
-  "name": "@axa/config-typescript",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@munaxa/config-typescript",
+  "version": "1.0.0",
   "files": [
     "base.json",
     "nestjs.json",
     "nextjs.json",
     "react-library.json"
-  ]
+  ],
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tam2om/munaxa-platform.git",
+    "directory": "tooling/config-typescript"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  }
 }

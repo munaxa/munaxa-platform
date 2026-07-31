@@ -1,0 +1,11 @@
+# Munaxa Platform — the single shared codebase for every Munaxa product.
+#
+# `packages/platform` holds the implementation (design tokens, themes, typography,
+# icons, UI components, patterns, layouts and hooks). The remaining `packages/*`
+# entries are the published API surface: thin, buildless façades that re-export a
+# slice of the implementation under the ecosystem's package names, so products can
+# depend on `@munaxa/ui` or `@munaxa/tokens` without knowing how the platform is
+# laid out internally. See ARCHITECTURE.md for why the split is drawn this way.
+packages:
+  - 'packages/*'
+  - 'tooling/*'

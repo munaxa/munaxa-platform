@@ -9,7 +9,7 @@
  * the contract with exactly one palette:
  *
  *   @import 'tailwindcss';
- *   @import '@axa/platform/css/themes/<product>';
+ *   @import '@munaxa/platform/css/themes/<product>';
  *
  * Applications add only their own structural vars (the `--radius` value, fonts, page gradients).
  */
