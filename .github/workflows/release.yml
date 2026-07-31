@@ -56,14 +56,14 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "Publishing version $VERSION"
-          pnpm -r --filter './packages/**' exec npm version "$VERSION" --no-git-tag-version --allow-same-version
+          pnpm -r --filter './packages/**' --filter './tooling/**' exec npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       - name: Publish
         if: ${{ !inputs.dry_run }}
-        run: pnpm -r --filter './packages/**' publish --no-git-checks --access restricted
+        run: pnpm -r --filter './packages/**' --filter './tooling/**' publish --no-git-checks --access restricted
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pack only (dry run)
         if: ${{ inputs.dry_run }}
-        run: pnpm -r --filter './packages/**' exec npm pack --dry-run
+        run: pnpm -r --filter './packages/**' --filter './tooling/**' exec npm pack --dry-run
