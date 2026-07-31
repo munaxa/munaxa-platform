@@ -6,9 +6,10 @@
   // emits a self-contained static bundle to `storybook-static/`; Cloudflare serves it
   // directly, so there is no Worker script — assets only.
   //
-  // NOTE: `name` must match the Cloudflare project this deploys to. The failed build
-  // auto-detected the project as "platform"; rename this to whatever the project is
-  // actually called, or the deploy targets a different Worker.
+  // NOTE: `name` must match the Cloudflare Worker this deploys to (`platform-storybook`).
+  // A mismatch does not fail the deploy — wrangler creates a new Worker that no domain
+  // points at, and the live site silently keeps its old bundle. The deploy workflow
+  // (.github/workflows/deploy-cloudflare.yml) asserts this name before deploying.
   "assets": {
     "directory": "./storybook-static",
     // Storybook deep links live in query params on index.html, and iframe.html is a
