@@ -56,7 +56,7 @@ export interface Theme {
 const group = {
   id: 'group',
   name: 'Group',
-  cssEntry: '@axa/platform/css/themes/group',
+  cssEntry: '@munaxa/platform/css/themes/group',
   description: 'Deep slate-blue corporate brand — the group-level identity.',
   brand: groupBrand,
 } as const satisfies Theme;
@@ -64,7 +64,7 @@ const group = {
 const school = {
   id: 'school',
   name: 'School',
-  cssEntry: '@axa/platform/css/themes/school',
+  cssEntry: '@munaxa/platform/css/themes/school',
   description: 'Bright teal brand for the education platform.',
   brand: schoolBrand,
 } as const satisfies Theme;
@@ -72,7 +72,7 @@ const school = {
 const work = {
   id: 'work',
   name: 'Work',
-  cssEntry: '@axa/platform/css/themes/work',
+  cssEntry: '@munaxa/platform/css/themes/work',
   description: 'Raspberry brand for the human-capital platform.',
   brand: workBrand,
 } as const satisfies Theme;
@@ -80,7 +80,7 @@ const work = {
 const docs = {
   id: 'docs',
   name: 'Docs',
-  cssEntry: '@axa/platform/css/themes/docs',
+  cssEntry: '@munaxa/platform/css/themes/docs',
   description: 'Olive-green brand for the document and knowledge platform.',
   brand: docsBrand,
 } as const satisfies Theme;

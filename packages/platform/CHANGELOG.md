@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@axa/platform`. The format follows
+All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 

@@ -32,7 +32,7 @@ casing convention.
 
 The platform is the **source** of the artwork, not a runtime CDN. A product copies what it needs
 into its own `public/` directory at build time, so the app controls caching, sizing and format
-conversion. Nothing imports a PNG from `@axa/platform`.
+conversion. Nothing imports a PNG from `@munaxa/platform`.
 
 ## What is deliberately NOT here
 
@@ -41,7 +41,7 @@ conversion. Nothing imports a PNG from `@axa/platform`.
 palettes drift. Anything that needs a raw hex reads the typed registry:
 
 ```ts
-import { themes } from '@axa/platform/themes';
+import { themes } from '@munaxa/platform/themes';
 themes.school.brand.color.DEFAULT; // '#00CFC1'
 themes.school.brand.neutral.ink; //   '#101828'
 ```

@@ -1,7 +1,6 @@
 {
-  "name": "@axa/platform",
+  "name": "@munaxa/platform",
   "version": "1.0.0",
-  "private": true,
   "sideEffects": [
     "**/*.css"
   ],
@@ -111,8 +110,8 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "@axa/config-eslint": "workspace:*",
-    "@axa/config-typescript": "workspace:*",
+    "@munaxa/config-eslint": "workspace:*",
+    "@munaxa/config-typescript": "workspace:*",
     "@storybook/addon-a11y": "^10.5.5",
     "@storybook/addon-docs": "^10.5.5",
     "@storybook/react-vite": "^10.5.5",
@@ -135,5 +134,15 @@
     "vite": "^7.3.6",
     "vitest": "^4.1.10",
     "wrangler": "^4.59.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tam2om/munaxa-platform.git",
+    "directory": "packages/platform"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "license": "UNLICENSED"
 }

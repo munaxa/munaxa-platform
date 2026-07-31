@@ -1,4 +1,4 @@
-# Contributing to `@axa/platform`
+# Contributing to `@munaxa/platform`
 
 **This document is the mandatory standard for all work in `platform/`, human or AI-assisted.**
 
@@ -115,9 +115,9 @@ The platform is a UI library with no product data, so tests are targeted rather 
 Run them with:
 
 ```bash
-pnpm --filter @axa/platform test           # unit + accessibility
-pnpm --filter @axa/platform test:watch     # while working
-pnpm --filter @axa/platform storybook      # the component workbench, on :6006
+pnpm --filter @munaxa/platform test           # unit + accessibility
+pnpm --filter @munaxa/platform test:watch     # while working
+pnpm --filter @munaxa/platform storybook      # the component workbench, on :6006
 ```
 
 Storybook renders against the **real** design system — the same Tailwind build and the same theme
@@ -134,7 +134,7 @@ direction, because dark mode and RTL are requirements nobody checks unless they 
 - [ ] Every component has a `.test.tsx` next to it that ends with an `expectNoA11yViolations`
       assertion. That helper is in `test/setup.ts`; it runs axe over the rendered output.
 - [ ] Anything with keyboard behaviour has that behaviour tested by key, not by click.
-- [ ] `pnpm turbo run build lint typecheck --filter=@axa/platform` passes.
+- [ ] `pnpm turbo run build lint typecheck --filter=@munaxa/platform` passes.
 - [ ] Every consuming product still builds: `pnpm build`.
 - [ ] For any change that touches CSS output, diff the emitted stylesheet before and after:
 
@@ -157,7 +157,7 @@ every broken one.
 
 Full reference: [`architecture/import-rules.md`](./architecture/import-rules.md).
 
-- [ ] Products import from a public entry point (`@axa/platform`, `@axa/platform/icons`, …) —
+- [ ] Products import from a public entry point (`@munaxa/platform`, `@munaxa/platform/icons`, …) —
       **never** a deep file path, never a relative path into `platform/`.
 - [ ] The platform imports **nothing** from any product. No `@school/*`, no path climbing out
       of `platform/`.
@@ -231,7 +231,7 @@ A change is done when **all** of the following are true. Not most.
 8. RTL and dark mode were manually verified.
 9. Every consuming product was built and visually checked, or a stylesheet diff proves no
    visual change.
-10. The component is reachable from `@axa/platform` and its props type is exported.
+10. The component is reachable from `@munaxa/platform` and its props type is exported.
 11. Documentation reflects reality — `architecture/`, this file and `README.md` if a rule,
     folder, entry point or token changed.
 12. Nothing product-specific was added to `platform/`, and nothing shared was left behind in a

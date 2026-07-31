@@ -2,7 +2,7 @@
  * Docs theme entry point.
  *
  *   @import 'tailwindcss';
- *   @import '@axa/platform/css/themes/docs';
+ *   @import '@munaxa/platform/css/themes/docs';
  */
 @import '../base/base.css';
 @import './palette.css';

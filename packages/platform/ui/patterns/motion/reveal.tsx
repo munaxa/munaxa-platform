@@ -8,7 +8,7 @@ import { cn } from '../../lib/cn.js';
  * when JS is present (`html.js`) it starts translated/faded and animates in once on first
  * intersection. Respects prefers-reduced-motion.
  *
- * Requires the companion stylesheet: `@import '@axa/platform/css/motion';`
+ * Requires the companion stylesheet: `@import '@munaxa/platform/css/motion';`
  */
 export function Reveal({
   children,

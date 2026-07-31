@@ -1,6 +1,6 @@
 # Versioning policy
 
-`@axa/platform` follows [Semantic Versioning 2.0.0](https://semver.org/). This document says
+`@munaxa/platform` follows [Semantic Versioning 2.0.0](https://semver.org/). This document says
 exactly what a version number promises, so a product can upgrade on the strength of the number
 alone.
 
@@ -25,13 +25,13 @@ The contract applies to the **documented public surface only**:
 
 | Covered | Entry point |
 | --- | --- |
-| Components, hooks, the date engine, layout primitives, the shell, patterns | `@axa/platform` |
-| Typed design tokens | `@axa/platform/tokens` |
-| The type scale | `@axa/platform/typography` |
-| The typed theme registry | `@axa/platform/themes` |
-| The icon set | `@axa/platform/icons` |
-| Narrower JS entry points | `@axa/platform/{hooks,patterns,layouts,shell,date,charts}` |
-| The **semantic** CSS custom properties (`--background`, `--primary`, `--foreground`, …) | `@axa/platform/css/*` |
+| Components, hooks, the date engine, layout primitives, the shell, patterns | `@munaxa/platform` |
+| Typed design tokens | `@munaxa/platform/tokens` |
+| The type scale | `@munaxa/platform/typography` |
+| The typed theme registry | `@munaxa/platform/themes` |
+| The icon set | `@munaxa/platform/icons` |
+| Narrower JS entry points | `@munaxa/platform/{hooks,patterns,layouts,shell,date,charts}` |
+| The **semantic** CSS custom properties (`--background`, `--primary`, `--foreground`, …) | `@munaxa/platform/css/*` |
 | The 62-role theme contract, machine-checked in CI | `scripts/validate-contract.mjs` |
 
 The **semantic** custom properties are the CSS contract. A product may build on `--primary`,
@@ -40,7 +40,7 @@ theme defines all 62 roles in both colour schemes, so those names do not disappe
 
 ## What is **not** public — and may change at any time
 
-- Any deep import path other than the entry points above. `@axa/platform/ui/components/...` is an
+- Any deep import path other than the entry points above. `@munaxa/platform/ui/components/...` is an
   internal path; importing it is unsupported and may break in a patch.
 - The **primitive** token values (the raw `--primitive-*` scale). Products consume semantic roles,
   not primitives; the primitive palette is an implementation detail of the themes.

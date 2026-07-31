@@ -2,7 +2,7 @@
  * Group theme entry point.
  *
  *   @import 'tailwindcss';
- *   @import '@axa/platform/css/themes/group';
+ *   @import '@munaxa/platform/css/themes/group';
  */
 @import '../base/base.css';
 @import './palette.css';

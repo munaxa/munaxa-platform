@@ -1,0 +1,57 @@
+{
+  "name": "@munaxa/theme",
+  "version": "1.0.0",
+  "description": "Munaxa theme engine — the typed product-theme registry (Corporate, School, Work, Docs) and the CSS theme contract. Branding is configuration, never duplicated code.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./css/base": "./css/base.css",
+    "./css/corporate": "./css/corporate.css",
+    "./css/school": "./css/school.css",
+    "./css/work": "./css/work.css",
+    "./css/docs": "./css/docs.css"
+  },
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": [
+    "**/*.js",
+    "**/*.d.ts",
+    "**/*.css"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tam2om/munaxa-platform.git",
+    "directory": "packages/theme"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "dependencies": {
+    "@munaxa/platform": "workspace:^"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "echo 'buildless façade — nothing to compile' >/dev/null",
+    "lint": "echo 'buildless façade — nothing to lint' >/dev/null",
+    "typecheck": "echo 'buildless façade — types re-exported from @munaxa/platform' >/dev/null"
+  }
+}

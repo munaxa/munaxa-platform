@@ -257,7 +257,7 @@ export const brand = {
  * ${t.name} theme entry point.
  *
  *   @import 'tailwindcss';
- *   @import '@axa/platform/css/themes/${t.id}';
+ *   @import '@munaxa/platform/css/themes/${t.id}';
  */
 @import '../base/base.css';
 @import './palette.css';

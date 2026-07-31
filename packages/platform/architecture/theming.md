@@ -111,7 +111,7 @@ Exactly one place: `themes/<product>/brand.ts`, for surfaces that genuinely cann
 custom properties — HTML email, OG images, favicons, PDF output.
 
 ```ts
-import { themes } from '@axa/platform/themes';
+import { themes } from '@munaxa/platform/themes';
 themes.school.brand.color.DEFAULT; // '#00CFC1'
 themes.school.brand.neutral.ink; //   '#101828'
 ```
@@ -136,7 +136,7 @@ fix the contract, not the component.
 
 ```css
 @import 'tailwindcss';
-@import '@axa/platform/css/themes/school';
+@import '@munaxa/platform/css/themes/school';
 
 /* Tailwind v4 must scan the platform's sources to emit the classes its components use. */
 @source '../../../../../platform/ui';
@@ -150,7 +150,7 @@ fix the contract, not the component.
 ```
 
 One theme per application, chosen at build time. Light/dark switching *within* a theme is the
-`.dark` class on `<html>`, driven by `useTheme` from `@axa/platform`.
+`.dark` class on `<html>`, driven by `useTheme` from `@munaxa/platform`.
 
 ## Verifying a theme
 

@@ -11,7 +11,7 @@
  * `var(--x)` references inside the `@theme inline` block of `themes/base/base.css`. Add a role
  * to the contract and every palette is immediately required to supply it; that is the point.
  *
- * Run: `pnpm --filter @axa/platform validate:contract`
+ * Run: `pnpm --filter @munaxa/platform validate:contract`
  * Exit code 1 on any violation, with every violation reported (not just the first).
  */
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';

@@ -15,7 +15,7 @@
  * font utilities), so there is nothing to compare — what protects it is the theme-contract
  * validator, which forbids any product from redeclaring a `--font-*` / `--text-*` variable.
  *
- * Run: `pnpm --filter @axa/platform validate:tokens`
+ * Run: `pnpm --filter @munaxa/platform validate:tokens`
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

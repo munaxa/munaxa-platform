@@ -5,7 +5,7 @@
  * shares one icon library at one version. This stops each product pinning its own
  * lucide-react version and drifting apart visually.
  *
- *   import { Search, type IconProps } from '@axa/platform/icons';
+ *   import { Search, type IconProps } from '@munaxa/platform/icons';
  *
  * The full lucide set is re-exported (so any icon is available), plus a typed `IconProps`
  * and `Icon` type alias for props and component typing.

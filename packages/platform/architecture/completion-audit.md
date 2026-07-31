@@ -45,7 +45,7 @@ rather than an engineering gap.
 `radio-group` `resizable`→`ResizablePanels` `scroll-area` `select` `separator` `sheet`→`Drawer`
 `sidebar` `skeleton` `sonner`→`Toast` `spinner` `switch` `table` `tabs` `textarea` `tooltip`
 
-Every one of these resolves to a symbol exported from `@axa/platform`, verified against the built
+Every one of these resolves to a symbol exported from `@munaxa/platform`, verified against the built
 barrel rather than against memory.
 
 ### Not migrated, deliberately (13)

@@ -8,7 +8,7 @@ import tseslint from 'typescript-eslint';
  *
  * Scope it to the script paths at the call site:
  *
- *   import scripts from '@axa/config-eslint/scripts.js';
+ *   import scripts from '@munaxa/config-eslint/scripts.js';
  *   ...scripts.map((c) => ({ ...c, files: ['scripts/**\/*.mjs'] })),
  *
  * @type {import('eslint').Linter.Config[]}

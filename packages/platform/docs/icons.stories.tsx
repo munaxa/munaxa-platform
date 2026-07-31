@@ -40,7 +40,7 @@ import { Page, Section } from './doc-kit.js';
  *
  * Every glyph is a `currentColor` stroke, so an icon inherits whatever the surrounding text
  * resolves to — which is why the same icon set works under four brands with no per-brand asset.
- * The platform re-exports the whole Lucide set from `@axa/platform/icons`; the sample below is the
+ * The platform re-exports the whole Lucide set from `@munaxa/platform/icons`; the sample below is the
  * subset the platform's own components use.
  */
 const meta = {
@@ -92,7 +92,7 @@ export const Icons: Story = {
       title="Icons"
       lead={
         <>
-          Imported from <code className="font-mono text-xs">@axa/platform/icons</code>, a single
+          Imported from <code className="font-mono text-xs">@munaxa/platform/icons</code>, a single
           re-export of Lucide at one pinned version so no product drifts visually. Icons are sized
           with a utility (<code className="font-mono text-xs">size-4</code>) and coloured by their
           context — never given a hex.

@@ -1,6 +1,6 @@
 # Migration guide
 
-How to move a product across a **major** version of `@axa/platform`. Each major that ships a
+How to move a product across a **major** version of `@munaxa/platform`. Each major that ships a
 breaking change gets a section here, describing every break and the exact edit that resolves it.
 The [versioning policy](./VERSIONING.md) defines what counts as breaking.
 

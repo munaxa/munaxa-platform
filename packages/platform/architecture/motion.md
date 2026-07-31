@@ -80,7 +80,7 @@ only counts up if motion is welcome.
   in the component with Tailwind's `transition-*` utilities and the duration scale.
 - **Reusable motion behaviours** are patterns: `ui/patterns/motion/`. `Reveal` and `CountUp`
   live there with their stylesheet, `ui/patterns/motion/motion.css`, exported as
-  `@axa/platform/css/motion` — a product that uses the pattern imports the stylesheet.
+  `@munaxa/platform/css/motion` — a product that uses the pattern imports the stylesheet.
 - **Page transitions and route animations belong to the product.** They depend on the router,
   which the platform does not know about.
 

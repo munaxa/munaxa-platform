@@ -9,13 +9,13 @@ door; the platform imports *nothing* from any product, ever.
 
 ```tsx
 // Right
-import { Button, Card, useToast, cn } from '@axa/platform';
-import { Search } from '@axa/platform/icons';
-import { tokens } from '@axa/platform/tokens';
-import { themes } from '@axa/platform/themes';
+import { Button, Card, useToast, cn } from '@munaxa/platform';
+import { Search } from '@munaxa/platform/icons';
+import { tokens } from '@munaxa/platform/tokens';
+import { themes } from '@munaxa/platform/themes';
 
 // Wrong — reaches past the public API into the internal tree
-import { Button } from '@axa/platform/ui/components/primitives/button';
+import { Button } from '@munaxa/platform/ui/components/primitives/button';
 import { cn } from '../../../platform/ui/lib/cn';
 ```
 
@@ -27,16 +27,16 @@ own.
 
 | Import                              | Contains                                        |
 | ----------------------------------- | ----------------------------------------------- |
-| `@axa/platform`                     | components, patterns, hooks, `cn`, `themes`      |
-| `@axa/platform/tokens`              | typed structural tokens                          |
-| `@axa/platform/typography`          | the type scale                                   |
-| `@axa/platform/themes`              | the typed theme registry + brand hexes           |
-| `@axa/platform/icons`               | the shared icon set                              |
-| `@axa/platform/hooks`               | UI hooks                                         |
-| `@axa/platform/patterns`            | patterns only                                    |
-| `@axa/platform/css/themes/<id>`     | a theme (contract + palette)                     |
-| `@axa/platform/css/tokens`          | the structural scales as CSS variables           |
-| `@axa/platform/css/motion`          | stylesheet for the motion patterns               |
+| `@munaxa/platform`                     | components, patterns, hooks, `cn`, `themes`      |
+| `@munaxa/platform/tokens`              | typed structural tokens                          |
+| `@munaxa/platform/typography`          | the type scale                                   |
+| `@munaxa/platform/themes`              | the typed theme registry + brand hexes           |
+| `@munaxa/platform/icons`               | the shared icon set                              |
+| `@munaxa/platform/hooks`               | UI hooks                                         |
+| `@munaxa/platform/patterns`            | patterns only                                    |
+| `@munaxa/platform/css/themes/<id>`     | a theme (contract + palette)                     |
+| `@munaxa/platform/css/tokens`          | the structural scales as CSS variables           |
+| `@munaxa/platform/css/motion`          | stylesheet for the motion patterns               |
 
 The root barrel is the default. The narrower entries exist for consumers that want one slice —
 a Node script reading tokens, an email template reading brand hexes — not as an optimisation.
@@ -44,7 +44,7 @@ a Node script reading tokens, an email template reading brand hexes — not as a
 ### No app-local re-export barrels
 
 A `src/components/ui/index.ts` that re-exports the platform looks harmless and is not: it makes
-`@axa/platform` invisible in the product's imports, so nobody can see what the product actually
+`@munaxa/platform` invisible in the product's imports, so nobody can see what the product actually
 depends on, and it becomes the obvious place to "just add one local override". Both app-local
 barrels were deleted in the Phase 1 refactor. Do not reintroduce them.
 
@@ -125,7 +125,7 @@ is not in the root barrel does not exist as far as products are concerned.
 
 - ESLint runs type-aware across `platform/` and fails on a hex literal in `ui/` or `tokens/`.
 - `pnpm validate` fails when a theme breaks the contract or a token mirror drifts.
-- The `@school/*` packages are not dependencies of `@axa/platform`, so a product import fails at
+- The `@school/*` packages are not dependencies of `@munaxa/platform`, so a product import fails at
   install and resolution time, not just review.
 - Everything else here is a review responsibility — see
   [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
