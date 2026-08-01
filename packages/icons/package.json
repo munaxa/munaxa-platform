@@ -22,7 +22,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tam2om/munaxa-platform.git",
+    "url": "git+https://github.com/munaxa/munaxa-platform.git",
     "directory": "packages/icons"
   },
   "publishConfig": {
