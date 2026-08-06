@@ -1,5 +1,12 @@
 # @munaxa/crypto
 
+## 2.3.0
+
+### Patch Changes
+
+- Updated dependencies [b1284b1]
+  - @munaxa/types@2.3.0
+
 ## 2.2.0
 
 ### Patch Changes

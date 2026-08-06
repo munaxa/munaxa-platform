@@ -1,5 +1,14 @@
 # @munaxa/session
 
+## 2.3.0
+
+### Patch Changes
+
+- Updated dependencies [b1284b1]
+  - @munaxa/types@2.3.0
+  - @munaxa/interfaces@2.3.0
+  - @munaxa/crypto@2.3.0
+
 ## 2.2.0
 
 ### Patch Changes
