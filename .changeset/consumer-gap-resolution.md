@@ -24,7 +24,9 @@ deployment. An alias may carry a `decode` — with `fromSeconds` and `fromMillis
 case — because a name is not always the whole difference: `JWT_ACCESS_TTL_SECONDS=900` cannot feed a
 duration field otherwise. It transforms string to string before the field parses, so the platform's
 validation still runs, and it belongs to the source rather than the field, so the canonical name
-keeps platform semantics. `nestConfig` renders the nested shape an application already reads. `defineConfig`
+keeps platform semantics. `pickSchema` takes the subset of a schema a product actually consumes, so
+adoption is incremental rather than all-or-nothing — `PLATFORM_SCHEMA` carries required secrets, and
+a product not yet wiring field encryption should not have to invent one. `nestConfig` renders the nested shape an application already reads. `defineConfig`
 carries schema-level refinements for rules spanning fields, reported alongside field problems in one
 message. `extendConfig` merges product fields into the platform schema and refuses to let a product
 redefine a platform field.

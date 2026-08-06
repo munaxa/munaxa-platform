@@ -10,6 +10,7 @@ import {
   integer,
   nestConfig,
   oneOf,
+  pickSchema,
   parseConfig,
   redactConfig,
   remapSchema,
@@ -247,6 +248,64 @@ describe('cross-field refinement', () => {
     );
     expect(() => parseConfig(strict, { COUNT: 'nope' })).toThrow(/expected an integer/);
     expect(() => parseConfig(strict, { COUNT: 'nope' })).not.toThrow(/should not be reported/);
+  });
+});
+
+describe('partial adoption', () => {
+  it('takes only the fields a product has sources for', () => {
+    // The wall this removes: PLATFORM_SCHEMA requires MUNAXA_ENCRYPTION_KEY, and a product not yet
+    // wiring field encryption has no source for it. Whole-schema adoption would make it invent a
+    // secret and set it in every deployment for a capability it does not use.
+    const picked = pickSchema(PLATFORM_SCHEMA, [
+      'MUNAXA_ENV',
+      'MUNAXA_LOG_LEVEL',
+      'MUNAXA_SIGNING_SECRET',
+      'MUNAXA_SESSION_IDLE_TIMEOUT',
+    ]);
+    expect(Object.keys(picked).sort()).toEqual([
+      'MUNAXA_ENV',
+      'MUNAXA_LOG_LEVEL',
+      'MUNAXA_SESSION_IDLE_TIMEOUT',
+      'MUNAXA_SIGNING_SECRET',
+    ]);
+    // No MUNAXA_ENCRYPTION_KEY, so no new required secret.
+    const resolved = parseConfig(picked, { MUNAXA_SIGNING_SECRET: 's'.repeat(32) });
+    expect(resolved.MUNAXA_ENV).toBe('production');
+  });
+
+  it('keeps each field platform definition intact', () => {
+    const picked = pickSchema(PLATFORM_SCHEMA, ['MUNAXA_SESSION_IDLE_TIMEOUT']);
+    expect(picked.MUNAXA_SESSION_IDLE_TIMEOUT).toBe(PLATFORM_SCHEMA.MUNAXA_SESSION_IDLE_TIMEOUT);
+  });
+
+  it('refuses a field that does not exist', () => {
+    expect(() => pickSchema(PLATFORM_SCHEMA, ['MUNAXA_TYPO' as 'MUNAXA_ENV'])).toThrow(
+      /no such field: MUNAXA_TYPO/,
+    );
+  });
+
+  it('composes with remapSchema and extendConfig', () => {
+    // The whole adoption shape in one expression: take what you consume, say where it is read
+    // from, add your own fields.
+    const schema = extendConfig(
+      remapSchema(pickSchema(PLATFORM_SCHEMA, ['MUNAXA_ENV', 'MUNAXA_ACCESS_TOKEN_TTL']), {
+        MUNAXA_ENV: { env: 'NODE_ENV', path: 'env' },
+        MUNAXA_ACCESS_TOKEN_TTL: { env: fromSeconds('JWT_ACCESS_TTL_SECONDS'), path: 'auth.accessTtl' },
+      }),
+      { DOCS_STORAGE_BUCKET: string({ path: 'storage.bucket' }) },
+    );
+
+    const resolved = parseConfig(schema, {
+      NODE_ENV: 'staging',
+      JWT_ACCESS_TTL_SECONDS: '900',
+      DOCS_STORAGE_BUCKET: 'docs-staging',
+    });
+
+    expect(nestConfig(schema, resolved)).toEqual({
+      env: 'staging',
+      auth: { accessTtl: 900_000 },
+      storage: { bucket: 'docs-staging' },
+    });
   });
 });
 

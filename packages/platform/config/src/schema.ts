@@ -160,6 +160,42 @@ export function remapSchema<S extends Schema>(
   return output as S;
 }
 
+/**
+ * Take the fields of a schema a product actually consumes.
+ *
+ * Adopting `PLATFORM_SCHEMA` is otherwise all-or-nothing, and it carries required secrets —
+ * `MUNAXA_ENCRYPTION_KEY` among them. A product that is not yet wiring field encryption has no
+ * source for that key, so a whole-schema adoption makes it invent one and set it in every
+ * deployment: a new required secret for a capability it does not use. That is the same wall
+ * aliases were built to knock down, one level up — not what a variable is *called*, but which
+ * fields you are forced to take.
+ *
+ * The honest trade, stated plainly: the fields left behind are not governed by this schema. That
+ * is a real reduction against adopting all of it — and no reduction at all against the actual
+ * alternative, which is a product declining to adopt any of it. Incremental adoption beats a
+ * boundary nobody crosses. Add each field as the capability that reads it gets wired.
+ *
+ * Composes with the rest: pick what you consume, `remapSchema` where it is read from, then
+ * `extendConfig` your own fields onto it.
+ */
+export function pickSchema<S extends Schema, const K extends readonly (keyof S & string)[]>(
+  schema: S,
+  keys: K,
+): Pick<S, K[number]> {
+  const unknown = keys.filter((key) => !Object.hasOwn(schema, key));
+  if (unknown.length > 0) {
+    // Same reasoning as `remapSchema`: a typo would silently drop a field the product believes it
+    // is validating, and the omission only surfaces wherever that value is eventually read.
+    throw new PlatformError(`pickSchema: no such field: ${unknown.join(', ')}`, {
+      code: 'CONFIG_INVALID',
+    });
+  }
+
+  const output: Record<string, FieldDefinition<unknown>> = {};
+  for (const key of keys) output[key] = schema[key] as FieldDefinition<unknown>;
+  return output as Pick<S, K[number]>;
+}
+
 export function string(
   options: FieldOptions<string> & { minLength?: number } = {},
 ): FieldDefinition<string> {

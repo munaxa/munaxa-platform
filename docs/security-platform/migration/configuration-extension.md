@@ -17,12 +17,45 @@ once at startup with every problem listed.
 
 ---
 
-## Extension schemas
+## Take only what you consume
+
+`PLATFORM_SCHEMA` carries required secrets — `MUNAXA_ENCRYPTION_KEY` among them. A product not yet
+wiring field encryption has no source for that key, so adopting the whole schema means inventing a
+secret and setting it in every deployment for a capability it does not use. That is the same wall
+aliases remove, one level up: not what a variable is *called*, but which fields you are forced to
+take.
 
 ```ts
-import { extendConfig, parseConfig, string, boolean, PLATFORM_SCHEMA } from '@munaxa/config';
+const PLATFORM = pickSchema(PLATFORM_SCHEMA, [
+  'MUNAXA_ENV',
+  'MUNAXA_LOG_LEVEL',
+  'MUNAXA_SIGNING_SECRET',
+  'MUNAXA_ACCESS_TOKEN_TTL',
+  'MUNAXA_REFRESH_TOKEN_TTL',
+  'MUNAXA_SESSION_IDLE_TIMEOUT',
+  'MUNAXA_SESSION_ABSOLUTE_TIMEOUT',
+  'MUNAXA_SESSION_MAX_CONCURRENT',
+]);
+```
 
-export const APP_SCHEMA = extendConfig(PLATFORM_SCHEMA, {
+The trade, stated plainly: the fields left behind are not governed by this schema. That is a real
+reduction against adopting all of it — and no reduction against the actual alternative, which is a
+product declining to adopt any of it. Add each field as the capability that reads it gets wired.
+
+Unknown names are refused, for the same reason `remapSchema` refuses them: a typo would silently
+drop a field the product believes it is validating.
+
+## Extension schemas
+
+The three compose, and this is the shape of a real adoption — take what you consume, say where it is
+read from, add your own fields:
+
+```ts
+import {
+  extendConfig, parseConfig, pickSchema, remapSchema, fromSeconds, string, boolean, PLATFORM_SCHEMA,
+} from '@munaxa/config';
+
+export const APP_SCHEMA = extendConfig(PLATFORM, {
   DOCS_STORAGE_BUCKET: string(),
   DOCS_OCR_ENABLED: boolean({ default: false }),
 });
