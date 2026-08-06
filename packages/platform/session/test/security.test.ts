@@ -158,3 +158,39 @@ describe('what the user is shown', () => {
     expect((view.userAgent as string).length).toBe(200);
   });
 });
+
+describe('device trust survives nothing it should not', () => {
+  it('an in-flight request does not resurrect trust that untrustAll removed', async () => {
+    // A password change calls untrustAll. If the device is making a request at that moment, the
+    // 1.0 shape — read the record, set lastSeenAt, write the whole thing back — carried the old
+    // trustedAt over the untrust. The device stayed trusted, nothing errored, and the user
+    // believed they had revoked it.
+    const { devices } = fixture();
+    const print = { clientId: 'browser-race' };
+
+    const { device } = await devices.recognize(ROOT_TENANT_ID, USER, print);
+    await devices.trust(ROOT_TENANT_ID, device.id);
+    expect((await devices.recognize(ROOT_TENANT_ID, USER, print)).trusted).toBe(true);
+
+    // The untrust and the request race. Either order must end with the device untrusted.
+    await Promise.all([
+      devices.untrustAll(ROOT_TENANT_ID, USER),
+      devices.recognize(ROOT_TENANT_ID, USER, print),
+    ]);
+
+    expect((await devices.recognize(ROOT_TENANT_ID, USER, print)).trusted).toBe(false);
+  });
+
+  it('two concurrent first sightings register one device, not two', async () => {
+    const { devices } = fixture();
+    const print = { clientId: 'browser-dup' };
+
+    await Promise.all(
+      Array.from({ length: 10 }, () => devices.recognize(ROOT_TENANT_ID, USER, print)),
+    );
+
+    // Otherwise the user is asked to verify a "new device" they have already verified, once per
+    // duplicate row, and trusting one of them trusts none of the others.
+    expect(await devices.list(ROOT_TENANT_ID, USER)).toHaveLength(1);
+  });
+});

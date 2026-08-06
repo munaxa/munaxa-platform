@@ -98,7 +98,33 @@ export class MemoryDeviceRegistry implements DeviceRegistryPort {
   }
 
   async save(device: DeviceRecord): Promise<void> {
+    // Upsert on the fingerprint, not only on the id: two concurrent first sightings of one device
+    // must not become two records, or the user is asked to verify a device they just verified.
+    const existing = [...this.#devices.values()].find(
+      (candidate) =>
+        candidate.tenantId === device.tenantId &&
+        candidate.userId === device.userId &&
+        candidate.fingerprint === device.fingerprint,
+    );
+    if (existing && existing.id !== device.id) this.#devices.delete(existing.id);
     this.#devices.set(device.id, device);
+  }
+
+  async touch(
+    tenantId: TenantId,
+    deviceId: DeviceId,
+    at: number,
+    ipAddress?: string,
+  ): Promise<void> {
+    // Only the two named fields. Writing the whole record here is what would let a request in
+    // flight carry an old `trustedAt` over an untrust that had already landed.
+    const device = this.#devices.get(deviceId);
+    if (!device || device.tenantId !== tenantId) return;
+    this.#devices.set(deviceId, {
+      ...device,
+      lastSeenAt: at,
+      ...(ipAddress === undefined ? {} : { lastIpAddress: ipAddress }),
+    });
   }
 
   async remove(tenantId: TenantId, deviceId: DeviceId): Promise<boolean> {

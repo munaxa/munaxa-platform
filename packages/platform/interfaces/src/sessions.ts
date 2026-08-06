@@ -118,6 +118,40 @@ export interface DeviceRegistryPort {
   find(tenantId: TenantId, userId: UserId, fingerprint: string): Promise<DeviceRecord | undefined>;
   get(tenantId: TenantId, deviceId: DeviceId): Promise<DeviceRecord | undefined>;
   list(tenantId: TenantId, userId: UserId): Promise<readonly DeviceRecord[]>;
+  /**
+   * Insert or replace the whole record.
+   *
+   * Whole-record writes lose concurrent updates to fields the writer did not intend to touch, so
+   * the platform uses this only where it owns every field it is writing. Recording that a device
+   * was seen goes through `touch` instead — see below for why that distinction is a security one.
+   *
+   * Adapters must upsert on `(tenant_id, user_id, fingerprint)`, not only on `id`: two concurrent
+   * first sightings of one device would otherwise register it twice, and the user would be asked
+   * to verify a "new device" they had just verified.
+   *
+   * @atomicity atomic
+   * @consistency linearizable
+   * @idempotency idempotent
+   */
   save(device: DeviceRecord): Promise<void>;
+  /**
+   * Record that a device was seen, touching only the last-seen fields.
+   *
+   * This exists because the obvious implementation — read the record, set `lastSeenAt`, write it
+   * back — silently resurrects trust. A password change calls `untrustAll`; if the device is
+   * making a request at that moment, the untrust write and the last-seen write race, and the
+   * last-seen write carries the old `trustedAt` with it. The device stays trusted, nothing errors,
+   * and the user believes they have just revoked it.
+   *
+   * Adapters write only the named columns:
+   *
+   *     UPDATE devices SET last_seen_at = $at, last_ip_address = COALESCE($ip, last_ip_address)
+   *      WHERE tenant_id = $tenantId AND id = $deviceId
+   *
+   * @atomicity atomic — a partial-record update, never a read-modify-write
+   * @consistency linearizable
+   * @idempotency idempotent
+   */
+  touch(tenantId: TenantId, deviceId: DeviceId, at: number, ipAddress?: string): Promise<void>;
   remove(tenantId: TenantId, deviceId: DeviceId): Promise<boolean>;
 }

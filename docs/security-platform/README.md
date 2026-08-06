@@ -46,6 +46,9 @@ logic. When a product needs a security capability that is not here, the answer i
   how to prove your adapter provides it.
 - [**Production readiness audit**](./production-readiness-audit.md) — the P2 review: scores,
   confirmed defects with reproductions, remediation plan and the Go/No-Go call.
+- [**Distributed hardening report**](./distributed-hardening-report.md) — the P3 phase: what was
+  wrong and why it was invisible, the full concurrency sweep, how the fixes are proven, the
+  scalability and security reviews, and the conditions on the Go.
 - [**Platform 2.0 migration**](./migration/platform-2.0.md) — breaking changes, adapter changes,
   upgrade steps and the rollback story.
 - **Product migration guides** — [Munaxa Docs](./migration/munaxa-docs.md),
