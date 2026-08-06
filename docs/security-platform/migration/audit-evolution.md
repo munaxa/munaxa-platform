@@ -109,6 +109,41 @@ imported chain unverifiable the day local ids are reassigned.
 **Platform-native formats declare neither, so they are never passed either.** That is why this was
 additive: no existing digest can change by the presence of a field its format never sees.
 
+### Appending under your own vocabulary
+
+The whole pipeline is generic, defaulted to the platform's closed union:
+
+```ts
+type DocsAction = 'DOCUMENT_DOWNLOADED' | 'WORKFLOW_APPROVED';
+
+const repository: AuditRepositoryPort<DocsAction> = new PrismaAuditRepository();
+const audit = new AuditService<DocsAction>({ repository, canonicalFormat: docsV3, generateId });
+
+await audit.write(event, { transaction: tx });   // event.name is checked against DocsAction
+```
+
+`AuditSealer`, `AuditRepositoryPort`, `AuditSinkPort`, `AuditExporterPort` and `AuditService` all
+take `TName extends string = SecurityEventName`. Code written against the default is unchanged.
+
+`AuditService.record()` stays on the platform vocabulary — it builds events from `SECURITY_EVENTS`
+via the ambient security context, so it is declared with a `this: AuditService<SecurityEventName>`
+parameter. A product with its own names uses `write()`.
+
+### Minting your own record id
+
+```ts
+new AuditService<DocsAction>({ repository, generateId: (sequence) => uuidv7() });
+```
+
+**The generator runs before the record is hashed.** That ordering is the point: the platform's own
+id is `aud_${sequence}_${hash…}`, derived from the digest and therefore only computable afterwards —
+but a product whose digest *covers* its id needs the id first, or the two are circular. Supplying a
+generator flips the order and passes the result to the canonical format as `recordId`. Omit it and
+today's behaviour is exactly preserved, hash-derived id included.
+
+The generator owns uniqueness. The platform does not retry a collision: an id that repeats is a
+broken generator, and minting a second one quietly would hide that while two records share a row.
+
 ### Using your own event vocabulary
 
 `SecurityEvent` and `AuditRecord` take the event name as a type parameter, defaulted to the closed

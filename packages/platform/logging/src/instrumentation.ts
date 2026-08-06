@@ -1,5 +1,5 @@
 import type { LogFields, LoggerPort, MetricsPort } from '@munaxa/interfaces';
-import { severityFor, type SecurityEvent, type SecurityEventName } from '@munaxa/types';
+import { severityFor, type AnyAuditEvent, type SecurityEventName } from '@munaxa/types';
 import { maskEmail } from './redaction.js';
 
 /**
@@ -28,7 +28,9 @@ const SEVERITY_TO_LEVEL = {
  */
 export function logSecurityEvent(
   logger: LoggerPort,
-  event: SecurityEvent,
+  // Any vocabulary: a product's own audit events are logged the same way the platform's are, and
+  // `severityFor` already falls back for a name it does not recognise.
+  event: AnyAuditEvent,
   fields: LogFields = {},
 ): void {
   const severity = event.severity ?? severityFor(event.name);

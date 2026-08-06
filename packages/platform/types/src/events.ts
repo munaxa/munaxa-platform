@@ -183,8 +183,15 @@ export const DEFAULT_SEVERITY: Readonly<Partial<Record<SecurityEventName, EventS
   'data.exported': 'warning',
 };
 
-export function severityFor(name: SecurityEventName): EventSeverity {
-  return DEFAULT_SEVERITY[name] ?? 'info';
+/**
+ * The default severity for an event name.
+ *
+ * Accepts any string so a product's own vocabulary can be logged the same way the platform's is.
+ * A name the platform does not know has no declared default and falls back to `info`, which is the
+ * honest answer — the platform cannot rank an event it has never heard of.
+ */
+export function severityFor(name: string): EventSeverity {
+  return DEFAULT_SEVERITY[name as SecurityEventName] ?? 'info';
 }
 
 export function isSecurityEventName(value: unknown): value is SecurityEventName {

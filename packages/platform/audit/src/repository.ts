@@ -9,7 +9,12 @@ import type {
   ChainHead,
   LoggerPort,
 } from '@munaxa/interfaces';
-import { assertSameTenant, PlatformError, type TenantId } from '@munaxa/types';
+import {
+  assertSameTenant,
+  PlatformError,
+  type SecurityEventName,
+  type TenantId,
+} from '@munaxa/types';
 import { logSecurityEvent } from '@munaxa/logging';
 
 /**
@@ -25,8 +30,10 @@ export interface MemoryAuditRepositoryOptions {
   readonly maxRecords?: number;
 }
 
-export class MemoryAuditRepository implements AuditRepositoryPort {
-  readonly #records: AuditRecord[] = [];
+export class MemoryAuditRepository<
+  TName extends string = SecurityEventName,
+> implements AuditRepositoryPort<TName> {
+  readonly #records: AuditRecord<TName>[] = [];
   readonly #maxRecords: number;
   /**
    * One promise chain per tenant — this process's equivalent of `SELECT … FOR UPDATE`.
@@ -42,7 +49,7 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
     this.#maxRecords = options.maxRecords ?? 100_000;
   }
 
-  async write(record: AuditRecord): Promise<void> {
+  async write(record: AuditRecord<TName>): Promise<void> {
     this.#records.push(record);
     if (this.#records.length > this.#maxRecords) this.#records.shift();
   }
@@ -57,9 +64,9 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
 
   async appendChained(
     tenantId: TenantId,
-    seal: AuditSealer,
+    seal: AuditSealer<TName>,
     options: AuditAppendOptions = {},
-  ): Promise<AuditRecord> {
+  ): Promise<AuditRecord<TName>> {
     if (options.transaction !== undefined) {
       throw new PlatformError(
         'MemoryAuditRepository cannot join an external transaction; use a database-backed adapter',
@@ -79,7 +86,7 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
     return next;
   }
 
-  #append(tenantId: TenantId, seal: AuditSealer): AuditRecord {
+  #append(tenantId: TenantId, seal: AuditSealer<TName>): AuditRecord<TName> {
     const head = this.#headOf(tenantId);
     const record = seal(head);
     this.#records.push(record);
@@ -97,7 +104,9 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
     return null;
   }
 
-  async query(query: AuditQuery): Promise<{ items: readonly AuditRecord[]; nextCursor?: string }> {
+  async query(
+    query: AuditQuery,
+  ): Promise<{ items: readonly AuditRecord<TName>[]; nextCursor?: string }> {
     const limit = Math.min(Math.max(query.limit ?? 50, 1), 500);
     // The cursor is the last sequence seen, as decimal digits. Parsed as a bigint rather than a
     // number so a cursor past 2^53 addresses the record it names instead of one nearby.
@@ -123,7 +132,7 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
       : { items };
   }
 
-  async latest(tenantId: TenantId): Promise<AuditRecord | undefined> {
+  async latest(tenantId: TenantId): Promise<AuditRecord<TName> | undefined> {
     for (let i = this.#records.length - 1; i >= 0; i--) {
       const record = this.#records[i];
       if (record?.event.tenantId === tenantId) return record;
@@ -132,14 +141,14 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
   }
 
   /** Every record for a tenant, in sequence order. The input to `verifyChain`. */
-  chain(tenantId: TenantId): readonly AuditRecord[] {
+  chain(tenantId: TenantId): readonly AuditRecord<TName>[] {
     return this.#records
       .filter((record) => record.event.tenantId === tenantId)
       .sort((a, b) => compareSequences(a.sequence, b.sequence));
   }
 
   /** Read one record, refusing a cross-tenant read the way a real repository must. */
-  get(tenantId: TenantId, id: string): AuditRecord | undefined {
+  get(tenantId: TenantId, id: string): AuditRecord<TName> | undefined {
     const record = this.#records.find((entry) => entry.id === id);
     if (!record) return undefined;
     assertSameTenant(tenantId, record.event.tenantId);
@@ -164,14 +173,16 @@ export function compareSequences(a: AuditSequence, b: AuditSequence): number {
 }
 
 /** Mirrors audit records into the structured log, so `grep` works during an incident. */
-export class LoggingAuditSink implements AuditSinkPort {
+export class LoggingAuditSink<
+  TName extends string = SecurityEventName,
+> implements AuditSinkPort<TName> {
   readonly #logger: LoggerPort;
 
   constructor(logger: LoggerPort) {
     this.#logger = logger;
   }
 
-  async write(record: AuditRecord): Promise<void> {
+  async write(record: AuditRecord<TName>): Promise<void> {
     logSecurityEvent(this.#logger, record.event, {
       auditId: record.id,
       // A bigint has no JSON representation and throws inside `JSON.stringify`, which would turn a
@@ -190,17 +201,19 @@ export class LoggingAuditSink implements AuditSinkPort {
  * trade for a mirror sink, never for the primary repository, which is why the durable store is
  * wired directly and only the exporters are batched.
  */
-export class BatchingSink implements AuditSinkPort {
-  readonly #inner: AuditSinkPort;
+export class BatchingSink<
+  TName extends string = SecurityEventName,
+> implements AuditSinkPort<TName> {
+  readonly #inner: AuditSinkPort<TName>;
   readonly #maxBatch: number;
-  #buffer: AuditRecord[] = [];
+  #buffer: AuditRecord<TName>[] = [];
 
-  constructor(inner: AuditSinkPort, maxBatch = 50) {
+  constructor(inner: AuditSinkPort<TName>, maxBatch = 50) {
     this.#inner = inner;
     this.#maxBatch = maxBatch;
   }
 
-  async write(record: AuditRecord): Promise<void> {
+  async write(record: AuditRecord<TName>): Promise<void> {
     this.#buffer.push(record);
     if (this.#buffer.length >= this.#maxBatch) await this.flush();
   }

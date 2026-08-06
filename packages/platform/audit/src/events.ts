@@ -90,7 +90,13 @@ export function anonymousAuditEvent(
  * These are the ones a regulator, an incident responder or a customer's security team asks for
  * by name. A product can quieten the rest; it cannot quieten these.
  */
-export const NON_SUPPRESSIBLE_EVENTS: ReadonlySet<SecurityEventName> = new Set([
+/**
+ * Typed as `ReadonlySet<string>` rather than `ReadonlySet<SecurityEventName>` so a membership test
+ * against a product's own vocabulary is an ordinary lookup rather than a cast. The contents are
+ * still platform names — a product event is simply never in the set, which is the correct answer:
+ * only the platform can declare one of its own events non-suppressible.
+ */
+export const NON_SUPPRESSIBLE_EVENTS: ReadonlySet<string> = new Set<string>([
   'auth.login.succeeded',
   'auth.login.failed',
   'auth.account.locked',
