@@ -3,7 +3,6 @@ import type { CachePort, CounterPort, LockPort } from './cache.js';
 import type {
   AuditRepositoryPort,
   AuditSinkPort,
-  EventPublisherPort,
   LoggerPort,
   MetricsPort,
 } from './observability.js';
@@ -14,22 +13,10 @@ import type {
   UserDirectoryPort,
 } from './identity.js';
 import type { DeviceRegistryPort, SessionStorePort } from './sessions.js';
-import type {
-  ApiKeyStorePort,
-  RefreshTokenStorePort,
-  ResetTokenStorePort,
-  SigningKeyPort,
-} from './tokens.js';
+import type { ApiKeyStorePort, RefreshTokenStorePort, ResetTokenStorePort } from './tokens.js';
 import type { RoleAssignmentPort, RoleRepositoryPort } from './authorization.js';
 import type { TemplateRendererPort } from './delivery.js';
-import type {
-  FeatureFlagPort,
-  HttpClientPort,
-  IdGeneratorPort,
-  RandomPort,
-  SecretsPort,
-  TenantConfigPort,
-} from './platform.js';
+import type { FeatureFlagPort, HttpClientPort, SecretsPort, TenantConfigPort } from './platform.js';
 import { createToken } from './registry.js';
 
 /**
@@ -40,11 +27,8 @@ import { createToken } from './registry.js';
  */
 export const PORTS = {
   clock: createToken<Clock>('platform.clock'),
-  random: createToken<RandomPort>('platform.random'),
-  ids: createToken<IdGeneratorPort>('platform.ids'),
   logger: createToken<LoggerPort>('platform.logger'),
   metrics: createToken<MetricsPort>('platform.metrics'),
-  events: createToken<EventPublisherPort>('platform.events'),
   httpClient: createToken<HttpClientPort>('platform.httpClient'),
 
   cache: createToken<CachePort>('platform.cache'),
@@ -69,7 +53,6 @@ export const PORTS = {
   refreshTokens: createToken<RefreshTokenStorePort>('platform.refreshTokens'),
   resetTokens: createToken<ResetTokenStorePort>('platform.resetTokens'),
   apiKeys: createToken<ApiKeyStorePort>('platform.apiKeys'),
-  signingKeys: createToken<SigningKeyPort>('platform.signingKeys'),
 
   roles: createToken<RoleRepositoryPort>('platform.roles'),
   roleAssignments: createToken<RoleAssignmentPort>('platform.roleAssignments'),

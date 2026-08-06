@@ -1,5 +1,6 @@
 import type { CachePort, CredentialRecord, UserDirectoryPort } from '@munaxa/interfaces';
 import {
+  cacheKey,
   PlatformError,
   systemClock,
   type AuthMethod,
@@ -12,7 +13,7 @@ import {
   type TenantId,
   type UserId,
 } from '@munaxa/types';
-import { dummyPasswordHash, type PasswordHasher } from '@munaxa/crypto';
+import { dummyPasswordHash, sha256Hex, type PasswordHasher } from '@munaxa/crypto';
 import type { PasswordPolicyService } from './password-policy.js';
 
 /**
@@ -318,12 +319,23 @@ export class LoginService {
  * Lockout state is keyed by identifier rather than by user id on purpose: an attacker guessing at
  * an address that does not exist must be rate-limited too, or the lockout becomes an oracle.
  */
+/**
+ * Identifiers are hashed rather than embedded.
+ *
+ * The raw value is an email address, and a Redis keyspace is dumped, logged and shoulder-surfed
+ * far more casually than a database table. Hashing keeps the key stable and the address private;
+ * the tenant segment is escaped so it cannot run into the digest.
+ */
+function subjectDigest(identifier: string): string {
+  return sha256Hex(identifier.toLowerCase()).slice(0, 32);
+}
+
 function failureKey(tenantId: TenantId, identifier: string): string {
-  return `auth:failures:${tenantId}:${identifier.toLowerCase()}`;
+  return cacheKey('auth', 'failures', tenantId, subjectDigest(identifier));
 }
 
 function lockKey(tenantId: TenantId, identifier: string): string {
-  return `auth:lock:${tenantId}:${identifier.toLowerCase()}`;
+  return cacheKey('auth', 'lock', tenantId, subjectDigest(identifier));
 }
 
 /** Bind an authenticated outcome to a session id once the product has created one. */

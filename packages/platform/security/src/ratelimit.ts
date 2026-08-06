@@ -1,6 +1,7 @@
 import { SlidingWindowCounter, TokenBucket } from '@munaxa/cache';
 import type { CachePort } from '@munaxa/interfaces';
 import {
+  cacheKey,
   systemClock,
   type Clock,
   type DurationMs,
@@ -123,7 +124,7 @@ export class RateLimiter {
     target: RateLimitTarget,
     subject: string,
   ): Promise<RateLimitDecision> {
-    const key = `rl:${rule.id}:${target.tenantId}:${subject}`;
+    const key = cacheKey('rl', rule.id, target.tenantId, subject);
     const cost = rule.cost ?? 1;
 
     try {
@@ -203,7 +204,7 @@ export class RateLimiter {
     const rule = this.#rules.find((candidate) => candidate.id === ruleId);
     if (!rule) return false;
 
-    const key = `rl:${ruleId}:${tenantId}:${subject}`;
+    const key = cacheKey('rl', ruleId, tenantId, subject);
     await this.#window.reset(key, rule.window);
     await this.#cache.delete(key);
     await this.#cache.delete(`${key}:violations`);

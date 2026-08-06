@@ -137,22 +137,6 @@ export interface ExportResult {
   readonly location?: string;
 }
 
-/**
- * Fire-and-forget domain events.
- *
- * The platform publishes; products decide whether that means an in-process emitter, a queue or
- * an outbox table. Publishing must never throw into the caller's happy path — a broken bus is
- * not a reason to fail a login — so implementations swallow and log their own transport errors.
- */
-export interface EventPublisherPort {
-  publish(event: SecurityEvent): Promise<void>;
-}
-
-export interface EventSubscriberPort {
-  /** Pass '*' to receive every event. */
-  subscribe(name: string, handler: (event: SecurityEvent) => void | Promise<void>): () => void;
-}
-
 /** Timing and counter instrumentation, kept separate from logs so metrics stay cheap. */
 export interface MetricsPort {
   increment(name: string, value?: number, tags?: Readonly<Record<string, string>>): void;

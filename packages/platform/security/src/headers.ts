@@ -61,6 +61,44 @@ export const DEFAULT_CSP: CspDirectives = {
 };
 
 /**
+ * A CSP a React application will actually load under, for the rollout period.
+ *
+ * `DEFAULT_CSP` is the destination and it is correct. It is also the single most likely cause of
+ * a failed first deploy, for a reason that is not obvious from reading it: in every browser that
+ * supports `strict-dynamic`, the `'self'` host-source in `script-src` is **ignored**. Any
+ * `<script src>` without a nonce is blocked. `style-src 'self'` likewise blocks the inline styles
+ * React and every CSS-in-JS library emit.
+ *
+ * A team that meets that on deploy day does not carefully add nonces — they turn the CSP off, and
+ * the strict policy never arrives. So this exists: a policy that is meaningfully stronger than
+ * nothing, loads an ordinary bundled SPA, and is explicitly a waypoint.
+ *
+ * The intended sequence:
+ *
+ *  1. Ship `compatibleCsp()` in report-only mode and watch the reports.
+ *  2. Ship `compatibleCsp()` enforcing.
+ *  3. Add nonces to your script tags, drop `'unsafe-inline'` from `style-src`.
+ *  4. Move to `DEFAULT_CSP`.
+ *
+ * What it does **not** relax: `object-src`, `base-uri`, `frame-ancestors` and `form-action` stay
+ * denied, because those are the directives that turn a partial injection into script execution or
+ * a clickjack, and none of them are what breaks a React build.
+ */
+export function compatibleCsp(overrides: Partial<CspDirectives> = {}): CspDirectives {
+  return {
+    ...DEFAULT_CSP,
+    // No `strict-dynamic`: with it, the host-source below would be ignored and every
+    // non-nonced bundle script blocked — which is the whole problem this preset exists for.
+    'script-src': ["'self'"],
+    // React and CSS-in-JS inject style elements at runtime. Nonces on styles are rarer and
+    // harder to thread through than nonces on scripts, so this is the directive that stays
+    // relaxed longest in practice.
+    'style-src': ["'self'", "'unsafe-inline'"],
+    ...overrides,
+  };
+}
+
+/**
  * Off by default, everywhere.
  *
  * A product that needs the camera enables it for itself; the point of the header is that a

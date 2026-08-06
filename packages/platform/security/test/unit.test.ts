@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { KeyRing, secureBytes } from '@munaxa/crypto';
 import { FixedClock, ROOT_TENANT_ID, isPlatformError, type PlatformRequest } from '@munaxa/types';
 import {
+  compatibleCsp,
   CsrfProtection,
   DEFAULT_CSP,
   RiskEngine,
@@ -365,5 +366,30 @@ describe('risk engine', () => {
       signals: [{ name: 'liar', weight: 100, evaluate: () => 10_000 }],
     });
     expect((await engineWithLiar.assess({ tenantId: ROOT_TENANT_ID })).score).toBe(100);
+  });
+});
+
+describe('compatibleCsp', () => {
+  it('drops strict-dynamic, which is what silently blocks bundle scripts', () => {
+    // With 'strict-dynamic' present the 'self' host-source is ignored by every browser that
+    // supports it, so a non-nonced <script src> is blocked. That is the failed first deploy.
+    expect(compatibleCsp()['script-src']).toEqual(["'self'"]);
+    expect(compatibleCsp()['script-src']).not.toContain("'strict-dynamic'");
+  });
+
+  it('allows the inline styles React emits', () => {
+    expect(compatibleCsp()['style-src']).toContain("'unsafe-inline'");
+  });
+
+  it('keeps the directives that actually stop an injection becoming execution', () => {
+    const csp = compatibleCsp();
+    expect(csp['object-src']).toEqual(["'none'"]);
+    expect(csp['base-uri']).toEqual(["'none'"]);
+    expect(csp['frame-ancestors']).toEqual(["'none'"]);
+    expect(csp['form-action']).toEqual(["'self'"]);
+  });
+
+  it('is a waypoint, not a synonym for the strict policy', () => {
+    expect(compatibleCsp()).not.toEqual(DEFAULT_CSP);
   });
 });

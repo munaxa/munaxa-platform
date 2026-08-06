@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cacheKey,
+  keySegment,
   DAY,
   FixedClock,
   MINUTE,
@@ -139,5 +141,29 @@ describe('pagination', () => {
     expect(normalizePageRequest({ limit: 0 }).limit).toBe(50);
     expect(normalizePageRequest().limit).toBe(50);
     expect(emptyPage().items).toEqual([]);
+  });
+});
+
+describe('cache key composition', () => {
+  it('keeps distinct segment lists distinct', () => {
+    // The collision this exists to prevent: tenant "a:b" + user "c" and tenant "a" + user "b:c"
+    // both produced "rbac:a:b:c" when keys were interpolated by hand. For a permission cache that
+    // is one tenant being served another tenant's resolved grants.
+    expect(cacheKey('rbac', 'a:b', 'c')).not.toBe(cacheKey('rbac', 'a', 'b:c'));
+  });
+
+  it('keeps an escaped separator distinct from a literal one', () => {
+    // '%' must be escaped before ':', or a literal '%3A' in the input decodes to the same key as
+    // an escaped ':' and the encoding stops being injective.
+    expect(cacheKey('t', '%3A')).not.toBe(cacheKey('t', ':'));
+  });
+
+  it('is stable, so a key survives a deployment', () => {
+    expect(cacheKey('rbac', 'tenant-1', 'user-1')).toBe('rbac:tenant-1:user-1');
+  });
+
+  it('escapes every segment, including the prefix', () => {
+    expect(keySegment('a:b')).toBe('a%3Ab');
+    expect(keySegment('100%')).toBe('100%25');
   });
 });

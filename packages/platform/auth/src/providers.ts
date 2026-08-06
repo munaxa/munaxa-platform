@@ -257,18 +257,29 @@ export const providerPresets = {
     };
   },
 
-  firebase(projectId: string, clientId: string): OidcProviderConfig {
-    return {
-      id: 'firebase',
-      kind: 'firebase',
-      issuer: `https://securetoken.google.com/${projectId}`,
-      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-      tokenEndpoint: 'https://securetoken.googleapis.com/v1/token',
-      jwksUri:
-        'https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com',
-      clientId,
-      scopes: ['openid', 'email'],
-    };
+  /**
+   * Firebase — **not** a drop-in preset, and deliberately harder to use than the others.
+   *
+   * `OidcProvider.completeAuthorization` does not verify the id token's signature. That is safe
+   * for the presets above because the token is fetched by this process from the provider's token
+   * endpoint over TLS, so the transport is the proof. Firebase id tokens do not normally arrive
+   * that way — they arrive from the *client*, which is exactly the case where an unverified
+   * signature means anyone can mint an identity.
+   *
+   * Returning a config that composes with the standard flow would therefore hand a product a
+   * loaded footgun that looks like the other four. Until the platform ships JWKS verification
+   * (`SigningKeyPort` has no verifier today), this throws and says what to do instead.
+   *
+   * @throws always. Verify the token with the Firebase Admin SDK in the product, then call
+   *   `IdentityProviderRegistry` with the verified claims.
+   */
+  firebase(_projectId: string, _clientId: string): never {
+    throw new PlatformError(
+      'The Firebase preset is withdrawn: OidcProvider does not verify id-token signatures, and ' +
+        'Firebase tokens arrive from the client rather than from the token endpoint. Verify the ' +
+        'token with the Firebase Admin SDK and pass the verified claims to the registry.',
+      { code: 'CONFIG_INVALID' },
+    );
   },
 } as const;
 

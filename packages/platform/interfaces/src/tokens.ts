@@ -162,28 +162,3 @@ export interface ApiKeyStorePort {
   list(tenantId: TenantId): Promise<readonly ApiKeyRecord[]>;
   update(record: ApiKeyRecord): Promise<void>;
 }
-
-/**
- * Signing material for JWTs and other detached signatures.
- *
- * `kid` selection lives here so key rotation is a store concern, not a caller concern: the
- * signer asks for "the current key", verifiers ask for "the key with this id", and a rotation is
- * two overlapping keys rather than a deployment.
- */
-export interface SigningKeyPort {
-  current(): Promise<SigningKey>;
-  byId(kid: string): Promise<SigningKey | undefined>;
-  /** Every key a verifier should accept, including recently retired ones. */
-  verificationKeys(): Promise<readonly SigningKey[]>;
-}
-
-export interface SigningKey {
-  readonly kid: string;
-  readonly algorithm: 'HS256' | 'HS512' | 'RS256' | 'ES256';
-  /** Symmetric secret, or PEM private key for asymmetric algorithms. */
-  readonly privateKey: string;
-  /** PEM public key. Absent for symmetric algorithms. */
-  readonly publicKey?: string;
-  readonly notBefore?: number;
-  readonly notAfter?: number;
-}

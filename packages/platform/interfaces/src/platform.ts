@@ -33,25 +33,6 @@ export interface TenantConfigPort {
 }
 
 /**
- * Randomness, as a port.
- *
- * Production always uses `node:crypto`. The seam exists so tests can make token generation
- * deterministic without monkey-patching a global — and so a deployment on a runtime with a
- * different CSPRNG has somewhere to plug it in.
- */
-export interface RandomPort {
-  bytes(length: number): Uint8Array;
-  /** Uniform in [0, maxExclusive). Must be rejection-sampled, not modulo-biased. */
-  int(maxExclusive: number): number;
-  uuid(): string;
-}
-
-export interface IdGeneratorPort {
-  /** Sortable, collision-resistant identifier. */
-  next(prefix?: string): string;
-}
-
-/**
  * The minimum HTTP client the platform needs to talk to an identity provider.
  *
  * Small enough that `fetch`, undici, axios or a corporate-proxy-aware client all satisfy it in a
