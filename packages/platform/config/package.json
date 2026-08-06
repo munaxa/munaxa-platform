@@ -27,7 +27,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@munaxa/types": "workspace:^"
+    "@munaxa/types": "workspace:^",
+    "@munaxa/interfaces": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

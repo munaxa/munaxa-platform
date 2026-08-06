@@ -273,6 +273,9 @@ importers:
 
   packages/platform/config:
     dependencies:
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
       '@munaxa/types':
         specifier: workspace:^
         version: link:../types
