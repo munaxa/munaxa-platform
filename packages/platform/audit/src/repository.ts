@@ -1,5 +1,7 @@
 import type {
+  AuditAppendOptions,
   AuditQuery,
+  AuditSequence,
   AuditRecord,
   AuditRepositoryPort,
   AuditSealer,
@@ -7,7 +9,7 @@ import type {
   ChainHead,
   LoggerPort,
 } from '@munaxa/interfaces';
-import { assertSameTenant, type TenantId } from '@munaxa/types';
+import { assertSameTenant, PlatformError, type TenantId } from '@munaxa/types';
 import { logSecurityEvent } from '@munaxa/logging';
 
 /**
@@ -45,7 +47,25 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
     if (this.#records.length > this.#maxRecords) this.#records.shift();
   }
 
-  async appendChained(tenantId: TenantId, seal: AuditSealer): Promise<AuditRecord> {
+  /**
+   * There is no transaction to join: this store commits by pushing onto an array, so nothing it
+   * could do would make a record roll back with the caller's work. Saying so is the honest
+   * answer — an in-memory store that accepted a transaction handle and ignored it would let a
+   * product's tests pass on a guarantee its production adapter is the only thing that provides.
+   */
+  readonly joinsTransactions = false;
+
+  async appendChained(
+    tenantId: TenantId,
+    seal: AuditSealer,
+    options: AuditAppendOptions = {},
+  ): Promise<AuditRecord> {
+    if (options.transaction !== undefined) {
+      throw new PlatformError(
+        'MemoryAuditRepository cannot join an external transaction; use a database-backed adapter',
+        { code: 'CONFIG_INVALID' },
+      );
+    }
     const previous = this.#appendLocks.get(tenantId) ?? Promise.resolve();
     const next = previous.then(
       () => this.#append(tenantId, seal),
@@ -79,12 +99,14 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
 
   async query(query: AuditQuery): Promise<{ items: readonly AuditRecord[]; nextCursor?: string }> {
     const limit = Math.min(Math.max(query.limit ?? 50, 1), 500);
-    const after = query.cursor ? Number.parseInt(query.cursor, 10) : undefined;
+    // The cursor is the last sequence seen, as decimal digits. Parsed as a bigint rather than a
+    // number so a cursor past 2^53 addresses the record it names instead of one nearby.
+    const after = query.cursor ? BigInt(query.cursor) : undefined;
 
     const matched = this.#records.filter((record) => {
       const event = record.event;
       if (event.tenantId !== query.tenantId) return false;
-      if (after !== undefined && record.sequence <= after) return false;
+      if (after !== undefined && BigInt(record.sequence) <= after) return false;
       if (query.from !== undefined && event.occurredAt < query.from) return false;
       if (query.to !== undefined && event.occurredAt > query.to) return false;
       if (query.names && !query.names.includes(event.name)) return false;
@@ -113,7 +135,7 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
   chain(tenantId: TenantId): readonly AuditRecord[] {
     return this.#records
       .filter((record) => record.event.tenantId === tenantId)
-      .sort((a, b) => a.sequence - b.sequence);
+      .sort((a, b) => compareSequences(a.sequence, b.sequence));
   }
 
   /** Read one record, refusing a cross-tenant read the way a real repository must. */
@@ -129,6 +151,18 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
   }
 }
 
+/**
+ * Order two chain positions, whichever representation each uses.
+ *
+ * Subtraction is not an option: `bigint - bigint` is a bigint, which `Array.sort` cannot use, and
+ * mixing the two throws. Comparison operators are the one place the two representations do agree.
+ */
+export function compareSequences(a: AuditSequence, b: AuditSequence): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
 /** Mirrors audit records into the structured log, so `grep` works during an incident. */
 export class LoggingAuditSink implements AuditSinkPort {
   readonly #logger: LoggerPort;
@@ -138,7 +172,13 @@ export class LoggingAuditSink implements AuditSinkPort {
   }
 
   async write(record: AuditRecord): Promise<void> {
-    logSecurityEvent(this.#logger, record.event, { auditId: record.id, sequence: record.sequence });
+    logSecurityEvent(this.#logger, record.event, {
+      auditId: record.id,
+      // A bigint has no JSON representation and throws inside `JSON.stringify`, which would turn a
+      // mirror-sink write into a thrown error on the request path. Number sequences keep their
+      // existing shape, so no log consumer's parser changes.
+      sequence: typeof record.sequence === 'bigint' ? record.sequence.toString() : record.sequence,
+    });
   }
 }
 

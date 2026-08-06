@@ -41,9 +41,13 @@ describe('the seam stays a seam', () => {
     // Ports with default implementations become the implementation nobody can replace.
     // `concurrency.ts` is exempt below because it carries the errors adapters *signal with*, not
     // behaviour they inherit — an adapter cannot report a chain conflict without a shared type.
+    // `observability.ts` is exempt for the same reason at one remove: `AuditSequence` is a union of
+    // two representations, and comparing or advancing one correctly (`1 === 1n` is false) is
+    // arithmetic on the type, not a policy an adapter could sensibly disagree with. Both
+    // exemptions are pinned by the tests below.
     for (const [file, content] of sources) {
       if (file === 'registry.ts' || file === 'ports.ts' || file === 'index.ts') continue;
-      if (file === 'concurrency.ts') continue;
+      if (file === 'concurrency.ts' || file === 'observability.ts') continue;
       expect(content, file).not.toMatch(/^export (class|function|const enum) /m);
     }
   });
@@ -57,6 +61,20 @@ describe('the seam stays a seam', () => {
     for (const declaration of source.match(/^export (class|function|const enum) .*/gm) ?? []) {
       expect(declaration, declaration).toMatch(
         /^export (class \w+Error extends Error|function is\w+\(error: unknown\))/,
+      );
+    }
+  });
+
+  it('keeps observability.ts to sequence arithmetic', () => {
+    // The exemption is only safe while nothing here decides anything. A function that took a
+    // record, a port or an option bag would be behaviour; these take sequences and return
+    // sequences, which is the whole of what is allowed.
+    const source = sources.find(([file]) => file === 'observability.ts')?.[1] ?? '';
+    expect(source).not.toBe('');
+
+    for (const declaration of source.match(/^export (class|function|const enum) .*/gm) ?? []) {
+      expect(declaration, declaration).toMatch(
+        /^export function \w+\((\w+: AuditSequence, )?\w+: AuditSequence\): (boolean|AuditSequence)/,
       );
     }
   });

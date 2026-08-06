@@ -52,6 +52,19 @@ export interface SessionManagerOptions {
   readonly policyFor?: (tenantId: TenantId) => Partial<SessionPolicy> | undefined;
   /** Emitted for every lifecycle event. Wire it to the audit service and the event bus. */
   readonly onEvent?: (event: SessionEvent) => void | Promise<void>;
+  /**
+   * Mint the identifier for a new session. Defaults to the platform's `sess_…` sortable id.
+   *
+   * Supplied by products whose store constrains the format. A `uuid` column will not accept
+   * `sess_…`, and a product that already keys sessions — or refresh families — by UUID would have
+   * to migrate the column type and every foreign key pointing at it to adopt the manager. That is
+   * a schema rewrite in exchange for an identifier format, which no product should have to trade.
+   *
+   * The generator owns uniqueness. The platform does not retry a collision: an id that repeats is
+   * a broken generator, and quietly minting a second one would hide it while two sessions share a
+   * row.
+   */
+  readonly generateId?: (now: number) => SessionId;
 }
 
 export interface SessionEvent {
@@ -94,6 +107,7 @@ export class SessionManager {
   readonly #onEvent: SessionManagerOptions['onEvent'];
   readonly #locks: LockPort | undefined;
   readonly #limitLockLease: DurationMs;
+  readonly #generateId: (now: number) => SessionId;
 
   constructor(options: SessionManagerOptions) {
     this.#store = options.store;
@@ -103,6 +117,8 @@ export class SessionManager {
     this.#onEvent = options.onEvent;
     this.#locks = options.locks;
     this.#limitLockLease = options.limitLockLease ?? 5_000;
+    this.#generateId =
+      options.generateId ?? ((now) => unsafeId<SessionId>(prefixedId('sess', now)));
   }
 
   /**
@@ -219,7 +235,7 @@ export class SessionManager {
 
   #build(input: CreateSessionInput, policy: SessionPolicy, now: number): SessionRecord {
     return {
-      id: unsafeId<SessionId>(prefixedId('sess', now)),
+      id: this.#generateId(now),
       tenantId: input.tenantId,
       userId: input.userId,
       createdAt: now,

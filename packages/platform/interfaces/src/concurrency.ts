@@ -11,6 +11,8 @@
  * `@munaxa/conformance` turns them into tests.
  */
 
+import type { AuditSequence } from './observability.js';
+
 /**
  * What an operation promises when two callers race.
  *
@@ -72,7 +74,7 @@ export interface OperationContract {
 export class ChainConflictError extends Error {
   constructor(
     readonly tenantId: string,
-    readonly attemptedSequence: number,
+    readonly attemptedSequence: AuditSequence,
     options?: { cause?: unknown },
   ) {
     super(

@@ -1,4 +1,11 @@
-import type { AuthMethod, DeviceId, SessionId, TenantId, UserId } from '@munaxa/types';
+import type {
+  AuthMethod,
+  DeviceId,
+  SessionId,
+  TenantId,
+  TokenFamilyId,
+  UserId,
+} from '@munaxa/types';
 
 /**
  * A session as the platform stores it.
@@ -97,6 +104,110 @@ export interface SessionStorePort {
   delete(tenantId: TenantId, sessionId: SessionId): Promise<boolean>;
   /** Housekeeping for stores without native expiry. Returns the number removed. */
   deleteExpired(tenantId: TenantId, now: number): Promise<number>;
+}
+
+/**
+ * A refresh-token lineage, with a session's lifecycle.
+ *
+ * Two architectures both call their thing "a session" and they are not the same thing:
+ *
+ * - **Stateful.** A `sessions` row is created at sign-in and consulted on every request. The
+ *   access token carries `sid`; the row decides.
+ * - **Refresh-family.** There is no session row. The access token is self-contained and
+ *   short-lived, and the only server-side object is the refresh lineage — one row per family, with
+ *   the tokens rotating within it. "Sign out everywhere" revokes families.
+ *
+ * The platform used to serve only the first, so a product built the second way could not adopt
+ * `SessionManager` without adding a table and rewriting its refresh flow — which is a product
+ * change, not a migration, and it is why the first consumer stopped here. This record is the
+ * second architecture stated in the platform's own vocabulary: the same lifecycle fields the
+ * stateful record has, keyed by family instead of by session.
+ *
+ * The payoff is that everything defined over sessions — idle and absolute deadlines, concurrency
+ * limits, revocation reasons, the conformance suite — applies unchanged to a product that has
+ * never had a sessions table.
+ */
+export interface RefreshFamily {
+  readonly id: TokenFamilyId;
+  readonly tenantId: TenantId;
+  readonly userId: UserId;
+  readonly createdAt: number;
+  readonly lastSeenAt: number;
+  /** Moves forward on each rotation. A family that stops rotating dies here. */
+  readonly idleExpiresAt: number;
+  /** Never moves. A stolen lineage kept warm by rotation still dies here. */
+  readonly absoluteExpiresAt: number;
+  readonly deviceId?: DeviceId;
+  readonly ipAddress?: string;
+  readonly userAgent?: string;
+  readonly authMethods: readonly AuthMethod[];
+  readonly mfaSatisfied: boolean;
+  readonly revokedAt?: number;
+  readonly revocationReason?: SessionRevocationReason;
+  /** Copied from the account at creation; a bump elsewhere invalidates the whole family. */
+  readonly tokenVersion: number;
+  readonly attributes?: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * The store behind a refresh-family architecture.
+ *
+ * Deliberately the same method set as `SessionStorePort`, including the same atomicity notes: the
+ * two architectures differ in what the row *is*, not in what the platform needs from it. That
+ * symmetry is what lets `sessionStoreOverFamilies` present one as the other, so a product picks
+ * its persistence model and gets identical session semantics either way.
+ */
+export interface RefreshFamilyStorePort {
+  /**
+   * @atomicity atomic
+   * @consistency linearizable
+   * @idempotency idempotent — the same family id twice is one family
+   */
+  create(family: RefreshFamily): Promise<void>;
+
+  /**
+   * Create only if the user is under `maxConcurrent` live families, atomically.
+   *
+   * Same contract, and the same warning, as `SessionStorePort.createWithinLimit`: without it the
+   * concurrency limit is enforced by a `LockPort` if one is wired, and is best-effort if not. A
+   * burst of parallel sign-ins is the normal input to this control, not an exotic one.
+   *
+   *     BEGIN;
+   *     SELECT count(*) FROM refresh_families
+   *      WHERE tenant_id = $1 AND user_id = $2 AND revoked_at IS NULL
+   *        AND idle_expires_at > $now AND absolute_expires_at > $now
+   *        FOR UPDATE;
+   *     -- evict oldest or refuse, then INSERT
+   *     COMMIT;
+   *
+   * @atomicity serialised per (tenant, user)
+   * @consistency linearizable
+   * @idempotency at-most-once
+   */
+  createWithinLimit?(
+    family: RefreshFamily,
+    limit: SessionLimit,
+  ): Promise<RefreshFamilyCreateOutcome>;
+
+  /**
+   * @atomicity none
+   * @consistency linearizable
+   * @idempotency idempotent
+   */
+  countActive?(tenantId: TenantId, userId: UserId, now: number): Promise<number>;
+  get(tenantId: TenantId, familyId: TokenFamilyId): Promise<RefreshFamily | undefined>;
+  /** Non-revoked families, most recently seen first. */
+  listByUser(tenantId: TenantId, userId: UserId): Promise<readonly RefreshFamily[]>;
+  update(family: RefreshFamily): Promise<void>;
+  delete(tenantId: TenantId, familyId: TokenFamilyId): Promise<boolean>;
+  /** Housekeeping for stores without native expiry. Returns the number removed. */
+  deleteExpired(tenantId: TenantId, now: number): Promise<number>;
+}
+
+export interface RefreshFamilyCreateOutcome {
+  readonly created: boolean;
+  /** Families the store revoked to make room, so the caller can emit events for them. */
+  readonly evicted: readonly RefreshFamily[];
 }
 
 export interface DeviceRecord {
