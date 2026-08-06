@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { MemoryAuditRepository, canonicalize, verifyChain } from '@munaxa/audit';
 import { MemoryRefreshTokenStore, MemoryResetTokenStore } from '@munaxa/auth';
 import { MemoryCache } from '@munaxa/cache';
-import { MemorySessionStore } from '@munaxa/session';
+import {
+  MemoryRefreshFamilyStore,
+  MemorySessionStore,
+  sessionStoreOverFamilies,
+} from '@munaxa/session';
 import { createHash } from 'node:crypto';
 import {
   FixedClock,
@@ -108,19 +112,31 @@ runResetTokenConformance(harness, {
   }),
 });
 
+const makeSession = (overrides: Partial<SessionRecord> = {}): SessionRecord => ({
+  id: unsafeId<SessionId>('sess-conformance'),
+  tenantId: 'conformance' as TenantId,
+  userId: unsafeId<UserId>('u1'),
+  createdAt: 1_700_000_000_000,
+  lastSeenAt: 1_700_000_000_000,
+  idleExpiresAt: 1_700_000_000_000 + 900_000,
+  absoluteExpiresAt: 1_700_000_000_000 + 43_200_000,
+  authMethods: ['password'],
+  mfaSatisfied: false,
+  tokenVersion: 1,
+  ...overrides,
+});
+
+runSessionConformance(harness, { createStore: () => new MemorySessionStore(), makeSession });
+
+/**
+ * The same suite, over a refresh-family store presented as a session store.
+ *
+ * This is the P-5 claim made checkable: a product whose only server-side auth object is a refresh
+ * lineage gets identical session semantics, proven by the identical tests rather than asserted in
+ * a migration guide. `MemoryRefreshFamilyStore` implements `createWithinLimit`, so the concurrency
+ * cases run here rather than being skipped.
+ */
 runSessionConformance(harness, {
-  createStore: () => new MemorySessionStore(),
-  makeSession: (overrides = {}): SessionRecord => ({
-    id: unsafeId<SessionId>('sess-conformance'),
-    tenantId: 'conformance' as TenantId,
-    userId: unsafeId<UserId>('u1'),
-    createdAt: 1_700_000_000_000,
-    lastSeenAt: 1_700_000_000_000,
-    idleExpiresAt: 1_700_000_000_000 + 900_000,
-    absoluteExpiresAt: 1_700_000_000_000 + 43_200_000,
-    authMethods: ['password'],
-    mfaSatisfied: false,
-    tokenVersion: 1,
-    ...overrides,
-  }),
+  createStore: () => sessionStoreOverFamilies(new MemoryRefreshFamilyStore()),
+  makeSession,
 });
