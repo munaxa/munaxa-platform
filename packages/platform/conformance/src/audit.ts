@@ -87,7 +87,9 @@ export function runAuditConformance(harness: TestHarness, options: AuditConforma
       const repository = await options.createRepository();
       await race(concurrency, (i) => append(repository, tenantA, i));
 
-      const sequences = (await options.readChain(repository, tenantA)).map((r) => BigInt(r.sequence));
+      const sequences = (await options.readChain(repository, tenantA)).map((r) =>
+        BigInt(r.sequence),
+      );
       expect(new Set(sequences).size).toBe(concurrency);
       expect(sequences.reduce((a, b) => (b > a ? b : a), 0n)).toBe(BigInt(concurrency));
     });

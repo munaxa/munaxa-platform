@@ -99,10 +99,9 @@ export class CanonicalFormatRegistry {
   register(format: CanonicalFormat): this {
     const existing = this.#formats.get(format.version);
     if (existing !== undefined && existing !== format) {
-      throw new PlatformError(
-        `canonical format version ${format.version} is already registered`,
-        { code: 'CONFIG_INVALID' },
-      );
+      throw new PlatformError(`canonical format version ${format.version} is already registered`, {
+        code: 'CONFIG_INVALID',
+      });
     }
     this.#formats.set(format.version, format);
     return this;

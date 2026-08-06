@@ -151,7 +151,8 @@ describe('identifier format', () => {
     const sessions = new SessionManager({
       store: sessionStoreOverFamilies(store),
       clock: new FixedClock(NOW),
-      generateId: () => unsafeId<SessionId>(`00000000-0000-7000-8000-${String(++n).padStart(12, '0')}`),
+      generateId: () =>
+        unsafeId<SessionId>(`00000000-0000-7000-8000-${String(++n).padStart(12, '0')}`),
     });
 
     const created = await sessions.create({
@@ -173,9 +174,9 @@ describe('MemoryRefreshFamilyStore', () => {
     const store = new MemoryRefreshFamilyStore();
     const limit = { maxConcurrent: 1, onLimitReached: 'deny', now: NOW } as const;
 
-    expect((await store.createWithinLimit(family({ id: 'a' as TokenFamilyId }), limit)).created).toBe(
-      true,
-    );
+    expect(
+      (await store.createWithinLimit(family({ id: 'a' as TokenFamilyId }), limit)).created,
+    ).toBe(true);
     const second = await store.createWithinLimit(family({ id: 'b' as TokenFamilyId }), limit);
     expect(second.created).toBe(false);
     expect(second.evicted).toEqual([]);

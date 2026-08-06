@@ -65,9 +65,7 @@ describe('environment aliases', () => {
   });
 
   it('names every accepted variable when a required field is missing', () => {
-    expect(() => parseConfig(schema, {})).toThrow(
-      /MUNAXA_DB_URL or DATABASE_URL or POSTGRES_URL/,
-    );
+    expect(() => parseConfig(schema, {})).toThrow(/MUNAXA_DB_URL or DATABASE_URL or POSTGRES_URL/);
   });
 
   it('says which name held the bad value', () => {
@@ -83,11 +81,17 @@ describe('environment aliases', () => {
       MUNAXA_ENV: { env: 'NODE_ENV' },
       MUNAXA_LOG_LEVEL: { env: 'LOG_LEVEL' },
     });
-    const resolved = parseConfig(remapped, { ...REQUIRED, NODE_ENV: 'production', LOG_LEVEL: 'warn' });
+    const resolved = parseConfig(remapped, {
+      ...REQUIRED,
+      NODE_ENV: 'production',
+      LOG_LEVEL: 'warn',
+    });
     expect(resolved.MUNAXA_ENV).toBe('production');
     expect(resolved.MUNAXA_LOG_LEVEL).toBe('warn');
     // Untouched fields keep their platform definition, defaults included.
-    expect(resolved.MUNAXA_SESSION_IDLE_TIMEOUT).toBe(PLATFORM_SCHEMA.MUNAXA_SESSION_IDLE_TIMEOUT.defaultValue);
+    expect(resolved.MUNAXA_SESSION_IDLE_TIMEOUT).toBe(
+      PLATFORM_SCHEMA.MUNAXA_SESSION_IDLE_TIMEOUT.defaultValue,
+    );
   });
 
   it('decodes a legacy encoding without renaming the variable', () => {
@@ -121,9 +125,9 @@ describe('environment aliases', () => {
     const remapped = remapSchema(PLATFORM_SCHEMA, {
       MUNAXA_ACCESS_TOKEN_TTL: { env: fromSeconds('JWT_ACCESS_TTL_SECONDS') },
     });
-    expect(() =>
-      parseConfig(remapped, { ...REQUIRED, JWT_ACCESS_TTL_SECONDS: '15m' }),
-    ).toThrow(/JWT_ACCESS_TTL_SECONDS: expected whole seconds/);
+    expect(() => parseConfig(remapped, { ...REQUIRED, JWT_ACCESS_TTL_SECONDS: '15m' })).toThrow(
+      /JWT_ACCESS_TTL_SECONDS: expected whole seconds/,
+    );
   });
 
   it('collects a decode failure alongside other problems', () => {
@@ -145,7 +149,10 @@ describe('environment aliases', () => {
 
   it('supports milliseconds too, and mixed notations in one list', () => {
     const schema = {
-      TIMEOUT: duration({ default: 1_000, env: [fromMilliseconds('LEGACY_TIMEOUT_MS'), 'TIMEOUT_2'] }),
+      TIMEOUT: duration({
+        default: 1_000,
+        env: [fromMilliseconds('LEGACY_TIMEOUT_MS'), 'TIMEOUT_2'],
+      }),
     };
     expect(parseConfig(schema, { LEGACY_TIMEOUT_MS: '250' }).TIMEOUT).toBe(250);
     expect(parseConfig(schema, { TIMEOUT_2: '2s' }).TIMEOUT).toBe(2_000);
@@ -290,7 +297,10 @@ describe('partial adoption', () => {
     const schema = extendConfig(
       remapSchema(pickSchema(PLATFORM_SCHEMA, ['MUNAXA_ENV', 'MUNAXA_ACCESS_TOKEN_TTL']), {
         MUNAXA_ENV: { env: 'NODE_ENV', path: 'env' },
-        MUNAXA_ACCESS_TOKEN_TTL: { env: fromSeconds('JWT_ACCESS_TTL_SECONDS'), path: 'auth.accessTtl' },
+        MUNAXA_ACCESS_TOKEN_TTL: {
+          env: fromSeconds('JWT_ACCESS_TTL_SECONDS'),
+          path: 'auth.accessTtl',
+        },
       }),
       { DOCS_STORAGE_BUCKET: string({ path: 'storage.bucket' }) },
     );
@@ -344,7 +354,9 @@ describe('application extension schemas', () => {
     // timeout or a password policy, so a security setting quietly stops meaning what the platform
     // documents it to mean.
     expect(() =>
-      extendConfig(PLATFORM_SCHEMA, { MUNAXA_SESSION_IDLE_TIMEOUT: string({ default: 'forever' }) }),
+      extendConfig(PLATFORM_SCHEMA, {
+        MUNAXA_SESSION_IDLE_TIMEOUT: string({ default: 'forever' }),
+      }),
     ).toThrow(/cannot redefine platform fields: MUNAXA_SESSION_IDLE_TIMEOUT/);
   });
 
@@ -359,7 +371,9 @@ describe('application extension schemas', () => {
   });
 
   it('still redacts secrets across the extended schema', () => {
-    const schema = extendConfig(PLATFORM_SCHEMA, { DOCS_API_KEY: secret({ default: 'k'.repeat(32) }) });
+    const schema = extendConfig(PLATFORM_SCHEMA, {
+      DOCS_API_KEY: secret({ default: 'k'.repeat(32) }),
+    });
     const rendered = redactConfig(schema, parseConfig(schema, REQUIRED));
     expect(rendered.DOCS_API_KEY).toBe('[redacted]');
   });
