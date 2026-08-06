@@ -1,4 +1,4 @@
-import type { CorrelationId, SecurityEvent, TenantId } from '@munaxa/types';
+import type { CorrelationId, SecurityEvent, SecurityEventName, TenantId } from '@munaxa/types';
 
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
@@ -63,9 +63,9 @@ export interface AuditSinkPort {
  */
 export type AuditSequence = number | bigint;
 
-export interface AuditRecord {
+export interface AuditRecord<TName extends string = SecurityEventName> {
   readonly id: string;
-  readonly event: SecurityEvent;
+  readonly event: SecurityEvent<Readonly<Record<string, unknown>>, TName>;
   readonly recordedAt: number;
   readonly sequence: AuditSequence;
   readonly hash: string;
@@ -79,6 +79,14 @@ export interface AuditRecord {
    * discoverable from the row rather than assumed by the verifier.
    */
   readonly formatVersion?: number;
+  /**
+   * An identifier this record carries from a system outside this store.
+   *
+   * Present only on imported chains, where the original id is part of what the digest covered.
+   * A format that hashes it declares `externalId` in `requires`; every platform-native format
+   * ignores it.
+   */
+  readonly externalId?: string;
 }
 
 export interface AuditQuery {
