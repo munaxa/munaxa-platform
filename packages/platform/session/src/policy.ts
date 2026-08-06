@@ -49,7 +49,10 @@ export function clampSessionPolicy(policy: Partial<SessionPolicy>): SessionPolic
     ...merged,
     idleTimeout: Math.min(merged.idleTimeout, SESSION_POLICY_CEILING.idleTimeout),
     absoluteTimeout: Math.min(merged.absoluteTimeout, SESSION_POLICY_CEILING.absoluteTimeout),
-    maxConcurrent: Math.min(Math.max(1, merged.maxConcurrent), SESSION_POLICY_CEILING.maxConcurrent),
+    maxConcurrent: Math.min(
+      Math.max(1, merged.maxConcurrent),
+      SESSION_POLICY_CEILING.maxConcurrent,
+    ),
     deviceTrustDuration: Math.min(
       merged.deviceTrustDuration,
       SESSION_POLICY_CEILING.deviceTrustDuration,

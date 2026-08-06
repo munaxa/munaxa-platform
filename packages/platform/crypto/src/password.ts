@@ -121,7 +121,8 @@ interface ParsedScrypt {
   hash: Buffer;
 }
 
-const SCRYPT_PATTERN = /^\$scrypt\$v=1\$n=(\d+),r=(\d+),p=(\d+)\$([A-Za-z0-9_-]+)\$([A-Za-z0-9_-]+)$/;
+const SCRYPT_PATTERN =
+  /^\$scrypt\$v=1\$n=(\d+),r=(\d+),p=(\d+)\$([A-Za-z0-9_-]+)\$([A-Za-z0-9_-]+)$/;
 
 function parseScrypt(encoded: string): ParsedScrypt | null {
   const match = SCRYPT_PATTERN.exec(encoded);

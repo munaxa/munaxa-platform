@@ -55,11 +55,7 @@ export interface AnonymousPrincipal extends BasePrincipal {
 }
 
 export type Principal =
-  | UserPrincipal
-  | ServicePrincipal
-  | ApiKeyPrincipal
-  | SystemPrincipal
-  | AnonymousPrincipal;
+  UserPrincipal | ServicePrincipal | ApiKeyPrincipal | SystemPrincipal | AnonymousPrincipal;
 
 export type AuthMethod =
   | 'password'

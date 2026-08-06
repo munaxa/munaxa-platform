@@ -1,4 +1,10 @@
-import { createPrivateKey, createPublicKey, createSign, createVerify, type KeyObject } from 'node:crypto';
+import {
+  createPrivateKey,
+  createPublicKey,
+  createSign,
+  createVerify,
+  type KeyObject,
+} from 'node:crypto';
 import { PlatformError } from '@munaxa/types';
 import { fromBase64Url, toBase64Url, utf8 } from './encoding.js';
 import { constantTimeEqualBytes, hmacSha256 } from './hashing.js';
@@ -73,7 +79,10 @@ export class AsymmetricSigner implements Signer {
   readonly #keys = new Map<string, { private?: KeyObject; public: KeyObject }>();
   #primaryKid: string;
 
-  constructor(algorithm: Extract<SignatureAlgorithm, 'RS256' | 'ES256'>, keys: readonly AsymmetricKeyPair[]) {
+  constructor(
+    algorithm: Extract<SignatureAlgorithm, 'RS256' | 'ES256'>,
+    keys: readonly AsymmetricKeyPair[],
+  ) {
     if (keys.length === 0) throw new TypeError('AsymmetricSigner needs at least one key pair');
     this.algorithm = algorithm;
     for (const key of keys) {
@@ -90,7 +99,8 @@ export class AsymmetricSigner implements Signer {
   }
 
   usePrimary(kid: string): this {
-    if (!this.#keys.has(kid)) throw new PlatformError(`Unknown key id ${kid}`, { code: 'CRYPTO_KEY_UNKNOWN' });
+    if (!this.#keys.has(kid))
+      throw new PlatformError(`Unknown key id ${kid}`, { code: 'CRYPTO_KEY_UNKNOWN' });
     this.#primaryKid = kid;
     return this;
   }
@@ -98,12 +108,16 @@ export class AsymmetricSigner implements Signer {
   sign(payload: string | Uint8Array): Signature {
     const entry = this.#keys.get(this.#primaryKid);
     if (!entry?.private) {
-      throw new PlatformError(`No private key for ${this.#primaryKid}`, { code: 'CRYPTO_KEY_UNKNOWN' });
+      throw new PlatformError(`No private key for ${this.#primaryKid}`, {
+        code: 'CRYPTO_KEY_UNKNOWN',
+      });
     }
     const signer = createSign(this.algorithm === 'RS256' ? 'RSA-SHA256' : 'SHA256');
     signer.update(typeof payload === 'string' ? utf8(payload) : Buffer.from(payload));
     const value = signer.sign(
-      this.algorithm === 'ES256' ? { key: entry.private, dsaEncoding: 'ieee-p1363' } : entry.private,
+      this.algorithm === 'ES256'
+        ? { key: entry.private, dsaEncoding: 'ieee-p1363' }
+        : entry.private,
     );
     return { kid: this.#primaryKid, algorithm: this.algorithm, value: toBase64Url(value) };
   }
@@ -116,7 +130,9 @@ export class AsymmetricSigner implements Signer {
     verifier.update(typeof payload === 'string' ? utf8(payload) : Buffer.from(payload));
     try {
       return verifier.verify(
-        this.algorithm === 'ES256' ? { key: entry.public, dsaEncoding: 'ieee-p1363' } : entry.public,
+        this.algorithm === 'ES256'
+          ? { key: entry.public, dsaEncoding: 'ieee-p1363' }
+          : entry.public,
         fromBase64Url(signature.value),
       );
     } catch {
@@ -142,7 +158,11 @@ export function signValue(signer: Signer, value: string, context = ''): string {
  * Returns a value rather than throwing because every caller of this is on a request path where
  * "not valid" is an expected outcome, not an exception.
  */
-export function verifySignedValue(signer: Signer, signed: string, context = ''): string | undefined {
+export function verifySignedValue(
+  signer: Signer,
+  signed: string,
+  context = '',
+): string | undefined {
   const parts = signed.split('.');
   if (parts.length !== 3) return undefined;
   const [encoded, kid, value] = parts as [string, string, string];

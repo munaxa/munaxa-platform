@@ -81,7 +81,9 @@ describe('validation', () => {
   it('accepts a live session', async () => {
     const { manager } = fixture();
     const session = await manager.create(createInput());
-    await expect(manager.validate(ROOT_TENANT_ID, session.id)).resolves.toMatchObject({ valid: true });
+    await expect(manager.validate(ROOT_TENANT_ID, session.id)).resolves.toMatchObject({
+      valid: true,
+    });
   });
 
   it('rejects an unknown session', async () => {
@@ -123,7 +125,9 @@ describe('validation', () => {
     const { manager } = fixture();
     const session = await manager.create(createInput({ tokenVersion: 1 }));
 
-    await expect(manager.validate(ROOT_TENANT_ID, session.id, { tokenVersion: 2 })).resolves.toEqual({
+    await expect(
+      manager.validate(ROOT_TENANT_ID, session.id, { tokenVersion: 2 }),
+    ).resolves.toEqual({
       valid: false,
       reason: 'stale-token-version',
     });
@@ -223,8 +227,12 @@ describe('revocation', () => {
     const other = await manager.create(createInput({ deviceId: 'dev_2' as never }));
 
     expect(await manager.revokeDevice(ROOT_TENANT_ID, USER, 'dev_1' as never)).toBe(1);
-    await expect(manager.validate(ROOT_TENANT_ID, stolen.id)).resolves.toMatchObject({ valid: false });
-    await expect(manager.validate(ROOT_TENANT_ID, other.id)).resolves.toMatchObject({ valid: true });
+    await expect(manager.validate(ROOT_TENANT_ID, stolen.id)).resolves.toMatchObject({
+      valid: false,
+    });
+    await expect(manager.validate(ROOT_TENANT_ID, other.id)).resolves.toMatchObject({
+      valid: true,
+    });
   });
 });
 
@@ -259,7 +267,9 @@ describe('public projection', () => {
 
   it('masks IPv6 down to the routing prefix', async () => {
     const { manager } = fixture();
-    const session = await manager.create(createInput({ ipAddress: '2001:db8:85a3:0:0:8a2e:370:7334' }));
+    const session = await manager.create(
+      createInput({ ipAddress: '2001:db8:85a3:0:0:8a2e:370:7334' }),
+    );
     expect(toPublicSession(session).ipPrefix).toBe('2001:db8:85a3::/48');
   });
 });

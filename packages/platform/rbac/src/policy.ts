@@ -116,14 +116,14 @@ function matches(pattern: string, permission: string): boolean {
 /** Common conditions, so products stop writing subtly different versions of the same predicate. */
 export const conditions = {
   /** The principal is acting on their own record. */
-  isOwner(request: PolicyRequest): boolean {
+  isOwner(this: void, request: PolicyRequest): boolean {
     const principal = request.context.principal;
     if (principal.kind !== 'user' || !request.resource?.ownerId) return false;
     return principal.userId === request.resource.ownerId;
   },
 
   /** A second factor was satisfied in this session. */
-  mfaSatisfied(request: PolicyRequest): boolean {
+  mfaSatisfied(this: void, request: PolicyRequest): boolean {
     const principal = request.context.principal;
     return principal.kind === 'user' && principal.mfaSatisfied === true;
   },
@@ -137,7 +137,7 @@ export const conditions = {
   },
 
   /** The principal is a machine, not a person — useful for denying interactive-only actions. */
-  isMachine(request: PolicyRequest): boolean {
+  isMachine(this: void, request: PolicyRequest): boolean {
     return isMachinePrincipal(request.context.principal);
   },
 
@@ -148,7 +148,9 @@ export const conditions = {
 } as const;
 
 export function isMachinePrincipal(principal: Principal): boolean {
-  return principal.kind === 'service' || principal.kind === 'api-key' || principal.kind === 'system';
+  return (
+    principal.kind === 'service' || principal.kind === 'api-key' || principal.kind === 'system'
+  );
 }
 
 /**

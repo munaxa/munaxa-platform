@@ -107,15 +107,16 @@ export function securityHeaders(options: SecurityHeadersOptions = {}): RenderedH
   const directives: Record<string, readonly string[] | true> = { ...DEFAULT_CSP, ...options.csp };
   const scriptSrc = directives['script-src'];
   if (Array.isArray(scriptSrc)) {
-    directives['script-src'] = [`'nonce-${nonce}'`, ...scriptSrc];
+    directives['script-src'] = [`'nonce-${nonce}'`, ...(scriptSrc as readonly string[])];
   }
   if (options.reportUri) {
     directives['report-uri'] = [options.reportUri];
     directives['report-to'] = ['csp-endpoint'];
   }
 
-  headers[options.cspReportOnly ? 'content-security-policy-report-only' : 'content-security-policy'] =
-    renderCsp(directives);
+  headers[
+    options.cspReportOnly ? 'content-security-policy-report-only' : 'content-security-policy'
+  ] = renderCsp(directives);
 
   const hstsMaxAge = options.hstsMaxAge ?? 31_536_000_000;
   if (hstsMaxAge > 0) {

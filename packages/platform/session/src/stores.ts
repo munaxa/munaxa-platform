@@ -4,7 +4,13 @@ import type {
   SessionRecord,
   SessionStorePort,
 } from '@munaxa/interfaces';
-import { assertSameTenant, type DeviceId, type SessionId, type TenantId, type UserId } from '@munaxa/types';
+import {
+  assertSameTenant,
+  type DeviceId,
+  type SessionId,
+  type TenantId,
+  type UserId,
+} from '@munaxa/types';
 
 /**
  * In-memory session and device stores.
@@ -67,10 +73,16 @@ export class MemorySessionStore implements SessionStorePort {
 export class MemoryDeviceRegistry implements DeviceRegistryPort {
   readonly #devices = new Map<DeviceId, DeviceRecord>();
 
-  async find(tenantId: TenantId, userId: UserId, fingerprint: string): Promise<DeviceRecord | undefined> {
+  async find(
+    tenantId: TenantId,
+    userId: UserId,
+    fingerprint: string,
+  ): Promise<DeviceRecord | undefined> {
     return [...this.#devices.values()].find(
       (device) =>
-        device.tenantId === tenantId && device.userId === userId && device.fingerprint === fingerprint,
+        device.tenantId === tenantId &&
+        device.userId === userId &&
+        device.fingerprint === fingerprint,
     );
   }
 

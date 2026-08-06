@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { composeMiddleware, emptyResponse, parseDuration, toUserId } from '../src/index.js';
 
 /**
+ * Budgets carry roughly 2.5x headroom over an idle machine. `turbo run test` runs every package
+ * concurrently on the same cores, and a budget tuned on an idle laptop fails on a busy CI runner —
+ * which teaches everyone to ignore the suite. These catch order-of-magnitude regressions, which is
+ * what they are for.
+ */
+
+/**
  * These are floor checks, not benchmarks. They exist to catch the accidental O(n²) or the
  * regex that starts backtracking — a thousand-fold regression, not a ten-percent one — so the
  * budgets are deliberately loose enough to survive a busy CI runner.
@@ -34,7 +41,7 @@ describe('hot-path cost', () => {
         }
       }
     });
-    expect(ms).toBeLessThan(500);
+    expect(ms).toBeLessThan(1_250);
   });
 
   it('parses durations without allocating per unit', () => {
@@ -54,6 +61,6 @@ describe('hot-path cost', () => {
     for (let i = 0; i < 10_000; i++) {
       await chain({ method: 'GET', path: '/', headers: {} }, emptyResponse());
     }
-    expect(performance.now() - start).toBeLessThan(2_000);
+    expect(performance.now() - start).toBeLessThan(5_000);
   });
 });

@@ -114,7 +114,8 @@ export class AuditService {
     const sequence = (head?.sequence ?? 0) + 1;
     const previousHash = head?.hash ?? null;
     const recordedAt = this.#clock.now();
-    const id = `aud_${sequence.toString(36)}_${hashOf(sanitized, previousHash, recordedAt, sequence).slice(0, 12)}`;
+    const hash = hashOf(sanitized, previousHash, recordedAt, sequence);
+    const id = `aud_${sequence.toString(36)}_${hash.slice(0, 12)}`;
 
     const record: AuditRecord = {
       id,
@@ -122,7 +123,7 @@ export class AuditService {
       recordedAt,
       sequence,
       previousHash,
-      hash: hashOf(sanitized, previousHash, recordedAt, sequence),
+      hash,
     };
 
     this.#heads.set(event.tenantId, { hash: record.hash, sequence });
@@ -144,7 +145,7 @@ export class AuditService {
   }
 
   async flush(): Promise<void> {
-    await Promise.all(this.#sinks.map((sink) => sink.flush?.()));
+    await Promise.all(this.#sinks.map(async (sink) => sink.flush?.()));
   }
 
   #sanitize(event: SecurityEvent): SecurityEvent {
@@ -244,7 +245,12 @@ export function verifyChain(records: readonly AuditRecord[]): ChainVerification 
         checked: record.sequence - 1,
       };
     }
-    const recomputed = hashOf(record.event, record.previousHash, record.recordedAt, record.sequence);
+    const recomputed = hashOf(
+      record.event,
+      record.previousHash,
+      record.recordedAt,
+      record.sequence,
+    );
     if (recomputed !== record.hash) {
       return {
         valid: false,

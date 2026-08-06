@@ -60,8 +60,8 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
 
   async latest(tenantId: TenantId): Promise<AuditRecord | undefined> {
     for (let i = this.#records.length - 1; i >= 0; i--) {
-      const record = this.#records[i] as AuditRecord;
-      if (record.event.tenantId === tenantId) return record;
+      const record = this.#records[i];
+      if (record?.event.tenantId === tenantId) return record;
     }
     return undefined;
   }

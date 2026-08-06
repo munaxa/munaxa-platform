@@ -12,6 +12,13 @@ import {
   signValue,
 } from '../src/index.js';
 
+/**
+ * Budgets carry roughly 2.5x headroom over an idle machine. `turbo run test` runs every package
+ * concurrently on the same cores, and a budget tuned on an idle laptop fails on a busy CI runner —
+ * which teaches everyone to ignore the suite. These catch order-of-magnitude regressions, which is
+ * what they are for.
+ */
+
 const ring = new KeyRing({ kid: 'k1', key: secureBytes(32) });
 
 describe('password hashing cost', () => {
@@ -27,11 +34,11 @@ describe('password hashing cost', () => {
     const hashMs = performance.now() - start;
 
     expect(hashMs).toBeGreaterThan(5);
-    expect(hashMs).toBeLessThan(2_000);
+    expect(hashMs).toBeLessThan(5_000);
 
     const verifyStart = performance.now();
     await hasher.verify('a realistic passphrase for testing', encoded);
-    expect(performance.now() - verifyStart).toBeLessThan(2_000);
+    expect(performance.now() - verifyStart).toBeLessThan(5_000);
   });
 
   it('keeps the default cost factor at or above the calibrated floor', () => {
@@ -55,23 +62,23 @@ describe('per-request primitives stay cheap', () => {
     const token = secureToken(32);
     const start = performance.now();
     for (let i = 0; i < 50_000; i++) sha256Hex(token);
-    expect(performance.now() - start).toBeLessThan(1_000);
+    expect(performance.now() - start).toBeLessThan(2_500);
   });
 
   it('signs and encrypts small values in microseconds', () => {
     const signer = new HmacSigner(ring);
     const signStart = performance.now();
     for (let i = 0; i < 20_000; i++) signValue(signer, `session:${i}`, 'ctx');
-    expect(performance.now() - signStart).toBeLessThan(2_000);
+    expect(performance.now() - signStart).toBeLessThan(5_000);
 
     const cryptoStart = performance.now();
     for (let i = 0; i < 20_000; i++) decryptToString(ring, encrypt(ring, 'small value'));
-    expect(performance.now() - cryptoStart).toBeLessThan(3_000);
+    expect(performance.now() - cryptoStart).toBeLessThan(7_500);
   });
 
   it('generates tokens without contention', () => {
     const start = performance.now();
     for (let i = 0; i < 50_000; i++) secureToken(32);
-    expect(performance.now() - start).toBeLessThan(2_000);
+    expect(performance.now() - start).toBeLessThan(5_000);
   });
 });

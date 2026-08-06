@@ -44,12 +44,14 @@ interface Detector {
 const DETECTORS: readonly Detector[] = [
   {
     kind: 'sql-injection',
-    pattern: /(\bunion\b[\s\S]{0,20}\bselect\b)|(\bor\b\s+['"]?\d+['"]?\s*=\s*['"]?\d+)|(;\s*(drop|truncate|delete)\s+(table|from)\b)|(\/\*[\s\S]*?\*\/\s*(select|union)\b)/i,
+    pattern:
+      /(\bunion\b[\s\S]{0,20}\bselect\b)|(\bor\b\s+['"]?\d+['"]?\s*=\s*['"]?\d+)|(;\s*(drop|truncate|delete)\s+(table|from)\b)|(\/\*[\s\S]*?\*\/\s*(select|union)\b)/i,
     confidence: 85,
   },
   {
     kind: 'xss',
-    pattern: /<script[\s>]|javascript:\s*[^\s]|on(?:error|load|click|mouseover)\s*=\s*["']?[^"'\s]|<iframe[\s>]|<svg[^>]*\bon\w+\s*=/i,
+    pattern:
+      /<script[\s>]|javascript:\s*[^\s]|on(?:error|load|click|mouseover)\s*=\s*["']?[^"'\s]|<iframe[\s>]|<svg[^>]*\bon\w+\s*=/i,
     confidence: 80,
   },
   {
@@ -64,7 +66,8 @@ const DETECTORS: readonly Detector[] = [
   },
   {
     kind: 'template-injection',
-    pattern: /\{\{[\s\S]{0,60}?(constructor|process|require|globals|__proto__)[\s\S]{0,60}?\}\}|\$\{[\s\S]{0,60}?(process|require)[\s\S]{0,60}?\}/i,
+    pattern:
+      /\{\{[\s\S]{0,60}?(constructor|process|require|globals|__proto__)[\s\S]{0,60}?\}\}|\$\{[\s\S]{0,60}?(process|require)[\s\S]{0,60}?\}/i,
     confidence: 80,
   },
   {
@@ -87,7 +90,15 @@ export interface ScanOptions {
   readonly maxValueLength?: number;
 }
 
-const DEFAULT_SKIP = ['password', 'newpassword', 'currentpassword', 'passphrase', 'content', 'body', 'markdown'];
+const DEFAULT_SKIP = [
+  'password',
+  'newpassword',
+  'currentpassword',
+  'passphrase',
+  'content',
+  'body',
+  'markdown',
+];
 
 /**
  * Scan a structured value for threat patterns.
@@ -125,7 +136,9 @@ export function scanForThreats(
     }
 
     if (Array.isArray(current)) {
-      current.slice(0, 100).forEach((entry, index) => walk(entry, `${path}[${index}]`, depth + 1));
+      for (const [index, entry] of current.slice(0, 100).entries()) {
+        walk(entry, `${path}[${index}]`, depth + 1);
+      }
       return;
     }
 

@@ -156,7 +156,9 @@ export const clientShapeSignal: RiskSignal = {
   evaluate: (context) => {
     const agent = context.userAgent?.toLowerCase() ?? '';
     if (agent === '') return 60;
-    return /\b(curl|wget|python-requests|httpie|go-http-client|scrapy|headless)\b/.test(agent) ? 80 : 0;
+    return /\b(curl|wget|python-requests|httpie|go-http-client|scrapy|headless)\b/.test(agent)
+      ? 80
+      : 0;
   },
 };
 

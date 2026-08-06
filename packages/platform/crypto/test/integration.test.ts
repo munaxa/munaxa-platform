@@ -61,8 +61,9 @@ describe('password hash upgrade on login', () => {
       verify: async (password: string) => password === 'hunter2!hunter2',
       needsRehash: () => true,
     };
-    const registry = new PasswordHasherRegistry(new ScryptPasswordHasher({ N: 1_024 }))
-      .registerLegacy('$2b$', bcryptish);
+    const registry = new PasswordHasherRegistry(
+      new ScryptPasswordHasher({ N: 1_024 }),
+    ).registerLegacy('$2b$', bcryptish);
 
     let stored = '$2b$10$stored';
 

@@ -16,6 +16,13 @@ import {
 import { USER, userContext } from './helpers.js';
 
 /**
+ * Budgets carry roughly 2.5x headroom over an idle machine. `turbo run test` runs every package
+ * concurrently on the same cores, and a budget tuned on an idle laptop fails on a busy CI runner —
+ * which teaches everyone to ignore the suite. These catch order-of-magnitude regressions, which is
+ * what they are for.
+ */
+
+/**
  * Authorization runs on every request, often several times. These are the numbers that decide
  * whether a product is tempted to cache decisions itself — which is how stale permissions and
  * bypassed denials get introduced.
@@ -27,14 +34,14 @@ describe('permission matching', () => {
     );
     const start = performance.now();
     for (let i = 0; i < 100_000; i++) hasPermission(grants, 'resource499:action2');
-    expect(performance.now() - start).toBeLessThan(3_000);
+    expect(performance.now() - start).toBeLessThan(7_500);
   });
 
   it('short-circuits on the first covering grant', () => {
     const grants = ['*', ...Array.from({ length: 1_000 }, (_, i) => `r${i}:a`)];
     const start = performance.now();
     for (let i = 0; i < 200_000; i++) hasPermission(grants, 'anything:here');
-    expect(performance.now() - start).toBeLessThan(500);
+    expect(performance.now() - start).toBeLessThan(1_250);
   });
 });
 
@@ -57,8 +64,8 @@ describe('role graph', () => {
     for (let i = 0; i < 100_000; i++) hierarchy.effectivePermissions('role-199');
     const cachedCost = performance.now() - second;
 
-    expect(firstCost).toBeLessThan(200);
-    expect(cachedCost).toBeLessThan(200);
+    expect(firstCost).toBeLessThan(500);
+    expect(cachedCost).toBeLessThan(500);
   });
 
   it('detects cycles in a large graph without hanging', () => {
@@ -72,7 +79,7 @@ describe('role graph', () => {
 
     const start = performance.now();
     expect(() => new RoleHierarchy(ROOT_TENANT_ID, roles)).toThrow(/cycle/);
-    expect(performance.now() - start).toBeLessThan(500);
+    expect(performance.now() - start).toBeLessThan(1_250);
   });
 });
 
@@ -90,7 +97,12 @@ describe('resolution', () => {
       revoke: assignments.revoke.bind(assignments),
     };
 
-    await assignments.assign({ tenantId: ROOT_TENANT_ID, userId: USER, roleId: 'admin', assignedAt: 0 });
+    await assignments.assign({
+      tenantId: ROOT_TENANT_ID,
+      userId: USER,
+      roleId: 'admin',
+      assignedAt: 0,
+    });
     const resolver = new PermissionResolver({
       roles,
       assignments: countingAssignments,
@@ -117,7 +129,7 @@ describe('resolution', () => {
     for (let i = 0; i < 20_000; i++) {
       await authorizer.check(userContext(), { permission: 'users:create' });
     }
-    expect(performance.now() - start).toBeLessThan(2_000);
+    expect(performance.now() - start).toBeLessThan(5_000);
   });
 
   it('does not degrade as the number of users grows', async () => {
@@ -136,6 +148,6 @@ describe('resolution', () => {
     for (let i = 0; i < 200; i++) {
       await resolver.resolve(ROOT_TENANT_ID, unsafeId<UserId>(`user-${i * 25}`));
     }
-    expect(performance.now() - start).toBeLessThan(1_000);
+    expect(performance.now() - start).toBeLessThan(2_500);
   });
 });

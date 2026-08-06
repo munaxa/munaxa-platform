@@ -25,7 +25,11 @@ export class FakeRedis implements RedisLike {
     return this.#values.get(key) ?? null;
   }
 
-  async set(key: string, value: string, ...args: readonly (string | number)[]): Promise<string | null> {
+  async set(
+    key: string,
+    value: string,
+    ...args: readonly (string | number)[]
+  ): Promise<string | null> {
     this.commands.push(['SET', key, ...args.map(String)].join(' '));
     this.#expireIfDue(key);
     const flags = args.map((arg) => String(arg).toUpperCase());
@@ -85,7 +89,9 @@ export class FakeRedis implements RedisLike {
     this.commands.push(['SCAN', cursor, ...args.map(String)].join(' '));
     const matchIndex = args.findIndex((arg) => String(arg).toUpperCase() === 'MATCH');
     const pattern = matchIndex >= 0 ? String(args[matchIndex + 1]) : '*';
-    const regex = new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+    const regex = new RegExp(
+      `^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
+    );
     const keys = [...this.#values.keys()].filter((key) => regex.test(key));
     return ['0', keys];
   }

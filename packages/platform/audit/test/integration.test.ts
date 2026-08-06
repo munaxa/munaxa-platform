@@ -66,7 +66,13 @@ describe('withAudit', () => {
 
   it('does not replace the caller’s error when auditing itself fails', async () => {
     const audit = new AuditService({
-      sinks: [{ write: async () => { throw new Error('sink down'); } }],
+      sinks: [
+        {
+          write: async () => {
+            throw new Error('sink down');
+          },
+        },
+      ],
       clock: { now: () => 0 },
     });
     const failing = withAudit(audit, { event: 'data.deleted' }, async () => {
@@ -93,7 +99,11 @@ describe('@Audited', () => {
     Object.defineProperty(
       GradeService.prototype,
       'exportCourse',
-      Audited(audit, { event: 'data.exported' })(GradeService.prototype, 'exportCourse', descriptor!),
+      Audited(audit, { event: 'data.exported' })(
+        GradeService.prototype,
+        'exportCourse',
+        descriptor!,
+      ),
     );
 
     const service = new GradeService();
@@ -214,7 +224,9 @@ describe('the trail as a whole', () => {
     expect(verifyChain(repository.chain(ROOT_TENANT_ID)).valid).toBe(true);
 
     const exported: string[] = [];
-    await new NdjsonExporter((line) => void exported.push(line)).export(repository.chain(ROOT_TENANT_ID));
+    await new NdjsonExporter((line) => void exported.push(line)).export(
+      repository.chain(ROOT_TENANT_ID),
+    );
     expect(exported).toHaveLength(3);
   });
 });

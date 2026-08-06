@@ -20,7 +20,11 @@ describe('device trust across logins', () => {
     // The second factor succeeded, so the device may be remembered.
     await devices.trust(ROOT_TENANT_ID, first.device.id);
     const session = await manager.create(
-      createInput({ deviceId: first.device.id, mfaSatisfied: true, authMethods: ['password', 'totp'] }),
+      createInput({
+        deviceId: first.device.id,
+        mfaSatisfied: true,
+        authMethods: ['password', 'totp'],
+      }),
     );
 
     // A week later, the same browser is recognised and still trusted.
@@ -34,7 +38,9 @@ describe('device trust across logins', () => {
     await manager.revokeAllForUser(ROOT_TENANT_ID, USER, 'password-changed');
     await devices.untrustAll(ROOT_TENANT_ID, USER);
 
-    await expect(manager.validate(ROOT_TENANT_ID, session.id)).resolves.toMatchObject({ valid: false });
+    await expect(manager.validate(ROOT_TENANT_ID, session.id)).resolves.toMatchObject({
+      valid: false,
+    });
     expect((await devices.recognize(ROOT_TENANT_ID, USER, client)).trusted).toBe(false);
   });
 
@@ -53,8 +59,14 @@ describe('device trust across logins', () => {
 
   it('treats a different browser on the same machine as a different device', async () => {
     const { devices } = fixture();
-    const safari = await devices.recognize(ROOT_TENANT_ID, USER, { userAgent: 'Safari/17', platform: 'macOS' });
-    const chrome = await devices.recognize(ROOT_TENANT_ID, USER, { userAgent: 'Chrome/120', platform: 'macOS' });
+    const safari = await devices.recognize(ROOT_TENANT_ID, USER, {
+      userAgent: 'Safari/17',
+      platform: 'macOS',
+    });
+    const chrome = await devices.recognize(ROOT_TENANT_ID, USER, {
+      userAgent: 'Chrome/120',
+      platform: 'macOS',
+    });
 
     expect(chrome.device.id).not.toBe(safari.device.id);
     expect(chrome.isNew).toBe(true);
@@ -65,9 +77,13 @@ describe('the sessions screen', () => {
   it('lists a user’s devices and lets them revoke one', async () => {
     const { manager, clock } = fixture();
 
-    const laptop = await manager.create(createInput({ userAgent: 'Chrome/120', deviceId: 'dev_laptop' as never }));
+    const laptop = await manager.create(
+      createInput({ userAgent: 'Chrome/120', deviceId: 'dev_laptop' as never }),
+    );
     clock.advance(MINUTE);
-    const phone = await manager.create(createInput({ userAgent: 'Safari/17', deviceId: 'dev_phone' as never }));
+    const phone = await manager.create(
+      createInput({ userAgent: 'Safari/17', deviceId: 'dev_phone' as never }),
+    );
 
     const listed = (await manager.listActive(ROOT_TENANT_ID, USER)).map((session) =>
       toPublicSession(session, phone.id),
@@ -103,7 +119,9 @@ describe('per-tenant policy', () => {
 
     clock.advance(6 * MINUTE);
     await expect(manager.validate(bank, strict.id)).resolves.toMatchObject({ valid: false });
-    await expect(manager.validate(ROOT_TENANT_ID, relaxed.id)).resolves.toMatchObject({ valid: true });
+    await expect(manager.validate(ROOT_TENANT_ID, relaxed.id)).resolves.toMatchObject({
+      valid: true,
+    });
   });
 });
 

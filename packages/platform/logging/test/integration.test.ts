@@ -65,7 +65,10 @@ describe('a request trace', () => {
 });
 
 describe('security events reach the log at the right level', () => {
-  const event = (name: SecurityEvent['name'], outcome: SecurityEvent['outcome']): SecurityEvent => ({
+  const event = (
+    name: SecurityEvent['name'],
+    outcome: SecurityEvent['outcome'],
+  ): SecurityEvent => ({
     name,
     occurredAt: 0,
     tenantId: ROOT_TENANT_ID,

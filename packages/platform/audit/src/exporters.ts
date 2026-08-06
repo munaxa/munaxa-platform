@@ -1,4 +1,9 @@
-import type { AuditExporterPort, AuditRecord, ExportResult, HttpClientPort } from '@munaxa/interfaces';
+import type {
+  AuditExporterPort,
+  AuditRecord,
+  ExportResult,
+  HttpClientPort,
+} from '@munaxa/interfaces';
 
 /**
  * Exporters move records off the box that produced them.
@@ -126,7 +131,7 @@ export class CsvExporter implements AuditExporterPort {
     let recordCount = 0;
 
     for await (const record of records as AsyncIterable<AuditRecord>) {
-      const flat = flatten(record) as Record<string, unknown>;
+      const flat = flatten(record);
       const line = CsvExporter.COLUMNS.map((column) => csvCell(flat[column])).join(',');
       await this.#write(`${line}\n`);
       recordCount++;
@@ -161,7 +166,16 @@ function flatten(record: AuditRecord): Record<string, unknown> {
 
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return '""';
-  const text = String(value);
+  // `flatten` produces only primitives, but the parameter is `unknown`: anything else that
+  // reaches here renders as JSON rather than as `[object Object]`.
+  const text = typeof value === 'string' ? value : renderCell(value);
   const guarded = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
   return `"${guarded.replaceAll('"', '""')}"`;
+}
+
+function renderCell(value: unknown): string {
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return value.toString();
+  }
+  return JSON.stringify(value) ?? '';
 }

@@ -56,7 +56,13 @@ export type SessionValidation =
   | { readonly valid: true; readonly session: SessionRecord }
   | {
       readonly valid: false;
-      readonly reason: 'not-found' | 'revoked' | 'idle-expired' | 'absolute-expired' | 'stale-token-version' | 'ip-changed';
+      readonly reason:
+        | 'not-found'
+        | 'revoked'
+        | 'idle-expired'
+        | 'absolute-expired'
+        | 'stale-token-version'
+        | 'ip-changed';
     };
 
 export class SessionManager {
@@ -98,10 +104,10 @@ export class SessionManager {
           session: live[0] as SessionRecord,
           at: now,
         });
-        throw new PlatformError(
-          `User ${input.userId} already has ${live.length} active sessions`,
-          { code: 'SESSION_LIMIT_REACHED', details: { limit: policy.maxConcurrent } },
-        );
+        throw new PlatformError(`User ${input.userId} already has ${live.length} active sessions`, {
+          code: 'SESSION_LIMIT_REACHED',
+          details: { limit: policy.maxConcurrent },
+        });
       }
 
       const excess = live.length - policy.maxConcurrent + 1;
@@ -109,7 +115,11 @@ export class SessionManager {
       for (const session of oldest) {
         await this.revoke(input.tenantId, session.id, 'concurrency-limit');
       }
-      await this.#emit({ name: 'session.limit.reached', session: oldest[0] as SessionRecord, at: now });
+      await this.#emit({
+        name: 'session.limit.reached',
+        session: oldest[0] as SessionRecord,
+        at: now,
+      });
     }
 
     const session: SessionRecord = {
@@ -168,7 +178,12 @@ export class SessionManager {
     }
 
     const policy = this.policy(tenantId);
-    if (policy.bindToIp && options.ipAddress && session.ipAddress && options.ipAddress !== session.ipAddress) {
+    if (
+      policy.bindToIp &&
+      options.ipAddress &&
+      session.ipAddress &&
+      options.ipAddress !== session.ipAddress
+    ) {
       return { valid: false, reason: 'ip-changed' };
     }
 

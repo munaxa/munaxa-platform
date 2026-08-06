@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ROOT_TENANT_ID } from '@munaxa/types';
-import { BASELINE_POLICIES, RoleHierarchy, defaultRoles, grantCovers, hasPermission } from '../src/index.js';
+import {
+  BASELINE_POLICIES,
+  RoleHierarchy,
+  defaultRoles,
+  grantCovers,
+  hasPermission,
+} from '../src/index.js';
 
 /**
  * Permission strings and role ids are written into databases, into product code, and into

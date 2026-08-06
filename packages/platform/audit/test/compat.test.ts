@@ -48,7 +48,10 @@ describe('1.0 canonical form', () => {
 
   it('still produces a hex sha-256 hash and a 1-based sequence', async () => {
     const { audit } = auditFixture();
-    const record = await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
+    const record = await audit.record(context(), {
+      name: 'auth.login.succeeded',
+      outcome: 'success',
+    });
     expect(record?.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(record?.sequence).toBe(1);
     expect(record?.id.startsWith('aud_')).toBe(true);

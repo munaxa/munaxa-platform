@@ -32,7 +32,12 @@ export interface RefreshTokenStorePort {
   update(record: RefreshTokenRecord): Promise<void>;
   listFamily(tenantId: TenantId, familyId: TokenFamilyId): Promise<readonly RefreshTokenRecord[]>;
   /** Revoke every live token in a family. Returns how many were revoked. */
-  revokeFamily(tenantId: TenantId, familyId: TokenFamilyId, at: number, reason: string): Promise<number>;
+  revokeFamily(
+    tenantId: TenantId,
+    familyId: TokenFamilyId,
+    at: number,
+    reason: string,
+  ): Promise<number>;
   revokeForUser(tenantId: TenantId, userId: UserId, at: number, reason: string): Promise<number>;
   deleteExpired(tenantId: TenantId, now: number): Promise<number>;
 }

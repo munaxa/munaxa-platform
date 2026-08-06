@@ -33,7 +33,11 @@ export interface EncryptOptions {
   readonly aad?: string;
 }
 
-export function encrypt(ring: KeyRing, plaintext: string | Uint8Array, options: EncryptOptions = {}): string {
+export function encrypt(
+  ring: KeyRing,
+  plaintext: string | Uint8Array,
+  options: EncryptOptions = {},
+): string {
   const key = ring.primary;
   const nonce = secureBytes(NONCE_BYTES);
   const cipher = createCipheriv('aes-256-gcm', keyBytes(key.key), nonce);
@@ -41,7 +45,9 @@ export function encrypt(ring: KeyRing, plaintext: string | Uint8Array, options: 
   const input = typeof plaintext === 'string' ? utf8(plaintext) : Buffer.from(plaintext);
   const ciphertext = Buffer.concat([cipher.update(input), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return [VERSION, key.kid, toBase64Url(nonce), toBase64Url(ciphertext), toBase64Url(tag)].join('.');
+  return [VERSION, key.kid, toBase64Url(nonce), toBase64Url(ciphertext), toBase64Url(tag)].join(
+    '.',
+  );
 }
 
 export function decrypt(ring: KeyRing, envelope: string, options: EncryptOptions = {}): Buffer {
@@ -74,7 +80,11 @@ export function decrypt(ring: KeyRing, envelope: string, options: EncryptOptions
   }
 }
 
-export function decryptToString(ring: KeyRing, envelope: string, options: EncryptOptions = {}): string {
+export function decryptToString(
+  ring: KeyRing,
+  envelope: string,
+  options: EncryptOptions = {},
+): string {
   return decrypt(ring, envelope, options).toString('utf8');
 }
 

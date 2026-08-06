@@ -127,10 +127,13 @@ export function requirePermissions(
       : hasAllPermissions(grants, required);
 
   if (!satisfied) {
-    throw new PlatformError(`Missing ${options.mode === 'any' ? 'any of' : 'all of'} ${required.join(', ')}`, {
-      code: 'AUTHZ_PERMISSION_DENIED',
-      details: { required, mode: options.mode ?? 'all' },
-    });
+    throw new PlatformError(
+      `Missing ${options.mode === 'any' ? 'any of' : 'all of'} ${required.join(', ')}`,
+      {
+        code: 'AUTHZ_PERMISSION_DENIED',
+        details: { required, mode: options.mode ?? 'all' },
+      },
+    );
   }
 }
 
@@ -152,7 +155,11 @@ export function RequirePermissions(...required: readonly string[]) {
       throw new TypeError('@RequirePermissions can only decorate a method');
     }
 
-    descriptor.value = function guarded(this: unknown, context: SecurityContext, ...args: unknown[]) {
+    descriptor.value = function guarded(
+      this: unknown,
+      context: SecurityContext,
+      ...args: unknown[]
+    ) {
       requirePermissions(context, required);
       return original.call(this, context, ...args);
     };

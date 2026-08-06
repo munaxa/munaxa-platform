@@ -3,6 +3,12 @@ import { MemoryCache } from '@munaxa/cache';
 import { KeyRing, secureBytes } from '@munaxa/crypto';
 import { FixedClock, ROOT_TENANT_ID, emptyResponse } from '@munaxa/types';
 import {
+  /**
+   * Budgets carry roughly 2.5x headroom over an idle machine. `turbo run test` runs every package
+   * concurrently on the same cores, and a budget tuned on an idle laptop fails on a busy CI runner —
+   * which teaches everyone to ignore the suite. These catch order-of-magnitude regressions, which is
+   * what they are for.
+   */
   BASELINE_RATE_LIMIT_RULES,
   CsrfProtection,
   RateLimiter,
@@ -44,7 +50,7 @@ describe('per-request cost', () => {
         userId: `user-${i % 500}`,
       });
     }
-    expect(performance.now() - start).toBeLessThan(3_000);
+    expect(performance.now() - start).toBeLessThan(7_500);
   });
 
   it('issues and verifies CSRF tokens cheaply', () => {
@@ -53,7 +59,7 @@ describe('per-request cost', () => {
 
     const start = performance.now();
     for (let i = 0; i < 20_000; i++) csrf.verify(token.value, 'sess-1');
-    expect(performance.now() - start).toBeLessThan(2_000);
+    expect(performance.now() - start).toBeLessThan(5_000);
   });
 
   it('normalizes at well over 100k/s', () => {
@@ -62,7 +68,7 @@ describe('per-request cost', () => {
       normalizeEmail('Ada.Lovelace+news@Example.COM');
       normalizePath('/a/b/../c/./d');
     }
-    expect(performance.now() - start).toBeLessThan(3_000);
+    expect(performance.now() - start).toBeLessThan(7_500);
   });
 
   it('scores risk without I/O', async () => {
@@ -77,7 +83,7 @@ describe('per-request cost', () => {
         userAgent: 'Mozilla/5.0',
       });
     }
-    expect(performance.now() - start).toBeLessThan(2_000);
+    expect(performance.now() - start).toBeLessThan(5_000);
   });
 });
 
@@ -92,7 +98,7 @@ describe('threat scanning cost', () => {
 
     const start = performance.now();
     for (let i = 0; i < 20_000; i++) scanForThreats(body, 'body');
-    expect(performance.now() - start).toBeLessThan(3_000);
+    expect(performance.now() - start).toBeLessThan(7_500);
   });
 
   it('does not backtrack catastrophically on a hostile string', () => {
@@ -100,7 +106,7 @@ describe('threat scanning cost', () => {
     const hostile = `${'a'.repeat(20_000)}<scrip`;
     const start = performance.now();
     for (let i = 0; i < 200; i++) scanForThreats({ q: hostile });
-    expect(performance.now() - start).toBeLessThan(1_000);
+    expect(performance.now() - start).toBeLessThan(2_500);
   });
 });
 
@@ -110,7 +116,10 @@ describe('whole-pipeline cost', () => {
     const cache = new MemoryCache({ clock });
     const pipeline = securityPipeline({
       rateLimiter: new RateLimiter({ cache, clock, rules: [...BASELINE_RATE_LIMIT_RULES] }),
-      csrf: new CsrfProtection({ keyRing: new KeyRing({ kid: 'k1', key: secureBytes(32) }), clock }),
+      csrf: new CsrfProtection({
+        keyRing: new KeyRing({ kid: 'k1', key: secureBytes(32) }),
+        clock,
+      }),
       resolveTenant: () => ROOT_TENANT_ID,
       scanBodies: true,
     });

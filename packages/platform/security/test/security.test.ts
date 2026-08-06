@@ -30,7 +30,9 @@ describe('CSP is restrictive by default', () => {
   });
 
   it('keeps a caller-supplied directive from removing the nonce', () => {
-    const { headers, nonce } = securityHeaders({ csp: { 'script-src': ["'self'", 'https://cdn.test'] } });
+    const { headers, nonce } = securityHeaders({
+      csp: { 'script-src': ["'self'", 'https://cdn.test'] },
+    });
     expect(headers['content-security-policy']).toContain(`'nonce-${nonce}'`);
   });
 });
@@ -69,7 +71,9 @@ describe('CSRF resists a cookie-writing attacker', () => {
 
   it('rejects a token signed with a key the ring never held', () => {
     const ours = new CsrfProtection({ keyRing });
-    const theirs = new CsrfProtection({ keyRing: new KeyRing({ kid: 'k1', key: secureBytes(32) }) });
+    const theirs = new CsrfProtection({
+      keyRing: new KeyRing({ kid: 'k1', key: secureBytes(32) }),
+    });
     const forged = theirs.issue('sess-1');
 
     expect(ours.verify(forged.value, 'sess-1')).toBe(false);
@@ -171,7 +175,13 @@ describe('normalization closes evasion routes', () => {
 
   it('refuses redirect targets that only look relative', () => {
     const allowed = ['https://app.test'];
-    for (const target of ['//evil.test', '/\\evil.test', 'https:evil.test', 'javascript:alert(1)', 'data:text/html,x']) {
+    for (const target of [
+      '//evil.test',
+      '/\\evil.test',
+      'https:evil.test',
+      'javascript:alert(1)',
+      'data:text/html,x',
+    ]) {
       expect(safeRedirect(target, allowed), target).toBe('/');
     }
   });

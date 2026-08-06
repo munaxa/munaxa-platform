@@ -1,4 +1,11 @@
-import { HmacSigner, KeyRing, constantTimeEqual, secureToken, signValue, verifySignedValue } from '@munaxa/crypto';
+import {
+  HmacSigner,
+  constantTimeEqual,
+  secureToken,
+  signValue,
+  verifySignedValue,
+  type KeyRing,
+} from '@munaxa/crypto';
 import {
   PlatformError,
   systemClock,
@@ -118,7 +125,9 @@ export class CsrfProtection {
     const cookie = request.cookies?.[this.cookieName];
 
     if (!header || !cookie || !constantTimeEqual(header, cookie)) {
-      throw new PlatformError('CSRF token missing or mismatched', { code: 'SECURITY_CSRF_INVALID' });
+      throw new PlatformError('CSRF token missing or mismatched', {
+        code: 'SECURITY_CSRF_INVALID',
+      });
     }
     if (!this.verify(header, sessionId)) {
       throw new PlatformError('CSRF token invalid or expired', { code: 'SECURITY_CSRF_INVALID' });

@@ -5,6 +5,7 @@ import {
   emptyResponse,
   isPlatformError,
   unsafeId,
+  type PlatformError,
   type PlatformRequest,
   type UserId,
 } from '@munaxa/types';
@@ -25,13 +26,22 @@ import { USER, resolverFixture, userContext } from './helpers.js';
 describe('authorizer', () => {
   it('allows an assigned role and denies everything else', async () => {
     const { resolver, assignments } = resolverFixture();
-    await assignments.assign({ tenantId: ROOT_TENANT_ID, userId: USER, roleId: 'member', assignedAt: 0 });
+    await assignments.assign({
+      tenantId: ROOT_TENANT_ID,
+      userId: USER,
+      roleId: 'member',
+      assignedAt: 0,
+    });
     const authorizer = new Authorizer({ resolver });
 
-    await expect(authorizer.check(userContext(), { permission: 'profile:read' })).resolves.toMatchObject({
+    await expect(
+      authorizer.check(userContext(), { permission: 'profile:read' }),
+    ).resolves.toMatchObject({
       allowed: true,
     });
-    await expect(authorizer.check(userContext(), { permission: 'users:delete' })).resolves.toMatchObject({
+    await expect(
+      authorizer.check(userContext(), { permission: 'users:delete' }),
+    ).resolves.toMatchObject({
       allowed: false,
     });
   });
@@ -59,7 +69,7 @@ describe('authorizer', () => {
       expect.unreachable('should have thrown');
     } catch (error) {
       expect(isPlatformError(error)).toBe(true);
-      const platformError = error as import('@munaxa/types').PlatformError;
+      const platformError = error as PlatformError;
       expect(platformError.code).toBe('AUTHZ_PERMISSION_DENIED');
       expect(platformError.publicMessage).toBe('You do not have access to this.');
       expect(JSON.stringify(platformError.toPublicJSON())).not.toContain('doc-42');
@@ -70,7 +80,12 @@ describe('authorizer', () => {
 
   it('reports every decision to the audit hook', async () => {
     const { resolver, assignments } = resolverFixture();
-    await assignments.assign({ tenantId: ROOT_TENANT_ID, userId: USER, roleId: 'member', assignedAt: 0 });
+    await assignments.assign({
+      tenantId: ROOT_TENANT_ID,
+      userId: USER,
+      roleId: 'member',
+      assignedAt: 0,
+    });
 
     const decisions: string[] = [];
     const authorizer = new Authorizer({
@@ -87,7 +102,10 @@ describe('authorizer', () => {
 
   it('applies the baseline policies', async () => {
     const { resolver } = resolverFixture();
-    const authorizer = new Authorizer({ resolver, policies: new PolicyEngine([...BASELINE_POLICIES]) });
+    const authorizer = new Authorizer({
+      resolver,
+      policies: new PolicyEngine([...BASELINE_POLICIES]),
+    });
 
     // An API key with a broad scope still cannot change security policy.
     const machine = {
@@ -129,7 +147,12 @@ describe('resolver caching and revocation', () => {
     const assignments = new MemoryRoleAssignments();
     const resolver = new PermissionResolver({ roles, assignments, cache, cacheTtl: 60_000 });
 
-    await assignments.assign({ tenantId: ROOT_TENANT_ID, userId: USER, roleId: 'admin', assignedAt: 0 });
+    await assignments.assign({
+      tenantId: ROOT_TENANT_ID,
+      userId: USER,
+      roleId: 'admin',
+      assignedAt: 0,
+    });
     expect((await resolver.resolve(ROOT_TENANT_ID, USER)).roles).toEqual(['admin']);
 
     await assignments.revoke(ROOT_TENANT_ID, USER, 'admin');
@@ -146,7 +169,12 @@ describe('resolver caching and revocation', () => {
     const roles = new MemoryRoleRepository(defaultRoles(ROOT_TENANT_ID));
     const assignments = new MemoryRoleAssignments();
     const resolver = new PermissionResolver({ roles, assignments });
-    await assignments.assign({ tenantId: ROOT_TENANT_ID, userId: USER, roleId: 'viewer', assignedAt: 0 });
+    await assignments.assign({
+      tenantId: ROOT_TENANT_ID,
+      userId: USER,
+      roleId: 'viewer',
+      assignedAt: 0,
+    });
 
     expect((await resolver.resolve(ROOT_TENANT_ID, USER)).permissions).toEqual([]);
 
@@ -203,7 +231,9 @@ describe('guards', () => {
 
     const service = new DocumentService();
     expect(() => service.remove(userContext(['documents:read']), 'd1')).toThrow();
-    return expect(service.remove(userContext(['documents:delete']), 'd1')).resolves.toBe('removed:d1');
+    return expect(service.remove(userContext(['documents:delete']), 'd1')).resolves.toBe(
+      'removed:d1',
+    );
   });
 });
 
@@ -219,7 +249,9 @@ describe('authorization middleware', () => {
     });
 
     // The point of fail-closed: a route added without a mapping is denied, not public.
-    expect(await middleware(request('/newly-added'), emptyResponse())).toMatchObject({ status: 403 });
+    expect(await middleware(request('/newly-added'), emptyResponse())).toMatchObject({
+      status: 403,
+    });
     expect(await middleware(request('/documents'), emptyResponse())).toBeUndefined();
   });
 

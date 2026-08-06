@@ -1,7 +1,7 @@
 import { LOG_LEVEL_RANK, type LogFields, type LogLevel, type LoggerPort } from '@munaxa/interfaces';
 import { systemClock, type Clock } from '@munaxa/types';
 import { currentCorrelation } from './correlation.js';
-import { Redactor, defaultRedactor } from './redaction.js';
+import { defaultRedactor, type Redactor } from './redaction.js';
 
 /**
  * Structured logging.
@@ -40,6 +40,9 @@ export class StructuredLogger implements LoggerPort {
     this.#level = options.level ?? 'info';
     this.#clock = options.clock ?? systemClock;
     this.#redactor = options.redactor ?? defaultRedactor;
+    // stdout is where a container's log collector reads from; this is the one place in the
+    // platform that writes to it, and every other package goes through LoggerPort.
+    // eslint-disable-next-line no-console
     this.#write = options.write ?? ((line) => console.log(line));
     this.#debugSampleRate = options.debugSampleRate ?? 1;
     this.#bindings = {

@@ -87,7 +87,8 @@ describe('flags driving platform behaviour', () => {
 
     const enabledFor: string[] = [];
     for (const tenant of registry.list()) {
-      if (await flags.isEnabled('auth.passkeys', { tenantId: tenant.id })) enabledFor.push(tenant.id);
+      if (await flags.isEnabled('auth.passkeys', { tenantId: tenant.id }))
+        enabledFor.push(tenant.id);
     }
 
     expect(enabledFor).toEqual([toTenantId('acme')]);

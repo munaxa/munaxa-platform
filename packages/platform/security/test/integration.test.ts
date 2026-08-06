@@ -86,7 +86,8 @@ describe('the pipeline in order', () => {
 
   it('enforces CSRF once a session exists, and not before', async () => {
     const { pipeline, csrf, events } = build({
-      resolveSession: (req) => (req.headers['x-session'] ? { sessionId: req.headers['x-session'] } : {}),
+      resolveSession: (req) =>
+        req.headers['x-session'] ? { sessionId: req.headers['x-session'] } : {},
     });
 
     // No session — the login form itself must still be submittable.
@@ -198,8 +199,14 @@ describe('rate limiting across dimensions', () => {
     // No userId: the rule cannot apply, and must not silently become a global limit.
     for (let i = 0; i < 10; i++) {
       expect(
-        (await limiter.check({ method: 'GET', path: '/', tenantId: ROOT_TENANT_ID, ipAddress: '1.1.1.1' }))
-          .allowed,
+        (
+          await limiter.check({
+            method: 'GET',
+            path: '/',
+            tenantId: ROOT_TENANT_ID,
+            ipAddress: '1.1.1.1',
+          })
+        ).allowed,
       ).toBe(true);
     }
   });
@@ -213,7 +220,12 @@ describe('rate limiting across dimensions', () => {
     });
 
     const hit = () =>
-      limiter.check({ method: 'POST', path: '/', tenantId: ROOT_TENANT_ID, ipAddress: '198.51.100.9' });
+      limiter.check({
+        method: 'POST',
+        path: '/',
+        tenantId: ROOT_TENANT_ID,
+        ipAddress: '198.51.100.9',
+      });
 
     await hit();
     await hit();
@@ -267,7 +279,12 @@ describe('rate limiting across dimensions', () => {
     });
 
     const hit = () =>
-      limiter.check({ method: 'POST', path: '/', tenantId: ROOT_TENANT_ID, ipAddress: '203.0.113.5' });
+      limiter.check({
+        method: 'POST',
+        path: '/',
+        tenantId: ROOT_TENANT_ID,
+        ipAddress: '203.0.113.5',
+      });
 
     await hit();
     expect((await hit()).allowed).toBe(false);

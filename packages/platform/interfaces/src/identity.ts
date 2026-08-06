@@ -77,7 +77,12 @@ export interface MfaEnrollmentStorePort {
   list(tenantId: TenantId, userId: UserId): Promise<readonly MfaEnrollment[]>;
   save(enrollment: MfaEnrollment): Promise<void>;
   remove(tenantId: TenantId, userId: UserId, method: MfaEnrollment['method']): Promise<void>;
-  markUsed(tenantId: TenantId, userId: UserId, method: MfaEnrollment['method'], at: number): Promise<void>;
+  markUsed(
+    tenantId: TenantId,
+    userId: UserId,
+    method: MfaEnrollment['method'],
+    at: number,
+  ): Promise<void>;
   /** Hashed single-use recovery codes. */
   saveRecoveryCodes(tenantId: TenantId, userId: UserId, hashes: readonly string[]): Promise<void>;
   consumeRecoveryCode(tenantId: TenantId, userId: UserId, hash: string): Promise<boolean>;

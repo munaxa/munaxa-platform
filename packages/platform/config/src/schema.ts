@@ -42,7 +42,9 @@ function field<T>(
   };
 }
 
-export function string(options: FieldOptions<string> & { minLength?: number } = {}): FieldDefinition<string> {
+export function string(
+  options: FieldOptions<string> & { minLength?: number } = {},
+): FieldDefinition<string> {
   const minLength = options.minLength ?? 1;
   return field(
     'string',
@@ -55,7 +57,9 @@ export function string(options: FieldOptions<string> & { minLength?: number } = 
 }
 
 /** A secret string with a minimum length. Defaults to 32 characters — key material, not a word. */
-export function secret(options: FieldOptions<string> & { minLength?: number } = {}): FieldDefinition<string> {
+export function secret(
+  options: FieldOptions<string> & { minLength?: number } = {},
+): FieldDefinition<string> {
   return string({ minLength: 32, ...options, secret: true });
 }
 
@@ -67,8 +71,10 @@ export function integer(
     (raw) => {
       const value = Number(raw);
       if (!Number.isInteger(value)) throw new Error('expected an integer');
-      if (options.min !== undefined && value < options.min) throw new Error(`expected >= ${options.min}`);
-      if (options.max !== undefined && value > options.max) throw new Error(`expected <= ${options.max}`);
+      if (options.min !== undefined && value < options.min)
+        throw new Error(`expected >= ${options.min}`);
+      if (options.max !== undefined && value > options.max)
+        throw new Error(`expected <= ${options.max}`);
       return value;
     },
     options,
@@ -92,7 +98,7 @@ export function boolean(options: FieldOptions<boolean> = {}): FieldDefinition<bo
       const normalized = raw.trim().toLowerCase();
       if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
       if (['false', '0', 'no', 'off'].includes(normalized)) return false;
-      throw new Error("expected one of true/false/1/0/yes/no/on/off");
+      throw new Error('expected one of true/false/1/0/yes/no/on/off');
     },
     options,
   );
@@ -102,7 +108,9 @@ export function duration(options: FieldOptions<DurationMs> = {}): FieldDefinitio
   return field('duration', (raw) => parseDuration(raw), options);
 }
 
-export function url(options: FieldOptions<string> & { protocols?: readonly string[] } = {}): FieldDefinition<string> {
+export function url(
+  options: FieldOptions<string> & { protocols?: readonly string[] } = {},
+): FieldDefinition<string> {
   const protocols = options.protocols ?? ['https:'];
   return field(
     'url',
@@ -130,7 +138,7 @@ export function oneOf<const T extends readonly string[]>(
     `enum(${values.join('|')})`,
     (raw) => {
       if (!values.includes(raw)) throw new Error(`expected one of ${values.join(', ')}`);
-      return raw as T[number];
+      return raw;
     },
     options,
   );

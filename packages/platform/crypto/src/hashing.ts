@@ -11,7 +11,9 @@ import { toHex, utf8 } from './encoding.js';
  */
 
 export function sha256(input: string | Uint8Array): Buffer {
-  return createHash('sha256').update(typeof input === 'string' ? utf8(input) : input).digest();
+  return createHash('sha256')
+    .update(typeof input === 'string' ? utf8(input) : input)
+    .digest();
 }
 
 export function sha256Hex(input: string | Uint8Array): string {
@@ -19,7 +21,9 @@ export function sha256Hex(input: string | Uint8Array): string {
 }
 
 export function sha512Hex(input: string | Uint8Array): string {
-  return createHash('sha512').update(typeof input === 'string' ? utf8(input) : input).digest('hex');
+  return createHash('sha512')
+    .update(typeof input === 'string' ? utf8(input) : input)
+    .digest('hex');
 }
 
 /** SHA-1, provided for exactly one reason: the k-anonymity breach-corpus protocol requires it. */
@@ -28,7 +32,9 @@ export function sha1HexUpper(input: string): string {
 }
 
 export function hmacSha256(key: string | Uint8Array, message: string | Uint8Array): Buffer {
-  return createHmac('sha256', key).update(typeof message === 'string' ? utf8(message) : message).digest();
+  return createHmac('sha256', key)
+    .update(typeof message === 'string' ? utf8(message) : message)
+    .digest();
 }
 
 export function hmacSha256Hex(key: string | Uint8Array, message: string | Uint8Array): string {

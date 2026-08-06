@@ -34,7 +34,13 @@ describe('1.0 header contract', () => {
   });
 
   it('keeps the default CSP directives that products build markup against', () => {
-    for (const directive of ['default-src', 'script-src', 'object-src', 'base-uri', 'frame-ancestors']) {
+    for (const directive of [
+      'default-src',
+      'script-src',
+      'object-src',
+      'base-uri',
+      'frame-ancestors',
+    ]) {
       expect(DEFAULT_CSP[directive], directive).toBeDefined();
     }
     expect(DEFAULT_CSP['object-src']).toEqual(["'none'"]);

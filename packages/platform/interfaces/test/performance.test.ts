@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { PORTS, ServiceRegistry, createToken } from '../src/index.js';
 
 /**
+ * Budgets carry roughly 2.5x headroom over an idle machine. `turbo run test` runs every package
+ * concurrently on the same cores, and a budget tuned on an idle laptop fails on a busy CI runner —
+ * which teaches everyone to ignore the suite. These catch order-of-magnitude regressions, which is
+ * what they are for.
+ */
+
+/**
  * Resolution happens on every request in some products. It has to be a Map lookup and stay one.
  */
 describe('resolution cost', () => {

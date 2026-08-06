@@ -73,9 +73,10 @@ describe('role hierarchy', () => {
   });
 
   it('supports multiple inheritance', () => {
-    const owner = new RoleHierarchy(ROOT_TENANT_ID, defaultRoles(ROOT_TENANT_ID)).effectivePermissions(
-      'owner',
-    );
+    const owner = new RoleHierarchy(
+      ROOT_TENANT_ID,
+      defaultRoles(ROOT_TENANT_ID),
+    ).effectivePermissions('owner');
     expect(hasPermission(owner, 'tenant:delete')).toBe(true);
     expect(hasPermission(owner, 'users:create')).toBe(true); // via admin
     expect(hasPermission(owner, 'audit:export')).toBe(true); // via auditor
@@ -118,7 +119,12 @@ describe('role hierarchy', () => {
 
   it('reports ancestors for display', () => {
     const hierarchy = new RoleHierarchy(ROOT_TENANT_ID, defaultRoles(ROOT_TENANT_ID));
-    expect([...hierarchy.ancestors('owner')].sort()).toEqual(['admin', 'auditor', 'member', 'viewer']);
+    expect([...hierarchy.ancestors('owner')].sort()).toEqual([
+      'admin',
+      'auditor',
+      'member',
+      'viewer',
+    ]);
   });
 
   it('recomputes after a role changes', () => {
@@ -139,7 +145,12 @@ describe('role hierarchy', () => {
 describe('permission resolver', () => {
   it('resolves assigned roles into permissions', async () => {
     const { resolver, assignments } = resolverFixture();
-    await assignments.assign({ tenantId: ROOT_TENANT_ID, userId: USER, roleId: 'admin', assignedAt: 0 });
+    await assignments.assign({
+      tenantId: ROOT_TENANT_ID,
+      userId: USER,
+      roleId: 'admin',
+      assignedAt: 0,
+    });
 
     const resolved = await resolver.resolve(ROOT_TENANT_ID, USER);
     expect(resolved.roles).toEqual(['admin']);
@@ -205,16 +216,18 @@ describe('policy engine', () => {
   ]);
 
   it('allows what a role grants', () => {
-    expect(engine.evaluate({ context: userContext(), permission: 'documents:read' }, ['documents:*'])).toEqual({
+    expect(
+      engine.evaluate({ context: userContext(), permission: 'documents:read' }, ['documents:*']),
+    ).toEqual({
       allowed: true,
       reason: 'allowed-by-role',
     });
   });
 
   it('denies what no grant covers', () => {
-    expect(engine.evaluate({ context: userContext(), permission: 'documents:read' }, []).reason).toBe(
-      'no-grant',
-    );
+    expect(
+      engine.evaluate({ context: userContext(), permission: 'documents:read' }, []).reason,
+    ).toBe('no-grant');
   });
 
   it('lets a policy grant what roles do not', () => {
@@ -226,7 +239,11 @@ describe('policy engine', () => {
       },
       [],
     );
-    expect(decision).toEqual({ allowed: true, reason: 'allowed-by-policy', policyId: 'allow-own-profile' });
+    expect(decision).toEqual({
+      allowed: true,
+      reason: 'allowed-by-policy',
+      policyId: 'allow-own-profile',
+    });
   });
 
   it('lets a deny override a role grant', () => {
@@ -252,12 +269,14 @@ describe('policy engine', () => {
         },
       },
     ]);
-    expect(brittle.evaluate({ context: userContext(), permission: 'x:read' }, []).allowed).toBe(false);
+    expect(brittle.evaluate({ context: userContext(), permission: 'x:read' }, []).allowed).toBe(
+      false,
+    );
   });
 
   it('ships conditions that mean the same thing everywhere', () => {
     const request = {
-      context: userContext(undefined, { mfaSatisfied: true } as never),
+      context: userContext(undefined, { mfaSatisfied: true }),
       permission: 'x:read',
       resource: { type: 'user', id: USER, ownerId: USER },
       environment: { riskScore: 20 },

@@ -65,7 +65,13 @@ describe('privilege escalation', () => {
     for (const kind of ['service', 'api-key', 'system'] as const) {
       const principal =
         kind === 'service'
-          ? { kind, tenantId: ROOT_TENANT_ID, clientId: 'c1' as never, scopes: ['*'], permissions: ['*'] }
+          ? {
+              kind,
+              tenantId: ROOT_TENANT_ID,
+              clientId: 'c1' as never,
+              scopes: ['*'],
+              permissions: ['*'],
+            }
           : kind === 'api-key'
             ? { kind, tenantId: ROOT_TENANT_ID, keyId: 'k1', scopes: ['*'], permissions: ['*'] }
             : { kind, tenantId: ROOT_TENANT_ID, component: 'job', permissions: ['*'] };
@@ -88,9 +94,9 @@ describe('privilege escalation', () => {
     const engine = new PolicyEngine([
       { id: 'deny-exports', effect: 'deny', permissions: ['data:export'] },
     ]);
-    expect(engine.evaluate({ context: userContext(), permission: 'data:export' }, ['*']).allowed).toBe(
-      false,
-    );
+    expect(
+      engine.evaluate({ context: userContext(), permission: 'data:export' }, ['*']).allowed,
+    ).toBe(false);
   });
 
   it('applies deny-overrides regardless of policy order', () => {
@@ -139,7 +145,9 @@ describe('denials leak nothing', () => {
     const { resolver } = resolverFixture();
     const authorizer = new Authorizer({
       resolver,
-      policies: new PolicyEngine([{ id: 'deny-all', effect: 'deny', permissions: ['secret:read'] }]),
+      policies: new PolicyEngine([
+        { id: 'deny-all', effect: 'deny', permissions: ['secret:read'] },
+      ]),
     });
 
     const messages = new Set<string>();

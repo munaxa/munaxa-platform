@@ -68,7 +68,9 @@ describe('random', () => {
   });
 
   it('formats recovery codes in unambiguous groups', () => {
-    expect(recoveryCode()).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}(-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}){2}$/);
+    expect(recoveryCode()).toMatch(
+      /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}(-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}){2}$/,
+    );
   });
 
   it('generates sortable ids that order by time', () => {
@@ -140,8 +142,9 @@ describe('PasswordHasherRegistry', () => {
       verify: async (password: string) => password === 'legacy-pw',
       needsRehash: () => true,
     };
-    const registry = new PasswordHasherRegistry(new ScryptPasswordHasher({ N: 1_024 }))
-      .registerLegacy('$2b$', legacy);
+    const registry = new PasswordHasherRegistry(
+      new ScryptPasswordHasher({ N: 1_024 }),
+    ).registerLegacy('$2b$', legacy);
 
     await expect(registry.verify('legacy-pw', '$2b$12$legacy')).resolves.toBe(true);
     expect(registry.needsRehash('$2b$12$legacy')).toBe(true);

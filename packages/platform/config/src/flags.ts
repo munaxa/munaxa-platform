@@ -43,7 +43,10 @@ export class FeatureFlags implements FeatureFlagPort {
     return this.evaluate(flag, context);
   }
 
-  async variant<T = string>(flag: string, context: FeatureFlagContext = {}): Promise<T | undefined> {
+  async variant<T = string>(
+    flag: string,
+    context: FeatureFlagContext = {},
+  ): Promise<T | undefined> {
     const rule = this.#rules.get(flag);
     if (!rule || !this.evaluate(flag, context)) return undefined;
     return rule.variant as T | undefined;

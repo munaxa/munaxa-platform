@@ -6,7 +6,7 @@ import {
   type TenantId,
 } from '@munaxa/types';
 import { apiSecurityHeaders, securityHeaders, type SecurityHeadersOptions } from './headers.js';
-import { CsrfProtection, isTrustedOrigin } from './csrf.js';
+import { isTrustedOrigin, type CsrfProtection } from './csrf.js';
 import { rateLimitHeaders, targetFor, type RateLimiter } from './ratelimit.js';
 import { inspectPath, scanForThreats, type ThreatFinding } from './threats.js';
 
@@ -137,7 +137,11 @@ function csrfStep(csrf: CsrfProtection, options: SecurityPipelineOptions): Platf
       csrf.check(request, sessionId);
       return undefined;
     } catch {
-      await options.onEvent?.({ name: 'security.csrf.rejected', request, detail: { reason: 'token' } });
+      await options.onEvent?.({
+        name: 'security.csrf.rejected',
+        request,
+        detail: { reason: 'token' },
+      });
       return { ...response, status: 403, body: { code: 'SECURITY_CSRF_INVALID' } };
     }
   };

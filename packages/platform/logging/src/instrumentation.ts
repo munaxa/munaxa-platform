@@ -26,7 +26,11 @@ const SEVERITY_TO_LEVEL = {
  * the audit trail is the durable, queryable, tamper-evident record, and the log line is what the
  * on-call engineer greps at 2am without opening a database.
  */
-export function logSecurityEvent(logger: LoggerPort, event: SecurityEvent, fields: LogFields = {}): void {
+export function logSecurityEvent(
+  logger: LoggerPort,
+  event: SecurityEvent,
+  fields: LogFields = {},
+): void {
   const severity = event.severity ?? severityFor(event.name);
   logger.log(SEVERITY_TO_LEVEL[severity], event.name, {
     kind: 'security',
@@ -117,7 +121,11 @@ export class MemoryMetrics implements MetricsPort {
     this.observations.set(key, values);
   }
 
-  percentile(name: string, percentile: number, tags?: Readonly<Record<string, string>>): number | undefined {
+  percentile(
+    name: string,
+    percentile: number,
+    tags?: Readonly<Record<string, string>>,
+  ): number | undefined {
     const values = [...(this.observations.get(keyOf(name, tags)) ?? [])].sort((a, b) => a - b);
     if (values.length === 0) return undefined;
     const index = Math.min(values.length - 1, Math.floor((percentile / 100) * values.length));

@@ -30,7 +30,7 @@ describe('secrets never reach a log', () => {
     expect(inspect(wrapped)).not.toContain('super-secret');
     expect(inspect({ nested: { token: wrapped } })).not.toContain('super-secret');
     expect(JSON.stringify(wrapped)).not.toContain('super-secret');
-    expect(`${wrapped}`).not.toContain('super-secret');
+    expect(`${String(wrapped)}`).not.toContain('super-secret');
   });
 
   it('redacts every field marked secret in the platform schema', () => {

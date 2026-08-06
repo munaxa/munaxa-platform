@@ -51,7 +51,9 @@ export const PLATFORM_SCHEMA = {
 
   // Infrastructure
   MUNAXA_REDIS_URL: string({ default: '', description: 'Empty selects the in-process cache' }),
-  MUNAXA_LOG_LEVEL: oneOf(['trace', 'debug', 'info', 'warn', 'error', 'fatal'], { default: 'info' }),
+  MUNAXA_LOG_LEVEL: oneOf(['trace', 'debug', 'info', 'warn', 'error', 'fatal'], {
+    default: 'info',
+  }),
   MUNAXA_AUDIT_ENABLED: boolean({ default: true }),
 } as const;
 

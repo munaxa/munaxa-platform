@@ -104,7 +104,10 @@ describe('tenant isolation', () => {
   it('refuses a cross-tenant read by id', async () => {
     const { audit, repository } = auditFixture();
     const acme = toTenantId('acme');
-    const record = await audit.record(tenantContext(acme), { name: 'data.exported', outcome: 'success' });
+    const record = await audit.record(tenantContext(acme), {
+      name: 'data.exported',
+      outcome: 'success',
+    });
 
     expect(() => repository.get(toTenantId('globex'), record!.id)).toThrow(TenantMismatchError);
     expect(repository.get(acme, record!.id)).toBeDefined();
@@ -181,7 +184,9 @@ describe('exports are safe to open', () => {
     });
 
     const lines: string[] = [];
-    await new NdjsonExporter((line) => void lines.push(line)).export(repository.chain(ROOT_TENANT_ID));
+    await new NdjsonExporter((line) => void lines.push(line)).export(
+      repository.chain(ROOT_TENANT_ID),
+    );
     expect(lines).toHaveLength(1);
     expect(lines[0]?.split('\n').filter(Boolean)).toHaveLength(1);
   });

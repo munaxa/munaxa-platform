@@ -139,9 +139,9 @@ describe('device trust cannot become a bypass', () => {
     const stored = await registry.list(ROOT_TENANT_ID, USER);
     expect(stored[0]?.fingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(stored[0]?.fingerprint).not.toContain('browser-1');
-    expect(fingerprint({ clientId: 'browser-1', userAgent: 'Mozilla/5.0 (very-distinctive-build)' })).toBe(
-      stored[0]?.fingerprint,
-    );
+    expect(
+      fingerprint({ clientId: 'browser-1', userAgent: 'Mozilla/5.0 (very-distinctive-build)' }),
+    ).toBe(stored[0]?.fingerprint);
   });
 });
 

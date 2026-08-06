@@ -10,11 +10,7 @@ import type { DurationMs } from '@munaxa/types';
  */
 export interface RedisLike {
   get(key: string): Promise<string | null>;
-  set(
-    key: string,
-    value: string,
-    ...args: readonly (string | number)[]
-  ): Promise<string | null>;
+  set(key: string, value: string, ...args: readonly (string | number)[]): Promise<string | null>;
   del(...keys: readonly string[]): Promise<number>;
   exists(...keys: readonly string[]): Promise<number>;
   incrby(key: string, increment: number): Promise<number>;

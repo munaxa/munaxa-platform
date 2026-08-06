@@ -92,7 +92,8 @@ export interface EventPublisherPort {
 }
 
 export interface EventSubscriberPort {
-  subscribe(name: string | '*', handler: (event: SecurityEvent) => void | Promise<void>): () => void;
+  /** Pass '*' to receive every event. */
+  subscribe(name: string, handler: (event: SecurityEvent) => void | Promise<void>): () => void;
 }
 
 /** Timing and counter instrumentation, kept separate from logs so metrics stay cheap. */

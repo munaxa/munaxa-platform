@@ -64,7 +64,9 @@ describe('security headers', () => {
 
   it('supports report-only rollout', () => {
     const { headers } = securityHeaders({ cspReportOnly: true, reportUri: 'https://r.test/csp' });
-    expect(headers['content-security-policy-report-only']).toContain('report-uri https://r.test/csp');
+    expect(headers['content-security-policy-report-only']).toContain(
+      'report-uri https://r.test/csp',
+    );
     expect(headers['content-security-policy']).toBeUndefined();
   });
 
@@ -134,7 +136,10 @@ describe('CSRF', () => {
     const { csrf } = build();
     const token = csrf.issue('sess-1');
 
-    const request = (headers: Record<string, string>, cookies: Record<string, string>): PlatformRequest => ({
+    const request = (
+      headers: Record<string, string>,
+      cookies: Record<string, string>,
+    ): PlatformRequest => ({
       method: 'POST',
       path: '/api/documents',
       headers,
@@ -142,7 +147,10 @@ describe('CSRF', () => {
     });
 
     expect(() =>
-      csrf.check(request({ 'x-csrf-token': token.value }, { '__Host-csrf': token.value }), 'sess-1'),
+      csrf.check(
+        request({ 'x-csrf-token': token.value }, { '__Host-csrf': token.value }),
+        'sess-1',
+      ),
     ).not.toThrow();
 
     // Header present, cookie absent.
@@ -157,9 +165,7 @@ describe('CSRF', () => {
     const { csrf } = build();
     expect(csrf.isSafeMethod('get')).toBe(true);
     expect(csrf.isSafeMethod('POST')).toBe(false);
-    expect(() =>
-      csrf.check({ method: 'GET', path: '/', headers: {} }, 'sess-1'),
-    ).not.toThrow();
+    expect(() => csrf.check({ method: 'GET', path: '/', headers: {} }, 'sess-1')).not.toThrow();
   });
 
   it('raises a typed error', () => {
@@ -183,7 +189,9 @@ describe('CSRF', () => {
 
     expect(isTrustedOrigin(request({ origin: 'https://app.munaxa.test' }), trusted)).toBe(true);
     expect(isTrustedOrigin(request({ origin: 'https://evil.test' }), trusted)).toBe(false);
-    expect(isTrustedOrigin(request({ referer: 'https://app.munaxa.test/page' }), trusted)).toBe(true);
+    expect(isTrustedOrigin(request({ referer: 'https://app.munaxa.test/page' }), trusted)).toBe(
+      true,
+    );
     expect(isTrustedOrigin(request({}), trusted)).toBe(false);
   });
 });
@@ -274,7 +282,7 @@ describe('threat detection', () => {
   it('reports the location and a bounded excerpt', () => {
     const findings = scanForThreats({ user: { note: `${'<script>'}${'x'.repeat(500)}` } }, 'body');
     expect(findings[0]?.location).toBe('body.user.note');
-    expect((findings[0]?.excerpt.length ?? 0)).toBeLessThanOrEqual(120);
+    expect(findings[0]?.excerpt.length ?? 0).toBeLessThanOrEqual(120);
   });
 
   it('scores by highest confidence', () => {

@@ -29,7 +29,8 @@
   "dependencies": {
     "@munaxa/types": "workspace:^",
     "@munaxa/interfaces": "workspace:^",
-    "@munaxa/logging": "workspace:^"
+    "@munaxa/logging": "workspace:^",
+    "@munaxa/crypto": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

@@ -25,17 +25,22 @@ describe('event construction', () => {
   });
 
   it('derives severity from the event name', () => {
-    expect(auditEvent(context(), { name: 'auth.token.reuse.detected', outcome: 'failure' }).severity).toBe(
-      'critical',
-    );
-    expect(auditEvent(context(), { name: 'auth.login.succeeded', outcome: 'success' }).severity).toBe('info');
+    expect(
+      auditEvent(context(), { name: 'auth.token.reuse.detected', outcome: 'failure' }).severity,
+    ).toBe('critical');
+    expect(
+      auditEvent(context(), { name: 'auth.login.succeeded', outcome: 'success' }).severity,
+    ).toBe('info');
   });
 });
 
 describe('AuditService', () => {
   it('writes a record with a sequence and a hash', async () => {
     const { audit, repository } = auditFixture();
-    const record = await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
+    const record = await audit.record(context(), {
+      name: 'auth.login.succeeded',
+      outcome: 'success',
+    });
 
     expect(record?.sequence).toBe(1);
     expect(record?.previousHash).toBeNull();
@@ -50,7 +55,10 @@ describe('AuditService', () => {
 
     await audit.record(tenantContext(acme), { name: 'auth.login.succeeded', outcome: 'success' });
     await audit.record(tenantContext(globex), { name: 'auth.login.succeeded', outcome: 'success' });
-    const third = await audit.record(tenantContext(acme), { name: 'auth.logout.succeeded', outcome: 'success' });
+    const third = await audit.record(tenantContext(acme), {
+      name: 'auth.logout.succeeded',
+      outcome: 'success',
+    });
 
     // Each tenant has its own sequence, so one tenant's volume never shifts another's numbering.
     expect(third?.sequence).toBe(2);
@@ -83,14 +91,22 @@ describe('AuditService', () => {
       suppress: ['authz.permission.granted', 'auth.login.succeeded'],
     });
 
-    expect(await audit.record(context(), { name: 'authz.permission.granted', outcome: 'success' })).toBeUndefined();
-    expect(await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' })).toBeDefined();
+    expect(
+      await audit.record(context(), { name: 'authz.permission.granted', outcome: 'success' }),
+    ).toBeUndefined();
+    expect(
+      await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' }),
+    ).toBeDefined();
     expect(NON_SUPPRESSIBLE_EVENTS.has('auth.login.succeeded')).toBe(true);
   });
 
   it('does not let a failing sink break the caller', async () => {
     const repository = new MemoryAuditRepository();
-    const broken = { write: async () => { throw new Error('SIEM unreachable'); } };
+    const broken = {
+      write: async () => {
+        throw new Error('SIEM unreachable');
+      },
+    };
     const errors: unknown[] = [];
     const audit = new AuditService({
       sinks: [broken, repository],
@@ -139,7 +155,10 @@ describe('repository', () => {
     clock.advance(60_000);
     await audit.record(context(), { name: 'auth.login.failed', outcome: 'failure' });
 
-    const byName = await repository.query({ tenantId: ROOT_TENANT_ID, names: ['auth.login.failed'] });
+    const byName = await repository.query({
+      tenantId: ROOT_TENANT_ID,
+      names: ['auth.login.failed'],
+    });
     expect(byName.items).toHaveLength(1);
 
     const byActor = await repository.query({ tenantId: ROOT_TENANT_ID, actorId: 'u1' });
@@ -148,7 +167,10 @@ describe('repository', () => {
     const byTime = await repository.query({ tenantId: ROOT_TENANT_ID, from: 1_700_000_030_000 });
     expect(byTime.items).toHaveLength(1);
 
-    const byCorrelation = await repository.query({ tenantId: ROOT_TENANT_ID, correlationId: 'nope' as never });
+    const byCorrelation = await repository.query({
+      tenantId: ROOT_TENANT_ID,
+      correlationId: 'nope' as never,
+    });
     expect(byCorrelation.items).toHaveLength(0);
   });
 

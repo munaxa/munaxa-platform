@@ -130,7 +130,10 @@ export class RateLimiter {
       if ((rule.algorithm ?? 'sliding-window') === 'token-bucket') {
         const result = await this.#bucket.consume(
           key,
-          { refillPerSecond: rule.limit / (rule.window / 1_000), capacity: rule.burst ?? rule.limit },
+          {
+            refillPerSecond: rule.limit / (rule.window / 1_000),
+            capacity: rule.burst ?? rule.limit,
+          },
           cost,
         );
         return {
@@ -154,7 +157,9 @@ export class RateLimiter {
         limit: rule.limit,
         remaining: Math.max(0, rule.limit - state.count),
         resetAt: state.resetAt,
-        retryAfterSeconds: allowed ? 0 : Math.max(1, Math.ceil((state.resetAt - this.#clock.now()) / 1_000)),
+        retryAfterSeconds: allowed
+          ? 0
+          : Math.max(1, Math.ceil((state.resetAt - this.#clock.now()) / 1_000)),
       };
     } catch (error) {
       this.#onDegraded?.(error, rule);

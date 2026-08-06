@@ -157,7 +157,7 @@ describe('correlation', () => {
     const logger = new MemoryLogger();
     const correlationId = newCorrelationId();
 
-    withCorrelation({ correlationId, tenantId: undefined, userId: 'u1' }, () => {
+    withCorrelation({ correlationId, userId: 'u1' }, () => {
       logger.log('info', 'inside');
     });
     logger.log('info', 'outside');
@@ -186,7 +186,9 @@ describe('instrumentation', () => {
 
     await timed(logger, 'db.query', async () => 'fast', { metrics, slowThresholdMs: 10_000 });
     expect(logger.lines).toHaveLength(0);
-    expect(metrics.percentile('db.query.duration', 50, { outcome: 'success' })).toBeGreaterThanOrEqual(0);
+    expect(
+      metrics.percentile('db.query.duration', 50, { outcome: 'success' }),
+    ).toBeGreaterThanOrEqual(0);
 
     await timed(logger, 'db.query', async () => 'slow', { metrics, slowThresholdMs: 0 });
     expect(logger.lines[0]).toMatchObject({ kind: 'performance', operation: 'db.query' });
@@ -197,9 +199,14 @@ describe('instrumentation', () => {
     const metrics = new MemoryMetrics();
 
     await expect(
-      timed(logger, 'provider.call', async () => {
-        throw new Error('upstream down');
-      }, { metrics }),
+      timed(
+        logger,
+        'provider.call',
+        async () => {
+          throw new Error('upstream down');
+        },
+        { metrics },
+      ),
     ).rejects.toThrow('upstream down');
 
     expect(logger.lines[0]).toMatchObject({ outcome: 'failure', kind: 'performance' });
@@ -207,7 +214,9 @@ describe('instrumentation', () => {
   });
 
   it('masks the identifier in request fields', () => {
-    expect(requestFields({ method: 'POST', path: '/login', identifier: 'ada@example.com' })).toMatchObject({
+    expect(
+      requestFields({ method: 'POST', path: '/login', identifier: 'ada@example.com' }),
+    ).toMatchObject({
       identifier: 'a***@example.com',
     });
   });

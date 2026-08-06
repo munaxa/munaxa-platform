@@ -123,7 +123,7 @@ describe('secrets', () => {
 
   it('caches and can be invalidated after an external rotation', async () => {
     const inner = new StaticSecrets({ KEY: 'old' });
-    let now = 0;
+    const now = 0;
     const caching = new CachingSecrets(inner, 1_000, () => now);
 
     expect(await caching.get('KEY')).toBe('old');
@@ -151,7 +151,7 @@ describe('Secret wrapper', () => {
     const value = new Secret('super-secret-token');
     expect(value.reveal()).toBe('super-secret-token');
     expect(String(value)).toBe('[redacted]');
-    expect(`${value}`).toBe('[redacted]');
+    expect(`${String(value)}`).toBe('[redacted]');
     expect(JSON.stringify({ token: value })).toBe('{"token":"[redacted]"}');
   });
 });
@@ -200,7 +200,10 @@ describe('feature flags', () => {
   });
 
   it('returns a variant only when the flag is on', async () => {
-    const flags = new FeatureFlags({ theme: { enabled: true, variant: 'dark' }, off: { variant: 'x' } });
+    const flags = new FeatureFlags({
+      theme: { enabled: true, variant: 'dark' },
+      off: { variant: 'x' },
+    });
     expect(await flags.variant('theme')).toBe('dark');
     expect(await flags.variant('off')).toBeUndefined();
   });

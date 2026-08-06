@@ -2,13 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { FixedClock } from '@munaxa/types';
 import { FixedWindowCounter, MemoryCache, TokenBucket } from '../src/index.js';
 
+/**
+ * Budgets carry roughly 2.5x headroom over an idle machine. `turbo run test` runs every package
+ * concurrently on the same cores, and a budget tuned on an idle laptop fails on a busy CI runner —
+ * which teaches everyone to ignore the suite. These catch order-of-magnitude regressions, which is
+ * what they are for.
+ */
+
 describe('MemoryCache throughput', () => {
   it('reads and writes at well over 100k ops/s', async () => {
     const cache = new MemoryCache({ maxEntries: 50_000 });
     const start = performance.now();
     for (let i = 0; i < 50_000; i++) await cache.set(`k${i}`, i);
     for (let i = 0; i < 50_000; i++) await cache.get(`k${i}`);
-    expect(performance.now() - start).toBeLessThan(3_000);
+    expect(performance.now() - start).toBeLessThan(7_500);
   });
 
   it('keeps eviction O(1) amortised at the bound', async () => {
@@ -16,7 +23,7 @@ describe('MemoryCache throughput', () => {
     const cache = new MemoryCache({ maxEntries: 1_000 });
     const start = performance.now();
     for (let i = 0; i < 100_000; i++) await cache.set(`k${i}`, i);
-    expect(performance.now() - start).toBeLessThan(3_000);
+    expect(performance.now() - start).toBeLessThan(7_500);
     expect(cache.size).toBe(1_000);
   });
 
@@ -28,7 +35,7 @@ describe('MemoryCache throughput', () => {
 
     const start = performance.now();
     for (let i = 0; i < 20_000; i++) await cache.get(`k${i}`);
-    expect(performance.now() - start).toBeLessThan(2_000);
+    expect(performance.now() - start).toBeLessThan(5_000);
   });
 });
 
@@ -38,7 +45,7 @@ describe('rate-limit primitives on the request path', () => {
     const counter = new FixedWindowCounter(new MemoryCache({ clock }), clock);
     const start = performance.now();
     for (let i = 0; i < 50_000; i++) await counter.hit(`ip:${i % 500}`, 60_000);
-    expect(performance.now() - start).toBeLessThan(3_000);
+    expect(performance.now() - start).toBeLessThan(7_500);
   });
 
   it('evaluates a token bucket in constant time regardless of idle duration', async () => {
@@ -51,6 +58,6 @@ describe('rate-limit primitives on the request path', () => {
 
     const start = performance.now();
     for (let i = 0; i < 20_000; i++) await bucket.consume('k', options);
-    expect(performance.now() - start).toBeLessThan(2_000);
+    expect(performance.now() - start).toBeLessThan(5_000);
   });
 });

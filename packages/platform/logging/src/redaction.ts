@@ -58,9 +58,7 @@ export class Redactor {
   readonly #maxStringLength: number;
 
   constructor(options: RedactionOptions = {}) {
-    this.#keys = new Set(
-      (options.keys ?? DEFAULT_REDACTED_KEYS).map((key) => normalizeKey(key)),
-    );
+    this.#keys = new Set((options.keys ?? DEFAULT_REDACTED_KEYS).map((key) => normalizeKey(key)));
     this.#maxDepth = options.maxDepth ?? 6;
     this.#maxArrayLength = options.maxArrayLength ?? 50;
     this.#maxStringLength = options.maxStringLength ?? 2_000;
@@ -111,7 +109,9 @@ export class Redactor {
     if (value instanceof Date) return value.toISOString();
 
     if (Array.isArray(value)) {
-      const kept = value.slice(0, this.#maxArrayLength).map((entry) => this.#walk(entry, depth + 1, seen));
+      const kept = value
+        .slice(0, this.#maxArrayLength)
+        .map((entry) => this.#walk(entry, depth + 1, seen));
       return value.length > this.#maxArrayLength
         ? [...kept, `…and ${value.length - this.#maxArrayLength} more`]
         : kept;
