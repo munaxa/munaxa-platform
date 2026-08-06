@@ -2,6 +2,7 @@ import {
   HmacSigner,
   KeyRing,
   constantTimeEqual,
+  deriveKey,
   fromBase64Url,
   secureToken,
   toBase64Url,
@@ -202,11 +203,12 @@ export class TokenService {
   }
 
   #encode(claims: AccessTokenClaims): string {
-    const signed = this.#signer.sign('');
-    const header = toBase64Url(
-      JSON.stringify({ alg: this.#signer.algorithm, typ: 'JWT', kid: signed.kid }),
-    );
+    // The header carries the `kid`. A signer that can report it costs one signature per token;
+    // one that cannot needs a throwaway signature to read it, which under RS256 doubles the cost
+    // of the hottest path in the package. Both platform signers report it.
     const payload = toBase64Url(JSON.stringify(claims));
+    const kid = this.#signer.kid ?? this.#signer.sign(payload).kid;
+    const header = toBase64Url(JSON.stringify({ alg: this.#signer.algorithm, typ: 'JWT', kid }));
     const signature = this.#signer.sign(`${header}.${payload}`);
     return `${header}.${payload}.${signature.value}`;
   }
@@ -385,13 +387,12 @@ export class RefreshTokenService {
  * products do not each invent their own.
  */
 export function hmacSignerFromSecret(secret: string, kid = 'k1'): Signer {
-  const key = new Uint8Array(32);
-  const bytes = Buffer.from(secret, 'utf8');
-  // HMAC accepts any key length; deriving a fixed 32 bytes keeps behaviour identical whatever
-  // length of secret a deployment supplies.
-  for (let i = 0; i < bytes.length; i++)
-    key[i % 32] = ((key[i % 32] as number) ^ (bytes[i] as number)) & 0xff;
-  return new HmacSigner(new KeyRing({ kid, key }));
+  // HKDF, not a fold. This XOR-folded the secret into 32 bytes, which is not injective in a
+  // trivially constructible way: any 32-byte block appearing twice cancels, so `'p'.repeat(32)`
+  // and `'p'.repeat(32) + 'q'.repeat(64)` derived the same signing key. HKDF is already in
+  // `@munaxa/crypto` for exactly this, and binding a purpose string means a deployment reusing one
+  // environment secret for JWTs and for cookies does not end up reusing one key.
+  return new HmacSigner(new KeyRing({ kid, key: deriveKey(secret, 'jwt-signing') }));
 }
 
 /** Constant-time comparison of two opaque tokens. */

@@ -39,14 +39,10 @@ graph BT
   security --> cache
   notifications --> types
   notifications --> interfaces
-  notifications --> logging
   notifications --> crypto
   auth --> types
   auth --> interfaces
   auth --> crypto
-  auth --> rbac
-  auth --> session
-  auth --> audit
 ```
 
 ## Rules
@@ -86,14 +82,16 @@ graph LR
   P --> security["@munaxa/security"]
   P --> audit["@munaxa/audit"]
 
-  auth -.transitively.-> session["@munaxa/session"]
   auth -.transitively.-> crypto["@munaxa/crypto"]
   security -.transitively.-> cache["@munaxa/cache"]
+  security -.transitively.-> crypto
 ```
 
-Adding `@munaxa/auth` to a `package.json` pulls in `crypto`, `session`, `rbac`, `audit`, `logging`,
-`interfaces` and `types` — seven packages, zero third-party runtime dependencies, and nothing that
-touches the network or the filesystem until a product wires a port that does.
+Adding `@munaxa/auth` to a `package.json` pulls in `crypto`, `interfaces` and `types` — three
+packages, zero third-party runtime dependencies, and nothing that touches the network or the
+filesystem until a product wires a port that does. A product that also wants sessions, roles and an
+audit trail depends on those packages explicitly, which is the honest shape: `auth` composes with
+them through ports, it does not contain them.
 
 ## Third-party runtime dependencies
 

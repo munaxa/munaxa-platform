@@ -22,8 +22,8 @@ logic. When a product needs a security capability that is not here, the answer i
 | [`@munaxa/rbac`](../../packages/platform/rbac) | Roles, permissions, policies, guards | types, interfaces |
 | [`@munaxa/session`](../../packages/platform/session) | Session lifecycle, devices, revocation | types, interfaces, crypto |
 | [`@munaxa/security`](../../packages/platform/security) | Headers, CSP, CSRF, rate limiting, risk, threat detection | types, interfaces, crypto, cache |
-| [`@munaxa/notifications`](../../packages/platform/notifications) | Email, SMS, push, in-app delivery with templates | types, interfaces, logging, crypto |
-| [`@munaxa/auth`](../../packages/platform/auth) | Passwords, login, tokens, MFA, reset, providers, API keys | types, interfaces, crypto, rbac, session, audit |
+| [`@munaxa/notifications`](../../packages/platform/notifications) | Email, SMS, push, in-app delivery with templates | types, interfaces, crypto |
+| [`@munaxa/auth`](../../packages/platform/auth) | Passwords, login, tokens, MFA, reset, providers, API keys | types, interfaces, crypto |
 
 ## Documents
 
@@ -38,6 +38,9 @@ logic. When a product needs a security capability that is not here, the answer i
 - [**API reference**](./api.md) — the public surface of each package.
 - [**Extension guide**](./extension-guide.md) — adding a provider, a transport, a store, a signal,
   and what counts as a breaking change.
+- [**Production readiness audit**](./production-readiness-audit.md) — the P2 review: scores,
+  confirmed defects with reproductions, remediation plan and the Go/No-Go call. **Read this before
+  adopting the platform.**
 - **Migration guides** — [Munaxa Docs](./migration/munaxa-docs.md),
   [Munaxa School](./migration/munaxa-school.md), [Munaxa Work](./migration/munaxa-work.md).
 
@@ -69,3 +72,9 @@ Every security-relevant action emits an event from one closed vocabulary.
 All twelve packages are implemented, tested (unit, integration, security, performance and
 backward-compatibility suites) and building. **No application has been migrated** — that is
 deliberate, and the migration guides describe how each product moves when its phase arrives.
+
+The P2 [production readiness audit](./production-readiness-audit.md) returned **No-Go for migration
+today**, with a conditional Go for Munaxa Docs once four P0 defects are fixed. All four are the same
+shape: a check-then-act sequence that is correct on one process and silently wrong on two — the
+audit chain head, refresh-token rotation, MFA replay protection and the session concurrency limit.
+Do not adopt the platform until those land.

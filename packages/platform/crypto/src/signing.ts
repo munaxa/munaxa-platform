@@ -29,6 +29,14 @@ export interface Signature {
 
 export interface Signer {
   readonly algorithm: SignatureAlgorithm;
+  /**
+   * The key id new signatures will carry, when the signer can report it without signing.
+   *
+   * Optional so a custom signer need not implement it, but worth implementing: a caller that
+   * needs the `kid` to build an envelope — a JWT header, say — otherwise has to produce a
+   * throwaway signature to read it, which under RS256 is the most expensive thing on the path.
+   */
+  readonly kid?: string;
   sign(payload: string | Uint8Array): Signature;
   verify(payload: string | Uint8Array, signature: Signature): boolean;
 }
@@ -40,6 +48,10 @@ export class HmacSigner implements Signer {
 
   constructor(ring: KeyRing) {
     this.#ring = ring;
+  }
+
+  get kid(): string {
+    return this.#ring.primaryKid;
   }
 
   sign(payload: string | Uint8Array): Signature {
@@ -95,6 +107,10 @@ export class AsymmetricSigner implements Signer {
   }
 
   get primaryKid(): string {
+    return this.#primaryKid;
+  }
+
+  get kid(): string {
     return this.#primaryKid;
   }
 

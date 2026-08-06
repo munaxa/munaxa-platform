@@ -31,11 +31,9 @@ graph TD
     interfaces["@munaxa/interfaces"]
   end
 
-  auth --> rbac
-  auth --> session
-  auth --> audit
   auth --> crypto
-  notifications --> logging
+  auth --> interfaces
+  notifications --> crypto
   security --> cache
   security --> crypto
   session --> crypto
@@ -58,8 +56,12 @@ or authorization.
 **Layer 2** is the security domains. Each is independently useful: a product can adopt `@munaxa/rbac`
 alone, or `@munaxa/audit` alone.
 
-**Layer 3** composes. `auth` is the only package that depends on three domains, because authenticating
-someone genuinely does involve sessions, roles and an audit record.
+**Layer 3** composes — but through ports rather than imports. `auth` returns a *decision*; the
+product's composition root feeds that to `SessionManager`, `TokenService` and `AuditService`. The
+result is that `@munaxa/auth` imports only `types`, `interfaces` and `crypto`, and a product can
+adopt authentication without adopting the platform's session or audit implementations. The
+[P2 audit](./production-readiness-audit.md) corrected this diagram, which previously drew
+dependencies the code does not have.
 
 ## Ports, and why everything is one
 
