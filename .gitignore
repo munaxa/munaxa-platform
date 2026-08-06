@@ -66,3 +66,7 @@ school/apps/mobile/*.iml
 
 # Sentry
 .sentryclirc
+
+# Redis snapshots. `redis-server` writes dump.rdb into its working directory, which is the repo
+# root when the integration suites are run from here.
+dump.rdb
