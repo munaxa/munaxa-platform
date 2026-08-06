@@ -27,7 +27,7 @@ export interface LoggerPort {
 }
 
 /** Where audit records go once written. A product may fan out to several. */
-export interface AuditSinkPort {
+export interface AuditSinkPort<TName extends string = SecurityEventName> {
   /**
    * Accept an already-sealed record. Sinks are mirrors: a failure here is reported, never fatal.
    *
@@ -36,7 +36,7 @@ export interface AuditSinkPort {
    * @idempotency idempotent — a sink may receive the same record twice after a retry and must
    *   tolerate it (dedupe on `id`)
    */
-  write(record: AuditRecord): Promise<void>;
+  write(record: AuditRecord<TName>): Promise<void>;
   /** Best-effort flush before shutdown. */
   flush?(): Promise<void>;
 }
@@ -124,7 +124,9 @@ export function nextSequence(sequence: AuditSequence): AuditSequence {
  * adapter serialise with `SELECT … FOR UPDATE` and another rely on a unique index and a retry,
  * without either of them needing to know how a record is canonicalised.
  */
-export type AuditSealer = (previous: ChainHead | null) => AuditRecord;
+export type AuditSealer<TName extends string = SecurityEventName> = (
+  previous: ChainHead | null,
+) => AuditRecord<TName>;
 
 /** How an append should relate to the caller's own unit of work. */
 export interface AuditAppendOptions {
@@ -144,7 +146,9 @@ export interface AuditAppendOptions {
   readonly transaction?: unknown;
 }
 
-export interface AuditRepositoryPort extends AuditSinkPort {
+export interface AuditRepositoryPort<
+  TName extends string = SecurityEventName,
+> extends AuditSinkPort<TName> {
   /**
    * Whether `appendChained` honours `options.transaction`.
    *
@@ -182,16 +186,16 @@ export interface AuditRepositoryPort extends AuditSinkPort {
    */
   appendChained(
     tenantId: TenantId,
-    seal: AuditSealer,
+    seal: AuditSealer<TName>,
     options?: AuditAppendOptions,
-  ): Promise<AuditRecord>;
+  ): Promise<AuditRecord<TName>>;
 
   /**
    * @atomicity none
    * @consistency read-your-writes
    * @idempotency idempotent
    */
-  query(query: AuditQuery): Promise<{ items: readonly AuditRecord[]; nextCursor?: string }>;
+  query(query: AuditQuery): Promise<{ items: readonly AuditRecord<TName>[]; nextCursor?: string }>;
 
   /**
    * The last record written for a tenant. Diagnostic only in 2.0 — sequencing is `appendChained`'s
@@ -201,13 +205,15 @@ export interface AuditRepositoryPort extends AuditSinkPort {
    * @consistency read-your-writes
    * @idempotency idempotent
    */
-  latest(tenantId: TenantId): Promise<AuditRecord | undefined>;
+  latest(tenantId: TenantId): Promise<AuditRecord<TName> | undefined>;
 }
 
 /** Serialises audit records for an external consumer (SIEM, object storage, a compliance export). */
-export interface AuditExporterPort {
+export interface AuditExporterPort<TName extends string = SecurityEventName> {
   readonly name: string;
-  export(records: AsyncIterable<AuditRecord> | Iterable<AuditRecord>): Promise<ExportResult>;
+  export(
+    records: AsyncIterable<AuditRecord<TName>> | Iterable<AuditRecord<TName>>,
+  ): Promise<ExportResult>;
 }
 
 export interface ExportResult {

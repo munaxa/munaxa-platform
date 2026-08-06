@@ -50,14 +50,14 @@ import { auditEvent, NON_SUPPRESSIBLE_EVENTS, type AuditEventInput } from './eve
  * - **Closed vocabulary.** Only names from `SECURITY_EVENTS` are accepted, so one query works
  *   across every product.
  */
-export interface AuditServiceOptions {
+export interface AuditServiceOptions<TName extends string = SecurityEventName> {
   /**
    * The durable, chain-owning store. Required: without it there is no ordering authority, and a
    * hash chain without one is decoration.
    */
-  readonly repository: AuditRepositoryPort;
+  readonly repository: AuditRepositoryPort<TName>;
   /** Mirrors — logs, a SIEM, an exporter. Failures here are reported, never fatal. */
-  readonly sinks?: readonly AuditSinkPort[];
+  readonly sinks?: readonly AuditSinkPort<TName>[];
   /** Attempts when the repository reports a `ChainConflictError`. Default 5. */
   readonly maxChainAttempts?: number;
   readonly clock?: Clock;
@@ -66,9 +66,13 @@ export interface AuditServiceOptions {
    * Events to skip. `NON_SUPPRESSIBLE_EVENTS` are recorded regardless — a product may quieten
    * routine noise, not the events an incident review depends on.
    */
-  readonly suppress?: readonly SecurityEventName[];
+  readonly suppress?: readonly TName[];
   /** Called when a sink throws. Default: log at error level. */
-  readonly onSinkError?: (error: unknown, record: AuditRecord, sink: AuditSinkPort) => void;
+  readonly onSinkError?: (
+    error: unknown,
+    record: AuditRecord<TName>,
+    sink: AuditSinkPort<TName>,
+  ) => void;
   /** Fields stripped from every payload before writing. Applied on top of the built-in list. */
   readonly redactPayloadKeys?: readonly string[];
   /**
@@ -79,6 +83,21 @@ export interface AuditServiceOptions {
    * rather than a silent change of what the digests mean.
    */
   readonly canonicalFormat?: CanonicalFormat;
+  /**
+   * Mint the record's identifier. Defaults to the platform's `aud_${sequence}_${hash…}`.
+   *
+   * **Called before the record is hashed**, which is the whole point. The platform's own id is
+   * derived from the digest, so it can only be computed afterwards — but a product whose digest
+   * *covers* its id (see `CanonicalInput.recordId`) needs the id to exist first, or the two are
+   * circular. Supplying this flips the order: the id is minted, passed to the canonical format as
+   * `recordId`, and then hashed. Omitting it keeps today's behaviour exactly, hash-derived id and
+   * all, so no existing digest or identifier changes.
+   *
+   * The generator owns uniqueness. The platform does not retry a collision: an id that repeats is
+   * a broken generator, and minting a second one quietly would hide that while two records share
+   * a row.
+   */
+  readonly generateId?: (sequence: AuditSequence, recordedAt: number) => string;
 }
 
 /** Per-write options. Named for symmetry with the port; identical to `AuditAppendOptions`. */
@@ -98,20 +117,21 @@ const ALWAYS_STRIPPED = [
   'passwordHash',
 ];
 
-export class AuditService {
-  readonly #repository: AuditRepositoryPort;
-  readonly #sinks: readonly AuditSinkPort[];
+export class AuditService<TName extends string = SecurityEventName> {
+  readonly #repository: AuditRepositoryPort<TName>;
+  readonly #sinks: readonly AuditSinkPort<TName>[];
   readonly #maxChainAttempts: number;
   readonly #clock: Clock;
   readonly #logger: LoggerPort | undefined;
-  readonly #suppress: ReadonlySet<SecurityEventName>;
-  readonly #onSinkError: NonNullable<AuditServiceOptions['onSinkError']>;
+  readonly #suppress: ReadonlySet<string>;
+  readonly #onSinkError: NonNullable<AuditServiceOptions<TName>['onSinkError']>;
   readonly #stripped: ReadonlySet<string>;
   readonly #format: CanonicalFormat;
+  readonly #generateId: AuditServiceOptions<TName>['generateId'];
   #failures = 0;
   #conflicts = 0;
 
-  constructor(options: AuditServiceOptions) {
+  constructor(options: AuditServiceOptions<TName>) {
     this.#repository = options.repository;
     this.#sinks = options.sinks ?? [];
     this.#maxChainAttempts = options.maxChainAttempts ?? 5;
@@ -119,6 +139,7 @@ export class AuditService {
     this.#logger = options.logger;
     this.#suppress = new Set(options.suppress ?? []);
     this.#format = options.canonicalFormat ?? CURRENT_CANONICAL_FORMAT;
+    this.#generateId = options.generateId;
     this.#stripped = new Set(
       [...ALWAYS_STRIPPED, ...(options.redactPayloadKeys ?? [])].map((key) => key.toLowerCase()),
     );
@@ -151,10 +172,11 @@ export class AuditService {
 
   /** Record an event built from the ambient security context. */
   async record(
+    this: AuditService<SecurityEventName>,
     context: SecurityContext,
     input: AuditEventInput,
     options: AuditWriteOptions = {},
-  ): Promise<AuditRecord | undefined> {
+  ): Promise<AuditRecord<SecurityEventName> | undefined> {
     return this.write(auditEvent(context, { occurredAt: this.#clock.now(), ...input }), options);
   }
 
@@ -165,9 +187,9 @@ export class AuditService {
    * with the change it describes. The repository must support it; see `AuditAppendOptions`.
    */
   async write(
-    event: SecurityEvent,
+    event: SecurityEvent<Readonly<Record<string, unknown>>, TName>,
     options: AuditWriteOptions = {},
-  ): Promise<AuditRecord | undefined> {
+  ): Promise<AuditRecord<TName> | undefined> {
     if (this.#suppress.has(event.name) && !NON_SUPPRESSIBLE_EVENTS.has(event.name)) {
       return undefined;
     }
@@ -178,14 +200,24 @@ export class AuditService {
 
     // The store decides the sequence, inside its own transaction. `seal` may be called more than
     // once — an optimistic adapter re-runs it after a conflict with the new head — so it is pure.
-    const seal = (previous: ChainHead | null): AuditRecord => {
+    const seal = (previous: ChainHead | null): AuditRecord<TName> => {
       // `nextSequence` rather than `+ 1`: a store whose sequence is a `bigserial` hands back a
       // bigint, and `1n + 1` is a TypeError rather than 2.
       const sequence: AuditSequence = previous === null ? 1 : nextSequence(previous.sequence);
       const previousHash = previous?.hash ?? null;
-      const hash = hashOf(format, { event: sanitized, previousHash, recordedAt, sequence });
+      // When the product mints the id, it must exist before hashing — its digest may cover it.
+      // When the platform mints it, it cannot exist until after, because it is derived from the
+      // digest. That is the whole ordering difference, and it is why this is two branches.
+      const productId = this.#generateId?.(sequence, recordedAt);
+      const hash = hashOf(format, {
+        event: sanitized,
+        previousHash,
+        recordedAt,
+        sequence,
+        ...(productId === undefined ? {} : { recordId: productId }),
+      });
       return {
-        id: `aud_${toBase36(sequence)}_${hash.slice(0, 12)}`,
+        id: productId ?? `aud_${toBase36(sequence)}_${hash.slice(0, 12)}`,
         event: sanitized,
         recordedAt,
         sequence,
@@ -231,9 +263,9 @@ export class AuditService {
    */
   async #appendWithRetry(
     tenantId: TenantId,
-    seal: AuditSealer,
+    seal: AuditSealer<TName>,
     options: AuditAppendOptions,
-  ): Promise<AuditRecord> {
+  ): Promise<AuditRecord<TName>> {
     const joined = options.transaction !== undefined;
     for (let attempt = 1; ; attempt++) {
       try {
@@ -250,7 +282,9 @@ export class AuditService {
     await Promise.all(this.#sinks.map(async (sink) => sink.flush?.()));
   }
 
-  #sanitize(event: SecurityEvent): SecurityEvent {
+  #sanitize(
+    event: SecurityEvent<Readonly<Record<string, unknown>>, TName>,
+  ): SecurityEvent<Readonly<Record<string, unknown>>, TName> {
     if (!event.payload) return event;
     const payload: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(event.payload)) {
