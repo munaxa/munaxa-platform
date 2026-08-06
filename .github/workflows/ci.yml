@@ -6,6 +6,14 @@ on:
     paths-ignore:
       - '**/*.md'
       - 'LICENSE'
+  # Also on push to main. Without this, main is ungated: a direct push — or a merge whose base
+  # moved after the pull request last ran — lands with nothing checking it, and the first person
+  # to notice is whoever opens the next pull request and inherits a red build they did not cause.
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
 
 concurrency:
   group: ci-${{ github.ref }}
