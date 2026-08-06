@@ -61,15 +61,17 @@ sequenceDiagram
   C->>R: rotate(tokenA)
   R->>St: findByHash(fingerprint(tokenA))
   St-->>R: record { rotatedAt: null }
-  R->>St: save(tokenB), update(tokenA → rotated, replacedBy: B)
+  R->>St: markRotated(id, replacedBy: B) — conditional on rotatedAt IS NULL
+  St-->>R: true (claimed)
+  R->>St: save(tokenB)
   R-->>C: tokenB
   A-->>A: auth.token.refreshed
 
   Note over C,R: Later — an attacker replays the copy they took of tokenA
 
   C->>R: rotate(tokenA)
-  R->>St: findByHash(fingerprint(tokenA))
-  St-->>R: record { rotatedAt: set }
+  R->>St: markRotated(id, …)
+  St-->>R: false (already claimed)
   R->>St: revokeFamily(familyId)
   R->>A: auth.token.reuse.detected (critical)
   R->>Sess: revoke linked sessions
@@ -79,6 +81,47 @@ sequenceDiagram
 Both parties lose access, deliberately. There is no way to tell which of the two holders is the
 legitimate one, and the legitimate user experiences an unexpected sign-out — which is the signal
 they need, and far better than an attacker keeping quiet access indefinitely.
+
+The claim is what makes that true across replicas. The `findByHash` above is a fast path that saves
+a write when the replay is not a race; the *decision* is `markRotated`, and the store tells exactly
+one caller `true`. A thief presenting the token at the same moment as the legitimate client is
+precisely the case where reading `rotatedAt` and then writing it back would have let both through —
+which is how Platform 1.0 disabled its own reuse detection under exactly the conditions that
+mattered.
+
+## Two replicas, one refresh token
+
+```mermaid
+sequenceDiagram
+  participant A as Replica A
+  participant B as Replica B
+  participant St as RefreshTokenStorePort
+
+  par the same token, at the same moment
+    A->>St: findByHash → rotatedAt: null
+  and
+    B->>St: findByHash → rotatedAt: null
+  end
+
+  Note over A,B: Both replicas believe the token is live. 1.0 stopped here and both proceeded.
+
+  par the claim decides
+    A->>St: markRotated(id, replacedBy: A1)
+    St-->>A: true
+  and
+    B->>St: markRotated(id, replacedBy: B1)
+    St-->>B: false
+  end
+
+  A->>St: save(A1)
+  A-->>A: 200, new token
+  B->>St: revokeFamily(familyId)
+  B-->>B: 401 AUTH_TOKEN_REUSED
+```
+
+Every other at-most-once operation has this same shape: `markConsumed` for a reset link,
+`setIfAbsent` for a TOTP step or a one-time code, `appendChained` for an audit record. Read freely;
+decide once, in the store.
 
 ## Password reset
 
@@ -106,7 +149,8 @@ sequenceDiagram
   P->>P: not consumed, not revoked, not expired
   P->>P: passwordHashFingerprint still matches the account
   P->>P: password policy (length, breach corpus, history)
-  P->>St: mark consumed (before anything else can fail)
+  P->>St: markConsumed(id) — conditional on consumedAt IS NULL
+  Note over P,St: Every check above is read-only and may run twice.<br/>This is the gate, and it opens once.
   P->>D: updatePasswordHash + incrementTokenVersion
   P->>S: revoke every session
   P->>N: security.password-changed (critical, never suppressed)
@@ -210,3 +254,31 @@ sequenceDiagram
 Every ciphertext and signature carries its `kid`, so step three is safe the moment nothing references
 the old key — and `KeyRing.retire` refuses to remove the primary, which is the mistake that turns a
 rotation into an outage.
+
+## Appending to the audit chain
+
+```mermaid
+sequenceDiagram
+  participant S as AuditService
+  participant R as AuditRepositoryPort
+  participant DB as Store
+
+  S->>R: appendChained(tenantId, seal)
+  activate R
+  R->>DB: read head FOR UPDATE (or read + unique index)
+  DB-->>R: { sequence: n, hash: h }
+  R->>R: seal({ sequence: n, hash: h }) → record n+1
+  R->>DB: insert record n+1
+  DB-->>R: committed
+  deactivate R
+  R-->>S: record
+
+  Note over S,R: An optimistic adapter may instead raise ChainConflictError<br/>on the unique-index violation; AuditService retries up to maxChainAttempts.
+
+  S->>S: fan out to sinks (SIEM, NDJSON, collector)
+  Note over S: A sink failure is counted, never fatal.<br/>An append failure fails the request — a request<br/>that proceeds unaudited is worse than one that fails.
+```
+
+The sealing function is supplied by the caller and executed *by the store*, inside whatever
+critical section the adapter uses. That inversion is the whole fix: a replica never proposes a
+sequence number, so two replicas cannot propose the same one.

@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/auth",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Authentication: passwords and policy, login, JWT and refresh tokens with rotation and reuse detection, password reset, MFA, device trust, external identity providers, API keys and machine-to-machine access.",
   "license": "UNLICENSED",
   "type": "module",

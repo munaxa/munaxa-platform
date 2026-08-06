@@ -128,7 +128,11 @@ const cache = config.MUNAXA_REDIS_URL
   : new MemoryCache();
 
 const audit = new AuditService({
-  sinks: [new PrismaAuditRepository(db), new LoggingAuditSink(logger)],
+  // The repository owns the chain: it allocates the sequence and holds the head, so every replica
+  // writes into one chain without knowing the others exist.
+  repository: new PrismaAuditRepository(db),
+  // Sinks are mirrors. A sink failing is counted, never fatal; the append failing fails the request.
+  sinks: [new LoggingAuditSink(logger)],
   logger,
 });
 
@@ -142,6 +146,9 @@ const policy = new PasswordPolicyService({
 
 const sessions = new SessionManager({
   store: new PrismaSessionStore(db),
+  // Only needed when the store cannot enforce the limit inside its own transaction. With neither,
+  // `limitEnforcement` reports 'best-effort' and the limit is a hint — see the log line below.
+  locks: new CacheLock(cache),
   policy: {
     idleTimeout: config.MUNAXA_SESSION_IDLE_TIMEOUT,
     absoluteTimeout: config.MUNAXA_SESSION_ABSOLUTE_TIMEOUT,
@@ -177,6 +184,17 @@ const refresh = new RefreshTokenService({
   },
 });
 
+// Second factors and one-time codes need somewhere shared to record what has been spent. Without
+// these, a stolen TOTP code is worth one sign-in per replica.
+const mfa = new MfaService({ store: new PrismaMfaEnrollmentStore(db), replayGuard: cache });
+const otp = new OtpService({ cache });
+
+const notifications = new NotificationService({
+  transports: [new PostmarkTransport(config.MUNAXA_POSTMARK_TOKEN)],
+  templates: new TemplateRegistry(SECURITY_TEMPLATES),
+  dedupeStore: cache, // otherwise each replica suppresses only its own repeats
+});
+
 const authorizer = new Authorizer({
   resolver: new PermissionResolver({
     roles: new PrismaRoleRepository(db),
@@ -192,6 +210,15 @@ const authorizer = new Authorizer({
           outcome: 'denied',
           payload: { permission: input.permission },
         }),
+});
+
+// Log what you are actually running. The difference between 'store-transaction' and 'best-effort'
+// is the difference between a limit and a hint, and the only way to find out in production is to
+// have said so at startup.
+logger.log('info', 'platform.enforcement', {
+  sessions: sessions.limitEnforcement,
+  mfaReplay: mfa.distributed,
+  notifyDedupe: notifications.distributed,
 });
 ```
 

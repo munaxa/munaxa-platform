@@ -154,6 +154,47 @@ The middle column is the one worth understanding. Everything in it is *recoverab
 cache costs a burst of extra database reads and resets some counters. Nothing in it is the only copy
 of anything, which is why rate limiting can fail open and permission caching can be dropped wholesale.
 
+There is a fourth column that used to exist and no longer does: **held in a service field**. Platform
+1.0 kept the audit chain head, the set of used TOTP steps and the deduplication window in private
+maps on service objects. Each was correct with one process and silently wrong with two, and none of
+them raised an error on the path that was wrong. 2.0 has no such state: anything that must happen at
+most once is decided by the store, in one conditional operation, and exactly one caller is told yes.
+See [distributed guarantees](./distributed-guarantees.md).
+
+## Running more than one replica
+
+```mermaid
+graph TB
+  LB[Load balancer]
+
+  subgraph Fleet["Replicas — no shared memory, no affinity required"]
+    R1["Instance 1<br/>AuthService · AuditService<br/>SessionManager · RateLimiter"]
+    R2["Instance 2<br/>same services, own objects"]
+    R3["Instance N<br/>…"]
+  end
+
+  subgraph Shared["Shared state — the only thing replicas have in common"]
+    DB[("Database<br/>appendChained · markRotated<br/>markConsumed · createWithinLimit")]
+    KV[("Cache<br/>setIfAbsent · increment<br/>compareAndSet")]
+  end
+
+  LB --> R1 & R2 & R3
+  R1 & R2 & R3 --> DB
+  R1 & R2 & R3 --> KV
+```
+
+Nothing in the fleet box talks to anything else in the fleet box. There is no gossip, no leader,
+no sticky sessions and no coordination protocol — a replica is stateless, and every decision that
+needs agreement is pushed down to one conditional operation in the shared box. That is what makes
+the platform deployable unchanged on Kubernetes, Docker Swarm, Azure App Service, AWS ECS, Cloud
+Run, Cloudflare Workers, Render and Fly.io: none of them are asked for anything beyond "several
+processes, one database, one cache".
+
+The corollary is that the shared box has to be able to do those operations. Where a backing cannot —
+Cloudflare KV has no compare-and-set — the platform degrades explicitly and reports the mode it is
+in, rather than behaving as though it had the guarantee. See the degradation table in
+[distributed guarantees](./distributed-guarantees.md#degradation-declared).
+
 ## Trust boundaries
 
 ```mermaid

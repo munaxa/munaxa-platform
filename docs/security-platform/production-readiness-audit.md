@@ -57,6 +57,14 @@ are what "mandatory dependency for every Munaxa product" actually means.
 
 ---
 
+> **Resolved in Platform 2.0.** All four P0 findings below — and two more of the same shape found
+> during 2.0's own concurrency sweep, password-reset consumption and notification deduplication —
+> are fixed. The reproductions are kept verbatim because they are the clearest statement of what was
+> wrong, and because each one is now a regression test. See
+> [distributed guarantees](./distributed-guarantees.md) for what replaced them and
+> [the 2.0 migration guide](./migration/platform-2.0.md) for what a consumer has to change. The
+> code in the reproductions is 1.0 code and will not compile against 2.0.
+
 ## 3. Findings
 
 Severity: **P0** blocks all migration · **P1** blocks School/Work · **P2** quality and debt.

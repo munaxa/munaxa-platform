@@ -1,6 +1,6 @@
 # The Munaxa Shared Security Platform
 
-Twelve packages under `packages/platform/*` that own every cross-cutting security concern in the
+Thirteen packages under `packages/platform/*` that own every cross-cutting security concern in the
 Munaxa ecosystem: authentication, authorization, sessions, auditing, cryptography, rate limiting,
 security headers, logging, notifications and configuration.
 
@@ -24,6 +24,7 @@ logic. When a product needs a security capability that is not here, the answer i
 | [`@munaxa/security`](../../packages/platform/security) | Headers, CSP, CSRF, rate limiting, risk, threat detection | types, interfaces, crypto, cache |
 | [`@munaxa/notifications`](../../packages/platform/notifications) | Email, SMS, push, in-app delivery with templates | types, interfaces, crypto |
 | [`@munaxa/auth`](../../packages/platform/auth) | Passwords, login, tokens, MFA, reset, providers, API keys | types, interfaces, crypto |
+| [`@munaxa/conformance`](../../packages/platform/conformance) | The executable specification every adapter must pass | types, interfaces |
 
 ## Documents
 
@@ -38,10 +39,16 @@ logic. When a product needs a security capability that is not here, the answer i
 - [**API reference**](./api.md) — the public surface of each package.
 - [**Extension guide**](./extension-guide.md) — adding a provider, a transport, a store, a signal,
   and what counts as a breaking change.
+- [**Distributed guarantees**](./distributed-guarantees.md) — the consistency model, what each
+  port promises, how it degrades, and what the atomicity costs. **Read this before writing an
+  adapter or scaling past one replica.**
+- [**Adapter guide**](./adapter-guide.md) — the exact statement each atomic operation needs, and
+  how to prove your adapter provides it.
 - [**Production readiness audit**](./production-readiness-audit.md) — the P2 review: scores,
-  confirmed defects with reproductions, remediation plan and the Go/No-Go call. **Read this before
-  adopting the platform.**
-- **Migration guides** — [Munaxa Docs](./migration/munaxa-docs.md),
+  confirmed defects with reproductions, remediation plan and the Go/No-Go call.
+- [**Platform 2.0 migration**](./migration/platform-2.0.md) — breaking changes, adapter changes,
+  upgrade steps and the rollback story.
+- **Product migration guides** — [Munaxa Docs](./migration/munaxa-docs.md),
   [Munaxa School](./migration/munaxa-school.md), [Munaxa Work](./migration/munaxa-work.md).
 
 ## Principles
@@ -69,12 +76,19 @@ Every security-relevant action emits an event from one closed vocabulary.
 
 ## Status
 
-All twelve packages are implemented, tested (unit, integration, security, performance and
-backward-compatibility suites) and building. **No application has been migrated** — that is
-deliberate, and the migration guides describe how each product moves when its phase arrives.
+All thirteen packages are implemented, tested (unit, integration, security, performance,
+backward-compatibility, conformance, distributed-simulation, stress and failure-injection suites)
+and building at **2.0.0**. **No application has been migrated** — that is deliberate, and the
+migration guides describe how each product moves when its phase arrives.
 
-The P2 [production readiness audit](./production-readiness-audit.md) returned **No-Go for migration
-today**, with a conditional Go for Munaxa Docs once four P0 defects are fixed. All four are the same
-shape: a check-then-act sequence that is correct on one process and silently wrong on two — the
-audit chain head, refresh-token rotation, MFA replay protection and the session concurrency limit.
-Do not adopt the platform until those land.
+The P2 [production readiness audit](./production-readiness-audit.md) returned No-Go on four defects
+that shared one shape: a check-then-act sequence correct on one process and silently wrong on two —
+the audit chain head, refresh-token rotation, MFA replay protection and the session concurrency
+limit. **All four are fixed in 2.0**, along with two more of the same shape found during 2.0's own
+concurrency sweep: password-reset consumption and notification deduplication.
+
+Each fix is a store-owned atomic operation rather than a service-held field, each is covered by the
+conformance suite an adapter must pass, and each is exercised by a simulation that runs several
+independent service instances over one shared store with latency injected between them. Start with
+[distributed guarantees](./distributed-guarantees.md) and the
+[2.0 migration guide](./migration/platform-2.0.md).

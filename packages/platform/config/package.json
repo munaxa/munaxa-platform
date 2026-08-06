@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/config",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Typed configuration: environment schemas with validation, layered sources, secrets, feature flags and per-tenant configuration.",
   "license": "UNLICENSED",
   "type": "module",

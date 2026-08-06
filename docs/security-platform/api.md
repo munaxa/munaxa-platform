@@ -94,7 +94,8 @@ Ports only, plus `PORTS` (the token table), `ServiceRegistry`, `createToken()` a
 - `NamespacedCache` / `namespaced()` / `forTenant()` — structural key scoping.
 - `TieredCache` — near + far, with counters bypassing the near tier.
 - `TypedCache<T>` — typed view with `getOrLoad` (never caches absence).
-- `FixedWindowCounter`, `SlidingWindowCounter`, `TokenBucket`.
+- `FixedWindowCounter`, `SlidingWindowCounter`, `TokenBucket` (`consume`, `enforcement`).
+- `MemoryCache.compareAndSet()` — optional `CachePort` member; `TokenBucket` degrades without it.
 - `CacheLock`, `withLock()` — leased, fenced, non-blocking by default.
 
 ---
@@ -111,8 +112,8 @@ Ports only, plus `PORTS` (the token table), `ServiceRegistry`, `createToken()` a
 
 ## @munaxa/audit
 
-- `AuditService` — `record(context, input)`, `write(event)`, `resume(tenantId, last)`, `flush()`,
-  `failureCount`.
+- `AuditService` — `record(context, input)`, `write(event)`, `flush()`, `failureCount`,
+  `conflictCount`. Requires `repository: AuditRepositoryPort`; `sinks` are optional mirrors.
 - `verifyChain(records)` → `{ valid, brokenAt?, reason?, checked }`; `canonicalize()`.
 - `auditEvent()`, `anonymousAuditEvent()`, `actorOf()`, `sourceOf()`, `NON_SUPPRESSIBLE_EVENTS`.
 - `MemoryAuditRepository`, `LoggingAuditSink`, `BatchingSink`.
@@ -140,7 +141,7 @@ Ports only, plus `PORTS` (the token table), `ServiceRegistry`, `createToken()` a
 ## @munaxa/session
 
 - `SessionManager` — `create`, `validate`, `touch`, `listActive`, `revoke`, `revokeAllForUser`,
-  `revokeDevice`, `isFreshEnoughForSensitiveAction`, `purgeExpired`, `policy`.
+  `revokeDevice`, `isFreshEnoughForSensitiveAction`, `purgeExpired`, `policy`, `limitEnforcement`.
 - `SessionPolicy`, `DEFAULT_SESSION_POLICY`, `SESSION_POLICY_CEILING`, `clampSessionPolicy()`.
 - `DeviceService` — `recognize`, `trust`, `untrust`, `untrustAll`, `isTrusted`, `list`, `forget`;
   `fingerprint()`.
@@ -168,7 +169,7 @@ Ports only, plus `PORTS` (the token table), `ServiceRegistry`, `createToken()` a
 
 ## @munaxa/notifications
 
-- `NotificationService` — `send()`, `registerTransport()`, `channels`. Refuses any payload with a
+- `NotificationService` — `send()`, `registerTransport()`, `channels`, `distributed`. Refuses any payload with a
   credential-shaped field (`SecretLeakError`); critical messages bypass deduplication and throw when
   no transport exists.
 - `TemplateRegistry`, `NotificationTemplate`, `SECURITY_TEMPLATES` (password changed, reset
@@ -187,8 +188,8 @@ Ports only, plus `PORTS` (the token table), `ServiceRegistry`, `createToken()` a
   `RefreshTokenService` (`issue`, `rotate`, `revoke`, `revokeFamily`, `revokeAllForUser`,
   `inspect`), `AccessTokenClaims`, `hmacSignerFromSecret()`.
 - **Reset** — `PasswordResetService` (`request`, `inspect`, `complete`, `revokeAll`).
-- **MFA** — `MfaService`, `OtpService`, `generateTotpSecret()`, `totpCode()`, `verifyTotp()`,
-  `totpUri()`.
+- **MFA** — `MfaService` (`replayGuard`, `distributed`), `OtpService` (`issue`/`verify`/`get` are
+  async; `cache`, `distributed`), `generateTotpSecret()`, `totpCode()`, `verifyTotp()`, `totpUri()`.
 - **Machine** — `ApiKeyService` (`create`, `verify`, `revoke`, `list`), `ServiceAccountService`,
   `parseApiKey()`, `isAllowedAddress()`.
 - **Providers** — `OidcProvider`, `providerPresets` (`google`, `microsoft`, `azureAd`, `firebase`),
@@ -199,3 +200,18 @@ Ports only, plus `PORTS` (the token table), `ServiceRegistry`, `createToken()` a
 - **Stores** — `MemoryUserDirectory`, `MemoryPasswordHistory`, `StaticBreachRegistry`,
   `MemoryRefreshTokenStore`, `MemoryResetTokenStore`, `MemoryApiKeyStore`,
   `MemoryMfaEnrollmentStore`, `COMMON_BREACHED_PASSWORDS`.
+
+---
+
+## @munaxa/conformance
+
+The executable specification of every port. Depends on no test framework — the runner is a
+parameter — so it runs under vitest, jest or node's own.
+
+- `runCacheConformance()`, `runAuditConformance()`, `runRefreshTokenConformance()`,
+  `runResetTokenConformance()`, `runSessionConformance()`.
+- `TestHarness`, `ExpectFn` — the `{ describe, it, expect }` shape each suite takes.
+- `tick()`, `race()`, `Seeded` — the interleaving helpers. `Seeded` is a deterministic xorshift, so
+  a failing ordering reproduces instead of becoming a flake.
+
+See the [adapter guide](./adapter-guide.md).
