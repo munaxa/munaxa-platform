@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/types",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Shared platform domain types, branded identifiers, error taxonomy and the canonical security-event vocabulary. No runtime behaviour beyond pure helpers.",
   "keywords": [
     "security",

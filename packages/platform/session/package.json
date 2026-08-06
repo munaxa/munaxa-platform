@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/session",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Session lifecycle: creation, idle and absolute timeouts, concurrency limits, device management, trusted devices and revocation.",
   "keywords": [
     "security",

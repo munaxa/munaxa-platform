@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/logging",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Structured, redacting, correlation-aware logging for application, security and performance events.",
   "keywords": [
     "security",
