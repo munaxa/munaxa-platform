@@ -50,8 +50,7 @@ runCacheConformance(harness, {
 
 runAuditConformance(harness, {
   createRepository: () => new MemoryAuditRepository(),
-  readChain: async (repository, tenantId) =>
-    (repository as MemoryAuditRepository).chain(tenantId),
+  readChain: async (repository, tenantId) => (repository as MemoryAuditRepository).chain(tenantId),
   verifyChain: (records) => verifyChain(records),
   seal: (event, previous: ChainHead | null, recordedAt): AuditRecord => {
     const sequence = (previous?.sequence ?? 0) + 1;

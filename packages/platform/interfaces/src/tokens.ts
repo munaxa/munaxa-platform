@@ -69,12 +69,7 @@ export interface RefreshTokenStorePort {
    * @consistency linearizable
    * @idempotency at-most-once — exactly one caller may receive true for a given token
    */
-  markRotated(
-    tenantId: TenantId,
-    id: string,
-    at: number,
-    replacedBy: string,
-  ): Promise<boolean>;
+  markRotated(tenantId: TenantId, id: string, at: number, replacedBy: string): Promise<boolean>;
   listFamily(tenantId: TenantId, familyId: TokenFamilyId): Promise<readonly RefreshTokenRecord[]>;
   /**
    * Revoke every live token in a family. Returns how many were revoked.

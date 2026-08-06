@@ -1,4 +1,5 @@
 import type {
+  CachePort,
   DeliveryResult,
   LoggerPort,
   NotificationChannel,
@@ -33,6 +34,13 @@ export interface NotificationServiceOptions {
   readonly retryDelay?: DurationMs;
   /** Suppress an identical message to the same recipient within this window. */
   readonly dedupeWindow?: DurationMs;
+  /**
+   * Where the deduplication claim lives. Wire the shared cache in any deployment with more than
+   * one replica: without it each instance suppresses only its *own* repeats, so a user gets one
+   * copy of the same notice per pod — which is the failure mode people describe as "the retry
+   * loop is broken" long before they find the real cause.
+   */
+  readonly dedupeStore?: CachePort;
   readonly onEvent?: (event: NotificationEvent) => void | Promise<void>;
 }
 
@@ -100,6 +108,7 @@ export class NotificationService {
   readonly #retryDelay: DurationMs;
   readonly #dedupeWindow: DurationMs;
   readonly #onEvent: NotificationServiceOptions['onEvent'];
+  readonly #dedupeStore: CachePort | undefined;
   readonly #recentlySent = new Map<string, number>();
 
   constructor(options: NotificationServiceOptions) {
@@ -110,6 +119,7 @@ export class NotificationService {
     this.#maxAttempts = options.maxAttempts ?? 3;
     this.#retryDelay = options.retryDelay ?? 250;
     this.#dedupeWindow = options.dedupeWindow ?? 60_000;
+    this.#dedupeStore = options.dedupeStore;
     this.#onEvent = options.onEvent;
   }
 
@@ -118,6 +128,14 @@ export class NotificationService {
     existing.push(transport);
     this.#transports.set(transport.channel, existing);
     return this;
+  }
+
+  /**
+   * Whether deduplication holds across replicas. Worth logging at startup — the difference is
+   * one notice per user and one notice per user per instance.
+   */
+  get distributed(): boolean {
+    return this.#dedupeStore !== undefined;
   }
 
   /** Channels with at least one registered transport. */
@@ -147,7 +165,11 @@ export class NotificationService {
       ...(input.metadata === undefined ? {} : { metadata: input.metadata }),
     };
 
-    if (this.#isDuplicate(message)) {
+    // Claimed *before* delivery, not remembered after it. Two replicas handed the same event
+    // reach here at the same moment; remembering afterwards means both have already sent by the
+    // time either remembers. The claim is released below if delivery ultimately fails, so a
+    // genuine retry is not suppressed by its own first attempt.
+    if (!(await this.#claim(message))) {
       await this.#onEvent?.({ type: 'suppressed', message });
       return { delivered: false, error: 'suppressed-duplicate' };
     }
@@ -155,6 +177,7 @@ export class NotificationService {
     const transports = this.#transports.get(input.channel) ?? [];
     if (transports.length === 0) {
       const error = `No transport registered for channel ${input.channel}`;
+      await this.#release(message);
       await this.#onEvent?.({ type: 'failed', message, error });
       // A missing transport for a critical security notification is an operational failure, not
       // a message to drop quietly: the user would never learn their password had changed.
@@ -162,7 +185,9 @@ export class NotificationService {
       return { delivered: false, error };
     }
 
-    return this.#deliver(message, transports);
+    const result = await this.#deliver(message, transports);
+    if (!result.delivered) await this.#release(message);
+    return result;
   }
 
   async #deliver(
@@ -177,7 +202,6 @@ export class NotificationService {
         try {
           const result = await transport.send(message);
           if (result.delivered) {
-            this.#remember(message);
             await this.#onEvent?.({
               type: 'sent',
               message,
@@ -233,23 +257,41 @@ export class NotificationService {
     return `${message.tenantId}:${message.channel}:${recipient}:${message.templateId ?? message.body}`;
   }
 
-  #isDuplicate(message: NotificationMessage): boolean {
-    // Critical security notices are never suppressed: three password-change emails are a nuisance,
-    // one missing password-change email is an unnoticed account takeover.
-    if (message.priority === 'critical' || this.#dedupeWindow <= 0) return false;
+  /**
+   * Claim the right to send this message. Exactly one caller across the fleet is told `true`.
+   *
+   * Critical security notices are never suppressed: three password-change emails are a nuisance,
+   * one missing password-change email is an unnoticed account takeover.
+   */
+  async #claim(message: NotificationMessage): Promise<boolean> {
+    if (message.priority === 'critical' || this.#dedupeWindow <= 0) return true;
 
-    const sentAt = this.#recentlySent.get(this.#dedupeKey(message));
-    return sentAt !== undefined && this.#clock.now() - sentAt < this.#dedupeWindow;
-  }
-
-  #remember(message: NotificationMessage): void {
+    const key = this.#dedupeKey(message);
     const now = this.#clock.now();
-    this.#recentlySent.set(this.#dedupeKey(message), now);
+    if (this.#dedupeStore) {
+      return this.#dedupeStore.setIfAbsent(`notify:dedupe:${key}`, now, {
+        ttl: this.#dedupeWindow,
+      });
+    }
+
+    // Single-process fallback. Correct for one instance, and `distributed` says so for the rest.
+    const sentAt = this.#recentlySent.get(key);
+    if (sentAt !== undefined && now - sentAt < this.#dedupeWindow) return false;
+    this.#recentlySent.set(key, now);
     if (this.#recentlySent.size > 10_000) {
-      for (const [key, sentAt] of this.#recentlySent) {
-        if (now - sentAt >= this.#dedupeWindow) this.#recentlySent.delete(key);
+      for (const [candidate, at] of this.#recentlySent) {
+        if (now - at >= this.#dedupeWindow) this.#recentlySent.delete(candidate);
       }
     }
+    return true;
+  }
+
+  /** Give the claim back so a later attempt is not suppressed by this failed one. */
+  async #release(message: NotificationMessage): Promise<void> {
+    if (message.priority === 'critical' || this.#dedupeWindow <= 0) return;
+    const key = this.#dedupeKey(message);
+    if (this.#dedupeStore) await this.#dedupeStore.delete(`notify:dedupe:${key}`);
+    else this.#recentlySent.delete(key);
   }
 }
 

@@ -80,10 +80,7 @@ export interface SessionStorePort {
    * @consistency linearizable
    * @idempotency at-most-once
    */
-  createWithinLimit?(
-    session: SessionRecord,
-    limit: SessionLimit,
-  ): Promise<SessionCreateOutcome>;
+  createWithinLimit?(session: SessionRecord, limit: SessionLimit): Promise<SessionCreateOutcome>;
 
   /**
    * Live sessions for a user. Cheaper than `listByUser` when only the count is needed.

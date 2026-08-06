@@ -326,6 +326,18 @@ importers:
       '@munaxa/config-typescript':
         specifier: workspace:*
         version: link:../../../tooling/config-typescript
+      '@munaxa/crypto':
+        specifier: workspace:^
+        version: link:../crypto
+      '@munaxa/notifications':
+        specifier: workspace:^
+        version: link:../notifications
+      '@munaxa/rbac':
+        specifier: workspace:^
+        version: link:../rbac
+      '@munaxa/security':
+        specifier: workspace:^
+        version: link:../security
       '@munaxa/session':
         specifier: workspace:^
         version: link:../session

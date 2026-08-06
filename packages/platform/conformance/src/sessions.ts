@@ -64,9 +64,7 @@ export function runSessionConformance(
     it('removes sessions past either deadline', async () => {
       const store = await options.createStore();
       const now = 1_700_000_000_000;
-      await store.create(
-        options.makeSession({ id: 'idle' as SessionId, idleExpiresAt: now - 1 }),
-      );
+      await store.create(options.makeSession({ id: 'idle' as SessionId, idleExpiresAt: now - 1 }));
       await store.create(
         options.makeSession({ id: 'absolute' as SessionId, absoluteExpiresAt: now - 1 }),
       );

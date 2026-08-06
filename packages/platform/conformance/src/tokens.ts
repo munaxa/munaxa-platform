@@ -76,7 +76,9 @@ export function runRefreshTokenConformance(
       const record = options.makeRecord();
       await store.save(record);
 
-      expect(await store.markRotated('other-tenant' as TenantId, record.id, 1_000, 'x')).toBe(false);
+      expect(await store.markRotated('other-tenant' as TenantId, record.id, 1_000, 'x')).toBe(
+        false,
+      );
     });
 
     it('markRotated returns false for an unknown record', async () => {
@@ -127,7 +129,9 @@ export function runRefreshTokenConformance(
       await store.save(mine);
       await store.save(theirs);
 
-      expect(await store.revokeForUser(mine.tenantId, mine.userId, 3_000, 'password-changed')).toBe(1);
+      expect(await store.revokeForUser(mine.tenantId, mine.userId, 3_000, 'password-changed')).toBe(
+        1,
+      );
       expect((await store.findByHash(theirs.tenantId, 'h-theirs'))?.revokedAt).toBeUndefined();
     });
   });

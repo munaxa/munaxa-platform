@@ -128,7 +128,9 @@ export function runCacheConformance(harness: TestHarness, options: CacheConforma
     it('increment hands out every value exactly once', async () => {
       // Sequence allocation depends on this: two callers must never receive the same number.
       const cache = await options.createCache();
-      const { fulfilled } = await race(concurrency, () => cache.increment('seq', 1, { ttl: 60_000 }));
+      const { fulfilled } = await race(concurrency, () =>
+        cache.increment('seq', 1, { ttl: 60_000 }),
+      );
       expect(new Set(fulfilled).size).toBe(concurrency);
     });
 
