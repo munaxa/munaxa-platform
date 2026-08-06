@@ -41,6 +41,23 @@ invented, defaulted or dropped, and a round-trip test pins that, because a lost 
 two paths silently diverge in lifecycle behaviour. A family id in a log or a support ticket means
 the same thing on both sides.
 
+### Identifiers
+
+`SessionManager` mints `sess_…` ids by default. A product whose store constrains the format —
+a `uuid` column, typically, with foreign keys pointing at it — supplies its own:
+
+```ts
+new SessionManager({
+  store: sessionStoreOverFamilies(familyStore),
+  generateId: () => asId<SessionId>(uuidv7()),
+});
+```
+
+Without this, adopting the manager would mean migrating the column type and every foreign key
+referencing it, in exchange for an identifier format. The generator owns uniqueness: the platform
+does not retry a collision, because an id that repeats is a broken generator and minting a second
+one quietly would hide it while two sessions share a row.
+
 ---
 
 ## What the family table needs

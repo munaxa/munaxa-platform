@@ -35,5 +35,7 @@ redefine a platform field.
 first-class session substrate, and `sessionStoreOverFamilies` presents one as a `SessionStorePort` —
 so a product whose only server-side auth object is a refresh family gets full session semantics,
 including an exact concurrency limit, without adding a sessions table. Optional capabilities are
-forwarded only when present, so `limitEnforcement` reports the true mode. The session conformance
+forwarded only when present, so `limitEnforcement` reports the true mode. `SessionManager` accepts a
+`generateId`, so a product whose store keys sessions by UUID does not have to migrate the column type
+and every foreign key pointing at it in exchange for the platform's `sess_…` identifier format. The session conformance
 suite now runs against both architectures.

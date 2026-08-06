@@ -3,6 +3,7 @@ import type { RefreshFamily, RefreshFamilyStorePort } from '@munaxa/interfaces';
 import {
   FixedClock,
   unsafeId,
+  type SessionId,
   type TenantId,
   type TokenFamilyId,
   type UserId,
@@ -127,6 +128,43 @@ describe('SessionManager over a refresh-family store', () => {
       (record) => record.revokedAt === undefined,
     );
     expect(live).toHaveLength(2);
+  });
+});
+
+describe('identifier format', () => {
+  it('mints the platform id by default', async () => {
+    const created = await manager(new MemoryRefreshFamilyStore()).create({
+      tenantId: TENANT,
+      userId: USER,
+      authMethods: ['password'],
+      mfaSatisfied: true,
+      tokenVersion: 1,
+    });
+    expect(created.id).toMatch(/^sess_/);
+  });
+
+  it('uses the product generator when the store constrains the format', async () => {
+    // A `uuid` column will not accept `sess_…`. Without this the product would have to migrate the
+    // column type and every foreign key pointing at it in exchange for an identifier format.
+    const store = new MemoryRefreshFamilyStore();
+    let n = 0;
+    const sessions = new SessionManager({
+      store: sessionStoreOverFamilies(store),
+      clock: new FixedClock(NOW),
+      generateId: () => unsafeId<SessionId>(`00000000-0000-7000-8000-${String(++n).padStart(12, '0')}`),
+    });
+
+    const created = await sessions.create({
+      tenantId: TENANT,
+      userId: USER,
+      authMethods: ['password'],
+      mfaSatisfied: true,
+      tokenVersion: 1,
+    });
+
+    expect(created.id).toBe('00000000-0000-7000-8000-000000000001');
+    // …and the record round-trips under that id, so the store really is keyed by it.
+    expect((await sessions.validate(TENANT, created.id)).valid).toBe(true);
   });
 });
 
