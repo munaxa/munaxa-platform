@@ -20,7 +20,11 @@ silently opening their own.
 
 **Configuration (P-4).** Fields accept environment aliases and `remapSchema` adds them to a schema
 the product does not own, so `PLATFORM_SCHEMA` is adoptable without renaming a variable in every
-deployment. `nestConfig` renders the nested shape an application already reads. `defineConfig`
+deployment. An alias may carry a `decode` — with `fromSeconds` and `fromMilliseconds` for the common
+case — because a name is not always the whole difference: `JWT_ACCESS_TTL_SECONDS=900` cannot feed a
+duration field otherwise. It transforms string to string before the field parses, so the platform's
+validation still runs, and it belongs to the source rather than the field, so the canonical name
+keeps platform semantics. `nestConfig` renders the nested shape an application already reads. `defineConfig`
 carries schema-level refinements for rules spanning fields, reported alongside field problems in one
 message. `extendConfig` merges product fields into the platform schema and refuses to let a product
 redefine a platform field.

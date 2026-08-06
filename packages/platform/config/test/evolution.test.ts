@@ -4,6 +4,9 @@ import {
   boolean,
   defineConfig,
   extendConfig,
+  duration,
+  fromMilliseconds,
+  fromSeconds,
   integer,
   nestConfig,
   oneOf,
@@ -84,6 +87,67 @@ describe('environment aliases', () => {
     expect(resolved.MUNAXA_LOG_LEVEL).toBe('warn');
     // Untouched fields keep their platform definition, defaults included.
     expect(resolved.MUNAXA_SESSION_IDLE_TIMEOUT).toBe(PLATFORM_SCHEMA.MUNAXA_SESSION_IDLE_TIMEOUT.defaultValue);
+  });
+
+  it('decodes a legacy encoding without renaming the variable', () => {
+    // The gap this closes: an alias maps a name, and a name is not always the whole difference.
+    // A deployment holding `JWT_ACCESS_TTL_SECONDS=900` cannot feed a duration field — `900` is
+    // not `15m` — so without this the product is back to renaming a variable everywhere.
+    const remapped = remapSchema(PLATFORM_SCHEMA, {
+      MUNAXA_ACCESS_TOKEN_TTL: { env: fromSeconds('JWT_ACCESS_TTL_SECONDS') },
+      MUNAXA_REFRESH_TOKEN_TTL: { env: fromSeconds('JWT_REFRESH_TTL_SECONDS') },
+    });
+    const resolved = parseConfig(remapped, {
+      ...REQUIRED,
+      JWT_ACCESS_TTL_SECONDS: '900',
+      JWT_REFRESH_TTL_SECONDS: '2592000',
+    });
+    expect(resolved.MUNAXA_ACCESS_TOKEN_TTL).toBe(900_000);
+    expect(resolved.MUNAXA_REFRESH_TOKEN_TTL).toBe(2_592_000_000);
+  });
+
+  it('leaves the canonical name alone when an alias declares a decoder', () => {
+    // The transform belongs to the source, not the field: a deployment already using the platform
+    // name writes a platform duration, and must not have seconds semantics applied to it.
+    const remapped = remapSchema(PLATFORM_SCHEMA, {
+      MUNAXA_ACCESS_TOKEN_TTL: { env: fromSeconds('JWT_ACCESS_TTL_SECONDS') },
+    });
+    const resolved = parseConfig(remapped, { ...REQUIRED, MUNAXA_ACCESS_TOKEN_TTL: '15m' });
+    expect(resolved.MUNAXA_ACCESS_TOKEN_TTL).toBe(900_000);
+  });
+
+  it('reports a bad legacy value against the variable the operator actually set', () => {
+    const remapped = remapSchema(PLATFORM_SCHEMA, {
+      MUNAXA_ACCESS_TOKEN_TTL: { env: fromSeconds('JWT_ACCESS_TTL_SECONDS') },
+    });
+    expect(() =>
+      parseConfig(remapped, { ...REQUIRED, JWT_ACCESS_TTL_SECONDS: '15m' }),
+    ).toThrow(/JWT_ACCESS_TTL_SECONDS: expected whole seconds/);
+  });
+
+  it('collects a decode failure alongside other problems', () => {
+    // A throwing decoder must not abort the run on the first bad variable — the whole point of
+    // this schema is that a deployment learns everything in one restart.
+    const remapped = remapSchema(PLATFORM_SCHEMA, {
+      MUNAXA_ACCESS_TOKEN_TTL: { env: fromSeconds('JWT_ACCESS_TTL_SECONDS') },
+      MUNAXA_LOG_LEVEL: { env: 'LOG_LEVEL' },
+    });
+    try {
+      parseConfig(remapped, { ...REQUIRED, JWT_ACCESS_TTL_SECONDS: 'soon', LOG_LEVEL: 'shout' });
+      expect.unreachable('should have thrown');
+    } catch (error) {
+      const message = (error as PlatformError).message;
+      expect(message).toMatch(/JWT_ACCESS_TTL_SECONDS/);
+      expect(message).toMatch(/LOG_LEVEL/);
+    }
+  });
+
+  it('supports milliseconds too, and mixed notations in one list', () => {
+    const schema = {
+      TIMEOUT: duration({ default: 1_000, env: [fromMilliseconds('LEGACY_TIMEOUT_MS'), 'TIMEOUT_2'] }),
+    };
+    expect(parseConfig(schema, { LEGACY_TIMEOUT_MS: '250' }).TIMEOUT).toBe(250);
+    expect(parseConfig(schema, { TIMEOUT_2: '2s' }).TIMEOUT).toBe(2_000);
   });
 
   it('refuses to remap a field that does not exist', () => {

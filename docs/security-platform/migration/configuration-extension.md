@@ -68,6 +68,38 @@ will never reach you. A name that does not exist is refused rather than ignored:
 otherwise leave the field under its original name, failing on a variable the operator believes they
 set.
 
+### When the legacy value is encoded differently
+
+An alias maps a *name*, and a name is not always the whole difference. A deployment holding
+`JWT_ACCESS_TTL_SECONDS=900` cannot feed a field that parses durations — `900` is not `15m`, and the
+field rejects it. Without a way to say "this source counts in seconds", the product is back to
+renaming a variable everywhere, which is what aliases exist to avoid.
+
+```ts
+const SCHEMA = remapSchema(PLATFORM_SCHEMA, {
+  MUNAXA_ACCESS_TOKEN_TTL: { env: fromSeconds('JWT_ACCESS_TTL_SECONDS') },
+  MUNAXA_REFRESH_TOKEN_TTL: { env: fromSeconds('JWT_REFRESH_TTL_SECONDS') },
+});
+```
+
+`fromSeconds` and `fromMilliseconds` cover the common case; for anything else, write the alias
+longhand with your own `decode`:
+
+```ts
+{ name: 'LEGACY_ORIGINS', decode: (raw) => raw.split(';').join(',') }
+```
+
+Three properties are deliberate:
+
+- **String to string, before the field parses.** The platform's own validation still runs on the
+  result, so a product can restate how its legacy value is encoded but cannot widen what the field
+  accepts. A transform returning a parsed value would be a hole straight through the schema.
+- **The transform belongs to the source, not the field.** The canonical name keeps platform
+  semantics untouched, so a deployment already writing `MUNAXA_ACCESS_TOKEN_TTL=15m` is unaffected
+  while each legacy name declares its own encoding.
+- **A failing decode is a config issue, not a crash.** It joins the other problems in one message,
+  named against the variable the operator actually set.
+
 Semantics worth knowing:
 
 - The canonical name wins when both are set, so a rename actually completes.

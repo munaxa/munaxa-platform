@@ -17,7 +17,7 @@ export interface FieldDefinition<T> {
   readonly description?: string;
   readonly defaultValue?: T;
   /**
-   * Other source names this field will accept, tried in order after its own key.
+   * Other sources this field will accept, tried in order after its own key.
    *
    * This is what makes the platform schema adoptable by a product that already has deployments.
    * `MUNAXA_LOG_LEVEL` naming the alias `LOG_LEVEL` lets an existing Helm chart, App Service
@@ -25,7 +25,7 @@ export interface FieldDefinition<T> {
    * renaming a variable in every environment simultaneously, which no product will do and every
    * product will therefore skip.
    */
-  readonly aliases?: readonly string[];
+  readonly aliases?: readonly EnvAlias[];
   /**
    * Dotted path this field occupies in the nested rendering. Defaults to the field's own key.
    *
@@ -37,15 +37,69 @@ export interface FieldDefinition<T> {
   parse(raw: string): T;
 }
 
+/**
+ * One source a field will read from, and how that source encodes its value.
+ *
+ * `decode` exists because an alias maps a *name*, and a name is not always the whole difference.
+ * A product holding `JWT_ACCESS_TTL_SECONDS=900` cannot feed a platform field that parses
+ * durations: `900` is not `15m`, and the field rejects it. Without a way to say "this source
+ * counts in seconds", the product is back to renaming a variable in every deployment — which is
+ * the exact thing aliases exist to avoid.
+ *
+ * It transforms **string to string**, before the field parses. That is the deliberate limit: the
+ * platform's own validation still runs on the result, so a product can restate how its legacy
+ * value is encoded but cannot widen what the field accepts. A transform returning a parsed value
+ * would be a hole straight through the schema, in the same way redefining a field would be.
+ *
+ * The transform belongs to the source, not the field, so the canonical name keeps platform
+ * semantics untouched while each legacy name declares its own encoding.
+ */
+export interface EnvAlias {
+  readonly name: string;
+  /** Convert this source's encoding into the form the field parses. Throw to reject the value. */
+  readonly decode?: (raw: string) => string;
+}
+
+export type EnvSource = string | EnvAlias;
+
+/**
+ * Read a legacy variable that counts in whole seconds into a duration field.
+ *
+ * `fromSeconds('JWT_ACCESS_TTL_SECONDS')` lets `JWT_ACCESS_TTL_SECONDS=900` feed a field that
+ * parses `15m`. The digits are validated here rather than passed through, because `'abc' + 's'`
+ * would otherwise reach the field as a duration error naming a unit the operator never wrote.
+ */
+export function fromSeconds(name: string): EnvAlias {
+  return { name, decode: (raw) => `${assertDigits(raw, name, 'whole seconds')}s` };
+}
+
+/** As `fromSeconds`, for a legacy variable counting in whole milliseconds. */
+export function fromMilliseconds(name: string): EnvAlias {
+  return { name, decode: (raw) => `${assertDigits(raw, name, 'whole milliseconds')}ms` };
+}
+
+function assertDigits(raw: string, name: string, expected: string): string {
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) throw new Error(`${name}: expected ${expected}`);
+  return trimmed;
+}
+
 export interface FieldOptions<T> {
   readonly description?: string;
   readonly default?: T;
   /** Marks the value as sensitive: redacted everywhere it is rendered. */
   readonly secret?: boolean;
-  /** Alternative source names, tried in order after the field's own key. See `aliases`. */
-  readonly env?: string | readonly string[];
+  /** Alternative sources, tried in order after the field's own key. See `aliases`. */
+  readonly env?: EnvSource | readonly EnvSource[];
   /** Dotted path in the nested rendering. See `path`. */
   readonly path?: string;
+}
+
+/** One-or-many sources, in either notation, to the normalised list stored on the definition. */
+function toAliases(env: EnvSource | readonly EnvSource[] | undefined): readonly EnvAlias[] {
+  if (env === undefined) return [];
+  const sources = env instanceof Array ? env : [env];
+  return sources.map((source) => (typeof source === 'string' ? { name: source } : source));
 }
 
 function field<T>(
@@ -53,8 +107,7 @@ function field<T>(
   parse: (raw: string) => T,
   options: FieldOptions<T> = {},
 ): FieldDefinition<T> {
-  const aliases =
-    options.env === undefined ? [] : typeof options.env === 'string' ? [options.env] : options.env;
+  const aliases = toAliases(options.env);
   return {
     kind,
     parse,
@@ -79,7 +132,7 @@ function field<T>(
  */
 export function remapSchema<S extends Schema>(
   schema: S,
-  mapping: Readonly<Record<string, { env?: string | readonly string[]; path?: string }>>,
+  mapping: Readonly<Record<string, { env?: EnvSource | readonly EnvSource[]; path?: string }>>,
 ): S {
   const unknown = Object.keys(mapping).filter((key) => !Object.hasOwn(schema, key));
   if (unknown.length > 0) {
@@ -97,8 +150,7 @@ export function remapSchema<S extends Schema>(
       output[key] = definition;
       continue;
     }
-    const aliases =
-      remap.env === undefined ? [] : typeof remap.env === 'string' ? [remap.env] : remap.env;
+    const aliases = toAliases(remap.env);
     output[key] = {
       ...definition,
       ...(aliases.length === 0 ? {} : { aliases: [...(definition.aliases ?? []), ...aliases] }),
@@ -332,10 +384,19 @@ export function parseConfig<S extends Schema>(
   const resolved: Record<string, unknown> = {};
 
   for (const [key, definition] of Object.entries(fields)) {
-    const found = read(source, key, definition.aliases);
+    // `read` may throw from an alias `decode`, which is a problem with that variable's value and
+    // belongs in the same list as a failed parse rather than aborting the whole run on the first one.
+    let found: { raw: string; name: string } | undefined;
+    try {
+      found = read(source, key, definition.aliases);
+    } catch (error) {
+      issues.push({ key, problem: (error as Error).message });
+      continue;
+    }
+
     if (found === undefined) {
       if (definition.required) {
-        const names = [key, ...(definition.aliases ?? [])].join(' or ');
+        const names = [key, ...(definition.aliases ?? []).map((alias) => alias.name)].join(' or ');
         issues.push({ key, problem: `missing required ${definition.kind} (${names})` });
       } else {
         resolved[key] = definition.defaultValue;
@@ -380,13 +441,17 @@ export function parseConfig<S extends Schema>(
 function read(
   source: Readonly<Record<string, string | undefined>>,
   key: string,
-  aliases: readonly string[] | undefined,
+  aliases: readonly EnvAlias[] | undefined,
 ): { raw: string; name: string } | undefined {
-  for (const name of [key, ...(aliases ?? [])]) {
-    const raw = Object.hasOwn(source, name) ? source[name] : undefined;
+  // The field's own key first, with no transform — the canonical name always means what the
+  // platform says it means, whatever a legacy alias declares about its own encoding.
+  for (const alias of [{ name: key } as EnvAlias, ...(aliases ?? [])]) {
+    const raw = Object.hasOwn(source, alias.name) ? source[alias.name] : undefined;
     // An empty string is "not set", the same as it has always been: a Helm value that renders to
     // `FOO=` should fall through to the next alias rather than fail as an empty required string.
-    if (raw !== undefined && raw !== '') return { raw, name };
+    if (raw === undefined || raw === '') continue;
+    // A throwing `decode` is reported as a config issue by the caller, like a failed parse.
+    return { raw: alias.decode === undefined ? raw : alias.decode(raw), name: alias.name };
   }
   return undefined;
 }
