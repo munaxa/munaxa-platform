@@ -64,7 +64,9 @@ export function runAuditConformance(harness: TestHarness, options: AuditConforma
       for (let i = 0; i < 5; i++) await append(repository, tenantA, i);
 
       const chain = await options.readChain(repository, tenantA);
-      expect(chain.map((record) => record.sequence)).toEqual([1, 2, 3, 4, 5]);
+      // Normalised to bigint so an adapter whose store sequences with a `bigserial` is held to the
+      // same contract as one that returns numbers. The requirement is the positions, not the type.
+      expect(chain.map((record) => BigInt(record.sequence))).toEqual([1n, 2n, 3n, 4n, 5n]);
       expect(chain[0]?.previousHash).toBe(null);
     });
 
@@ -85,9 +87,9 @@ export function runAuditConformance(harness: TestHarness, options: AuditConforma
       const repository = await options.createRepository();
       await race(concurrency, (i) => append(repository, tenantA, i));
 
-      const sequences = (await options.readChain(repository, tenantA)).map((r) => r.sequence);
+      const sequences = (await options.readChain(repository, tenantA)).map((r) => BigInt(r.sequence));
       expect(new Set(sequences).size).toBe(concurrency);
-      expect(Math.max(...sequences)).toBe(concurrency);
+      expect(sequences.reduce((a, b) => (b > a ? b : a), 0n)).toBe(BigInt(concurrency));
     });
 
     it('keeps tenant chains independent', async () => {

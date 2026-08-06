@@ -21,6 +21,7 @@ import type {
   ResetTokenRecord,
   SessionRecord,
 } from '@munaxa/interfaces';
+import { nextSequence } from '@munaxa/interfaces';
 import {
   runAuditConformance,
   runCacheConformance,
@@ -53,7 +54,7 @@ runAuditConformance(harness, {
   readChain: async (repository, tenantId) => (repository as MemoryAuditRepository).chain(tenantId),
   verifyChain: (records) => verifyChain(records),
   seal: (event, previous: ChainHead | null, recordedAt): AuditRecord => {
-    const sequence = (previous?.sequence ?? 0) + 1;
+    const sequence = previous === null ? 1 : nextSequence(previous.sequence);
     const previousHash = previous?.hash ?? null;
     const hash = createHash('sha256')
       .update(canonicalize(event, previousHash, recordedAt, sequence))

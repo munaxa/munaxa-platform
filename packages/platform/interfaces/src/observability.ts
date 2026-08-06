@@ -49,13 +49,36 @@ export interface AuditSinkPort {
  * an attacker with write access to the store can rewrite the whole chain, which is why exporters
  * ship records off-box.
  */
+/**
+ * A chain position.
+ *
+ * `number` was the original type and remains valid — every existing record and every existing
+ * adapter keeps working. `bigint` is accepted because a product whose audit table has run for
+ * years on a `bigserial` cannot represent its sequence in a double once it passes 2^53, and
+ * silently losing precision on the column that proves nothing was removed from the end of the
+ * chain is not a trade worth making.
+ *
+ * Compare with `sameSequence` and advance with `nextSequence` rather than `===` and `+ 1`, which
+ * are wrong across the two representations: `1 === 1n` is false.
+ */
+export type AuditSequence = number | bigint;
+
 export interface AuditRecord {
   readonly id: string;
   readonly event: SecurityEvent;
   readonly recordedAt: number;
-  readonly sequence: number;
+  readonly sequence: AuditSequence;
   readonly hash: string;
   readonly previousHash: string | null;
+  /**
+   * Which canonical format produced `hash`.
+   *
+   * Absent means format 1 — the only format that existed before this field, so every record
+   * written by Platform 2.0.0 verifies unchanged without being rewritten. That is the whole point:
+   * an audit table that refuses `UPDATE` cannot be back-filled, so the format has to be
+   * discoverable from the row rather than assumed by the verifier.
+   */
+  readonly formatVersion?: number;
 }
 
 export interface AuditQuery {
@@ -72,8 +95,18 @@ export interface AuditQuery {
 
 /** The tail of a tenant's chain, as the store knows it. */
 export interface ChainHead {
-  readonly sequence: number;
+  readonly sequence: AuditSequence;
   readonly hash: string;
+}
+
+/** True when two sequences denote the same position, whichever representation each uses. */
+export function sameSequence(a: AuditSequence, b: AuditSequence): boolean {
+  return typeof a === typeof b ? a === b : BigInt(a) === BigInt(b);
+}
+
+/** The position after `sequence`, preserving its representation. */
+export function nextSequence(sequence: AuditSequence): AuditSequence {
+  return typeof sequence === 'bigint' ? sequence + 1n : sequence + 1;
 }
 
 /**
@@ -85,7 +118,33 @@ export interface ChainHead {
  */
 export type AuditSealer = (previous: ChainHead | null) => AuditRecord;
 
+/** How an append should relate to the caller's own unit of work. */
+export interface AuditAppendOptions {
+  /**
+   * A transaction handle owned by the caller, to append inside.
+   *
+   * Deliberately `unknown`: the platform must not depend on Prisma, Knex, `pg` or any other client
+   * to express "use mine". The adapter narrows it, and an adapter that receives a handle it does
+   * not recognise must throw rather than quietly opening its own transaction — an append that
+   * silently escapes the caller's transaction produces an audit record for a business change that
+   * was then rolled back, which is evidence of something that never happened.
+   *
+   * Adapters that cannot join an external transaction must throw when this is set, and advertise
+   * that by leaving `joinsTransactions` false. Callers can then decide between recording after
+   * commit and refusing to proceed, rather than finding out from a corrupted trail.
+   */
+  readonly transaction?: unknown;
+}
+
 export interface AuditRepositoryPort extends AuditSinkPort {
+  /**
+   * Whether `appendChained` honours `options.transaction`.
+   *
+   * Absent means false — the assumption that keeps a 2.0.0 adapter correct, since none of them
+   * accepted a transaction.
+   */
+  readonly joinsTransactions?: boolean;
+
   /**
    * Append to the tenant's chain, atomically.
    *
@@ -100,12 +159,24 @@ export interface AuditRepositoryPort extends AuditSinkPort {
    *
    * `seal` is pure and cheap (one SHA-256) and must be called inside the transaction.
    *
+   * When `options.transaction` is supplied the append must join that transaction instead of
+   * opening its own, so the record commits with the change it describes or not at all. Note what
+   * this costs: the head read and the insert are now inside the caller's transaction, so chain
+   * contention becomes the caller's contention, and a long-running business transaction serialises
+   * that tenant's audit writes behind it.
+   *
    * @atomicity serialised — or `compare-and-swap` with ChainConflictError
    * @consistency linearizable per tenant
    * @idempotency at-most-once — the platform retries only on ChainConflictError, never on a
-   *   transport failure, because a timed-out append may have committed
+   *   transport failure, because a timed-out append may have committed. An append that joined the
+   *   caller's transaction must not be retried by the platform at all: the conflict aborts that
+   *   transaction, and retrying inside an aborted transaction cannot succeed.
    */
-  appendChained(tenantId: TenantId, seal: AuditSealer): Promise<AuditRecord>;
+  appendChained(
+    tenantId: TenantId,
+    seal: AuditSealer,
+    options?: AuditAppendOptions,
+  ): Promise<AuditRecord>;
 
   /**
    * @atomicity none

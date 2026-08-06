@@ -145,7 +145,12 @@ function flatten(record: AuditRecord): Record<string, unknown> {
   const event = record.event;
   return {
     id: record.id,
-    sequence: record.sequence,
+    // A bigint has no JSON representation and throws inside `JSON.stringify`, so every exporter
+    // here would fail on a chain whose store sequences with a `bigserial`. Rendering it as decimal
+    // digits also keeps a sequence past 2^53 exact, which a JSON number would not — and a receiver
+    // that rounds the field proving nothing was removed from the chain has lost the proof.
+    // Number sequences are untouched, so existing exports are byte-identical.
+    sequence: typeof record.sequence === 'bigint' ? record.sequence.toString() : record.sequence,
     recordedAt: new Date(record.recordedAt).toISOString(),
     occurredAt: new Date(event.occurredAt).toISOString(),
     tenantId: event.tenantId,

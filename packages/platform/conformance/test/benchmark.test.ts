@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { AuditService, MemoryAuditRepository, canonicalize } from '@munaxa/audit';
 import { MemoryRefreshTokenStore, RefreshTokenService } from '@munaxa/auth';
 import { MemoryCache, TokenBucket } from '@munaxa/cache';
-import type { AuditRecord, RefreshTokenRecord } from '@munaxa/interfaces';
+import { nextSequence } from '@munaxa/interfaces';
+import type { AuditRecord, ChainHead, RefreshTokenRecord } from '@munaxa/interfaces';
 import { createHash } from 'node:crypto';
 import {
   FixedClock,
@@ -61,7 +62,7 @@ describe('audit append', () => {
     // way for a second replica to know it had just been overtaken.
     const before = await measure(3, async () => {
       const repository = new MemoryAuditRepository({ maxRecords: operations * 2 });
-      let head: { sequence: number; hash: string } | null = null;
+      let head: ChainHead | null = null;
       for (let i = 0; i < operations; i++) {
         const record = sealRecord(head, i);
         await repository.write(record);
@@ -205,8 +206,8 @@ describe('cache primitives', () => {
  * The benchmark needs both arms to hash identically or the comparison measures the hash rather
  * than the coordination, so this is the same canonical form `AuditService` uses.
  */
-function sealRecord(head: { sequence: number; hash: string } | null, index: number): AuditRecord {
-  const sequence = (head?.sequence ?? 0) + 1;
+function sealRecord(head: ChainHead | null, index: number): AuditRecord {
+  const sequence = head === null ? 1 : nextSequence(head.sequence);
   const previousHash = head?.hash ?? null;
   const recordedAt = START + index;
   const event = {

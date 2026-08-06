@@ -7,6 +7,7 @@
  * be there — and still be verifiable — a year later.
  */
 
+export * from './canonical.js';
 export * from './events.js';
 export * from './service.js';
 export * from './repository.js';
