@@ -14,6 +14,7 @@ export default [
       'audit/**',
       'cache/**',
       'config/**',
+      'conformance/**',
       'crypto/**',
       'interfaces/**',
       'logging/**',

@@ -117,7 +117,7 @@ for (const pkg of PACKAGES) {
         files: ['**/*.js', '**/*.d.ts', '**/*.css'],
         repository: {
           type: 'git',
-          url: 'git+https://github.com/tam2om/munaxa-platform.git',
+          url: 'git+https://github.com/munaxa/munaxa-platform.git',
           directory: `packages/${pkg.dir}`,
         },
         publishConfig: { registry: 'https://npm.pkg.github.com', access: 'restricted' },
