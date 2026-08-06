@@ -417,6 +417,9 @@ importers:
         specifier: workspace:^
         version: link:../types
     devDependencies:
+      '@munaxa/cache':
+        specifier: workspace:^
+        version: link:../cache
       '@munaxa/config-eslint':
         specifier: workspace:*
         version: link:../../../tooling/config-eslint
