@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MemoryCache } from '@munaxa/cache';
 import { KeyRing, secureBytes } from '@munaxa/crypto';
 import { FixedClock, ROOT_TENANT_ID, emptyResponse } from '@munaxa/types';
@@ -19,6 +19,18 @@ import {
   securityHeaders,
   securityPipeline,
 } from '../src/index.js';
+
+/**
+ * Performance suites need a timeout above their own budgets.
+ *
+ * Vitest defaults to 5s per test, while the budgets below deliberately allow more — they carry
+ * ~2.5x headroom because `turbo run test` runs every package concurrently on the same cores. A
+ * test whose budget exceeds the timeout can never fail on its budget: the timeout fires first and
+ * reports "timed out in 5000ms", which says nothing about the throughput actually being measured.
+ *
+ * This makes the budget the signal again. It does not relax any budget.
+ */
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 /**
  * Everything here runs before the application does any work, on every request. A slow edge is
