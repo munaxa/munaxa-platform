@@ -3,7 +3,27 @@ import scripts from '@munaxa/config-eslint/scripts.js';
 
 export default [
   // Storybook's static output is build product, not source.
-  { ignores: ['storybook-static/**', 'coverage/**'] },
+  // Storybook's static output is build product, not source. The security-platform packages
+  // (auth, rbac, security, …) are separate workspace packages that happen to live under this
+  // directory; each lints itself with its own type-aware config.
+  {
+    ignores: [
+      'storybook-static/**',
+      'coverage/**',
+      'auth/**',
+      'audit/**',
+      'cache/**',
+      'config/**',
+      'crypto/**',
+      'interfaces/**',
+      'logging/**',
+      'notifications/**',
+      'rbac/**',
+      'security/**',
+      'session/**',
+      'types/**',
+    ],
+  },
   ...base,
   {
     languageOptions: {

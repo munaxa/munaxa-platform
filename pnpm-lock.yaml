@@ -172,6 +172,353 @@ importers:
         specifier: ^4.59.2
         version: 4.117.0
 
+  packages/platform/audit:
+    dependencies:
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
+      '@munaxa/logging':
+        specifier: workspace:^
+        version: link:../logging
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/auth:
+    dependencies:
+      '@munaxa/audit':
+        specifier: workspace:^
+        version: link:../audit
+      '@munaxa/crypto':
+        specifier: workspace:^
+        version: link:../crypto
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
+      '@munaxa/rbac':
+        specifier: workspace:^
+        version: link:../rbac
+      '@munaxa/session':
+        specifier: workspace:^
+        version: link:../session
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/cache:
+    dependencies:
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/config:
+    dependencies:
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/crypto:
+    dependencies:
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/interfaces:
+    dependencies:
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/logging:
+    dependencies:
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/notifications:
+    dependencies:
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
+      '@munaxa/logging':
+        specifier: workspace:^
+        version: link:../logging
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/rbac:
+    dependencies:
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/security:
+    dependencies:
+      '@munaxa/cache':
+        specifier: workspace:^
+        version: link:../cache
+      '@munaxa/crypto':
+        specifier: workspace:^
+        version: link:../crypto
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/session:
+    dependencies:
+      '@munaxa/crypto':
+        specifier: workspace:^
+        version: link:../crypto
+      '@munaxa/interfaces':
+        specifier: workspace:^
+        version: link:../interfaces
+      '@munaxa/types':
+        specifier: workspace:^
+        version: link:../types
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  packages/platform/types:
+    devDependencies:
+      '@munaxa/config-eslint':
+        specifier: workspace:*
+        version: link:../../../tooling/config-eslint
+      '@munaxa/config-typescript':
+        specifier: workspace:*
+        version: link:../../../tooling/config-typescript
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
   packages/theme:
     dependencies:
       '@munaxa/platform':
@@ -2013,6 +2360,9 @@ packages:
   '@types/mdx@2.0.14':
     resolution: {integrity: sha512-T48PeuJtvLosNTPVhfnIp3i/n3a4g4Bad7YCq5k64D4u7NwDrAotikQ+5+sjtUvBmxCMlbo3dVL+C2dP0rWHzg==}
 
+  '@types/node@22.20.1':
+    resolution: {integrity: sha512-EANqOCF9QFyra+4pfxUcX9STKJpCLjMbObVzljIJomAWSnuSIEAvyzEU53GaajbXJEgdh0iEcPL+DGvpUd4k1Q==}
+
   '@types/node@26.1.2':
     resolution: {integrity: sha512-Vu4a5UFA9rIIFJ7rB/Vaafh9lrCQszopTCx6KjFboXTGQbPNasehVR5TEiithSDGyd1DEiUByggTZsg8jukeIg==}
 
@@ -3191,6 +3541,9 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   undici-types@8.3.0:
     resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
 
@@ -3889,7 +4242,7 @@ snapshots:
 
   '@jest/pattern@30.4.0':
     dependencies:
-      '@types/node': 26.1.2
+      '@types/node': 22.20.1
       jest-regex-util: 30.4.0
 
   '@jest/schemas@30.4.1':
@@ -3902,7 +4255,7 @@ snapshots:
       '@jest/schemas': 30.4.1
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 26.1.2
+      '@types/node': 22.20.1
       '@types/yargs': 17.0.35
       chalk: 4.1.2
 
@@ -4897,6 +5250,10 @@ snapshots:
 
   '@types/mdx@2.0.14': {}
 
+  '@types/node@22.20.1':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/node@26.1.2':
     dependencies:
       undici-types: 8.3.0
@@ -4917,7 +5274,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 26.1.2
+      '@types/node': 22.20.1
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -5059,6 +5416,14 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.1
 
+  '@vitest/mocker@4.1.10(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))':
+    dependencies:
+      '@vitest/spy': 4.1.10
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)
+
   '@vitest/mocker@4.1.10(vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0))':
     dependencies:
       '@vitest/spy': 4.1.10
@@ -5183,7 +5548,7 @@ snapshots:
 
   buffer-image-size@0.6.4:
     dependencies:
-      '@types/node': 26.1.2
+      '@types/node': 22.20.1
 
   bundle-name@4.1.0:
     dependencies:
@@ -5586,7 +5951,7 @@ snapshots:
   jest-mock@30.4.1:
     dependencies:
       '@jest/types': 30.4.1
-      '@types/node': 26.1.2
+      '@types/node': 22.20.1
       jest-util: 30.4.1
 
   jest-regex-util@30.4.0: {}
@@ -5594,7 +5959,7 @@ snapshots:
   jest-util@30.4.1:
     dependencies:
       '@jest/types': 30.4.1
-      '@types/node': 26.1.2
+      '@types/node': 22.20.1
       chalk: 4.1.2
       ci-info: 4.4.0
       graceful-fs: 4.2.11
@@ -6159,6 +6524,8 @@ snapshots:
 
   typescript@5.9.3: {}
 
+  undici-types@6.21.0: {}
+
   undici-types@8.3.0: {}
 
   undici@7.28.0: {}
@@ -6203,6 +6570,20 @@ snapshots:
     dependencies:
       react: 19.2.8
 
+  vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0):
+    dependencies:
+      esbuild: 0.28.1
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
+      postcss: 8.5.25
+      rollup: 4.62.3
+      tinyglobby: 0.2.17
+    optionalDependencies:
+      '@types/node': 22.20.1
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      lightningcss: 1.32.0
+
   vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0):
     dependencies:
       esbuild: 0.28.1
@@ -6216,6 +6597,35 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.7.0
       lightningcss: 1.32.0
+
+  vitest@4.1.10(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)):
+    dependencies:
+      '@vitest/expect': 4.1.10
+      '@vitest/mocker': 4.1.10(vite@7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+      '@vitest/pretty-format': 4.1.10
+      '@vitest/runner': 4.1.10
+      '@vitest/snapshot': 4.1.10
+      '@vitest/spy': 4.1.10
+      '@vitest/utils': 4.1.10
+      es-module-lexer: 2.3.1
+      expect-type: 1.4.0
+      magic-string: 0.30.21
+      obug: 2.1.4
+      pathe: 2.0.3
+      picomatch: 4.0.5
+      std-env: 4.2.0
+      tinybench: 2.9.0
+      tinyexec: 1.2.4
+      tinyglobby: 0.2.17
+      tinyrainbow: 3.1.1
+      vite: 7.3.6(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 22.20.1
+      '@vitest/coverage-v8': 4.1.10(vitest@4.1.10)
+      happy-dom: 20.11.1
+    transitivePeerDependencies:
+      - msw
 
   vitest@4.1.10(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0)(lightningcss@1.32.0)):
     dependencies:

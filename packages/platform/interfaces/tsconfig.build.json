@@ -1,0 +1,16 @@
+{
+  "//": "What actually ships. Tests and tooling configs never reach dist/ or the published type surface.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts"
+  ]
+}

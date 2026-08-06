@@ -6,6 +6,12 @@
 # slice of the implementation under the ecosystem's package names, so products can
 # depend on `@munaxa/ui` or `@munaxa/tokens` without knowing how the platform is
 # laid out internally. See ARCHITECTURE.md for why the split is drawn this way.
+#
+# `packages/platform/*` entries that carry their own `package.json` are the shared security
+# platform: `@munaxa/auth`, `@munaxa/rbac`, `@munaxa/security` and friends. They are real
+# implementations rather than façades, they ship server-side and they own every cross-cutting
+# security concern in the ecosystem. See docs/security-platform/ARCHITECTURE.md.
 packages:
   - 'packages/*'
+  - 'packages/platform/*'
   - 'tooling/*'

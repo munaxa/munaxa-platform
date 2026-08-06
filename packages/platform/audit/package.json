@@ -1,0 +1,51 @@
+{
+  "name": "@munaxa/audit",
+  "version": "1.0.0",
+  "description": "Tamper-evident audit trail: event schema, service, repository, decorators, middleware and exporters.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@munaxa/types": "workspace:^",
+    "@munaxa/interfaces": "workspace:^",
+    "@munaxa/logging": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@munaxa/config-eslint": "workspace:*",
+    "@munaxa/config-typescript": "workspace:*",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/munaxa/munaxa-platform.git",
+    "directory": "packages/platform/audit"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  }
+}
