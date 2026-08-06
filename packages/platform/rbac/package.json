@@ -2,6 +2,13 @@
   "name": "@munaxa/rbac",
   "version": "2.0.0",
   "description": "Roles, permissions, claims, role hierarchy, the permission resolver, the policy engine and the authorization guards and middleware built on them.",
+  "keywords": [
+    "security",
+    "rbac",
+    "authorization",
+    "permissions",
+    "policy"
+  ],
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -17,7 +24,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

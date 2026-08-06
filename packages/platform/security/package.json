@@ -2,6 +2,14 @@
   "name": "@munaxa/security",
   "version": "2.0.0",
   "description": "Security headers and CSP, CSRF, distributed rate limiting, the risk engine, threat detection, input normalization and the secure middleware pipeline.",
+  "keywords": [
+    "security",
+    "security-headers",
+    "csp",
+    "csrf",
+    "rate-limiting",
+    "threat-detection"
+  ],
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -17,7 +25,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

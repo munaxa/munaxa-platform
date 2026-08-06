@@ -2,6 +2,13 @@
   "name": "@munaxa/audit",
   "version": "2.0.0",
   "description": "Tamper-evident audit trail: event schema, service, repository, decorators, middleware and exporters.",
+  "keywords": [
+    "security",
+    "audit-trail",
+    "tamper-evident",
+    "hash-chain",
+    "compliance"
+  ],
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -17,7 +24,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

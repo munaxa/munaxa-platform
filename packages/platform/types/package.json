@@ -2,6 +2,12 @@
   "name": "@munaxa/types",
   "version": "2.0.0",
   "description": "Shared platform domain types, branded identifiers, error taxonomy and the canonical security-event vocabulary. No runtime behaviour beyond pure helpers.",
+  "keywords": [
+    "security",
+    "types",
+    "branded-types",
+    "multi-tenant"
+  ],
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -17,7 +23,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

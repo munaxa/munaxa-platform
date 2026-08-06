@@ -2,6 +2,13 @@
   "name": "@munaxa/cache",
   "version": "2.0.0",
   "description": "CachePort implementations (memory, Redis-compatible), namespacing, distributed counters, distributed locks and the storage primitives rate limiting is built on.",
+  "keywords": [
+    "security",
+    "cache",
+    "redis",
+    "rate-limiting",
+    "distributed-lock"
+  ],
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -17,7 +24,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

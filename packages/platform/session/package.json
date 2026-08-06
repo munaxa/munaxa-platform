@@ -2,6 +2,12 @@
   "name": "@munaxa/session",
   "version": "2.0.0",
   "description": "Session lifecycle: creation, idle and absolute timeouts, concurrency limits, device management, trusted devices and revocation.",
+  "keywords": [
+    "security",
+    "sessions",
+    "device-management",
+    "revocation"
+  ],
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -17,7 +23,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

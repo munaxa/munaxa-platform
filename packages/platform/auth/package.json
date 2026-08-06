@@ -2,6 +2,14 @@
   "name": "@munaxa/auth",
   "version": "2.0.0",
   "description": "Authentication: passwords and policy, login, JWT and refresh tokens with rotation and reuse detection, password reset, MFA, device trust, external identity providers, API keys and machine-to-machine access.",
+  "keywords": [
+    "security",
+    "authentication",
+    "mfa",
+    "totp",
+    "oidc",
+    "refresh-tokens"
+  ],
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -17,7 +25,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

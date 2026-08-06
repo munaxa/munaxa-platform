@@ -2,6 +2,12 @@
   "name": "@munaxa/interfaces",
   "version": "2.0.0",
   "description": "The platform port catalogue: every capability an application (or the platform itself) may substitute — cache, clock, stores, transports, providers — expressed as dependency-free interfaces.",
+  "keywords": [
+    "security",
+    "ports",
+    "hexagonal",
+    "adapters"
+  ],
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -17,7 +23,7 @@
     "dist"
   ],
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
