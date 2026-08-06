@@ -37,8 +37,14 @@ export class FixedWindowCounter implements CounterPort {
     return { count, resetAt: this.#clock.now() + (ttl ?? 0) };
   }
 
-  async reset(key: string): Promise<void> {
+  async reset(key: string, window?: DurationMs): Promise<void> {
     await this.#cache.delete(key);
+    if (window === undefined) return;
+    // Hits live under `key:<bucket index>`; clear the current window and the one before it, which
+    // is the most a sliding estimate can still be reading from.
+    const index = Math.floor(this.#clock.now() / window);
+    await this.#cache.delete(`${key}:${index}`);
+    await this.#cache.delete(`${key}:${index - 1}`);
   }
 
   #bucket(key: string, window: DurationMs): { bucketKey: string; resetAt: number } {
@@ -88,8 +94,12 @@ export class SlidingWindowCounter implements CounterPort {
     return { count, resetAt: this.#clock.now() + (ttl ?? 0) };
   }
 
-  async reset(key: string): Promise<void> {
+  async reset(key: string, window?: DurationMs): Promise<void> {
     await this.#cache.delete(key);
+    if (window === undefined) return;
+    const index = Math.floor(this.#clock.now() / window);
+    await this.#cache.delete(`${key}:${index}`);
+    await this.#cache.delete(`${key}:${index - 1}`);
   }
 }
 

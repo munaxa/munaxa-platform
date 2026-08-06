@@ -44,7 +44,12 @@ export interface CounterPort {
   /** Increment within the window and report the state after the increment. */
   hit(key: string, window: DurationMs, cost?: number): Promise<CounterState>;
   peek(key: string): Promise<CounterState | undefined>;
-  reset(key: string): Promise<void>;
+  /**
+   * Clear a subject's count. Implementations that bucket by window need the same `window` the
+   * hits were recorded with in order to find those buckets; omitting it clears only an unbucketed
+   * key, which is why every caller that limits should pass it.
+   */
+  reset(key: string, window?: DurationMs): Promise<void>;
 }
 
 export interface CounterState {
