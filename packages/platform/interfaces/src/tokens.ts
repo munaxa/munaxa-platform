@@ -1,0 +1,164 @@
+import type { DeviceId, SessionId, TenantId, TokenFamilyId, UserId } from '@munaxa/types';
+
+/**
+ * A refresh token as stored.
+ *
+ * The token itself is never here — only `tokenHash`. A database dump therefore yields nothing
+ * an attacker can present. `familyId` links every token descended from one login so that a
+ * single detected replay can revoke the entire lineage.
+ */
+export interface RefreshTokenRecord {
+  readonly id: string;
+  readonly tenantId: TenantId;
+  readonly userId: UserId;
+  readonly familyId: TokenFamilyId;
+  readonly tokenHash: string;
+  readonly issuedAt: number;
+  readonly expiresAt: number;
+  readonly sessionId?: SessionId;
+  readonly deviceId?: DeviceId;
+  /** Set when this token was exchanged; presenting it again is a replay. */
+  readonly rotatedAt?: number;
+  /** The token this one was rotated into, for forensics. */
+  readonly replacedBy?: string;
+  readonly revokedAt?: number;
+  readonly revocationReason?: string;
+  readonly tokenVersion: number;
+}
+
+export interface RefreshTokenStorePort {
+  /**
+   * @atomicity atomic
+   * @consistency linearizable
+   * @idempotency idempotent — saving the same record twice is a no-op
+   */
+  save(record: RefreshTokenRecord): Promise<void>;
+
+  /**
+   * @atomicity none
+   * @consistency linearizable — a stale read here would accept a revoked token
+   * @idempotency idempotent
+   */
+  findByHash(tenantId: TenantId, tokenHash: string): Promise<RefreshTokenRecord | undefined>;
+
+  /**
+   * Blind write. Never use it to decide anything — see `markRotated`.
+   *
+   * @atomicity none
+   * @consistency linearizable
+   * @idempotency idempotent
+   */
+  update(record: RefreshTokenRecord): Promise<void>;
+
+  /**
+   * Claim a token for rotation, atomically. Returns false when it was already rotated.
+   *
+   * This is the single most important method in the port. Rotation used to be read-check-write,
+   * so two concurrent exchanges of one token both passed the check and both succeeded — which is
+   * precisely the race a thief occupies, and it silently disabled reuse detection. The adapter
+   * must implement this as one conditional write:
+   *
+   *     UPDATE refresh_tokens
+   *        SET rotated_at = $at, replaced_by = $replacedBy
+   *      WHERE tenant_id = $tenantId AND id = $id AND rotated_at IS NULL
+   *
+   * and return whether it affected a row. Returning `true` when it did not is a security defect,
+   * not a performance one.
+   *
+   * @atomicity compare-and-swap
+   * @consistency linearizable
+   * @idempotency at-most-once — exactly one caller may receive true for a given token
+   */
+  markRotated(tenantId: TenantId, id: string, at: number, replacedBy: string): Promise<boolean>;
+  listFamily(tenantId: TenantId, familyId: TokenFamilyId): Promise<readonly RefreshTokenRecord[]>;
+  /**
+   * Revoke every live token in a family. Returns how many were revoked.
+   *
+   * @atomicity atomic — one statement, not a read followed by N writes
+   * @consistency linearizable
+   * @idempotency idempotent — revoking twice revokes nothing the second time and returns 0
+   */
+  revokeFamily(
+    tenantId: TenantId,
+    familyId: TokenFamilyId,
+    at: number,
+    reason: string,
+  ): Promise<number>;
+  revokeForUser(tenantId: TenantId, userId: UserId, at: number, reason: string): Promise<number>;
+  deleteExpired(tenantId: TenantId, now: number): Promise<number>;
+}
+
+/**
+ * A password-reset ticket.
+ *
+ * Single use, hashed at rest, short-lived, and bound to the account's password at issue time —
+ * `passwordHashFingerprint` means a token stops working the moment the password changes by any
+ * other route, which closes the "request two resets, use the older one" replay.
+ */
+export interface ResetTokenRecord {
+  readonly id: string;
+  readonly tenantId: TenantId;
+  readonly userId: UserId;
+  readonly tokenHash: string;
+  readonly issuedAt: number;
+  readonly expiresAt: number;
+  readonly consumedAt?: number;
+  readonly revokedAt?: number;
+  readonly passwordHashFingerprint: string;
+  readonly requestIp?: string;
+}
+
+export interface ResetTokenStorePort {
+  save(record: ResetTokenRecord): Promise<void>;
+  findByHash(tenantId: TenantId, tokenHash: string): Promise<ResetTokenRecord | undefined>;
+  update(record: ResetTokenRecord): Promise<void>;
+  /**
+   * Claim a reset token for use. Returns `true` for exactly one caller, ever.
+   *
+   * "Single use" is the whole security property of a reset link, and a reset link is mailed —
+   * so it is followed by mail scanners, link previewers and impatient double-clicks, all of
+   * which arrive at once and land on different replicas. Reading the record, seeing
+   * `consumedAt` unset and writing it back is not single use; it is single use whenever the
+   * timing happens to cooperate.
+   *
+   * Adapters implement it as one conditional statement:
+   *
+   *     UPDATE reset_tokens
+   *        SET consumed_at = $at
+   *      WHERE tenant_id = $tenantId AND id = $id
+   *        AND consumed_at IS NULL AND revoked_at IS NULL
+   *
+   * and return whether it affected a row.
+   *
+   * @atomicity compare-and-swap
+   * @consistency linearizable
+   * @idempotency at-most-once — exactly one caller may receive true for a given token
+   */
+  markConsumed(tenantId: TenantId, id: string, at: number): Promise<boolean>;
+  revokeForUser(tenantId: TenantId, userId: UserId, at: number): Promise<number>;
+}
+
+/** An API key or service-account credential. The secret is stored only as a hash. */
+export interface ApiKeyRecord {
+  readonly id: string;
+  readonly tenantId: TenantId;
+  readonly name: string;
+  readonly secretHash: string;
+  readonly scopes: readonly string[];
+  readonly createdAt: number;
+  readonly createdBy?: UserId;
+  readonly expiresAt?: number;
+  readonly lastUsedAt?: number;
+  readonly revokedAt?: number;
+  /** When the key acts for a user rather than for the tenant itself. */
+  readonly onBehalfOf?: UserId;
+  /** CIDR allow-list; empty means unrestricted. */
+  readonly allowedCidrs?: readonly string[];
+}
+
+export interface ApiKeyStorePort {
+  save(record: ApiKeyRecord): Promise<void>;
+  findById(tenantId: TenantId, keyId: string): Promise<ApiKeyRecord | undefined>;
+  list(tenantId: TenantId): Promise<readonly ApiKeyRecord[]>;
+  update(record: ApiKeyRecord): Promise<void>;
+}

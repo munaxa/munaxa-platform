@@ -1,0 +1,65 @@
+{
+  "name": "@munaxa/conformance",
+  "version": "2.0.0",
+  "description": "The executable specification of every Munaxa platform port: one suite an adapter runs against its own implementation to prove it provides the atomicity, consistency and expiry the platform assumes.",
+  "keywords": [
+    "security",
+    "conformance",
+    "testing",
+    "adapters",
+    "distributed-systems"
+  ],
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@munaxa/types": "workspace:^",
+    "@munaxa/interfaces": "workspace:^"
+  },
+  "devDependencies": {
+    "@munaxa/audit": "workspace:^",
+    "@munaxa/auth": "workspace:^",
+    "@munaxa/cache": "workspace:^",
+    "@munaxa/config-eslint": "workspace:*",
+    "@munaxa/config-typescript": "workspace:*",
+    "@munaxa/crypto": "workspace:^",
+    "@munaxa/notifications": "workspace:^",
+    "@munaxa/rbac": "workspace:^",
+    "@munaxa/security": "workspace:^",
+    "@munaxa/session": "workspace:^",
+    "@types/node": "^22.10.5",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/munaxa/munaxa-platform.git",
+    "directory": "packages/platform/conformance"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  }
+}

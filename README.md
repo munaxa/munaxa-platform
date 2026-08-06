@@ -1,8 +1,9 @@
 # Munaxa Platform
 
-The shared platform for the Munaxa ecosystem — design tokens, product themes, typography,
-icons, UI components, patterns, layouts and hooks. This repository is the **single source of
-truth** for everything more than one Munaxa product needs.
+The shared platform for the Munaxa ecosystem — the design system (tokens, themes, typography,
+icons, components) and the security platform (authentication, authorization, sessions, auditing,
+cryptography and the hostile-input edge). This repository is the **single source of truth** for
+everything more than one Munaxa product needs.
 
 It contains no product terminology, no business logic, and no database. It never depends on a
 product repository.
@@ -27,6 +28,33 @@ munaxa-platform
 | `@munaxa/typography` | The type scale and font stacks                                               |
 | `@munaxa/utils`      | Framework-agnostic shared helpers (`cn`, …)                                  |
 | `@munaxa/platform`   | The implementation all of the above re-export from                           |
+
+### The security platform
+
+`packages/platform/*` also holds twelve server-side packages that own every cross-cutting security
+concern in the ecosystem. Products consume them and write business logic; no product should
+implement authentication, RBAC, session management or auditing again.
+
+| Package                 | Owns                                                                    |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `@munaxa/auth`          | Passwords, login, JWT and refresh tokens, MFA, reset, providers, API keys |
+| `@munaxa/rbac`          | Roles, permissions, policies, guards                                     |
+| `@munaxa/session`       | Session lifecycle, devices, revocation                                   |
+| `@munaxa/security`      | Headers, CSP, CSRF, rate limiting, risk, threat detection                |
+| `@munaxa/audit`         | Hash-chained audit trail, exporters                                      |
+| `@munaxa/crypto`        | Hashing, encryption, signing, key rotation                               |
+| `@munaxa/cache`         | CachePort, counters, distributed locks                                   |
+| `@munaxa/logging`       | Structured logs, correlation ids, redaction                              |
+| `@munaxa/notifications` | Email, SMS, push, in-app delivery                                        |
+| `@munaxa/config`        | Typed environment schemas, secrets, feature flags, tenant config         |
+| `@munaxa/interfaces`    | Every port the platform can be given from outside                        |
+| `@munaxa/types`         | Identifiers, error taxonomy, the security-event vocabulary               |
+
+These are real implementations rather than façades, they have no third-party runtime dependencies,
+and they contain no product terminology. Start at
+[`docs/security-platform/`](docs/security-platform/README.md); the
+[developer guide](docs/security-platform/developer-guide.md) wires a product from nothing to a
+working login.
 
 ### Why façades
 

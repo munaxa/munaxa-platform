@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": ["@changesets/changelog-github", { "repo": "munaxa/munaxa-platform" }],
+  "commit": false,
+  "fixed": [
+    [
+      "@munaxa/types",
+      "@munaxa/interfaces",
+      "@munaxa/crypto",
+      "@munaxa/config",
+      "@munaxa/cache",
+      "@munaxa/logging",
+      "@munaxa/audit",
+      "@munaxa/rbac",
+      "@munaxa/session",
+      "@munaxa/security",
+      "@munaxa/notifications",
+      "@munaxa/auth",
+      "@munaxa/conformance"
+    ]
+  ],
+  "linked": [],
+  "access": "restricted",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@munaxa/platform",
+    "@munaxa/ui",
+    "@munaxa/icons",
+    "@munaxa/theme",
+    "@munaxa/tokens",
+    "@munaxa/typography",
+    "@munaxa/utils"
+  ]
+}
