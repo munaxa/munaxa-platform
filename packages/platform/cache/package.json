@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/cache",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "CachePort implementations (memory, Redis-compatible), namespacing, distributed counters, distributed locks and the storage primitives rate limiting is built on.",
   "keywords": [
     "security",

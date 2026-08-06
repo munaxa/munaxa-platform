@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/conformance",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "The executable specification of every Munaxa platform port: one suite an adapter runs against its own implementation to prove it provides the atomicity, consistency and expiry the platform assumes.",
   "keywords": [
     "security",

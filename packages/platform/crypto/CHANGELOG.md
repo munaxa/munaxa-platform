@@ -1,5 +1,11 @@
 # @munaxa/crypto
 
+## 2.1.0
+
+### Patch Changes
+
+- @munaxa/types@2.1.0
+
 ## 2.0.0
 
 **Breaking.** Platform 2.0 moves every at-most-once decision out of process memory and

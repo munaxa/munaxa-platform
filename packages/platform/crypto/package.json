@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/crypto",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Password hashing, secure random generation, authenticated encryption, signing, constant-time comparison and key-rotation helpers. Node built-ins only.",
   "keywords": [
     "security",
