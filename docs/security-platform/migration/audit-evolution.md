@@ -82,6 +82,46 @@ the field when sealing with format 1 so records stay byte-identical.
 3. **Never re-seal history.** Old records keep their old digests and their old version. There is no
    migration step, no `UPDATE`, and no window in which the chain is unverifiable.
 
+### When your digest covers your own record id
+
+A chain whose identifier is minted independently — a `uuid` assigned before sealing — and hashed on
+purpose needs that id passed in. Declare it:
+
+```ts
+const legacyV3: CanonicalFormat = {
+  version: 903,
+  requires: ['recordId'],
+  covers: 'previousHash, eventId, tenant, occurredAt, actor, action, subject, outcome, payload, …',
+  canonicalize: ({ recordId, previousHash, event, sequence }) =>
+    [previousHash ?? '', recordId ?? '', event.tenantId, /* … */].join('|'),
+};
+```
+
+`requires` is declared rather than inferred because the failure it prevents is silent: a format that
+read `recordId` from a record that has none would hash `undefined`, produce a plausible digest, and
+report every such record as tampered — an alarm indistinguishable from a real one. With the
+declaration, `verifyChain` refuses to run the format and says which field is missing.
+
+`externalId` is the same mechanism for an identifier that came from another system — an imported
+chain's original id. It is deliberately not the same field as `recordId`: conflating them makes an
+imported chain unverifiable the day local ids are reassigned.
+
+**Platform-native formats declare neither, so they are never passed either.** That is why this was
+additive: no existing digest can change by the presence of a field its format never sees.
+
+### Using your own event vocabulary
+
+`SecurityEvent` and `AuditRecord` take the event name as a type parameter, defaulted to the closed
+`SecurityEventName`:
+
+```ts
+type DocsAction = 'DOCUMENT_DOWNLOADED' | 'WORKFLOW_APPROVED' | /* … */;
+const record: AuditRecord<DocsAction> = /* … */;
+```
+
+You get the same exhaustiveness checking the platform gets for its own names, and nothing is cast.
+See ADR-0020 for why the platform's own vocabulary stays closed.
+
 ### Rules for a new format
 
 - A released version number is frozen, like a wire format. `CanonicalFormatRegistry.register`

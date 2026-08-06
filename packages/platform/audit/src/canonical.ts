@@ -1,18 +1,50 @@
 import type { AuditSequence } from '@munaxa/interfaces';
-import { PlatformError, type SecurityEvent } from '@munaxa/types';
+import { PlatformError, type AnyAuditEvent } from '@munaxa/types';
 
 /**
- * Everything that a canonical format is allowed to see.
+ * Everything a canonical format is allowed to see.
  *
- * Deliberately not the `AuditRecord` itself: `id` is derived from the hash and `hash` is the
- * output, so a format that could read them could accidentally hash its own result.
+ * `hash` is not here and never will be: it is this function's output, and a format able to read it
+ * could hash its own result.
+ *
+ * `recordId` is here, optionally, and that is a correction. The platform's own record id *is*
+ * derived from the digest (`aud_${sequence}_${hash…}`), so format 1 cannot read it and does not
+ * want to — but that is a fact about the platform's id scheme, not about audit chains. A product
+ * whose id is an independently minted UUID, assigned before sealing and covered by the digest on
+ * purpose, was previously unable to express its own historical format at all: the bytes it had to
+ * reproduce contained a value the platform never passed in. Its history was therefore
+ * unverifiable through `verifyChain`, which is precisely what versioned formats exist to prevent.
+ *
+ * The field is optional, and every platform-native format ignores it. Nothing about an existing
+ * digest changes by its presence.
  */
 export interface CanonicalInput {
-  readonly event: SecurityEvent;
+  readonly event: AnyAuditEvent;
   readonly previousHash: string | null;
   readonly recordedAt: number;
   readonly sequence: AuditSequence;
+  /**
+   * The record's own identifier, when the store assigns one independently of the digest.
+   *
+   * Absent when the id is derived from the hash — the platform's own case — because there is
+   * nothing meaningful to pass before the hash exists. A format that declares `recordId` in
+   * `requires` will be given it, and `verifyChain` refuses to run that format without it rather
+   * than hashing `undefined` into the material and reporting a false mismatch.
+   */
+  readonly recordId?: string;
+  /**
+   * An identifier the record carries from a system outside this one — an imported chain's original
+   * id, a correlation to a regulator's case reference.
+   *
+   * Distinct from `recordId` on purpose: one says "what this store calls this row", the other says
+   * "what somebody else called it". Conflating them makes an imported chain unverifiable the day
+   * the local ids are reassigned.
+   */
+  readonly externalId?: string;
 }
+
+/** Which optional inputs a format reads. Anything not listed is ignored and may be absent. */
+export type CanonicalField = 'recordId' | 'externalId';
 
 /**
  * A byte-exact rendering of a record, and the number that identifies it.
@@ -29,6 +61,23 @@ export interface CanonicalInput {
  */
 export interface CanonicalFormat {
   readonly version: number;
+  /**
+   * Optional inputs this format hashes. Default: none.
+   *
+   * Declared rather than inferred because the failure it prevents is silent. A format that reads
+   * `recordId` from a record that has none would hash `undefined`, produce a plausible digest, and
+   * report every such record as tampered — an alarm indistinguishable from a real one. Declaring
+   * the requirement lets `verifyChain` say "this format needs a record id and this record has
+   * none" instead.
+   */
+  readonly requires?: readonly CanonicalField[];
+  /**
+   * Human-readable note on what this format covers and what it deliberately leaves out.
+   *
+   * Carried into an evidence bundle's manifest, so a bundle never claims to attest a field the
+   * digest did not cover.
+   */
+  readonly covers?: string;
   canonicalize(input: CanonicalInput): string;
 }
 
@@ -45,6 +94,9 @@ export interface CanonicalFormat {
  */
 export const CANONICAL_FORMAT_V1: CanonicalFormat = Object.freeze({
   version: 1,
+  covers:
+    'sequence, previousHash, recordedAt, and the event name, time, tenant, correlation, outcome, ' +
+    'severity, actor id/kind, target id/type, source ip and payload. Ignores record identifiers.',
   canonicalize({ event, previousHash, recordedAt, sequence }: CanonicalInput): string {
     const rest = JSON.stringify([
       previousHash,

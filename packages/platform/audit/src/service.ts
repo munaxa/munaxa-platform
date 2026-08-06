@@ -12,6 +12,7 @@ import {
   type ChainHead,
   type LoggerPort,
 } from '@munaxa/interfaces';
+import type { CanonicalInput } from './canonical.js';
 import {
   CANONICAL_FORMAT_V1,
   CURRENT_CANONICAL_FORMAT,
@@ -24,6 +25,7 @@ import {
   systemClock,
   type Clock,
   type SecurityContext,
+  type AnyAuditEvent,
   type SecurityEvent,
   type SecurityEventName,
   type TenantId,
@@ -181,7 +183,7 @@ export class AuditService {
       // bigint, and `1n + 1` is a TypeError rather than 2.
       const sequence: AuditSequence = previous === null ? 1 : nextSequence(previous.sequence);
       const previousHash = previous?.hash ?? null;
-      const hash = hashOf(format, sanitized, previousHash, recordedAt, sequence);
+      const hash = hashOf(format, { event: sanitized, previousHash, recordedAt, sequence });
       return {
         id: `aud_${toBase36(sequence)}_${hash.slice(0, 12)}`,
         event: sanitized,
@@ -266,7 +268,7 @@ export class AuditService {
  * which is versioned; this is format 1 and will stay format 1.
  */
 export function canonicalize(
-  event: SecurityEvent,
+  event: AnyAuditEvent,
   previousHash: string | null,
   recordedAt: number,
   sequence: AuditSequence,
@@ -274,16 +276,27 @@ export function canonicalize(
   return CANONICAL_FORMAT_V1.canonicalize({ event, previousHash, recordedAt, sequence });
 }
 
-function hashOf(
+function hashOf(format: CanonicalFormat, input: CanonicalInput): string {
+  return createHash('sha256').update(format.canonicalize(input)).digest('hex');
+}
+
+/**
+ * The identifiers a format may read, taken from the record it is verifying.
+ *
+ * A format that does not declare them never sees them, so a platform-native digest cannot change
+ * by their presence — which is the whole basis on which this was made additive.
+ */
+function identifiersFor(
   format: CanonicalFormat,
-  event: SecurityEvent,
-  previousHash: string | null,
-  recordedAt: number,
-  sequence: AuditSequence,
-): string {
-  return createHash('sha256')
-    .update(format.canonicalize({ event, previousHash, recordedAt, sequence }))
-    .digest('hex');
+  record: AuditRecord<string>,
+): Pick<CanonicalInput, 'recordId' | 'externalId'> {
+  const requires = format.requires ?? [];
+  return {
+    ...(requires.includes('recordId') ? { recordId: record.id } : {}),
+    ...(requires.includes('externalId') && record.externalId !== undefined
+      ? { externalId: record.externalId }
+      : {}),
+  };
 }
 
 function toBase36(sequence: AuditSequence): string {
@@ -324,7 +337,7 @@ export interface VerifyChainOptions {
  * historical digest or require rewriting an append-only table.
  */
 export function verifyChain(
-  records: readonly AuditRecord[],
+  records: readonly AuditRecord<string>[],
   options: VerifyChainOptions = {},
 ): ChainVerification {
   const formats =
@@ -365,13 +378,28 @@ export function verifyChain(
         checked,
       };
     }
-    const recomputed = hashOf(
-      format,
-      record.event,
-      record.previousHash,
-      record.recordedAt,
-      record.sequence,
-    );
+
+    const identifiers = identifiersFor(format, record);
+    // A format that needs an identifier and cannot be given one must not be run: hashing
+    // `undefined` into the material yields a plausible digest and a tamper report indistinguishable
+    // from a real one. Refusing is the honest answer.
+    const missing = (format.requires ?? []).filter((field) => identifiers[field] === undefined);
+    if (missing.length > 0) {
+      return {
+        valid: false,
+        brokenAt: record.sequence,
+        reason: `canonical format ${version} requires ${missing.join(', ')}, which this record does not carry`,
+        checked,
+      };
+    }
+
+    const recomputed = hashOf(format, {
+      event: record.event,
+      previousHash: record.previousHash,
+      recordedAt: record.recordedAt,
+      sequence: record.sequence,
+      ...identifiers,
+    });
     if (recomputed !== record.hash) {
       return {
         valid: false,

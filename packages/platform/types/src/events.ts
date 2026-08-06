@@ -94,8 +94,11 @@ export const SEVERITY_RANK: Readonly<Record<EventSeverity, number>> = {
  * `actor` is who did it, `target` is what it was done to; both are optional because some events
  * (a rate limit on an unauthenticated endpoint) have neither.
  */
-export interface SecurityEvent<TPayload = Readonly<Record<string, unknown>>> {
-  readonly name: SecurityEventName;
+export interface SecurityEvent<
+  TPayload = Readonly<Record<string, unknown>>,
+  TName extends string = SecurityEventName,
+> {
+  readonly name: TName;
   readonly occurredAt: number;
   readonly tenantId: TenantId;
   readonly correlationId: CorrelationId;
@@ -108,10 +111,41 @@ export interface SecurityEvent<TPayload = Readonly<Record<string, unknown>>> {
   readonly payload?: TPayload;
 }
 
+/**
+ * An event under any vocabulary — the platform's closed one, or a product's own.
+ *
+ * The closed union is the right default and stays the default: it is what makes one query work
+ * across every product, and widening it to `string` everywhere would trade that for nothing. But a
+ * product's compliance trail is not a subset of the platform's security vocabulary — a document
+ * checked in, a grade published, a payroll run approved are evidence in their own right, and there
+ * is no version of `SECURITY_EVENTS` that should contain them.
+ *
+ * So the name is a type parameter rather than a fixed union. A product declares its own union of
+ * literals and gets the same exhaustiveness checking the platform gets for its own; nothing is
+ * cast, nothing is widened at a call site that did not ask for it, and code written against the
+ * default keeps the closed union exactly as before.
+ */
+export type AnyAuditEvent<TPayload = Readonly<Record<string, unknown>>> = SecurityEvent<
+  TPayload,
+  string
+>;
+
 export interface EventActor {
   readonly id: string;
   readonly kind: string;
   readonly displayName?: string;
+  /**
+   * The principal this actor was acting for — delegation, or support impersonation.
+   *
+   * In the platform because two of the three consumers surveyed already carry it independently
+   * (`on_behalf_of_id` in Munaxa Docs, `onBehalfOf` in Munaxa School), and because it is a
+   * security fact rather than a domain one: "who really did this" is the question an incident
+   * asks, and an answer only one product records is an answer the shared trail cannot give.
+   *
+   * Ignored by canonical format 1, which hashes only `actor.id` and `actor.kind` — so no existing
+   * digest changes. A format that needs it covered says so by being a new version.
+   */
+  readonly onBehalfOf?: string;
 }
 
 export interface EventTarget {
