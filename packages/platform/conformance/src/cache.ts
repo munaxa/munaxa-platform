@@ -91,6 +91,40 @@ export function runCacheConformance(harness: TestHarness, options: CacheConforma
       expect(await cache.increment('c', 3, { ttl: 60_000 })).toBe(8);
     });
 
+    it('compareAndSet, when implemented, lets exactly one writer through per value', async () => {
+      // Skipped rather than failed for backings that cannot do it — Cloudflare KV, most CDN
+      // caches. `TokenBucket.enforcement` is how a deployment finds out it landed on one.
+      const cache = await options.createCache();
+      if (!cache.compareAndSet) return;
+
+      await cache.set('cas', { n: 0 }, { ttl: 60_000 });
+      const { fulfilled } = await race(concurrency, async (i) => {
+        await tick(i % 3);
+        return cache.compareAndSet?.('cas', { n: 0 }, { n: i + 1 }, { ttl: 60_000 });
+      });
+
+      expect(fulfilled.filter((won) => won === true)).toHaveLength(1);
+    });
+
+    it('compareAndSet refuses when the value has moved on, and accepts when it has not', async () => {
+      const cache = await options.createCache();
+      if (!cache.compareAndSet) return;
+
+      await cache.set('cas', { n: 1 }, { ttl: 60_000 });
+      expect(await cache.compareAndSet('cas', { n: 2 }, { n: 3 }, { ttl: 60_000 })).toBe(false);
+      expect(await cache.get('cas')).toEqual({ n: 1 });
+      expect(await cache.compareAndSet('cas', { n: 1 }, { n: 3 }, { ttl: 60_000 })).toBe(true);
+      expect(await cache.get('cas')).toEqual({ n: 3 });
+    });
+
+    it('compareAndSet against undefined means “only if absent”', async () => {
+      const cache = await options.createCache();
+      if (!cache.compareAndSet) return;
+
+      expect(await cache.compareAndSet('fresh', undefined, { n: 1 }, { ttl: 60_000 })).toBe(true);
+      expect(await cache.compareAndSet('fresh', undefined, { n: 2 }, { ttl: 60_000 })).toBe(false);
+    });
+
     it('increment hands out every value exactly once', async () => {
       // Sequence allocation depends on this: two callers must never receive the same number.
       const cache = await options.createCache();

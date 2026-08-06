@@ -265,6 +265,16 @@ export class MemoryResetTokenStore implements ResetTokenStorePort {
     this.#records.set(record.id, record);
   }
 
+  async markConsumed(tenantId: TenantId, id: string, at: number): Promise<boolean> {
+    // No await between the read and the write: on one thread that is the whole compare-and-swap.
+    // A networked adapter has to get the same effect from one conditional statement.
+    const record = this.#records.get(id);
+    if (!record || record.tenantId !== tenantId) return false;
+    if (record.consumedAt !== undefined || record.revokedAt !== undefined) return false;
+    this.#records.set(id, { ...record, consumedAt: at });
+    return true;
+  }
+
   async revokeForUser(tenantId: TenantId, userId: UserId, at: number): Promise<number> {
     let revoked = 0;
     for (const record of this.#records.values()) {

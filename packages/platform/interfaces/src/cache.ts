@@ -68,6 +68,34 @@ export interface CachePort {
    * @idempotency at-least-once — a retried increment counts twice, so the platform never retries
    */
   increment(key: string, by?: number, options?: CacheSetOptions): Promise<number>;
+
+  /**
+   * Replace a value only if it is still the one that was read. Optional.
+   *
+   * `increment` covers counters, but state that is not a single number — a token bucket's
+   * `{tokens, updatedAt}` pair — cannot be updated atomically without it. Callers read, compute,
+   * then offer the new value along with the old one; a `false` result means somebody else got
+   * there first and the caller must re-read rather than overwrite.
+   *
+   * Compare by identity of the stored value, not by deep equality: an adapter that serialises
+   * should compare the serialised bytes (Redis `WATCH`/`MULTI`, a `SET … NX` over a version
+   * token, or `UPDATE … WHERE value = $expected`). Passing `undefined` as `expected` means
+   * "only if the key is absent", which makes this a superset of `setIfAbsent`.
+   *
+   * Backings that cannot do this — Cloudflare KV, most CDN caches — leave it unimplemented, and
+   * callers degrade explicitly rather than silently: see `TokenBucket.enforcement`.
+   *
+   * @atomicity compare-and-swap
+   * @consistency linearizable
+   * @idempotency at-most-once — a retried swap fails, because the expected value has moved on
+   */
+  compareAndSet?<T>(
+    key: string,
+    expected: T | undefined,
+    next: T,
+    options?: CacheSetOptions,
+  ): Promise<boolean>;
+
   /** Remaining lifetime in ms, `undefined` when the key is missing or has no expiry. */
   ttl(key: string): Promise<DurationMs | undefined>;
   /** Drop every key under a namespace. Optional: some backings cannot scan. */

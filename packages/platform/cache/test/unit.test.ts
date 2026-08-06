@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CachePort } from '@munaxa/interfaces';
 import { FixedClock, ROOT_TENANT_ID, toTenantId } from '@munaxa/types';
 import {
   CacheLock,
@@ -158,6 +159,46 @@ describe('counters', () => {
 
     clock.advance(2_000);
     expect((await bucket.consume('k', options)).allowed).toBe(true);
+  });
+
+  it('does not over-admit a token bucket under concurrency', async () => {
+    // The 1.0 bucket was a read, a decision and a write with awaits between them: fifty callers
+    // all read a full bucket and all decided they could spend it. With compare-and-set the
+    // losers re-read and see the balance the winners left.
+    const clock = new FixedClock(0);
+    const bucket = new TokenBucket(new MemoryCache({ clock }), clock);
+    const options = { refillPerSecond: 0.001, capacity: 5 };
+
+    const results = await Promise.all(
+      Array.from({ length: 50 }, () => bucket.consume('k', options)),
+    );
+
+    expect(bucket.enforcement).toBe('compare-and-swap');
+    expect(results.filter((result) => result.allowed)).toHaveLength(5);
+  });
+
+  it('reports best-effort enforcement on a cache that cannot compare-and-set', async () => {
+    // Cloudflare KV and most CDN caches. The limit still applies; it is just approximate under
+    // concurrency, and a deployment gets to see that rather than assume otherwise.
+    const clock = new FixedClock(0);
+    const cache = new MemoryCache({ clock });
+    const withoutCas: CachePort = {
+      get: (key) => cache.get(key),
+      set: (key, value, cacheOptions) => cache.set(key, value, cacheOptions),
+      setIfAbsent: (key, value, cacheOptions) => cache.setIfAbsent(key, value, cacheOptions),
+      delete: (key) => cache.delete(key),
+      has: (key) => cache.has(key),
+      increment: (key, by, cacheOptions) => cache.increment(key, by, cacheOptions),
+      ttl: (key) => cache.ttl(key),
+    };
+    const bucket = new TokenBucket(withoutCas, clock);
+
+    expect(bucket.enforcement).toBe('best-effort');
+    // Sequentially it is still exact — the degradation is only under concurrency.
+    const options = { refillPerSecond: 0.001, capacity: 2 };
+    expect((await bucket.consume('k', options)).allowed).toBe(true);
+    expect((await bucket.consume('k', options)).allowed).toBe(true);
+    expect((await bucket.consume('k', options)).allowed).toBe(false);
   });
 
   it('never refills a token bucket beyond its capacity', async () => {

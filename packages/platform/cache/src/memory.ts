@@ -67,6 +67,24 @@ export class MemoryCache implements CachePort {
     return true;
   }
 
+  async compareAndSet<T>(
+    key: string,
+    expected: T | undefined,
+    next: T,
+    options: CacheSetOptions = {},
+  ): Promise<boolean> {
+    // No await between the comparison and the write — that is the whole contract, and it is why
+    // this cannot be written as `get()` then `set()` in the caller.
+    const entry = this.#live(key);
+    if (!sameValue(entry?.value, expected)) return false;
+    const expiresAt =
+      entry && options.keepTtl === true ? entry.expiresAt : this.#deadline(options.ttl);
+    this.#entries.delete(key);
+    this.#entries.set(key, { value: next, expiresAt });
+    this.#evict();
+    return true;
+  }
+
   async delete(key: string): Promise<boolean> {
     return this.#entries.delete(key);
   }
@@ -137,5 +155,23 @@ export class MemoryCache implements CachePort {
       if (sampled++ >= this.#sweepSampleSize) break;
       if (entry.expiresAt !== undefined && now >= entry.expiresAt) this.#entries.delete(key);
     }
+  }
+}
+
+/**
+ * Value comparison for `compareAndSet`.
+ *
+ * Reference equality is not enough: a networked adapter deserialises on every read, so the object
+ * a caller offers as `expected` is never the object the store holds. Comparing the way a
+ * serialising adapter must — by encoded form — keeps the memory cache honest about the semantics
+ * every other adapter has to provide.
+ */
+function sameValue(current: unknown, expected: unknown): boolean {
+  if (Object.is(current, expected)) return true;
+  if (current === undefined || expected === undefined) return false;
+  try {
+    return JSON.stringify(current) === JSON.stringify(expected);
+  } catch {
+    return false;
   }
 }

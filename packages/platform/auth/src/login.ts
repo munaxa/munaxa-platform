@@ -283,10 +283,16 @@ export class LoginService {
     const failures = await this.#cache.increment(failureKey(tenantId, identifier), 1, {
       ttl: this.#attemptWindow,
     });
-    if (failures >= this.#maxAttempts) {
-      await this.#cache.set(lockKey(tenantId, identifier), this.#clock.now(), {
-        ttl: this.#lockoutDuration,
-      });
+    if (failures < this.#maxAttempts) return;
+
+    await this.#cache.set(lockKey(tenantId, identifier), this.#clock.now(), {
+      ttl: this.#lockoutDuration,
+    });
+
+    // `increment` is atomic, so across the whole fleet exactly one caller sees the threshold
+    // crossed. Emitting on `>=` instead would raise "account locked" once per attempt while the
+    // attack continued — the alert that trains an operator to mute the alert.
+    if (failures === this.#maxAttempts) {
       await this.#emit({
         name: 'auth.account.locked',
         tenantId,

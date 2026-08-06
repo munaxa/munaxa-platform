@@ -117,6 +117,29 @@ export interface ResetTokenStorePort {
   save(record: ResetTokenRecord): Promise<void>;
   findByHash(tenantId: TenantId, tokenHash: string): Promise<ResetTokenRecord | undefined>;
   update(record: ResetTokenRecord): Promise<void>;
+  /**
+   * Claim a reset token for use. Returns `true` for exactly one caller, ever.
+   *
+   * "Single use" is the whole security property of a reset link, and a reset link is mailed —
+   * so it is followed by mail scanners, link previewers and impatient double-clicks, all of
+   * which arrive at once and land on different replicas. Reading the record, seeing
+   * `consumedAt` unset and writing it back is not single use; it is single use whenever the
+   * timing happens to cooperate.
+   *
+   * Adapters implement it as one conditional statement:
+   *
+   *     UPDATE reset_tokens
+   *        SET consumed_at = $at
+   *      WHERE tenant_id = $tenantId AND id = $id
+   *        AND consumed_at IS NULL AND revoked_at IS NULL
+   *
+   * and return whether it affected a row.
+   *
+   * @atomicity compare-and-swap
+   * @consistency linearizable
+   * @idempotency at-most-once — exactly one caller may receive true for a given token
+   */
+  markConsumed(tenantId: TenantId, id: string, at: number): Promise<boolean>;
   revokeForUser(tenantId: TenantId, userId: UserId, at: number): Promise<number>;
 }
 

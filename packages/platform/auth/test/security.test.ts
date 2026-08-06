@@ -159,6 +159,32 @@ describe('reset token replay', () => {
     ).rejects.toMatchObject({ code: 'AUTH_RESET_TOKEN_INVALID' });
   });
 
+  it('cannot be used twice at the same time either', async () => {
+    // The replay that matters in a fleet. A mailed link is followed by mail scanners and link
+    // previewers, often within the same second and onto different replicas — so "used already?"
+    // has to be a claim, not a read followed by a write. Exactly one caller may change the
+    // password; the rest are refused.
+    const { reset, delivered, directory } = await fixture();
+    await reset.request(ROOT_TENANT_ID, 'ada@example.com');
+    const token = delivered[0]?.token as string;
+
+    const outcomes = await Promise.allSettled(
+      Array.from({ length: 20 }, (_unused, i) =>
+        reset.complete(ROOT_TENANT_ID, token, `a fresh unrelated passphrase ${i}`),
+      ),
+    );
+
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    for (const outcome of outcomes) {
+      if (outcome.status === 'rejected') {
+        expect(outcome.reason).toMatchObject({ code: 'AUTH_RESET_TOKEN_INVALID' });
+      }
+    }
+    // And the account ends up with the winner's password, not with whichever write landed last.
+    const account = await directory.findById(ROOT_TENANT_ID, USER);
+    expect(account?.passwordHash).toBeDefined();
+  });
+
   it('stops working once the password changes by another route', async () => {
     const { reset, delivered, login } = await fixture();
     await reset.request(ROOT_TENANT_ID, 'ada@example.com');

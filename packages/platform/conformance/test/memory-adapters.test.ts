@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryAuditRepository, canonicalize, verifyChain } from '@munaxa/audit';
-import { MemoryRefreshTokenStore } from '@munaxa/auth';
+import { MemoryRefreshTokenStore, MemoryResetTokenStore } from '@munaxa/auth';
 import { MemoryCache } from '@munaxa/cache';
 import { MemorySessionStore } from '@munaxa/session';
 import { createHash } from 'node:crypto';
@@ -14,11 +14,18 @@ import {
   type TokenFamilyId,
   type UserId,
 } from '@munaxa/types';
-import type { AuditRecord, ChainHead, RefreshTokenRecord, SessionRecord } from '@munaxa/interfaces';
+import type {
+  AuditRecord,
+  ChainHead,
+  RefreshTokenRecord,
+  ResetTokenRecord,
+  SessionRecord,
+} from '@munaxa/interfaces';
 import {
   runAuditConformance,
   runCacheConformance,
   runRefreshTokenConformance,
+  runResetTokenConformance,
   runSessionConformance,
 } from '../src/index.js';
 
@@ -83,6 +90,20 @@ runRefreshTokenConformance(harness, {
     issuedAt: 1_700_000_000_000,
     expiresAt: 1_700_000_000_000 + 30 * 24 * 60 * 60 * 1_000,
     tokenVersion: 1,
+    ...overrides,
+  }),
+});
+
+runResetTokenConformance(harness, {
+  createStore: () => new MemoryResetTokenStore(),
+  makeRecord: (overrides = {}): ResetTokenRecord => ({
+    id: 'rst-conformance',
+    tenantId: 'conformance' as TenantId,
+    userId: unsafeId<UserId>('u1'),
+    tokenHash: 'hash-reset',
+    issuedAt: 1_700_000_000_000,
+    expiresAt: 1_700_000_000_000 + 30 * 60 * 1_000,
+    passwordHashFingerprint: 'fingerprint',
     ...overrides,
   }),
 });

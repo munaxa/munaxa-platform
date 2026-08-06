@@ -141,8 +141,10 @@ export class PasswordResetService {
   /**
    * Complete a reset.
    *
-   * The token is marked consumed *before* anything else can fail, so a concurrent second attempt
-   * with the same token loses.
+   * Everything that can reject the request is checked first, then the token is *claimed* with a
+   * compare-and-swap, and only a caller that won the claim changes the password. The checks may
+   * run twice concurrently — they are read-only — but the claim cannot succeed twice, so the
+   * second attempt is refused rather than racing the first to set a different password.
    */
   async complete(tenantId: TenantId, token: string, newPassword: string): Promise<void> {
     const record = await this.#store.findByHash(tenantId, tokenFingerprint(token, this.#pepper));
@@ -174,7 +176,10 @@ export class PasswordResetService {
       userInfo: [account.identifier],
     });
 
-    await this.#store.update({ ...record, consumedAt: now });
+    // The gate. Every replica racing this token reaches here; exactly one is told `true`.
+    if (!(await this.#store.markConsumed(tenantId, record.id, now))) {
+      throw new PlatformError('Reset token already used', { code: 'AUTH_RESET_TOKEN_INVALID' });
+    }
 
     const passwordHash = await this.#hasher.hash(newPassword);
     await this.#directory.updatePasswordHash(tenantId, record.userId, passwordHash);

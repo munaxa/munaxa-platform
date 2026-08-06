@@ -1,4 +1,9 @@
-import type { RefreshTokenRecord, RefreshTokenStorePort } from '@munaxa/interfaces';
+import type {
+  RefreshTokenRecord,
+  RefreshTokenStorePort,
+  ResetTokenRecord,
+  ResetTokenStorePort,
+} from '@munaxa/interfaces';
 import type { TenantId, TokenFamilyId, UserId } from '@munaxa/types';
 import { race, tick, type TestHarness } from './harness.js';
 
@@ -124,6 +129,81 @@ export function runRefreshTokenConformance(
 
       expect(await store.revokeForUser(mine.tenantId, mine.userId, 3_000, 'password-changed')).toBe(1);
       expect((await store.findByHash(theirs.tenantId, 'h-theirs'))?.revokedAt).toBeUndefined();
+    });
+  });
+}
+
+/**
+ * `ResetTokenStorePort` conformance.
+ *
+ * A reset link is mailed, and a mailed link is followed by mail scanners, link previewers, and a
+ * user who clicks twice — often within the same second, landing on different replicas. "Single
+ * use" therefore has to survive concurrency or it is not single use at all: two winners means two
+ * password changes, and the one that lands second is the one that stays.
+ */
+export interface ResetTokenConformanceOptions {
+  createStore(): ResetTokenStorePort | Promise<ResetTokenStorePort>;
+  makeRecord(overrides?: Partial<ResetTokenRecord>): ResetTokenRecord;
+  concurrency?: number;
+}
+
+export function runResetTokenConformance(
+  harness: TestHarness,
+  options: ResetTokenConformanceOptions,
+): void {
+  const { describe, it, expect } = harness;
+  const concurrency = options.concurrency ?? 50;
+
+  describe('ResetTokenStorePort conformance', () => {
+    it('finds a saved token by hash, scoped to its tenant', async () => {
+      const store = await options.createStore();
+      const record = options.makeRecord();
+      await store.save(record);
+
+      expect((await store.findByHash(record.tenantId, record.tokenHash))?.id).toBe(record.id);
+      expect(await store.findByHash('other-tenant' as TenantId, record.tokenHash)).toBeUndefined();
+    });
+
+    it('markConsumed has exactly one winner under concurrency', async () => {
+      const store = await options.createStore();
+      const record = options.makeRecord();
+      await store.save(record);
+
+      const { fulfilled } = await race(concurrency, async (i) => {
+        await tick(i % 3);
+        return store.markConsumed(record.tenantId, record.id, 1_000 + i);
+      });
+
+      expect(fulfilled.filter((won) => won === true)).toHaveLength(1);
+    });
+
+    it('markConsumed refuses a revoked token', async () => {
+      const store = await options.createStore();
+      const record = options.makeRecord();
+      await store.save(record);
+      await store.revokeForUser(record.tenantId, record.userId, 500);
+
+      expect(await store.markConsumed(record.tenantId, record.id, 1_000)).toBe(false);
+    });
+
+    it('markConsumed refuses another tenant, and an unknown token', async () => {
+      const store = await options.createStore();
+      const record = options.makeRecord();
+      await store.save(record);
+
+      expect(await store.markConsumed('other-tenant' as TenantId, record.id, 1_000)).toBe(false);
+      expect(await store.markConsumed(record.tenantId, 'no-such-id', 1_000)).toBe(false);
+    });
+
+    it('revokeForUser leaves a consumed token alone and reports only what it revoked', async () => {
+      const store = await options.createStore();
+      const consumed = options.makeRecord({ id: 'used', tokenHash: 'h-used' });
+      const live = options.makeRecord({ id: 'live', tokenHash: 'h-live' });
+      await store.save(consumed);
+      await store.save(live);
+      await store.markConsumed(consumed.tenantId, consumed.id, 1_000);
+
+      expect(await store.revokeForUser(live.tenantId, live.userId, 2_000)).toBe(1);
     });
   });
 }
