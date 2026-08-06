@@ -27,11 +27,62 @@ export interface RefreshTokenRecord {
 }
 
 export interface RefreshTokenStorePort {
+  /**
+   * @atomicity atomic
+   * @consistency linearizable
+   * @idempotency idempotent — saving the same record twice is a no-op
+   */
   save(record: RefreshTokenRecord): Promise<void>;
+
+  /**
+   * @atomicity none
+   * @consistency linearizable — a stale read here would accept a revoked token
+   * @idempotency idempotent
+   */
   findByHash(tenantId: TenantId, tokenHash: string): Promise<RefreshTokenRecord | undefined>;
+
+  /**
+   * Blind write. Never use it to decide anything — see `markRotated`.
+   *
+   * @atomicity none
+   * @consistency linearizable
+   * @idempotency idempotent
+   */
   update(record: RefreshTokenRecord): Promise<void>;
+
+  /**
+   * Claim a token for rotation, atomically. Returns false when it was already rotated.
+   *
+   * This is the single most important method in the port. Rotation used to be read-check-write,
+   * so two concurrent exchanges of one token both passed the check and both succeeded — which is
+   * precisely the race a thief occupies, and it silently disabled reuse detection. The adapter
+   * must implement this as one conditional write:
+   *
+   *     UPDATE refresh_tokens
+   *        SET rotated_at = $at, replaced_by = $replacedBy
+   *      WHERE tenant_id = $tenantId AND id = $id AND rotated_at IS NULL
+   *
+   * and return whether it affected a row. Returning `true` when it did not is a security defect,
+   * not a performance one.
+   *
+   * @atomicity compare-and-swap
+   * @consistency linearizable
+   * @idempotency at-most-once — exactly one caller may receive true for a given token
+   */
+  markRotated(
+    tenantId: TenantId,
+    id: string,
+    at: number,
+    replacedBy: string,
+  ): Promise<boolean>;
   listFamily(tenantId: TenantId, familyId: TokenFamilyId): Promise<readonly RefreshTokenRecord[]>;
-  /** Revoke every live token in a family. Returns how many were revoked. */
+  /**
+   * Revoke every live token in a family. Returns how many were revoked.
+   *
+   * @atomicity atomic — one statement, not a read followed by N writes
+   * @consistency linearizable
+   * @idempotency idempotent — revoking twice revokes nothing the second time and returns 0
+   */
   revokeFamily(
     tenantId: TenantId,
     familyId: TokenFamilyId,

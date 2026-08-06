@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import type { MfaEnrollment, MfaEnrollmentStorePort } from '@munaxa/interfaces';
+import type { CachePort, MfaEnrollment, MfaEnrollmentStorePort } from '@munaxa/interfaces';
 import {
   PlatformError,
   systemClock,
@@ -26,8 +26,10 @@ import {
  *
  * Two properties every second factor here shares:
  *
- * - **Single use.** A code that verifies is recorded as used, so an attacker who observes one —
- *   over a shoulder, in a phishing proxy — cannot replay it inside its own validity window.
+ * - **Single use, fleet-wide.** A code that verifies is claimed through `CachePort.setIfAbsent`,
+ *   so an attacker who observes one — over a shoulder, in a phishing proxy — cannot replay it
+ *   inside its validity window against *any* replica. In 1.0 the claim lived in a process-local
+ *   Map, which meant the replay simply had to land on a different pod.
  * - **Constant-time comparison.** Codes are short; a timing oracle on a six-digit value is a
  *   practical attack, not a theoretical one.
  */
@@ -182,6 +184,15 @@ export interface OtpServiceOptions {
   readonly ttl?: DurationMs;
   readonly digits?: number;
   readonly maxAttempts?: number;
+  /**
+   * Where challenges live. Supply one and a code issued by any replica verifies on any other —
+   * which is the only configuration that works behind a load balancer.
+   *
+   * Omit it and challenges are held in this process: correct on one node, and on more than one a
+   * user is simply told their correct code is wrong whenever they land on a different pod. The
+   * constructor records which mode it is in on `distributed`.
+   */
+  readonly cache?: CachePort;
 }
 
 export class OtpService {
@@ -189,17 +200,28 @@ export class OtpService {
   readonly #ttl: DurationMs;
   readonly #digits: number;
   readonly #maxAttempts: number;
-  readonly #challenges = new Map<string, OtpChallenge>();
+  readonly #cache: CachePort | undefined;
+  /** Fallback storage. Used only when no cache is wired; see `distributed`. */
+  readonly #local = new Map<string, OtpChallenge>();
 
   constructor(options: OtpServiceOptions = {}) {
     this.#clock = options.clock ?? systemClock;
     this.#ttl = options.ttl ?? 10 * 60 * 1_000;
     this.#digits = options.digits ?? 6;
     this.#maxAttempts = options.maxAttempts ?? 5;
+    this.#cache = options.cache;
+  }
+
+  /** False when challenges are process-local, i.e. this service works on one replica only. */
+  get distributed(): boolean {
+    return this.#cache !== undefined;
   }
 
   /** Create a challenge. The plaintext code is returned once, for delivery, and never stored. */
-  issue(tenantId: TenantId, userId: UserId): { challenge: OtpChallenge; code: string } {
+  async issue(
+    tenantId: TenantId,
+    userId: UserId,
+  ): Promise<{ challenge: OtpChallenge; code: string }> {
     const code = numericCode(this.#digits);
     const now = this.#clock.now();
     const challenge: OtpChallenge = {
@@ -211,44 +233,91 @@ export class OtpService {
       attempts: 0,
       maxAttempts: this.#maxAttempts,
     };
-    this.#challenges.set(challenge.id, challenge);
+    await this.#save(challenge);
     return { challenge, code };
   }
 
-  verify(challengeId: string, code: string): boolean {
-    const challenge = this.#challenges.get(challengeId);
+  /**
+   * Verify a code, at most once.
+   *
+   * The attempt counter is an atomic `increment` and consumption is a `setIfAbsent`, so neither
+   * the guessing budget nor the single-use property depends on which replica the request lands
+   * on. A correct code that loses the consumption race — the same code submitted twice in
+   * parallel — is rejected, which is the safe direction.
+   */
+  async verify(challengeId: string, code: string): Promise<boolean> {
+    const challenge = await this.get(challengeId);
     if (!challenge) return false;
     if (challenge.consumedAt !== undefined) return false;
     if (this.#clock.now() >= challenge.expiresAt) return false;
-    if (challenge.attempts >= challenge.maxAttempts) return false;
 
-    const attempted = { ...challenge, attempts: challenge.attempts + 1 };
+    const attempts = await this.#recordAttempt(challenge);
+    if (attempts > challenge.maxAttempts) return false;
+
     const matched = constantTimeEqualBytes(
       Buffer.from(challenge.codeHash, 'hex'),
       Buffer.from(sha256Hex(code.trim()), 'hex'),
     );
+    if (!matched) return false;
 
-    this.#challenges.set(
-      challengeId,
-      matched ? { ...attempted, consumedAt: this.#clock.now() } : attempted,
-    );
-    return matched;
+    return this.#consume(challenge);
   }
 
-  get(challengeId: string): OtpChallenge | undefined {
-    return this.#challenges.get(challengeId);
+  async get(challengeId: string): Promise<OtpChallenge | undefined> {
+    if (!this.#cache) return this.#local.get(challengeId);
+    return this.#cache.get<OtpChallenge>(`otp:challenge:${challengeId}`);
   }
 
+  /** Housekeeping for the process-local mode. A cache expires challenges itself. */
   purgeExpired(): number {
     const now = this.#clock.now();
     let removed = 0;
-    for (const [id, challenge] of this.#challenges) {
+    for (const [id, challenge] of this.#local) {
       if (now >= challenge.expiresAt) {
-        this.#challenges.delete(id);
+        this.#local.delete(id);
         removed++;
       }
     }
     return removed;
+  }
+
+  async #save(challenge: OtpChallenge): Promise<void> {
+    if (!this.#cache) {
+      this.#local.set(challenge.id, challenge);
+      return;
+    }
+    await this.#cache.set(`otp:challenge:${challenge.id}`, challenge, { ttl: this.#ttl });
+  }
+
+  async #recordAttempt(challenge: OtpChallenge): Promise<number> {
+    if (!this.#cache) {
+      const attempts = challenge.attempts + 1;
+      this.#local.set(challenge.id, { ...challenge, attempts });
+      return attempts;
+    }
+    return this.#cache.increment(`otp:attempts:${challenge.id}`, 1, { ttl: this.#ttl });
+  }
+
+  async #consume(challenge: OtpChallenge): Promise<boolean> {
+    const consumedAt = this.#clock.now();
+    if (!this.#cache) {
+      const current = this.#local.get(challenge.id);
+      if (current?.consumedAt !== undefined) return false;
+      this.#local.set(challenge.id, { ...challenge, consumedAt });
+      return true;
+    }
+    // Exactly one caller across the fleet wins this, which is what single-use means.
+    const won = await this.#cache.setIfAbsent(`otp:consumed:${challenge.id}`, consumedAt, {
+      ttl: this.#ttl,
+    });
+    if (won) {
+      await this.#cache.set(
+        `otp:challenge:${challenge.id}`,
+        { ...challenge, consumedAt },
+        { ttl: this.#ttl },
+      );
+    }
+    return won;
   }
 }
 
@@ -256,6 +325,15 @@ export interface MfaServiceOptions {
   readonly store: MfaEnrollmentStorePort;
   readonly clock?: Clock;
   readonly totp?: TotpOptions;
+  /**
+   * Where a consumed TOTP step is claimed.
+   *
+   * Wire it and a code accepted on one replica is refused on every other, for the life of its
+   * window. Omit it and the claim is process-local: a shoulder-surfed code replays successfully
+   * against a different pod, and the used-step map grows one entry per user forever. The service
+   * reports which mode it is in on `distributed`.
+   */
+  readonly replayGuard?: CachePort;
   /** Encrypt a secret before it is stored, and decrypt on read. Wire it to `@munaxa/crypto`. */
   readonly protectSecret?: { seal(value: string): string; open(value: string): string };
   readonly recoveryCodeCount?: number;
@@ -272,7 +350,8 @@ export class MfaService {
   readonly #totp: TotpOptions;
   readonly #protect: MfaServiceOptions['protectSecret'];
   readonly #recoveryCodeCount: number;
-  /** Steps already used, per enrollment, so a code cannot be replayed inside its window. */
+  readonly #replayGuard: CachePort | undefined;
+  /** Fallback claim store. Single-replica only; bounded by eviction rather than by design. */
   readonly #usedSteps = new Map<string, number>();
 
   constructor(options: MfaServiceOptions) {
@@ -281,6 +360,12 @@ export class MfaService {
     this.#totp = options.totp ?? {};
     this.#protect = options.protectSecret;
     this.#recoveryCodeCount = options.recoveryCodeCount ?? 10;
+    this.#replayGuard = options.replayGuard;
+  }
+
+  /** False when replay protection is process-local, i.e. it holds on one replica only. */
+  get distributed(): boolean {
+    return this.#replayGuard !== undefined;
   }
 
   /**
@@ -346,9 +431,7 @@ export class MfaService {
     const step = verifyTotp(this.#secretOf(enrollment), code, this.#clock.now(), this.#totp);
     if (step === undefined) return false;
 
-    const key = `${tenantId}:${userId}`;
-    if (this.#usedSteps.get(key) === step) return false;
-    this.#usedSteps.set(key, step);
+    if (!(await this.#claimStep(tenantId, userId, step))) return false;
 
     await this.#store.markUsed(tenantId, userId, 'totp', this.#clock.now());
     return true;
@@ -357,6 +440,28 @@ export class MfaService {
   /** Consume a recovery code. Single use, by construction — the store removes it. */
   async verifyRecoveryCode(tenantId: TenantId, userId: UserId, code: string): Promise<boolean> {
     return this.#store.consumeRecoveryCode(tenantId, userId, sha256Hex(code.trim().toUpperCase()));
+  }
+
+  /**
+   * Claim a TOTP step, once, fleet-wide.
+   *
+   * The TTL covers the drift window either side of the step, which is exactly how long the code
+   * remains verifiable — holding the claim longer wastes space, and holding it shorter reopens
+   * the replay at the tail of the window.
+   */
+  async #claimStep(tenantId: TenantId, userId: UserId, step: number): Promise<boolean> {
+    const period = (this.#totp.period ?? 30) * 1_000;
+    const window = this.#totp.window ?? 1;
+    const ttl = period * (2 * window + 2);
+
+    if (this.#replayGuard) {
+      return this.#replayGuard.setIfAbsent(`mfa:totp:${tenantId}:${userId}:${step}`, 1, { ttl });
+    }
+
+    const key = `${tenantId}:${userId}`;
+    if (this.#usedSteps.get(key) === step) return false;
+    this.#usedSteps.set(key, step);
+    return true;
   }
 
   async remove(tenantId: TenantId, userId: UserId, method: MfaEnrollment['method']): Promise<void> {

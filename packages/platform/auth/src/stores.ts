@@ -171,6 +171,26 @@ export class MemoryRefreshTokenStore implements RefreshTokenStorePort {
     this.#records.set(record.id, record);
   }
 
+  /**
+   * The compare-and-swap rotation claims run through.
+   *
+   * Synchronous between the read and the write on purpose: there is no `await` inside, so no
+   * other task can interleave. A SQL adapter gets the same property from
+   * `UPDATE … WHERE rotated_at IS NULL` and checking the affected row count.
+   */
+  async markRotated(
+    tenantId: TenantId,
+    id: string,
+    at: number,
+    replacedBy: string,
+  ): Promise<boolean> {
+    const record = this.#records.get(id);
+    if (!record || record.tenantId !== tenantId) return false;
+    if (record.rotatedAt !== undefined) return false;
+    this.#records.set(id, { ...record, rotatedAt: at, replacedBy });
+    return true;
+  }
+
   async listFamily(
     tenantId: TenantId,
     familyId: TokenFamilyId,

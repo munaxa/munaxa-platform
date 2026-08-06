@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto';
-import type { AuditRecord, AuditSinkPort, LoggerPort } from '@munaxa/interfaces';
+import {
+  isChainConflict,
+  type AuditRecord,
+  type AuditRepositoryPort,
+  type AuditSinkPort,
+  type AuditSealer,
+  type ChainHead,
+  type LoggerPort,
+} from '@munaxa/interfaces';
 import {
   systemClock,
   type Clock,
@@ -15,17 +23,29 @@ import { auditEvent, NON_SUPPRESSIBLE_EVENTS, type AuditEventInput } from './eve
  *
  * Three properties distinguish this from "logging things twice":
  *
- * - **Hash-chained.** Each record's hash covers the record *and* the previous hash. Removing or
- *   editing a record breaks the chain from that point on, and `verifyChain` finds where. This is
- *   tamper *evidence*: someone with write access can rebuild the chain, which is precisely why
- *   exporters ship records off-box, where they cannot.
+ * - **Hash-chained, with the chain owned by the store.** Each record's hash covers the record
+ *   *and* the previous hash, and the head is allocated inside the repository's transaction rather
+ *   than held in this process. That is the 2.0 change: in 1.0 the head lived in a field here, so
+ *   two replicas each maintained their own and `verifyChain` reported tampering forever on any
+ *   real deployment. Tamper evidence you cannot trust is worse than none, because it trains an
+ *   operator to ignore the alarm.
+ * - **Tamper evidence, not prevention.** Someone with write access can rebuild the chain, which is
+ *   why exporters ship records off-box, where they cannot.
  * - **Non-blocking on the happy path, by policy.** A sink that fails must not fail a login — but
  *   silence is unacceptable too, so failures are reported through `onSinkError` and counted.
  * - **Closed vocabulary.** Only names from `SECURITY_EVENTS` are accepted, so one query works
  *   across every product.
  */
 export interface AuditServiceOptions {
-  readonly sinks: readonly AuditSinkPort[];
+  /**
+   * The durable, chain-owning store. Required: without it there is no ordering authority, and a
+   * hash chain without one is decoration.
+   */
+  readonly repository: AuditRepositoryPort;
+  /** Mirrors — logs, a SIEM, an exporter. Failures here are reported, never fatal. */
+  readonly sinks?: readonly AuditSinkPort[];
+  /** Attempts when the repository reports a `ChainConflictError`. Default 5. */
+  readonly maxChainAttempts?: number;
   readonly clock?: Clock;
   readonly logger?: LoggerPort;
   /**
@@ -54,18 +74,21 @@ const ALWAYS_STRIPPED = [
 ];
 
 export class AuditService {
+  readonly #repository: AuditRepositoryPort;
   readonly #sinks: readonly AuditSinkPort[];
+  readonly #maxChainAttempts: number;
   readonly #clock: Clock;
   readonly #logger: LoggerPort | undefined;
   readonly #suppress: ReadonlySet<SecurityEventName>;
   readonly #onSinkError: NonNullable<AuditServiceOptions['onSinkError']>;
   readonly #stripped: ReadonlySet<string>;
-  /** Per-tenant chain heads. Seeded from the repository on first use via `resume`. */
-  readonly #heads = new Map<TenantId, { hash: string; sequence: number }>();
   #failures = 0;
+  #conflicts = 0;
 
   constructor(options: AuditServiceOptions) {
-    this.#sinks = options.sinks;
+    this.#repository = options.repository;
+    this.#sinks = options.sinks ?? [];
+    this.#maxChainAttempts = options.maxChainAttempts ?? 5;
     this.#clock = options.clock ?? systemClock;
     this.#logger = options.logger;
     this.#suppress = new Set(options.suppress ?? []);
@@ -89,13 +112,14 @@ export class AuditService {
   }
 
   /**
-   * Continue an existing chain after a restart.
+   * Chain conflicts retried since start.
    *
-   * Without this, every process restart begins a new chain and `verifyChain` reports a break at
-   * each deploy. Call it at startup with the repository's last record per active tenant.
+   * Expected to be non-zero on an optimistic adapter under load — that is the design working. A
+   * number climbing toward `maxChainAttempts` per write means write contention on one tenant, and
+   * the answer is a pessimistic adapter rather than more retries.
    */
-  resume(tenantId: TenantId, last: AuditRecord | undefined): void {
-    if (last) this.#heads.set(tenantId, { hash: last.hash, sequence: last.sequence });
+  get conflictCount(): number {
+    return this.#conflicts;
   }
 
   /** Record an event built from the ambient security context. */
@@ -109,27 +133,29 @@ export class AuditService {
       return undefined;
     }
 
-    const head = this.#heads.get(event.tenantId);
     const sanitized = this.#sanitize(event);
-    const sequence = (head?.sequence ?? 0) + 1;
-    const previousHash = head?.hash ?? null;
     const recordedAt = this.#clock.now();
-    const hash = hashOf(sanitized, previousHash, recordedAt, sequence);
-    const id = `aud_${sequence.toString(36)}_${hash.slice(0, 12)}`;
 
-    const record: AuditRecord = {
-      id,
-      event: sanitized,
-      recordedAt,
-      sequence,
-      previousHash,
-      hash,
+    // The store decides the sequence, inside its own transaction. `seal` may be called more than
+    // once — an optimistic adapter re-runs it after a conflict with the new head — so it is pure.
+    const seal = (previous: ChainHead | null): AuditRecord => {
+      const sequence = (previous?.sequence ?? 0) + 1;
+      const previousHash = previous?.hash ?? null;
+      const hash = hashOf(sanitized, previousHash, recordedAt, sequence);
+      return {
+        id: `aud_${sequence.toString(36)}_${hash.slice(0, 12)}`,
+        event: sanitized,
+        recordedAt,
+        sequence,
+        previousHash,
+        hash,
+      };
     };
 
-    this.#heads.set(event.tenantId, { hash: record.hash, sequence });
+    const record = await this.#appendWithRetry(event.tenantId, seal);
 
-    // Sinks run in parallel and independently: a broken SIEM webhook must not stop the durable
-    // repository write, and neither must stop the request that produced the event.
+    // Mirrors run in parallel and independently, after the durable write: a broken SIEM webhook
+    // must not stop the repository, and neither must stop the request that produced the event.
     await Promise.all(
       this.#sinks.map(async (sink) => {
         try {
@@ -142,6 +168,25 @@ export class AuditService {
     );
 
     return record;
+  }
+
+  /**
+   * Retry only a `ChainConflictError`.
+   *
+   * Any other failure — a timeout, a dropped connection — may have committed, and re-appending
+   * would duplicate a record while breaking the chain. An audit write is `at-most-once` for
+   * exactly that reason, and the caller learns it failed.
+   */
+  async #appendWithRetry(tenantId: TenantId, seal: AuditSealer): Promise<AuditRecord> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.#repository.appendChained(tenantId, seal);
+      } catch (error) {
+        if (!isChainConflict(error) || attempt >= this.#maxChainAttempts) throw error;
+        this.#conflicts++;
+        this.#logger?.log('debug', 'audit.chain.conflict', { tenantId, attempt });
+      }
+    }
   }
 
   async flush(): Promise<void> {

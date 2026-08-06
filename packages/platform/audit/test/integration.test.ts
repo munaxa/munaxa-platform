@@ -66,6 +66,7 @@ describe('withAudit', () => {
 
   it('does not replace the caller’s error when auditing itself fails', async () => {
     const audit = new AuditService({
+      repository: new MemoryAuditRepository(),
       sinks: [
         {
           write: async () => {
@@ -208,7 +209,8 @@ describe('the trail as a whole', () => {
     const logger = new MemoryLogger();
     const repository = new MemoryAuditRepository();
     const audit = new AuditService({
-      sinks: [repository, new LoggingAuditSink(logger)],
+      repository,
+      sinks: [new LoggingAuditSink(logger)],
       clock: { now: () => 1_700_000_000_000 },
     });
 

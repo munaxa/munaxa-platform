@@ -2,7 +2,9 @@ import type {
   AuditQuery,
   AuditRecord,
   AuditRepositoryPort,
+  AuditSealer,
   AuditSinkPort,
+  ChainHead,
   LoggerPort,
 } from '@munaxa/interfaces';
 import { assertSameTenant, type TenantId } from '@munaxa/types';
@@ -24,6 +26,15 @@ export interface MemoryAuditRepositoryOptions {
 export class MemoryAuditRepository implements AuditRepositoryPort {
   readonly #records: AuditRecord[] = [];
   readonly #maxRecords: number;
+  /**
+   * One promise chain per tenant — this process's equivalent of `SELECT … FOR UPDATE`.
+   *
+   * Node is single-threaded but not single-*task*: `await` inside an append is a yield point, and
+   * without this two interleaved appends would read the same head. A real adapter serialises in
+   * the database; this serialises in the event loop, and the conformance suite cannot tell the
+   * difference, which is the point.
+   */
+  readonly #appendLocks = new Map<TenantId, Promise<unknown>>();
 
   constructor(options: MemoryAuditRepositoryOptions = {}) {
     this.#maxRecords = options.maxRecords ?? 100_000;
@@ -32,6 +43,38 @@ export class MemoryAuditRepository implements AuditRepositoryPort {
   async write(record: AuditRecord): Promise<void> {
     this.#records.push(record);
     if (this.#records.length > this.#maxRecords) this.#records.shift();
+  }
+
+  async appendChained(tenantId: TenantId, seal: AuditSealer): Promise<AuditRecord> {
+    const previous = this.#appendLocks.get(tenantId) ?? Promise.resolve();
+    const next = previous.then(
+      () => this.#append(tenantId, seal),
+      () => this.#append(tenantId, seal),
+    );
+    // Keep the chain going even when an append throws, and never leak a rejected promise.
+    this.#appendLocks.set(
+      tenantId,
+      next.catch(() => undefined),
+    );
+    return next;
+  }
+
+  #append(tenantId: TenantId, seal: AuditSealer): AuditRecord {
+    const head = this.#headOf(tenantId);
+    const record = seal(head);
+    this.#records.push(record);
+    if (this.#records.length > this.#maxRecords) this.#records.shift();
+    return record;
+  }
+
+  #headOf(tenantId: TenantId): ChainHead | null {
+    for (let i = this.#records.length - 1; i >= 0; i--) {
+      const record = this.#records[i];
+      if (record?.event.tenantId === tenantId) {
+        return { sequence: record.sequence, hash: record.hash };
+      }
+    }
+    return null;
   }
 
   async query(query: AuditQuery): Promise<{ items: readonly AuditRecord[]; nextCursor?: string }> {

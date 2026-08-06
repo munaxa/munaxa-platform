@@ -34,6 +34,6 @@ export function auditFixture(): {
 } {
   const clock = new FixedClock(1_700_000_000_000);
   const repository = new MemoryAuditRepository();
-  const audit = new AuditService({ sinks: [repository], clock });
+  const audit = new AuditService({ repository, clock });
   return { audit, repository, clock };
 }

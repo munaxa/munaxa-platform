@@ -48,6 +48,7 @@ describe('composition root', () => {
     save: async () => undefined,
     findByHash: async () => undefined,
     update: async () => undefined,
+    markRotated: async () => false,
     listFamily: async () => [],
     revokeFamily: async () => 0,
     revokeForUser: async () => 0,

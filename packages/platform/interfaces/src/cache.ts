@@ -12,13 +12,61 @@ import type { DurationMs } from '@munaxa/types';
  * `namespaced()` from `@munaxa/cache` rather than concatenating prefixes by hand.
  */
 export interface CachePort {
+  /**
+   * @atomicity none
+   * @consistency eventual — never decide a revocation on a cache read alone
+   * @idempotency idempotent
+   */
   get<T>(key: string): Promise<T | undefined>;
+
+  /**
+   * @atomicity atomic — a concurrent reader sees the old value or the new one, never a partial
+   * @consistency read-your-writes
+   * @idempotency idempotent
+   */
   set<T>(key: string, value: T, options?: CacheSetOptions): Promise<void>;
-  /** Set only if absent. Returns false when the key already existed — the basis of locking. */
+
+  /**
+   * Set only if absent. Returns false when the key already existed.
+   *
+   * The platform's single-use primitive: distributed locks, one-time-code consumption and TOTP
+   * step consumption all reduce to it. Exactly one caller across the whole fleet may receive
+   * `true` for a given key — an implementation that can return `true` twice breaks MFA replay
+   * protection, not merely a cache.
+   *
+   * Must map to `SET key value NX PX ttl`, an insert with a unique key, or an equivalent. A
+   * `has()` followed by a `set()` is **not** an implementation of this method.
+   *
+   * @atomicity compare-and-swap
+   * @consistency linearizable
+   * @idempotency at-most-once
+   */
   setIfAbsent<T>(key: string, value: T, options?: CacheSetOptions): Promise<boolean>;
+
+  /**
+   * @atomicity atomic
+   * @consistency linearizable
+   * @idempotency idempotent — deleting an absent key returns false, not an error
+   */
   delete(key: string): Promise<boolean>;
+
+  /**
+   * @atomicity none
+   * @consistency eventual
+   * @idempotency idempotent
+   */
   has(key: string): Promise<boolean>;
-  /** Atomic increment. Creates the key at `by` when missing. */
+
+  /**
+   * Atomic increment. Creates the key at `by` when missing.
+   *
+   * Must be a server-side increment (`INCRBY`), not read-modify-write: rate limiting is exactly
+   * the condition under which concurrent increments happen, so a lost update is a bypassed limit.
+   *
+   * @atomicity atomic
+   * @consistency linearizable
+   * @idempotency at-least-once — a retried increment counts twice, so the platform never retries
+   */
   increment(key: string, by?: number, options?: CacheSetOptions): Promise<number>;
   /** Remaining lifetime in ms, `undefined` when the key is missing or has no expiry. */
   ttl(key: string): Promise<DurationMs | undefined>;

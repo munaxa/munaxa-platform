@@ -271,36 +271,36 @@ describe('email OTP', () => {
   it('verifies once and then refuses replay', async () => {
     const { clock } = await fixture();
     const otp = new OtpService({ clock });
-    const { challenge, code } = otp.issue(ROOT_TENANT_ID, USER);
+    const { challenge, code } = await otp.issue(ROOT_TENANT_ID, USER);
 
-    expect(otp.verify(challenge.id, code)).toBe(true);
-    expect(otp.verify(challenge.id, code)).toBe(false);
+    expect(await otp.verify(challenge.id, code)).toBe(true);
+    expect(await otp.verify(challenge.id, code)).toBe(false);
   });
 
   it('caps attempts', async () => {
     const { clock } = await fixture();
     const otp = new OtpService({ clock, maxAttempts: 3 });
-    const { challenge, code } = otp.issue(ROOT_TENANT_ID, USER);
+    const { challenge, code } = await otp.issue(ROOT_TENANT_ID, USER);
 
-    for (let i = 0; i < 3; i++) expect(otp.verify(challenge.id, '000000')).toBe(false);
+    for (let i = 0; i < 3; i++) expect(await otp.verify(challenge.id, '000000')).toBe(false);
     // The real code no longer works: the attempt budget is spent.
-    expect(otp.verify(challenge.id, code)).toBe(false);
+    expect(await otp.verify(challenge.id, code)).toBe(false);
   });
 
   it('expires', async () => {
     const { clock } = await fixture();
     const otp = new OtpService({ clock, ttl: 60_000 });
-    const { challenge, code } = otp.issue(ROOT_TENANT_ID, USER);
+    const { challenge, code } = await otp.issue(ROOT_TENANT_ID, USER);
 
     clock.advance(60_001);
-    expect(otp.verify(challenge.id, code)).toBe(false);
+    expect(await otp.verify(challenge.id, code)).toBe(false);
     expect(otp.purgeExpired()).toBe(1);
   });
 
   it('stores the code hashed', async () => {
     const { clock } = await fixture();
     const otp = new OtpService({ clock });
-    const { challenge, code } = otp.issue(ROOT_TENANT_ID, USER);
+    const { challenge, code } = await otp.issue(ROOT_TENANT_ID, USER);
     expect(challenge.codeHash).not.toContain(code);
   });
 });

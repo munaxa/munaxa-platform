@@ -86,7 +86,7 @@ describe('AuditService', () => {
   it('honours suppression, except for events that cannot be suppressed', async () => {
     const repository = new MemoryAuditRepository();
     const audit = new AuditService({
-      sinks: [repository],
+      repository,
       clock: new FixedClock(0),
       suppress: ['authz.permission.granted', 'auth.login.succeeded'],
     });
@@ -109,7 +109,8 @@ describe('AuditService', () => {
     };
     const errors: unknown[] = [];
     const audit = new AuditService({
-      sinks: [broken, repository],
+      repository,
+      sinks: [broken],
       clock: new FixedClock(0),
       onSinkError: (error) => errors.push(error),
     });
@@ -124,27 +125,37 @@ describe('AuditService', () => {
     expect(repository.size).toBe(1);
   });
 
-  it('continues an existing chain after a restart', async () => {
+  it('continues an existing chain after a restart, with nothing to remember', async () => {
+    // 1.0 required `resume()` after a restart and produced a broken chain when a deployment
+    // forgot. 2.0 keeps the head in the store, so a fresh process is indistinguishable from the
+    // one it replaced — and so is a second replica that never restarted at all.
     const { audit, repository, clock } = auditFixture();
     await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
     await audit.record(context(), { name: 'auth.logout.succeeded', outcome: 'success' });
 
-    const restarted = new AuditService({ sinks: [repository], clock });
-    restarted.resume(ROOT_TENANT_ID, await repository.latest(ROOT_TENANT_ID));
+    const restarted = new AuditService({ repository, clock });
     await restarted.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
 
     expect(verifyChain(repository.chain(ROOT_TENANT_ID))).toEqual({ valid: true, checked: 3 });
   });
 
-  it('starts a fresh chain when a restart forgets to resume', async () => {
-    const { audit, repository, clock } = auditFixture();
-    await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
+  it('keeps one chain across two services writing at the same time', async () => {
+    // Two replicas, one store. Neither knows the other exists; the chain is still one chain.
+    const clock = new FixedClock(0);
+    const repository = new MemoryAuditRepository();
+    const first = new AuditService({ repository, clock });
+    const second = new AuditService({ repository, clock });
 
-    const restarted = new AuditService({ sinks: [repository], clock });
-    await restarted.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
+    await Promise.all(
+      Array.from({ length: 20 }, (_unused, i) =>
+        (i % 2 === 0 ? first : second).record(context(), {
+          name: 'auth.login.succeeded',
+          outcome: 'success',
+        }),
+      ),
+    );
 
-    // Documented consequence: verification reports the break rather than silently accepting it.
-    expect(verifyChain(repository.chain(ROOT_TENANT_ID)).valid).toBe(false);
+    expect(verifyChain(repository.chain(ROOT_TENANT_ID))).toEqual({ valid: true, checked: 20 });
   });
 });
 
@@ -194,7 +205,7 @@ describe('repository', () => {
 
   it('bounds its own memory', async () => {
     const repository = new MemoryAuditRepository({ maxRecords: 10 });
-    const audit = new AuditService({ sinks: [repository], clock: new FixedClock(0) });
+    const audit = new AuditService({ repository, clock: new FixedClock(0) });
     for (let i = 0; i < 50; i++) {
       await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
     }
@@ -204,26 +215,34 @@ describe('repository', () => {
 
 describe('BatchingSink', () => {
   it('holds records until the batch fills, then writes them', async () => {
-    const repository = new MemoryAuditRepository();
-    const batching = new BatchingSink(repository, 3);
-    const audit = new AuditService({ sinks: [batching], clock: new FixedClock(0) });
+    const collected = new MemoryAuditRepository();
+    const batching = new BatchingSink(collected, 3);
+    const audit = new AuditService({
+      repository: new MemoryAuditRepository(),
+      sinks: [batching],
+      clock: new FixedClock(0),
+    });
 
     await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
     await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
-    expect(repository.size).toBe(0);
+    expect(collected.size).toBe(0);
     expect(batching.pending).toBe(2);
 
     await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
-    expect(repository.size).toBe(3);
+    expect(collected.size).toBe(3);
   });
 
   it('flushes on demand', async () => {
-    const repository = new MemoryAuditRepository();
-    const batching = new BatchingSink(repository, 100);
-    const audit = new AuditService({ sinks: [batching], clock: new FixedClock(0) });
+    const collected = new MemoryAuditRepository();
+    const batching = new BatchingSink(collected, 100);
+    const audit = new AuditService({
+      repository: new MemoryAuditRepository(),
+      sinks: [batching],
+      clock: new FixedClock(0),
+    });
 
     await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
     await audit.flush();
-    expect(repository.size).toBe(1);
+    expect(collected.size).toBe(1);
   });
 });

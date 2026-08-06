@@ -26,6 +26,19 @@ export interface SessionRecord {
   readonly attributes?: Readonly<Record<string, unknown>>;
 }
 
+export interface SessionLimit {
+  readonly maxConcurrent: number;
+  readonly onLimitReached: 'evict-oldest' | 'deny';
+  /** Sessions past either deadline do not count toward the limit. */
+  readonly now: number;
+}
+
+export interface SessionCreateOutcome {
+  readonly created: boolean;
+  /** Sessions the store revoked to make room, so the caller can emit events for them. */
+  readonly evicted: readonly SessionRecord[];
+}
+
 export type SessionRevocationReason =
   | 'logout'
   | 'logout-all'
@@ -40,7 +53,46 @@ export type SessionRevocationReason =
   | 'account-disabled';
 
 export interface SessionStorePort {
+  /**
+   * @atomicity atomic
+   * @consistency linearizable
+   * @idempotency idempotent — the same session id twice is one session
+   */
   create(session: SessionRecord): Promise<void>;
+
+  /**
+   * Create only if the user is under `maxConcurrent` live sessions, atomically.
+   *
+   * Optional because it needs a transaction the platform cannot write for you. Implement it and
+   * the concurrency limit is exact; omit it and `SessionManager` falls back to a `LockPort`, and
+   * failing that to a best-effort count that a burst of parallel logins can exceed. The manager
+   * says which mode it is in at construction rather than leaving you to find out.
+   *
+   *     BEGIN;
+   *     SELECT count(*) FROM sessions
+   *      WHERE tenant_id = $1 AND user_id = $2 AND revoked_at IS NULL
+   *        AND idle_expires_at > $now AND absolute_expires_at > $now
+   *        FOR UPDATE;
+   *     -- evict oldest or refuse, then INSERT
+   *     COMMIT;
+   *
+   * @atomicity serialised per (tenant, user)
+   * @consistency linearizable
+   * @idempotency at-most-once
+   */
+  createWithinLimit?(
+    session: SessionRecord,
+    limit: SessionLimit,
+  ): Promise<SessionCreateOutcome>;
+
+  /**
+   * Live sessions for a user. Cheaper than `listByUser` when only the count is needed.
+   *
+   * @atomicity none
+   * @consistency linearizable
+   * @idempotency idempotent
+   */
+  countActive?(tenantId: TenantId, userId: UserId, now: number): Promise<number>;
   get(tenantId: TenantId, sessionId: SessionId): Promise<SessionRecord | undefined>;
   /** Non-revoked sessions, most recently seen first. */
   listByUser(tenantId: TenantId, userId: UserId): Promise<readonly SessionRecord[]>;

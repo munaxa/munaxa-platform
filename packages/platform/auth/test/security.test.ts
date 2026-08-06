@@ -220,11 +220,11 @@ describe('second factors are single use', () => {
   it('caps OTP guessing', async () => {
     const { clock } = await fixture();
     const otp = new OtpService({ clock, maxAttempts: 5 });
-    const { challenge } = otp.issue(ROOT_TENANT_ID, USER);
+    const { challenge } = await otp.issue(ROOT_TENANT_ID, USER);
 
     let succeeded = false;
     for (let guess = 0; guess < 1_000; guess++) {
-      if (otp.verify(challenge.id, String(guess).padStart(6, '0'))) succeeded = true;
+      if (await otp.verify(challenge.id, String(guess).padStart(6, '0'))) succeeded = true;
     }
     // Five attempts, then the challenge is spent — a six-digit code is otherwise brute-forceable
     // in seconds.

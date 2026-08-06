@@ -230,6 +230,11 @@ export interface IssueRefreshInput {
   readonly sessionId?: SessionId;
   readonly deviceId?: DeviceId;
   readonly familyId?: TokenFamilyId;
+  /**
+   * Pre-allocated record id. `rotate` reserves one before claiming the previous token, so the
+   * `replacedBy` link it writes is the id the replacement actually gets.
+   */
+  readonly id?: string;
 }
 
 export interface IssuedRefreshToken {
@@ -265,7 +270,7 @@ export class RefreshTokenService {
     const token = secureToken(32);
 
     const record: RefreshTokenRecord = {
-      id: prefixedId('rt', now),
+      id: input.id ?? prefixedId('rt', now),
       tenantId: input.tenantId,
       userId: input.userId,
       familyId: input.familyId ?? unsafeId<TokenFamilyId>(prefixedId('fam', now)),
@@ -300,6 +305,8 @@ export class RefreshTokenService {
       throw new PlatformError('Refresh token not recognised', { code: 'AUTH_TOKEN_INVALID' });
     }
 
+    // Fast path: a replay this replica can already see. The authoritative check is the
+    // compare-and-swap below — this one only saves a write when the replay is not a race.
     if (record.rotatedAt !== undefined) {
       await this.#store.revokeFamily(tenantId, record.familyId, this.#clock.now(), 'token-reuse');
       await this.#onReuseDetected?.(record);
@@ -336,23 +343,34 @@ export class RefreshTokenService {
       });
     }
 
+    // Claim the token *before* minting its replacement. The claim is a compare-and-swap, so of two
+    // concurrent exchanges exactly one wins — and the loser is indistinguishable from a replay,
+    // which is the correct reading: two parties presented the same single-use token.
+    //
+    // Ordering matters as much as atomicity. Issuing first and claiming second would leave the
+    // loser's freshly-minted token live in the store, which is the race an attacker wants.
+    const replacementId = prefixedId('rt', now);
+    const claimed = await this.#store.markRotated(tenantId, record.id, now, replacementId);
+    if (!claimed) {
+      await this.#store.revokeFamily(tenantId, record.familyId, now, 'token-reuse');
+      await this.#onReuseDetected?.(record);
+      throw new PlatformError('Refresh token replay detected; family revoked', {
+        code: 'AUTH_TOKEN_REUSED',
+        details: { familyId: record.familyId },
+      });
+    }
+
     const issued = await this.issue({
       tenantId,
       userId: record.userId,
       tokenVersion: record.tokenVersion,
       familyId: record.familyId,
+      id: replacementId,
       ...(record.sessionId === undefined ? {} : { sessionId: record.sessionId }),
       ...(record.deviceId === undefined ? {} : { deviceId: record.deviceId }),
     });
 
-    const previous: RefreshTokenRecord = {
-      ...record,
-      rotatedAt: now,
-      replacedBy: issued.record.id,
-    };
-    await this.#store.update(previous);
-
-    return { issued, previous };
+    return { issued, previous: { ...record, rotatedAt: now, replacedBy: replacementId } };
   }
 
   async revoke(tenantId: TenantId, token: string, reason: string): Promise<boolean> {

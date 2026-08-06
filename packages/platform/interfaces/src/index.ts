@@ -10,6 +10,7 @@
  * method, or a new port, instead. See docs/security-platform/extension-guide.md.
  */
 
+export * from './concurrency.js';
 export * from './cache.js';
 export * from './observability.js';
 export * from './identity.js';

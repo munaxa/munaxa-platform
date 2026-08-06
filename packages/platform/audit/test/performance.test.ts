@@ -17,6 +17,7 @@ import { context } from './helpers.js';
 describe('write cost', () => {
   it('records an event in well under a millisecond', async () => {
     const audit = new AuditService({
+      repository: new MemoryAuditRepository(),
       sinks: [{ write: async () => {} }],
       clock: new FixedClock(0),
     });
@@ -30,7 +31,7 @@ describe('write cost', () => {
 
   it('does not slow down as the chain grows', async () => {
     const repository = new MemoryAuditRepository();
-    const audit = new AuditService({ sinks: [repository], clock: new FixedClock(0) });
+    const audit = new AuditService({ repository, clock: new FixedClock(0) });
 
     for (let i = 0; i < 20_000; i++) {
       await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
@@ -46,7 +47,11 @@ describe('write cost', () => {
 
   it('is not delayed by a slow sink beyond that sink’s own latency', async () => {
     const slow = { write: async () => new Promise<void>((resolve) => setTimeout(resolve, 5)) };
-    const audit = new AuditService({ sinks: [slow, slow, slow], clock: new FixedClock(0) });
+    const audit = new AuditService({
+      repository: new MemoryAuditRepository(),
+      sinks: [slow, slow, slow],
+      clock: new FixedClock(0),
+    });
 
     const start = performance.now();
     await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
@@ -58,7 +63,7 @@ describe('write cost', () => {
 describe('verification and export cost', () => {
   it('verifies a long chain in linear time', async () => {
     const repository = new MemoryAuditRepository();
-    const audit = new AuditService({ sinks: [repository], clock: new FixedClock(0) });
+    const audit = new AuditService({ repository, clock: new FixedClock(0) });
     for (let i = 0; i < 20_000; i++) {
       await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
     }
@@ -73,7 +78,7 @@ describe('verification and export cost', () => {
 
   it('exports without buffering the whole chain', async () => {
     const repository = new MemoryAuditRepository();
-    const audit = new AuditService({ sinks: [repository], clock: new FixedClock(0) });
+    const audit = new AuditService({ repository, clock: new FixedClock(0) });
     for (let i = 0; i < 10_000; i++) {
       await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
     }

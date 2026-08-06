@@ -1,4 +1,9 @@
-import type { SessionRecord, SessionRevocationReason, SessionStorePort } from '@munaxa/interfaces';
+import type {
+  LockPort,
+  SessionRecord,
+  SessionRevocationReason,
+  SessionStorePort,
+} from '@munaxa/interfaces';
 import {
   PlatformError,
   systemClock,
@@ -6,6 +11,7 @@ import {
   type AuthMethod,
   type Clock,
   type DeviceId,
+  type DurationMs,
   type SecurityEvent,
   type SecurityEventName,
   type SessionId,
@@ -26,6 +32,21 @@ import { clampSessionPolicy, type SessionPolicy } from './policy.js';
 export interface SessionManagerOptions {
   readonly store: SessionStorePort;
   readonly clock?: Clock;
+  /**
+   * Used to serialise concurrency-limit enforcement when the store cannot do it itself.
+   *
+   * The limit is a security control, and a burst of parallel logins — a mobile client
+   * reconnecting — is its normal input rather than an exotic case. Three modes, best first:
+   *
+   *  1. `store.createWithinLimit` exists → the store enforces it in a transaction. Exact.
+   *  2. This lock is wired → the manager serialises per (tenant, user). Exact, one extra round
+   *     trip, correct across replicas.
+   *  3. Neither → best effort, and a concurrent burst can exceed the limit. `limitEnforcement`
+   *     reports which mode is active so it is a decision rather than a surprise.
+   */
+  readonly locks?: LockPort;
+  /** How long the concurrency lock is held. Short: it wraps two store calls. Default 5s. */
+  readonly limitLockLease?: DurationMs;
   readonly policy?: Partial<SessionPolicy>;
   /** Resolve a tenant's policy. Falls back to the manager's policy when absent. */
   readonly policyFor?: (tenantId: TenantId) => Partial<SessionPolicy> | undefined;
@@ -71,6 +92,8 @@ export class SessionManager {
   readonly #policy: SessionPolicy;
   readonly #policyFor: SessionManagerOptions['policyFor'];
   readonly #onEvent: SessionManagerOptions['onEvent'];
+  readonly #locks: LockPort | undefined;
+  readonly #limitLockLease: DurationMs;
 
   constructor(options: SessionManagerOptions) {
     this.#store = options.store;
@@ -78,6 +101,19 @@ export class SessionManager {
     this.#policy = clampSessionPolicy(options.policy ?? {});
     this.#policyFor = options.policyFor;
     this.#onEvent = options.onEvent;
+    this.#locks = options.locks;
+    this.#limitLockLease = options.limitLockLease ?? 5_000;
+  }
+
+  /**
+   * How the concurrency limit is enforced with this wiring. Worth logging at startup: the
+   * difference between `store-transaction` and `best-effort` is the difference between a limit
+   * and a hint.
+   */
+  get limitEnforcement(): 'store-transaction' | 'distributed-lock' | 'best-effort' {
+    if (this.#store.createWithinLimit) return 'store-transaction';
+    if (this.#locks) return 'distributed-lock';
+    return 'best-effort';
   }
 
   policy(tenantId: TenantId): SessionPolicy {
@@ -95,34 +131,94 @@ export class SessionManager {
   async create(input: CreateSessionInput): Promise<SessionRecord> {
     const now = this.#clock.now();
     const policy = this.policy(input.tenantId);
-    const live = await this.listActive(input.tenantId, input.userId);
+    const session = this.#build(input, policy, now);
 
-    if (live.length >= policy.maxConcurrent) {
-      if (policy.onLimitReached === 'deny') {
+    // Path 1 — the store enforces the limit inside its own transaction. Exact, one round trip.
+    if (this.#store.createWithinLimit) {
+      const outcome = await this.#store.createWithinLimit(session, {
+        maxConcurrent: policy.maxConcurrent,
+        onLimitReached: policy.onLimitReached,
+        now,
+      });
+
+      for (const evicted of outcome.evicted) {
         await this.#emit({
-          name: 'session.limit.reached',
-          session: live[0] as SessionRecord,
+          name: 'session.revoked',
+          session: evicted,
           at: now,
+          reason: 'concurrency-limit',
         });
-        throw new PlatformError(`User ${input.userId} already has ${live.length} active sessions`, {
+      }
+      if (!outcome.created) {
+        await this.#emit({ name: 'session.limit.reached', session, at: now });
+        throw new PlatformError(`User ${input.userId} is at the session limit`, {
           code: 'SESSION_LIMIT_REACHED',
           details: { limit: policy.maxConcurrent },
         });
       }
-
-      const excess = live.length - policy.maxConcurrent + 1;
-      const oldest = [...live].sort((a, b) => a.lastSeenAt - b.lastSeenAt).slice(0, excess);
-      for (const session of oldest) {
-        await this.revoke(input.tenantId, session.id, 'concurrency-limit');
+      if (outcome.evicted.length > 0) {
+        await this.#emit({ name: 'session.limit.reached', session, at: now });
       }
+      await this.#emit({ name: 'session.created', session, at: now });
+      return session;
+    }
+
+    // Path 2 — serialise per (tenant, user) with a distributed lock. Path 3 — no lock, best
+    // effort, and `limitEnforcement` already told the operator which one they are running.
+    const handle = this.#locks
+      ? await this.#locks.acquire(
+          `session-limit:${input.tenantId}:${input.userId}`,
+          this.#limitLockLease,
+          { waitFor: this.#limitLockLease, retryInterval: 25 },
+        )
+      : null;
+
+    try {
+      await this.#enforceLimit(input, policy, now);
+      await this.#store.create(session);
+    } finally {
+      if (handle) await this.#locks?.release(handle);
+    }
+
+    await this.#emit({ name: 'session.created', session, at: now });
+    return session;
+  }
+
+  /** The read-decide-revoke half of limit enforcement, run under a lock when one is wired. */
+  async #enforceLimit(
+    input: CreateSessionInput,
+    policy: SessionPolicy,
+    now: number,
+  ): Promise<void> {
+    const live = await this.listActive(input.tenantId, input.userId);
+    if (live.length < policy.maxConcurrent) return;
+
+    if (policy.onLimitReached === 'deny') {
       await this.#emit({
         name: 'session.limit.reached',
-        session: oldest[0] as SessionRecord,
+        session: live[0] as SessionRecord,
         at: now,
+      });
+      throw new PlatformError(`User ${input.userId} already has ${live.length} active sessions`, {
+        code: 'SESSION_LIMIT_REACHED',
+        details: { limit: policy.maxConcurrent },
       });
     }
 
-    const session: SessionRecord = {
+    const excess = live.length - policy.maxConcurrent + 1;
+    const oldest = [...live].sort((a, b) => a.lastSeenAt - b.lastSeenAt).slice(0, excess);
+    for (const session of oldest) {
+      await this.revoke(input.tenantId, session.id, 'concurrency-limit');
+    }
+    await this.#emit({
+      name: 'session.limit.reached',
+      session: oldest[0] as SessionRecord,
+      at: now,
+    });
+  }
+
+  #build(input: CreateSessionInput, policy: SessionPolicy, now: number): SessionRecord {
+    return {
       id: unsafeId<SessionId>(prefixedId('sess', now)),
       tenantId: input.tenantId,
       userId: input.userId,
@@ -138,10 +234,6 @@ export class SessionManager {
       ...(input.userAgent === undefined ? {} : { userAgent: input.userAgent }),
       ...(input.attributes === undefined ? {} : { attributes: input.attributes }),
     };
-
-    await this.#store.create(session);
-    await this.#emit({ name: 'session.created', session, at: now });
-    return session;
   }
 
   /**

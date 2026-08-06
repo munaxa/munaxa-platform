@@ -39,9 +39,25 @@ describe('the seam stays a seam', () => {
 
   it('declares no runtime implementation beyond the registry and the token table', () => {
     // Ports with default implementations become the implementation nobody can replace.
+    // `concurrency.ts` is exempt below because it carries the errors adapters *signal with*, not
+    // behaviour they inherit — an adapter cannot report a chain conflict without a shared type.
     for (const [file, content] of sources) {
       if (file === 'registry.ts' || file === 'ports.ts' || file === 'index.ts') continue;
+      if (file === 'concurrency.ts') continue;
       expect(content, file).not.toMatch(/^export (class|function|const enum) /m);
+    }
+  });
+
+  it('keeps concurrency.ts to error types and their guards', () => {
+    // The exemption above is only safe while it stays this narrow: an Error subclass and a
+    // predicate over `unknown` cannot become the default an adapter silently relies on.
+    const source = sources.find(([file]) => file === 'concurrency.ts')?.[1] ?? '';
+    expect(source).not.toBe('');
+
+    for (const declaration of source.match(/^export (class|function|const enum) .*/gm) ?? []) {
+      expect(declaration, declaration).toMatch(
+        /^export (class \w+Error extends Error|function is\w+\(error: unknown\))/,
+      );
     }
   });
 });
