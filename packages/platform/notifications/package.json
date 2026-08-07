@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/notifications",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Channel-agnostic notification delivery: email, SMS, push and in-app, with templates, providers, retries and a secret-leak guard.",
   "keywords": [
     "security",

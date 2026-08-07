@@ -1,5 +1,14 @@
 # @munaxa/security
 
+## 2.4.1
+
+### Patch Changes
+
+- @munaxa/types@2.4.1
+- @munaxa/interfaces@2.4.1
+- @munaxa/crypto@2.4.1
+- @munaxa/cache@2.4.1
+
 ## 2.4.0
 
 ### Patch Changes

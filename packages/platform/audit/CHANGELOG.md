@@ -1,5 +1,15 @@
 # @munaxa/audit
 
+## 2.4.1
+
+### Patch Changes
+
+- Republish. 2.4.0 reached the registry with unrewritten `workspace:^` dependency ranges and cannot
+  be installed; its code is identical to this release. Use 2.4.1.
+  - @munaxa/types@2.4.1
+  - @munaxa/interfaces@2.4.1
+  - @munaxa/logging@2.4.1
+
 ## 2.4.0
 
 ### Minor Changes

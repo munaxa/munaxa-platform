@@ -1,5 +1,11 @@
 # @munaxa/crypto
 
+## 2.4.1
+
+### Patch Changes
+
+- @munaxa/types@2.4.1
+
 ## 2.4.0
 
 ### Patch Changes

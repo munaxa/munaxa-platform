@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/interfaces",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "The platform port catalogue: every capability an application (or the platform itself) may substitute — cache, clock, stores, transports, providers — expressed as dependency-free interfaces.",
   "keywords": [
     "security",
