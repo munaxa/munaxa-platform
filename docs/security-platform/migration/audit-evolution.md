@@ -221,9 +221,91 @@ means anything.
 
 ---
 
+## Verifying a chain you cannot hold in memory
+
+A trail that has been running for years is not verified by loading it. It is verified in batches,
+resuming from where the last pass stopped — and `verifyChain` takes the resume point as
+`options.from`.
+
+```ts
+const BATCH = 5_000;
+let resume: ChainHead | null = await checkpoints.latest(); // null on the first pass ever
+let verified = 0;
+
+for (;;) {
+  const batch = await repository.after(resume?.sequence, BATCH);
+  if (batch.length === 0) break;
+
+  const result = verifyChain(batch, { from: resume, formats });
+  verified += result.checked;
+  if (!result.valid) return alert(result);
+
+  const last = batch.at(-1)!;
+  resume = { sequence: last.sequence, hash: last.hash };
+}
+
+await checkpoints.write(resume); // only over a range that verified
+```
+
+**Absent or `null` means genesis**, exactly as before. The two spell the same thing on purpose, so
+that `from: checkpoint ?? null` is safe on a chain that has never been verified.
+
+### Why the head is one argument and not two
+
+A resume point is a position *and* a digest, and supplying one without the other verifies half the
+claim:
+
+- Given only a hash, a record removed from the **front** of the batch is invisible — every record
+  present still chains to the one before it.
+- Given only a sequence, a forged leading record passes.
+
+`ChainHead` already carries both, and it is already what `AuditSealer` receives on the append side.
+Verification is the same problem from the other end and now has the same shape.
+
+### What the platform will not do for you
+
+**It does not authenticate the head.** The platform cannot tell whether a head came from a signed
+checkpoint or from the first row of the batch being verified — and taking it from the batch would
+verify the batch against itself, which proves nothing. Sign the resume point, and keep the key
+somewhere the database and the object store do not reach. That is the whole of "an attacker with
+database access alone cannot rewrite history undetected".
+
+**Do not checkpoint over a range that failed.** A checkpoint written across a break attests the
+break as history, and the next pass resumes from inside it and finds nothing wrong.
+
+---
+
+## Reading a verification failure
+
+`verifyChain` returns `{ valid: true, checked }` and nothing else when the chain is intact. On a
+failure it adds a `code` to branch on, the record's own id, and the pair of values belonging to
+that code:
+
+| `code` | What it accuses | Also carries |
+|---|---|---|
+| `SEQUENCE_GAP` | A record was removed and took its link with it — the hole a hash cannot see | `expectedSequence` |
+| `LINK_MISMATCH` | A record was inserted or removed mid-chain, or the batch does not follow the head it was given | `expectedPreviousHash`, `actualPreviousHash` |
+| `DIGEST_MISMATCH` | A field was altered | `expectedHash`, `actualHash` |
+| `UNKNOWN_FORMAT` | Sealed by a format this verifier was not given, so it has **not** been checked | — |
+| `MISSING_IDENTIFIER` | The format needs an identifier the record does not carry | — |
+
+The last two are not tamper reports. An unverifiable record is not a broken one, and an alert that
+says otherwise sends somebody looking for an intruder who was never there.
+
+`expectedHash` is what the record's own contents produce; `actualHash` is what it claims. That
+direction is deliberate — the contents are the evidence.
+
+`reason` keeps its exact wording from 2.3.0, so nothing that logs it changes. New code should
+branch on `code`: a prose string is not an API.
+
+---
+
 ## What has not changed
 
 - Format 1 bytes.
 - `canonicalize(event, previousHash, recordedAt, sequence)` — still exported, still format 1.
-- `verifyChain(records)` with no options — still verifies a format-1 chain.
+- `verifyChain(records)` with no options — still verifies a format-1 chain, from genesis.
+- The result of an **intact** chain is still exactly `{ valid, checked }`. The structured failure
+  fields are absent on success, so a consumer that deep-equals against that shape keeps passing.
+- Every `reason` string, verbatim.
 - Every 2.0.0 adapter, which keeps compiling and keeps passing conformance.
