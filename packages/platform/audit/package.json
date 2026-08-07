@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/audit",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Tamper-evident audit trail: event schema, service, repository, decorators, middleware and exporters.",
   "keywords": [
     "security",
