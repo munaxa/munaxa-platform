@@ -114,7 +114,13 @@ Ports only, plus `PORTS` (the token table), `ServiceRegistry`, `createToken()` a
 
 - `AuditService` — `record(context, input)`, `write(event)`, `flush()`, `failureCount`,
   `conflictCount`. Requires `repository: AuditRepositoryPort`; `sinks` are optional mirrors.
-- `verifyChain(records)` → `{ valid, brokenAt?, reason?, checked }`; `canonicalize()`.
+- `verifyChain(records, { formats?, from? })` → `{ valid, checked }` when intact; on a failure also
+  `code`, `reason`, `brokenAt`, `brokenAtId`, and the pair belonging to that `code`
+  (`expectedHash`/`actualHash`, `expectedPreviousHash`/`actualPreviousHash`, `expectedSequence`).
+  `from?: ChainHead | null` continues a walk from a head established elsewhere — a signed
+  checkpoint, or the last record of the previous batch; absent or `null` means genesis.
+  `code` is `SEQUENCE_GAP | LINK_MISMATCH | DIGEST_MISMATCH | UNKNOWN_FORMAT | MISSING_IDENTIFIER`.
+  Also `canonicalize()`.
 - `auditEvent()`, `anonymousAuditEvent()`, `actorOf()`, `sourceOf()`, `NON_SUPPRESSIBLE_EVENTS`.
 - `MemoryAuditRepository`, `LoggingAuditSink`, `BatchingSink`.
 - `NdjsonExporter`, `CsvExporter` (formula-guarded), `WebhookExporter`.

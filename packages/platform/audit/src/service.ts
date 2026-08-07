@@ -337,13 +337,67 @@ function toBase36(sequence: AuditSequence): string {
   return sequence.toString(36);
 }
 
+/**
+ * How a chain can fail, as a token rather than a sentence.
+ *
+ * Each of these is a *different accusation*, and they call for different responses:
+ *
+ * - `SEQUENCE_GAP` — a record was removed, and the chain of the survivors is intact because the
+ *   removal took the link with it. This is the case the hash alone cannot see, and the reason a
+ *   sequence exists at all.
+ * - `LINK_MISMATCH` — a record was inserted or removed mid-chain, or the walk was handed a batch
+ *   that does not continue from where it was told it would.
+ * - `DIGEST_MISMATCH` — a field was altered.
+ * - `UNKNOWN_FORMAT` — the record was sealed by a canonical format this verifier was not given, so
+ *   it has not been checked. Not a tamper report: an unverifiable record is not a broken one.
+ * - `MISSING_IDENTIFIER` — the format needs an identifier the record does not carry, so it was
+ *   refused rather than run against `undefined`.
+ *
+ * Added because collapsing them into one prose string forced products to either lose the
+ * distinction or match on an unversioned message. `reason` keeps its exact wording for every
+ * existing caller; this is what new code should branch on.
+ */
+export type ChainBreakCode =
+  'SEQUENCE_GAP' | 'LINK_MISMATCH' | 'DIGEST_MISMATCH' | 'UNKNOWN_FORMAT' | 'MISSING_IDENTIFIER';
+
 export interface ChainVerification {
   readonly valid: boolean;
-  /** Sequence of the first record that does not match, in whatever representation it uses. */
+  /**
+   * Sequence of the first record that does not match, in whatever representation it uses.
+   *
+   * This is the broken record's *position*. There is deliberately no second `brokenSequence`
+   * field carrying the same number under another name: two names for one fact is how they come
+   * to disagree.
+   */
   readonly brokenAt?: AuditSequence;
   readonly reason?: string;
   /** How many records verified before the failure — or all of them, when `valid`. */
   readonly checked: number;
+
+  /**
+   * The failure, as a token to branch on. Present on every failure, absent when `valid`.
+   *
+   * Every field below is likewise absent on success, so `verifyChain(records)` on an intact chain
+   * still returns exactly `{ valid: true, checked }` — the shape consumers deep-equal against.
+   */
+  readonly code?: ChainBreakCode;
+  /**
+   * The broken record's own identifier.
+   *
+   * A sequence says where in the walk it happened; an id is what an auditor looks up, what an
+   * alert quotes and what an evidence bundle names. Both, because they answer different questions.
+   */
+  readonly brokenAtId?: string;
+  /** `DIGEST_MISMATCH` only: the digest the record's own contents produce. */
+  readonly expectedHash?: string;
+  /** `DIGEST_MISMATCH` only: the digest stored on the record. */
+  readonly actualHash?: string;
+  /** `LINK_MISMATCH` only: the digest the preceding record — or `from` — established. */
+  readonly expectedPreviousHash?: string | null;
+  /** `LINK_MISMATCH` only: the digest the record claims to follow. */
+  readonly actualPreviousHash?: string | null;
+  /** `SEQUENCE_GAP` only: the position the record should have occupied. */
+  readonly expectedSequence?: AuditSequence;
 }
 
 export interface VerifyChainOptions {
@@ -356,6 +410,40 @@ export interface VerifyChainOptions {
    * avoid.
    */
   readonly formats?: CanonicalFormatRegistry | readonly CanonicalFormat[];
+
+  /**
+   * The head this walk continues from. Absent — or `null` — means genesis, exactly as before.
+   *
+   * ## Why a whole-chain verifier was not enough
+   *
+   * A chain that has been running for years is not verified by loading it into memory. It is
+   * verified in batches, resuming from where the last pass stopped, and the resume point is
+   * *authenticated* — a signed checkpoint held outside the store, so that "start from sequence
+   * 84,213 with digest 9c2f…" is a claim an attacker with database access cannot forge.
+   *
+   * Without this, such a walk had nowhere to put its resume point, and handing the verifier a
+   * continuation batch produced `LINK_MISMATCH` on completely intact evidence — a *fabricated*
+   * break rather than a missed one, raised nightly at the highest severity a compliance alert has.
+   * That is worse than no verifier: it trains an operator to ignore the one alarm that must never
+   * be ignored.
+   *
+   * ## Why one field and not two
+   *
+   * A resume point is a position *and* a digest, and supplying one without the other verifies half
+   * the claim. Given only a hash, a record removed from the front of the batch is invisible —
+   * every record present still chains to the one before it. Given only a sequence, a forged
+   * leading record passes. `ChainHead` already carries both, and it is already what `AuditSealer`
+   * receives on the append side; verification is the same problem from the other end and now has
+   * the same shape.
+   *
+   * ## What it does not do
+   *
+   * It does not authenticate itself. The platform cannot know whether a head came from a signed
+   * checkpoint or from the first row of the batch being verified — and taking it from the batch
+   * would verify the batch against itself, which proves nothing. Signing the resume point is the
+   * caller's, because the key that signs it must live somewhere the platform has no access to.
+   */
+  readonly from?: ChainHead | null;
 }
 
 /**
@@ -369,6 +457,10 @@ export interface VerifyChainOptions {
  * that spans a format change keeps verifying end to end. That is the property that makes changing
  * the format possible at all: without it, adopting a new format would either invalidate every
  * historical digest or require rewriting an append-only table.
+ *
+ * Pass `options.from` to continue a walk from a head established elsewhere — a signed checkpoint,
+ * or the last record of the previous batch. There is one verification routine and `from` only
+ * decides what it starts from, so an incremental pass and a whole-chain pass check identically.
  */
 export function verifyChain(
   records: readonly AuditRecord<string>[],
@@ -381,24 +473,37 @@ export function verifyChain(
         ? options.formats
         : new CanonicalFormatRegistry(options.formats);
 
-  let previousHash: string | null = null;
-  let expected: AuditSequence | null = null;
+  // Genesis when absent or explicitly `null`. The two spell the same thing on purpose: a caller
+  // holding an optional checkpoint writes `from: checkpoint ?? null` and gets genesis when it has
+  // none, rather than discovering that the explicit form is subtly stricter than the omitted one.
+  const from = options.from ?? null;
+  let previousHash: string | null = from === null ? null : from.hash;
+  // Null means "accept whatever position the first record carries", which is what a genesis walk
+  // has always done — a chain may legitimately begin at 1, at 0, or wherever a product's store
+  // starts counting. A resume point is different: it names the position, so the record after it is
+  // known, and a record removed from the front of the batch becomes visible.
+  let expected: AuditSequence | null = from === null ? null : nextSequence(from.sequence);
   let checked = 0;
 
   for (const record of records) {
     if (expected !== null && !sameSequence(record.sequence, expected)) {
       return {
         valid: false,
-        brokenAt: record.sequence,
+        ...where(record),
+        code: 'SEQUENCE_GAP',
         reason: `expected sequence ${expected}, found ${record.sequence}`,
+        expectedSequence: expected,
         checked,
       };
     }
     if (record.previousHash !== previousHash) {
       return {
         valid: false,
-        brokenAt: record.sequence,
+        ...where(record),
+        code: 'LINK_MISMATCH',
         reason: 'previous hash does not match the preceding record',
+        expectedPreviousHash: previousHash,
+        actualPreviousHash: record.previousHash,
         checked,
       };
     }
@@ -407,7 +512,8 @@ export function verifyChain(
     if (format === undefined) {
       return {
         valid: false,
-        brokenAt: record.sequence,
+        ...where(record),
+        code: 'UNKNOWN_FORMAT',
         reason: `unknown canonical format version ${version}`,
         checked,
       };
@@ -421,7 +527,8 @@ export function verifyChain(
     if (missing.length > 0) {
       return {
         valid: false,
-        brokenAt: record.sequence,
+        ...where(record),
+        code: 'MISSING_IDENTIFIER',
         reason: `canonical format ${version} requires ${missing.join(', ')}, which this record does not carry`,
         checked,
       };
@@ -437,8 +544,14 @@ export function verifyChain(
     if (recomputed !== record.hash) {
       return {
         valid: false,
-        brokenAt: record.sequence,
+        ...where(record),
+        code: 'DIGEST_MISMATCH',
         reason: 'record contents do not match its hash',
+        // `expected` is what the record's own contents produce; `actual` is what it claims. A
+        // report that named them the other way round would read as though the store were right and
+        // the contents wrong, which is backwards — the contents are the evidence.
+        expectedHash: recomputed,
+        actualHash: record.hash,
         checked,
       };
     }
@@ -447,5 +560,15 @@ export function verifyChain(
     checked++;
   }
 
+  // Deliberately the same two fields it has always been. Consumers deep-equal against this shape,
+  // and a success carrying `code: undefined` would break every one of them.
   return { valid: true, checked };
+}
+
+/** Where a failure happened, in both the terms a walk uses and the terms an auditor does. */
+function where(record: AuditRecord<string>): {
+  readonly brokenAt: AuditSequence;
+  readonly brokenAtId: string;
+} {
+  return { brokenAt: record.sequence, brokenAtId: record.id };
 }
