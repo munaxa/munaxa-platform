@@ -185,6 +185,17 @@ describe('Sidebar and SidebarNav', () => {
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 
+  it('paints group titles with the muted token at full strength', () => {
+    render(<Shell />);
+    // At 10px the heading is already the smallest text in the rail, so it has no contrast to
+    // spare: a fade of the muted token measures 2.79:1 light and 4.19:1 dark, both under the 4.5:1
+    // that WCAG AA asks of text this size. The unfaded token — the same one the resting items use
+    // — measures 4.97:1 and 6.89:1 on these surfaces.
+    const title = screen.getByText('People');
+    expect(title).toHaveClass('text-muted-foreground');
+    expect([...title.classList].filter((c) => c.startsWith('text-muted-foreground/'))).toEqual([]);
+  });
+
   it('keeps every link named when collapsed to the icon rail', async () => {
     const user = userEvent.setup();
     render(<Shell />);
