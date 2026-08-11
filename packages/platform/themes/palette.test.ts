@@ -1,0 +1,110 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+/**
+ * The generated palettes, held against the surfaces the components actually pair them with.
+ *
+ * Phase 8.3 measured `Badge` at 4.31:1 and `Avatar` at 4.16:1 in the running product, while the
+ * `--primary-strong` token those components use measured a comfortable 5.07:1 against white. Both
+ * numbers were right. The token was chosen against the page and shipped on a brand *tint* — a 15%
+ * tint under `Badge`, 10% under `Avatar` and `Tag` — and a tint of the brand over white is darker
+ * than white, so a value that only just clears the page cannot clear the tint.
+ *
+ * The rule now lives in `scripts/generate-palettes.mjs`; this asserts the property on the generated
+ * output, which is what actually ships. It is deliberately not a snapshot of the hex values: the
+ * palettes are regenerated from brand colours, and a snapshot would fail on every legitimate brand
+ * change while passing on exactly the defect it was written for.
+ */
+
+// Resolved from the package root rather than `import.meta.url`: the suite runs under happy-dom,
+// where that URL is document-relative and resolves to `/themes` at the filesystem root.
+const THEMES_DIR = join(process.cwd(), 'themes');
+
+/** WCAG AA for text below 18.66px bold / 24px. Every use of this token is small text. */
+const AA = 4.5;
+
+const channels = (hex: string): readonly number[] =>
+  [0, 2, 4].map((i) => Number.parseInt(hex.slice(1 + i, 3 + i), 16));
+
+const luminance = (hex: string): number => {
+  const [r, g, b] = channels(hex).map((value) => {
+    const c = value / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+};
+
+const contrast = (a: string, b: string): number => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+};
+
+/** sRGB alpha compositing — the same blend the browser paints and Phase 8.3 measured. */
+const composite = (fg: string, bg: string, alpha: number): string =>
+  '#' +
+  [0, 2, 4]
+    .map((i) => {
+      const f = Number.parseInt(fg.slice(1 + i, 3 + i), 16);
+      const b = Number.parseInt(bg.slice(1 + i, 3 + i), 16);
+      return Math.round(f * alpha + b * (1 - alpha))
+        .toString(16)
+        .padStart(2, '0');
+    })
+    .join('');
+
+/** Read a custom property out of the `:root` (light) or `.dark` block. */
+function readToken(css: string, name: string, scheme: 'light' | 'dark'): string {
+  const block = scheme === 'light' ? css.split(/\n\.dark\s*\{/)[0] : css.split(/\n\.dark\s*\{/)[1];
+  const found = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(block ?? '');
+  if (found?.[1] === undefined) {
+    throw new Error(`--${name} not found in the ${scheme} block`);
+  }
+  return found[1].toLowerCase();
+}
+
+const themes = readdirSync(THEMES_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && entry.name !== 'base')
+  .map((entry) => entry.name);
+
+describe('generated palettes', () => {
+  it('ships a palette for every brand', () => {
+    expect(themes.length).toBeGreaterThan(0);
+  });
+
+  describe.each(themes)('%s', (theme) => {
+    const css = readFileSync(join(THEMES_DIR, theme, 'palette.css'), 'utf8');
+
+    /*
+     * The pairings are named rather than derived, because they are what the components declare:
+     * `badge.tsx` is `bg-primary/15`, `avatar.tsx` and `tag.tsx` are `bg-primary/10` — the latter
+     * over `--muted` in the shells they sit in. Deriving them from the components would couple this
+     * to their class strings; naming them means a *new* pairing at a lower alpha is a deliberate
+     * decision that has to come back here.
+     */
+    it.each([
+      ['light', 'background', 'muted'],
+      ['dark', 'background', 'muted'],
+    ] as const)('keeps --primary-strong legible on brand tints in %s', (scheme, page, tint) => {
+      const strong = readToken(css, 'primary-strong', scheme);
+      const brand = readToken(css, 'primary', scheme);
+      const surfaces = {
+        page: readToken(css, page, scheme),
+        'badge · brand/15 over the page': composite(brand, readToken(css, page, scheme), 0.15),
+        'avatar and tag · brand/10 over muted': composite(brand, readToken(css, tint, scheme), 0.1),
+      };
+
+      const measured = Object.entries(surfaces).map(([label, surface]) => ({
+        label,
+        surface,
+        ratio: Number(contrast(strong, surface).toFixed(2)),
+      }));
+      const worst = measured.reduce((a, b) => (a.ratio < b.ratio ? a : b));
+
+      expect(
+        worst.ratio,
+        `${theme} ${scheme}: --primary-strong ${strong} on ${worst.label} (${worst.surface})`,
+      ).toBeGreaterThanOrEqual(AA);
+    });
+  });
+});
