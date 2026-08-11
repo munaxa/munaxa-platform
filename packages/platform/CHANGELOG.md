@@ -4,6 +4,17 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.0.1] — 2026-08-11
+
+### Fixed
+
+- `SidebarNav` painted its navigation group titles with a fade of the muted token
+  (`text-muted-foreground/70`). At the 10px the heading already uses, that measured 2.79:1 against
+  the sidebar in the light theme and 4.19:1 in the dark one — both under the 4.5:1 WCAG AA asks of
+  text this size. The titles now use the muted token at full strength, the same one the rail's
+  resting items already use, measuring 4.97:1 and 6.89:1 on those surfaces. Nothing else about the
+  heading changes: font, size, tracking, case, padding and the collapsed rule are untouched.
+
 ## [1.0.0] — 2026-07-30
 
 First stable release. The public API described in [`VERSIONING.md`](./VERSIONING.md) is now under

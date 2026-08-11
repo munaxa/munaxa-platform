@@ -89,7 +89,7 @@ export function SidebarNav({
             collapsed ? (
               <div className="mx-auto my-1 h-px w-6 bg-border" aria-hidden="true" />
             ) : (
-              <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+              <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {group.title}
               </p>
             )
