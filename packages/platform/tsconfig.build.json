@@ -13,5 +13,5 @@
     "ui/**/*.ts",
     "ui/**/*.tsx"
   ],
-  "exclude": ["ui/**/*.test.ts", "ui/**/*.test.tsx", "ui/**/*.stories.tsx"]
+  "exclude": ["ui/**/*.test.ts", "ui/**/*.test.tsx", "ui/**/*.stories.tsx", "themes/**/*.test.ts"]
 }

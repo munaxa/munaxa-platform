@@ -54,10 +54,64 @@ for (const t of THEMES) {
   const STEPS_LIGHTWARD = [400, 300, 200, 100, 50];
   const firstPassing = (order, bg, ratio = 4.5) =>
     order.map((s) => p[s]).find((c) => contrast(c, bg) >= ratio) ?? bestFg(bg, [WHITE, INK])[1];
-  const primaryStrong = contrast(t.brand, WHITE) >= 4.5
+
+  /*
+   * The surface `--primary-strong` is actually used on is a brand *tint*, not the page — Phase 8.3.
+   *
+   * Choosing the first step that clears 4.5:1 against white looked right and was measurably wrong.
+   * Nothing pairs this token with the bare page: `Badge` is `bg-primary/15 text-primary-strong`,
+   * `Avatar` and `Tag` are `bg-primary/10`. A tint of the brand over white is *darker* than white,
+   * so a value chosen to only just clear white necessarily falls short on the surface it ships on.
+   * Docs measured 4.31:1 on a badge and 4.16:1 on an avatar in the running product while its token
+   * measured a comfortable 5.07:1 against white, and School fails the avatar case at 4.31:1 too.
+   * Two brands of four, from a rule that never looked at the real background.
+   *
+   * The candidate is therefore held against the worst surface the design system actually pairs it
+   * with: a 15% tint over the page and a 10% tint over `--muted`/neutral-100. Alpha compositing is
+   * done in sRGB, matching what the browser paints and what Phase 8.3 measured through a canvas.
+   */
+  const composite = (fg, bg, alpha) =>
+    '#' +
+    [0, 2, 4]
+      .map((i) => {
+        const f = parseInt(fg.slice(1 + i, 3 + i), 16);
+        const b = parseInt(bg.slice(1 + i, 3 + i), 16);
+        return Math.round(f * alpha + b * (1 - alpha))
+          .toString(16)
+          .padStart(2, '0');
+      })
+      .join('');
+
+  /**
+   * Every surface `text-primary-strong` is paired with, worst case first.
+   *
+   * `fill` is the `--primary` of that scheme, not the raw brand: the dark palette ships a lifted
+   * step as `--primary`, so tinting with the brand would describe a surface the dark theme never
+   * paints.
+   */
+  const tintedSurfaces = (fill, page, tintBase) => [
+    composite(fill, page, 0.15),
+    composite(fill, tintBase, 0.1),
+  ];
+
+  const clearsAll = (candidate, surfaces) =>
+    surfaces.every((surface) => contrast(candidate, surface) >= 4.5);
+
+  const lightSurfaces = [WHITE, ...tintedSurfaces(t.brand, WHITE, NEUTRAL[100])];
+  const primaryStrong = clearsAll(t.brand, lightSurfaces)
     ? t.brand
-    : firstPassing(STEPS_DARKWARD, WHITE);
-  const primaryStrongDark = firstPassing(STEPS_LIGHTWARD, NEUTRAL[950]);
+    : (STEPS_DARKWARD.map((s) => p[s]).find((c) => clearsAll(c, lightSurfaces)) ??
+      firstPassing(STEPS_DARKWARD, WHITE));
+
+  // The dark scheme has the same pairing over the dark card, where a tint lightens rather than
+  // darkens; the candidate still has to clear every surface it lands on rather than only the page.
+  // NEUTRAL[800] because that is what this file writes as the dark `--muted`, a few lines below.
+  // Guessing 900 here put the rule a step away from the token it is reasoning about, and the
+  // palette test — which reads the emitted values rather than the assumption — caught it.
+  const darkSurfaces = [NEUTRAL[950], ...tintedSurfaces(primaryDark, NEUTRAL[950], NEUTRAL[800])];
+  const primaryStrongDark =
+    STEPS_LIGHTWARD.map((s) => p[s]).find((c) => clearsAll(c, darkSurfaces)) ??
+    firstPassing(STEPS_LIGHTWARD, NEUTRAL[950]);
 
   /*
    * The focus ring is brand-derived, not a fixed accent.
