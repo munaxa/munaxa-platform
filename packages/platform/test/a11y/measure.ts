@@ -146,7 +146,20 @@ export interface AxeOutcome {
  * that watched only `violations` would have called that page clean.
  */
 export async function axeOn(page: Page, selector = 'document'): Promise<AxeOutcome> {
-  await page.addScriptTag({ path: AXE_PATH });
+  /*
+   * Storybook runs axe itself — Phase 8.5.
+   *
+   * `@storybook/addon-a11y` bundles axe-core and starts a run of its own on every story render, so
+   * injecting a second copy and calling `axe.run` races the addon's: axe refuses concurrent runs
+   * and throws "Axe is already running". Across Phase 8.4's twenty-six runs that never surfaced;
+   * across seven hundred and sixty-eight it produced 305 spurious errors, which read exactly like
+   * stories failing to render. The instance already on the page is reused when present, and a run
+   * in flight is waited out rather than reported as a failure.
+   */
+  const present = await page.evaluate(
+    () => typeof (window as { axe?: unknown }).axe !== 'undefined',
+  );
+  if (!present) await page.addScriptTag({ path: AXE_PATH });
   return page.evaluate(async (sel) => {
     /*
      * The whole document, not `#storybook-root` — Phase 8.4.
@@ -157,7 +170,7 @@ export async function axeOn(page: Page, selector = 'document'): Promise<AxeOutco
      * story clean, which is the same shape of false confidence Phase 8.3 found in a suppression.
      */
     const target = sel === 'document' ? document : (document.querySelector(sel) ?? document);
-    const result = await (
+    const runner = (
       window as unknown as {
         axe: {
           run: (
@@ -169,7 +182,19 @@ export async function axeOn(page: Page, selector = 'document'): Promise<AxeOutco
           }>;
         };
       }
-    ).axe.run(target, { runOnly: ['color-contrast'] });
+    ).axe;
+    const sleep = async (ms: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+    let result: Awaited<ReturnType<typeof runner.run>> | null = null;
+    for (let attempt = 0; attempt < 25 && result === null; attempt += 1) {
+      try {
+        result = await runner.run(target, { runOnly: ['color-contrast'] });
+      } catch (error) {
+        if (!String((error as Error).message).includes('already running')) throw error;
+        await sleep(120);
+      }
+    }
+    if (result === null) throw new Error('axe stayed busy for three seconds');
     return {
       violations: result.violations.flatMap((v) =>
         v.nodes.map((n) => `${v.impact}: ${v.id} ${n.target.join(' ')}`.slice(0, 140)),

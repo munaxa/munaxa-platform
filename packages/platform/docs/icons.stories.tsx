@@ -113,7 +113,7 @@ export const Icons: Story = {
           <span className="flex items-center gap-2 text-sm text-primary-strong">
             <Info className="size-4" aria-hidden="true" /> brand
           </span>
-          <span className="flex items-center gap-2 text-sm text-destructive">
+          <span className="flex items-center gap-2 text-sm text-destructive-strong">
             <Info className="size-4" aria-hidden="true" /> destructive
           </span>
         </div>

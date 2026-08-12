@@ -78,6 +78,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:a11y": "vitest run --config vitest.a11y.config.ts",
+    "check:faded": "node scripts/check-faded-foreground.mjs ui",
     "storybook": "storybook dev -p 6006 --disable-telemetry",
     "build-storybook": "storybook build -o storybook-static --disable-telemetry",
     "cf:deploy": "pnpm run build-storybook && wrangler deploy",

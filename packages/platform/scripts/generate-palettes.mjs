@@ -221,7 +221,25 @@ for (const t of THEMES) {
     ]),
   );
   const [, primaryFgDark] = bestFg(primaryDark, [WHITE, INK]);
-  const [, destructiveFg] = bestFg(t.semantic.error, [WHITE, INK]);
+  /*
+   * The destructive fill has to clear AA against its own foreground — Phase 8.5.
+   *
+   * `bestFg` returns the *better* of white and ink, which is not the same as a passing one:
+   * #E53935 with white measured 4.23:1 in the browser, under the 4.5:1 its button label needs. The
+   * fill is therefore darkened until its chosen foreground clears AA, rather than shipping a
+   * pairing the generator itself treats as legible. `--destructive` is also the base for the `/10`
+   * and `/15` tints, so those surfaces move slightly darker too — in the safe direction.
+   */
+  const passingFill = (fill) => {
+    const c = toLch(fill);
+    for (let L = c.L; L > 0.15; L -= 0.005) {
+      const candidate = fromLch({ L, C: c.C, h: c.h });
+      if (contrast(candidate, bestFg(candidate, [WHITE, INK])[1]) >= 4.5) return candidate;
+    }
+    return fill;
+  };
+  const destructiveFill = passingFill(t.semantic.error);
+  const [, destructiveFg] = bestFg(destructiveFill, [WHITE, INK]);
 
   const scale = Object.entries(p)
     .map(([k, v]) => `  --primary-${k}: ${v};`)
@@ -279,7 +297,7 @@ ${scale}
   --muted-foreground: ${NEUTRAL[500]};
   --accent: ${p[50]};
   --accent-foreground: ${p[800]};
-  --destructive: ${t.semantic.error};
+  --destructive: ${destructiveFill};
   --destructive-foreground: ${destructiveFg};
   --border: ${NEUTRAL[200]};
   --input: ${NEUTRAL[200]};
@@ -316,7 +334,7 @@ ${chartVars(charts)}
   --muted-foreground: ${NEUTRAL[400]};
   --accent: ${NEUTRAL[800]};
   --accent-foreground: ${NEUTRAL[50]};
-  --destructive: ${p[300] && t.semantic.error};
+  --destructive: ${destructiveFill};
   --border: rgb(255 255 255 / 0.12);
   --input: rgb(255 255 255 / 0.16);
   --ring: ${ringDark};
