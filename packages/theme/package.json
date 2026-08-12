@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/theme",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Munaxa theme engine — the typed product-theme registry (Corporate, School, Work, Docs) and the CSS theme contract. Branding is configuration, never duplicated code.",
   "license": "UNLICENSED",
   "type": "module",

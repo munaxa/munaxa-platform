@@ -19,9 +19,17 @@ export interface IconDescriptor {
   readonly type: string;
 }
 
+/**
+ * Arrays here are mutable, and that is not an oversight.
+ *
+ * These values exist to be assigned straight to a Next `Metadata` export, whose `icons.icon` is
+ * typed `Icon[]`. A `readonly` array is not assignable to it, so the tidier-looking type would
+ * force every consumer to spread or cast — which is worse than the immutability it buys, given
+ * the object is freshly built on every call and shared with nobody.
+ */
 export interface BrandIcons {
-  readonly icon: readonly IconDescriptor[];
-  readonly apple: readonly IconDescriptor[];
+  readonly icon: IconDescriptor[];
+  readonly apple: IconDescriptor[];
 }
 
 const brandOf = (product: ProductBrand | keyof typeof productBrands): ProductBrand =>
@@ -76,7 +84,7 @@ export interface BrandManifest {
   readonly theme_color: string;
   readonly background_color: string;
   readonly display: 'standalone';
-  readonly icons: readonly { src: string; sizes: string; type: string; purpose: string }[];
+  readonly icons: { src: string; sizes: string; type: string; purpose: string }[];
 }
 
 /**
