@@ -10,7 +10,22 @@ const config: StorybookConfig = {
   // `ui/` holds each component's own story next to its source. `docs/` holds the pages that
   // document the system rather than a component — foundations, tokens and the brand themes —
   // kept out of `ui/` because they are documentation and must never reach the published build.
-  stories: ['../ui/**/*.stories.@(ts|tsx)', '../docs/**/*.stories.@(ts|tsx)', '../docs/**/*.mdx'],
+  // `brand/` is shipped source like `ui/`, and its story documents the product lockups.
+  stories: [
+    '../ui/**/*.stories.@(ts|tsx)',
+    '../brand/**/*.stories.@(ts|tsx)',
+    '../docs/**/*.stories.@(ts|tsx)',
+    '../docs/**/*.mdx',
+  ],
+  /**
+   * The brand artwork, served where the registry expects to find it.
+   *
+   * `brand/products.ts` addresses every asset under `/branding/<product>/…`, which is where a
+   * product's `prebuild` copies them. Storybook has no such copy step, so `assets/` is mounted at
+   * the same path — the story then exercises the real paths rather than a set invented for the
+   * docs site, and a renamed file breaks the story instead of shipping silently.
+   */
+  staticDirs: [{ from: '../assets', to: '/branding' }],
   addons: [addon('@storybook/addon-docs'), addon('@storybook/addon-a11y')],
   framework: {
     name: addon('@storybook/react-vite') as '@storybook/react-vite',

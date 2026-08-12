@@ -4,6 +4,37 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.3.0] — 2026-08-12
+
+Product branding becomes part of the platform. School, Work and Docs had authored palettes but no
+artwork, and each product repository had grown its own logo component pointing at its own copy of
+the files — three implementations of one rule, none of which could be checked.
+
+### Added
+
+- **`@munaxa/platform/brand`** — the typed product-brand registry, `BrandProvider`, `ProductLogo`,
+  `ProductSwitcher` and the `brandIcons` / `brandOpenGraphImage` / `brandManifest` metadata
+  helpers. A product declares itself once and every logo below reads that: `ProductLogo` has no
+  `src`, so no screen can render one product's mark inside another by accident.
+- **Approved artwork for all three products** under `assets/{school,work,docs}/` — horizontal,
+  stacked and wordmark lockups in both colour schemes, the symbol, the descriptor lockup, favicons,
+  app icons and a share image. Provenance and the three permitted transformations are recorded in
+  [`assets/README.md`](./assets/README.md).
+- **`scripts/sync-brand-assets.mjs`**, published with the package, so a product's `prebuild` copies
+  the artwork it needs into its own `public/` rather than committing a snapshot that goes stale.
+
+### Changed
+
+- **The Work brand is `#80133D` and the Docs brand is `#60661C`**, both sampled from the approved
+  logo artwork. The previous `#6E1E43` and `#6B8E62` were plausible values that appear in no
+  approved asset, so each product's colour and its own logo disagreed wherever they were shown
+  together. Both palettes are regenerated, and every `-strong`, ring and status pairing is
+  re-measured against the composed surfaces by the existing palette suite.
+- Docs moves to anchor step 600 to seat its darker olive on the ramp; its dark-scheme `--primary`
+  lands in the sage range the approved dark-background export already uses.
+
+School and Group are unchanged: `#00CFC1` and `#2B3A67` were already the approved values.
+
 ## [1.2.0] — 2026-08-11
 
 Phase 8.6 closes the 25 accessibility failures Phase 8.5's full-matrix coverage exposed. All three

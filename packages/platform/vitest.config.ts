@@ -18,7 +18,12 @@ export default defineConfig({
     // `themes/` is included as well as `ui/`: the palettes are a generated contract the components
     // depend on, and Phase 8.3 found a contrast defect that lived in the generator's rule rather
     // than in any component. A test that can only see `ui/` cannot catch that class of defect.
-    include: ['ui/**/*.test.{ts,tsx}', 'themes/**/*.test.ts', 'scripts/**/*.test.ts'],
+    include: [
+      'ui/**/*.test.{ts,tsx}',
+      'brand/**/*.test.{ts,tsx}',
+      'themes/**/*.test.ts',
+      'scripts/**/*.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       include: ['ui/**/*.{ts,tsx}'],

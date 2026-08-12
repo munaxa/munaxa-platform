@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/platform",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "sideEffects": [
     "**/*.css"
   ],
@@ -22,6 +22,10 @@
     "./themes": {
       "types": "./dist/themes/index.d.ts",
       "default": "./dist/themes/index.js"
+    },
+    "./brand": {
+      "types": "./dist/brand/index.d.ts",
+      "default": "./dist/brand/index.js"
     },
     "./icons": {
       "types": "./dist/icons/index.d.ts",
@@ -62,12 +66,16 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "munaxa-sync-brand": "./scripts/sync-brand-assets.mjs"
+  },
   "files": [
     "dist",
     "tokens/css",
     "themes",
     "ui/patterns/motion/motion.css",
     "assets",
+    "scripts/sync-brand-assets.mjs",
     "!themes/**/*.test.ts"
   ],
   "scripts": {

@@ -54,19 +54,33 @@ const THEMES = [
     id: 'work',
     name: 'Work',
     anchor: 800,
-    brand: '#6E1E43',
-    gradient: ['#6E1E43', '#B44F73'],
+    /*
+     * Sampled from the approved `munaxa. work` artwork rather than chosen by eye — the symbol in
+     * the horizontal lockup and the app icon both measure #80133D. The previous #6E1E43 was a
+     * plausible burgundy that appears in no approved asset, so the product colour and the product
+     * logo disagreed everywhere they were shown together.
+     */
+    brand: '#80133D',
+    gradient: ['#80133D', '#D0779A'],
     semantic: { success: '#22C55E', warning: '#F59E0B', error: '#EF4444', info: '#0EA5E9' },
-    description: 'Raspberry brand for the human-capital platform.',
+    description: 'Burgundy brand for the human-capital platform.',
   },
   {
     id: 'docs',
     name: 'Docs',
-    anchor: 500,
-    brand: '#6B8E62',
-    gradient: ['#6B8E62', '#8FBC8F'],
+    anchor: 600,
+    /*
+     * Sampled from the approved `munaxa. docs` lockups, which measure #60661C.
+     *
+     * The mark ships in two greens: olive in the horizontal and stacked lockups, a lighter sage in
+     * the standalone symbol and the app icon. The lockup is the canonical logo, so the olive is the
+     * product colour — and the ramp's lifted dark-scheme step lands within a shade of the sage the
+     * dark-background export already uses, so one hue reaches both approved greens.
+     */
+    brand: '#60661C',
+    gradient: ['#60661C', '#A8B266'],
     semantic: { success: '#2E7D32', warning: '#F59E0B', error: '#E53935', info: '#0284C7' },
-    description: 'Olive-green brand for the document and knowledge platform.',
+    description: 'Olive brand for the document and knowledge platform.',
   },
 ];
 
