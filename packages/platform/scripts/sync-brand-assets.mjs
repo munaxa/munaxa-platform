@@ -21,7 +21,9 @@ import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const PRODUCTS = ['school', 'work', 'docs'];
+// `group` is the corporate identity: the mark and the icons, no lockup. It is copied the same
+// way, because a corporate site needs a favicon as much as a product does.
+const PRODUCTS = ['group', 'school', 'work', 'docs'];
 const BUCKETS = ['logos', 'favicon', 'social'];
 
 const [product, publicDir] = process.argv.slice(2);
@@ -32,7 +34,7 @@ if (!product || !publicDir) {
 }
 
 if (!PRODUCTS.includes(product)) {
-  console.error(`unknown product "${product}" — expected one of ${PRODUCTS.join(', ')}`);
+  console.error(`unknown brand "${product}" — expected one of ${PRODUCTS.join(', ')}`);
   process.exit(2);
 }
 
