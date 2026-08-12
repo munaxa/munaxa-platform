@@ -54,12 +54,15 @@
   --accent-warm: #d59800;
   --accent-cool: #36aae3;
   --success: #22c55e;
-  --destructive-strong: #cb1625;
-  --success-strong: #007c0f;
+  --success-foreground: #101828;
+  --destructive-strong: #c70f22;
+  --success-strong: #007a0c;
   --warning: #f59e0b;
-  --warning-strong: #a65500;
+  --warning-foreground: #101828;
+  --warning-strong: #a55300;
   --info: #0ea5e9;
-  --info-strong: #006eaf;
+  --info-foreground: #101828;
+  --info-strong: #006bac;
 
   /* Data-visualisation ramp */
   --chart-1: #6e1e43;

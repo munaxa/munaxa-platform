@@ -6,8 +6,12 @@ import type { Tone } from '../components/primitives/badge.js';
 
 const toneAccent: Record<Tone, string> = {
   default: 'text-primary-strong',
-  success: 'text-accent-cool',
-  warning: 'text-accent-warm',
+  // Semantic status tokens, not the decorative accents — Phase 8.5. `accent-cool` and `accent-warm`
+  // are ornament by definition (see `generate-palettes.mjs`) and measured 2.55:1 and 2.58:1 as text
+  // on the page. The `-strong` forms are the AA-safe text colours for exactly this, and `default`
+  // and `danger` beside them already used them.
+  success: 'text-success-strong',
+  warning: 'text-warning-strong',
   danger: 'text-destructive-strong',
   muted: 'text-muted-foreground',
 };

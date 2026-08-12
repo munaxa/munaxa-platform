@@ -77,7 +77,7 @@ for (const t of THEMES) {
   const p = ramp(t.brand, t.anchor);
   // Light scheme uses the brand as-is; dark lifts to a lighter step so it reads on a dark ground.
   const primaryDark = p[t.anchor <= 400 ? 300 : 400];
-  const [fgRatio, primaryFg] = bestFg(t.brand, [WHITE, INK]);
+  const [fgRatio] = bestFg(t.brand, [WHITE, INK]);
   /*
    * `--primary` is a *fill*: it is paired with `--primary-foreground` and always sits behind
    * something. Used as text on a page background it is a different question, and for a light,
@@ -124,15 +124,27 @@ for (const t of THEMES) {
    * step as `--primary`, so tinting with the brand would describe a surface the dark theme never
    * paints.
    */
-  const tintedSurfaces = (fill, page, tintBase) => [
+  const tintedSurfaces = (fill, page, tintBase, brandTint = fill) => [
     composite(fill, page, 0.15),
     composite(fill, tintBase, 0.1),
+    /*
+     * A tint over another tint — Phase 8.6.
+     *
+     * `DataGrid` marks a selected row with `bg-primary/5` and a status `Badge` inside that row
+     * paints `bg-<tone>/15` on top of it, so the label's real background is two translucent layers
+     * deep. The rule modelled one. Measured, the difference is small and decisive: the badge that
+     * clears 4.50:1 on the page composites to #d9e7da inside a selected row and measures 4.48:1.
+     *
+     * The selection wash is the brand's, not the tone's, which is why it is passed in separately:
+     * a success badge inside a selected row sits on success-over-primary-over-page.
+     */
+    composite(fill, composite(brandTint, page, 0.05), 0.15),
   ];
 
   const clearsAll = (candidate, surfaces) =>
     surfaces.every((surface) => contrast(candidate, surface) >= 4.5);
 
-  const lightSurfaces = [WHITE, ...tintedSurfaces(t.brand, WHITE, NEUTRAL[100])];
+  const lightSurfaces = [WHITE, ...tintedSurfaces(t.brand, WHITE, NEUTRAL[100], t.brand)];
   const primaryStrong = clearsAll(t.brand, lightSurfaces)
     ? t.brand
     : (STEPS_DARKWARD.map((s) => p[s]).find((c) => clearsAll(c, lightSurfaces)) ??
@@ -143,7 +155,10 @@ for (const t of THEMES) {
   // NEUTRAL[800] because that is what this file writes as the dark `--muted`, a few lines below.
   // Guessing 900 here put the rule a step away from the token it is reasoning about, and the
   // palette test — which reads the emitted values rather than the assumption — caught it.
-  const darkSurfaces = [NEUTRAL[950], ...tintedSurfaces(primaryDark, NEUTRAL[950], NEUTRAL[800])];
+  const darkSurfaces = [
+    NEUTRAL[950],
+    ...tintedSurfaces(primaryDark, NEUTRAL[950], NEUTRAL[800], primaryDark),
+  ];
   const primaryStrongDark =
     STEPS_LIGHTWARD.map((s) => p[s]).find((c) => clearsAll(c, darkSurfaces)) ??
     firstPassing(STEPS_LIGHTWARD, NEUTRAL[950]);
@@ -188,8 +203,8 @@ for (const t of THEMES) {
    * status colour is unreadable. Each `-strong` is the same hue darkened until it clears AA, found
    * by measurement rather than by eye.
    */
-  const strongFor = (fill, walk, page, tintBase) => {
-    const surfaces = [page, ...tintedSurfaces(fill, page, tintBase)];
+  const strongFor = (fill, walk, page, tintBase, brandTint) => {
+    const surfaces = [page, ...tintedSurfaces(fill, page, tintBase, brandTint)];
     return walk(fill, surfaces);
   };
   const darkenUntilAll = (hex, surfaces) => {
@@ -208,20 +223,71 @@ for (const t of THEMES) {
     }
     return WHITE;
   };
+  /*
+   * A fill's foreground has to clear the fill *and* anything the platform paints over it.
+   *
+   * `bestFg` returns the better of white and ink, which is not the same as a passing one — Phase
+   * 8.5 found `#E53935` + white at 4.23:1 chosen exactly that way. `fillForeground` returns `null`
+   * rather than a failing colour, so nothing silently ships below AA.
+   *
+   * The guarantee is deliberately about the **solid** fill. A component that paints something over
+   * the fill — `Gantt` washes its bar with `bg-background/30` to show progress — changes the
+   * background beneath its own label, and for a mid-toned status colour no single foreground clears
+   * both the fill and the washed fill. Requiring one drove every status fill to near-black in a
+   * first attempt at this rule (`--success` #2E7D32 → #004D00), which is a brand redesign rather
+   * than an accessibility fix. That composition belongs to the component; the palette's job is to
+   * make the solid pairing honest.
+   */
+  const fillForeground = (fill) =>
+    [WHITE, INK].find((candidate) => contrast(candidate, fill) >= 4.5) ?? null;
+
+  /** Darken a fill only as far as needed for white or ink to clear it. */
+  const fillWithLegibleForeground = (fill) => {
+    if (fillForeground(fill) !== null) return fill;
+    const c = toLch(fill);
+    for (let L = c.L; L > 0.1; L -= 0.005) {
+      const candidate = fromLch({ L, C: c.C, h: c.h });
+      if (fillForeground(candidate) !== null) return candidate;
+    }
+    return fill;
+  };
+
+  const statusFill = Object.fromEntries(
+    Object.entries(t.semantic).map(([k, v]) => [k, fillWithLegibleForeground(v)]),
+  );
+  const statusFg = Object.fromEntries(
+    Object.entries(statusFill).map(([k, v]) => [k, fillForeground(v) ?? INK]),
+  );
+
+  const destructiveFill = statusFill.error;
+  const destructiveFg = statusFg.error;
+
+  // `Gantt` uses `bg-primary` for its default bar and washes it too, so the brand fill's foreground
+  // is held to the same standard rather than to the solid colour alone.
+  const primaryFg = fillForeground(t.brand) ?? bestFg(t.brand, [WHITE, INK])[1];
+
+  /*
+   * Tints are taken from the fill the palette *ships*, not the brand's raw input — Phase 8.6.
+   *
+   * `statusFill` may darken a semantic colour so one of white or ink clears it, and `Badge` then
+   * tints that shipped value rather than the original. Holding `-strong` against tints of the input
+   * left `--info-strong` at 4.48:1 on a badge inside a selected row: both numbers were computed
+   * correctly, from two different backgrounds. The palette test caught it where the browser matrix
+   * could not, because no story yet renders an info badge in a selected row.
+   */
   const strong = Object.fromEntries(
-    Object.entries(t.semantic).map(([k, v]) => [
+    Object.entries(statusFill).map(([k, v]) => [
       k,
-      strongFor(v, darkenUntilAll, WHITE, NEUTRAL[100]),
+      strongFor(v, darkenUntilAll, WHITE, NEUTRAL[100], t.brand),
     ]),
   );
   const strongDark = Object.fromEntries(
-    Object.entries(t.semantic).map(([k, v]) => [
+    Object.entries(statusFill).map(([k, v]) => [
       k,
-      strongFor(v, lightenUntilAll, NEUTRAL[950], NEUTRAL[800]),
+      strongFor(v, lightenUntilAll, NEUTRAL[950], NEUTRAL[800], primaryDark),
     ]),
   );
   const [, primaryFgDark] = bestFg(primaryDark, [WHITE, INK]);
-  const [, destructiveFg] = bestFg(t.semantic.error, [WHITE, INK]);
 
   const scale = Object.entries(p)
     .map(([k, v]) => `  --primary-${k}: ${v};`)
@@ -279,19 +345,22 @@ ${scale}
   --muted-foreground: ${NEUTRAL[500]};
   --accent: ${p[50]};
   --accent-foreground: ${p[800]};
-  --destructive: ${t.semantic.error};
+  --destructive: ${destructiveFill};
   --destructive-foreground: ${destructiveFg};
   --border: ${NEUTRAL[200]};
   --input: ${NEUTRAL[200]};
   --ring: ${ring};
   --accent-warm: ${accentWarm};
   --accent-cool: ${accentCool};
-  --success: ${t.semantic.success};
+  --success: ${statusFill.success};
+  --success-foreground: ${statusFg.success};
   --destructive-strong: ${strong.error};
   --success-strong: ${strong.success};
-  --warning: ${t.semantic.warning};
+  --warning: ${statusFill.warning};
+  --warning-foreground: ${statusFg.warning};
   --warning-strong: ${strong.warning};
-  --info: ${t.semantic.info};
+  --info: ${statusFill.info};
+  --info-foreground: ${statusFg.info};
   --info-strong: ${strong.info};
 
   /* Data-visualisation ramp */
@@ -316,7 +385,7 @@ ${chartVars(charts)}
   --muted-foreground: ${NEUTRAL[400]};
   --accent: ${NEUTRAL[800]};
   --accent-foreground: ${NEUTRAL[50]};
-  --destructive: ${p[300] && t.semantic.error};
+  --destructive: ${destructiveFill};
   --border: rgb(255 255 255 / 0.12);
   --input: rgb(255 255 255 / 0.16);
   --ring: ${ringDark};

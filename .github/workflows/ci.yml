@@ -62,6 +62,55 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+  accessibility:
+    name: Accessibility · every story, four brands, light and dark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The browser is installed here rather than assumed. GitHub's runner image ships Chrome, but
+      # the suite drives the Chromium that Playwright pins, so a developer's globally installed
+      # browser is never what CI measures. `--with-deps` brings the shared libraries the headless
+      # build needs on ubuntu-latest.
+      - name: Install Chromium
+        run: pnpm --filter @munaxa/platform exec playwright install --with-deps chromium
+
+      # Static first: it is seconds rather than minutes, and it catches the one implementation
+      # pattern Phases 8.2 and 8.4 each found repeatedly, before a browser is even started.
+      - name: Readable text must not fade a foreground token
+        run: pnpm --filter @munaxa/platform run check:faded
+
+      # The suite measures the built site, not a dev server, so the build is a dependency rather
+      # than an optimisation.
+      - name: Build Storybook
+        run: pnpm --filter @munaxa/platform run build-storybook
+
+      - name: Accessibility matrix
+        run: pnpm --filter @munaxa/platform run test:a11y
+
+      # Only on failure: the run prints every failing story with its brand, scheme and selector, and
+      # a green run has nothing worth keeping. Uploading the built site on failure lets the exact
+      # story be opened locally at the commit that broke it.
+      - name: Preserve the built Storybook for diagnosis
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-static
+          path: packages/platform/storybook-static
+          retention-days: 7
+
   facades:
     name: Façades match the platform surface
     runs-on: ubuntu-latest

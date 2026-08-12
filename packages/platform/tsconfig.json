@@ -17,6 +17,7 @@
     "docs/**/*.ts",
     "docs/**/*.tsx",
     "test/**/*.ts",
+    "scripts/**/*.test.ts",
     ".storybook/**/*.ts",
     ".storybook/**/*.tsx",
     "vitest.config.ts"
