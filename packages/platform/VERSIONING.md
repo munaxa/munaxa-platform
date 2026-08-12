@@ -29,6 +29,7 @@ The contract applies to the **documented public surface only**:
 | Typed design tokens | `@munaxa/platform/tokens` |
 | The type scale | `@munaxa/platform/typography` |
 | The typed theme registry | `@munaxa/platform/themes` |
+| The product-brand registry, `ProductLogo`, `ProductSwitcher` and the metadata helpers | `@munaxa/platform/brand` |
 | The icon set | `@munaxa/platform/icons` |
 | Narrower JS entry points | `@munaxa/platform/{hooks,patterns,layouts,shell,date,charts}` |
 | The **semantic** CSS custom properties (`--background`, `--primary`, `--foreground`, …) | `@munaxa/platform/css/*` |

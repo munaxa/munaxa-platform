@@ -146,9 +146,17 @@ Munaxa keeps, and must keep, everything domain-shaped: `AppShell`, `Shell`, `Pri
 
 **1. Depend on it.**
 
+A product is its own repository, so it depends on the **published** package:
+
 ```json
-{ "dependencies": { "@munaxa/platform": "workspace:*" } }
+{ "dependencies": { "@munaxa/platform": "^1.3.0" } }
 ```
+
+Not `workspace:*`. That protocol only resolves inside this repository's own workspace, and a
+product that copies it gets `EUNSUPPORTEDPROTOCOL` on install — which is exactly how the 1.1.0
+façades shipped broken. The only place `workspace:` belongs is a package that lives in *this*
+repository, and `pnpm publish` rewrites it to a real range on the way out. Publishing these
+packages with `npm publish` does not, and must not be done.
 
 **2. Activate exactly one theme** in `globals.css`:
 

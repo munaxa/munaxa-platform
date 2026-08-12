@@ -59,6 +59,9 @@ export * from './ui/patterns/index.js';
 // Product themes — the typed registry of the themes shipped as CSS under `themes/`.
 export { themes, type Theme, type ThemeId, type Brand } from './themes/index.js';
 
+// Product branding — the registry of product identities and the logo that renders them.
+export * from './brand/index.js';
+
 // Design tokens — convenience namespace. The canonical import path remains
 // `@munaxa/platform/tokens`; this mirror lets consumers read tokens from the root.
 export * as tokens from './tokens/index.js';

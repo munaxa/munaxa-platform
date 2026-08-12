@@ -11,6 +11,8 @@
     "tokens/**/*.ts",
     "typography/**/*.ts",
     "themes/**/*.ts",
+    "brand/**/*.ts",
+    "brand/**/*.tsx",
     "icons/**/*.ts",
     "ui/**/*.ts",
     "ui/**/*.tsx",

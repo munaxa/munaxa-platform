@@ -9,9 +9,18 @@
     "tokens/**/*.ts",
     "typography/**/*.ts",
     "themes/**/*.ts",
+    "brand/**/*.ts",
+    "brand/**/*.tsx",
     "icons/**/*.ts",
     "ui/**/*.ts",
     "ui/**/*.tsx"
   ],
-  "exclude": ["ui/**/*.test.ts", "ui/**/*.test.tsx", "ui/**/*.stories.tsx", "themes/**/*.test.ts"]
+  "exclude": [
+    "ui/**/*.test.ts",
+    "ui/**/*.test.tsx",
+    "ui/**/*.stories.tsx",
+    "brand/**/*.test.tsx",
+    "brand/**/*.stories.tsx",
+    "themes/**/*.test.ts"
+  ]
 }
