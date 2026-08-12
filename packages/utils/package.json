@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/utils",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Munaxa shared utilities — framework-agnostic helpers shared across products, including the `cn` class-name merger.",
   "license": "UNLICENSED",
   "type": "module",

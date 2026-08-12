@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/ui",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Munaxa UI — the shared component library: primitives, forms, feedback, navigation, layout, data display, overlays, data grid, patterns, layouts, shell, charts and UI hooks.",
   "license": "UNLICENSED",
   "type": "module",
