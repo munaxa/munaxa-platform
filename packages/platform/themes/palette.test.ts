@@ -114,10 +114,23 @@ describe('generated palettes', () => {
       const page = readToken(css, 'background', scheme);
       const muted = readToken(css, 'muted', scheme);
 
+      const brand = readToken(css, 'primary', scheme);
       const surfaces = {
         page,
         [`badge · ${role}/15 over the page`]: composite(fill, page, 0.15),
         [`tag, avatar and alert · ${role}/10 over muted`]: composite(fill, muted, 0.1),
+        /*
+         * A tint over another tint — Phase 8.6.
+         *
+         * `DataGrid` washes a selected row with `bg-primary/5` and a status `Badge` inside it paints
+         * `bg-<tone>/15` on top, so the label is two translucent layers above the page. Modelling
+         * one layer passed at 4.50:1 and shipped 4.48:1, which is what the browser measured.
+         */
+        [`badge in a selected row · ${role}/15 over primary/5 over the page`]: composite(
+          fill,
+          composite(brand, page, 0.05),
+          0.15,
+        ),
       };
 
       const measured = Object.entries(surfaces).map(([label, surface]) => ({
@@ -130,6 +143,33 @@ describe('generated palettes', () => {
       expect(
         worst.ratio,
         `${theme} ${scheme}: --${role}-strong ${strong} on ${worst.label} (${worst.surface})`,
+      ).toBeGreaterThanOrEqual(AA);
+    });
+
+    it.each([
+      ['primary', 'light'],
+      ['primary', 'dark'],
+      ['destructive', 'light'],
+      ['destructive', 'dark'],
+      ['success', 'light'],
+      ['success', 'dark'],
+      ['warning', 'light'],
+      ['warning', 'dark'],
+      ['info', 'light'],
+      ['info', 'dark'],
+    ] as const)('pairs --%s with a legible --%s-foreground in %s', (role, scheme) => {
+      /*
+       * Every fill the theme offers has to promise a label colour that actually clears AA on it.
+       *
+       * `bestFg` returned the better of white and ink rather than a passing one, and `Gantt` filled
+       * the gap by borrowing `text-background` — white on amber, 2.14:1. This asserts the promise
+       * rather than the mechanism, so it holds however the generator later chooses.
+       */
+      const fill = readToken(css, role, scheme);
+      const foreground = readToken(css, `${role}-foreground`, scheme);
+      expect(
+        Number(contrast(fill, foreground).toFixed(2)),
+        `${theme} ${scheme}: --${role} ${fill} with --${role}-foreground ${foreground}`,
       ).toBeGreaterThanOrEqual(AA);
     });
   });

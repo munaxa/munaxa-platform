@@ -65,6 +65,12 @@
      colour for `bg-destructive/10` and `/15` surfaces. Added in Phase 8.4 — before it existed the
      danger tone had to reuse the fill as text, which measured below AA on its own tint. */
   --color-destructive-strong: var(--destructive-strong);
+  /* Fills carry their own foreground, completing the family beside `primary` and `destructive`.
+     Added in Phase 8.6: before them, `bg-warning` had no promised text colour and `Gantt` used
+     `text-background`, which measured 2.14:1 on amber. */
+  --color-success-foreground: var(--success-foreground);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info-foreground: var(--info-foreground);
   --color-success-strong: var(--success-strong);
   --color-warning: var(--warning);
   --color-warning-strong: var(--warning-strong);

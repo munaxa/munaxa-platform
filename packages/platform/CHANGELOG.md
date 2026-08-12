@@ -4,6 +4,47 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.2.0] — 2026-08-11
+
+Phase 8.6 closes the 25 accessibility failures Phase 8.5's full-matrix coverage exposed. All three
+failure families had one architectural cause: the palette generator modelled only **solid,
+un-composed** surfaces, and the components compose them.
+
+### Added
+
+- `--success-foreground`, `--warning-foreground`, `--info-foreground`, completing the fill family
+  beside `primary` and `destructive`. Before them a component wanting a label on `bg-warning` had no
+  promised colour and `Gantt` borrowed `text-background` — white on amber, **2.14:1**.
+
+### Fixed
+
+- **`bestFg` could return a failing foreground.** It returned the better of white and ink, which is
+  not the same as one that passes; Phase 8.5 found `#E53935` + white at 4.23:1 chosen that way. The
+  fill-foreground helper now returns `null` rather than a failing colour, and the fill is darkened
+  only as far as needed for one of the two to clear it.
+- **A tint over another tint was not modelled.** `DataGrid` marks a selected row with
+  `bg-primary/5` and a status `Badge` inside it paints `bg-<tone>/15` on top, so its label sits two
+  translucent layers above the page. The one-layer model passed at 4.50:1 and shipped **4.48:1**.
+  The generator now holds every `-strong` token against that composition too.
+- **`-strong` was computed from the brand's raw input rather than the fill the palette ships.** Where
+  a fill is darkened so a foreground can clear it, `Badge` tints the shipped value — leaving
+  `--info-strong` at 4.48:1 on a badge in a selected row. Caught by the palette test, which covers
+  compositions no story yet renders.
+- **`Gantt` washed its own label.** A full-height `bg-background/30` progress overlay put two
+  different backgrounds under one run of text, measuring **3.63:1** in dark against a `#607760` no
+  token holds. The wash is now a bottom strip; it still shows progress and no longer sits behind
+  anything that has to be read.
+
+Measured after, in the browser: **768 of 768 combinations pass** — 96 stories × 4 brands × 2 schemes,
+zero excluded. The palette suite grows from 41 assertions to **81**, now covering composed surfaces
+and every fill/foreground pairing.
+
+The status fills themselves are unchanged apart from `--info` (`#0284C7` → `#007CBF`), the minimum
+needed for a foreground to clear it. An earlier attempt that required one foreground to clear both a
+fill and its washed form drove every status colour to near-black (`--success` `#2E7D32` → `#004D00`);
+that is a brand redesign rather than an accessibility fix, and the composition belongs to the
+component.
+
 ## [1.1.0] — 2026-08-11
 
 Phase 8.4 gives the platform a real-browser accessibility path and then uses it. Every defect below

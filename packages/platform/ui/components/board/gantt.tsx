@@ -59,11 +59,19 @@ const DEFAULT_LABELS: Required<GanttLabels> = {
     'Use the arrow keys to move this task, and Shift with the arrow keys to change its end date.',
 };
 
+/*
+ * Each fill with the foreground the palette promises for it — Phase 8.6.
+ *
+ * `text-background` was the page colour borrowed as a label, which is not a pairing the theme ever
+ * guaranteed: white on amber measured 2.14:1 and white on the danger fill 3.76:1. The status fills
+ * now carry `-foreground` tokens of their own, chosen by the generator so one of white or ink is
+ * guaranteed to clear the fill rather than merely to be the better of the two.
+ */
 const TONE = {
   default: 'bg-primary text-primary-foreground',
-  success: 'bg-success text-background',
-  warning: 'bg-warning text-background',
-  danger: 'bg-destructive text-background',
+  success: 'bg-success text-success-foreground',
+  warning: 'bg-warning text-warning-foreground',
+  danger: 'bg-destructive text-destructive-foreground',
 } as const;
 
 export interface GanttProps {
@@ -377,9 +385,21 @@ function GroupRows({
                   {task.milestone ? null : (
                     <>
                       {task.progress !== undefined ? (
+                        /*
+                         * The progress wash sits under the bar's own edge, not under its label.
+                         *
+                         * It used to be `inset-y-0`, a full-height 30% page wash across part of the
+                         * bar, so the label's background was the fill on one side and the washed
+                         * fill on the other — two different backgrounds under one run of text, and
+                         * no single foreground clears both for a mid-toned fill. Measured in dark,
+                         * the washed half composited to #607760 and the label read 3.63:1.
+                         *
+                         * As a bottom strip it still shows progress and no longer sits behind
+                         * anything that has to be read.
+                         */
                         <span
                           aria-hidden="true"
-                          className="absolute inset-y-0 start-0 bg-background/30"
+                          className="absolute bottom-0 start-0 h-1 rounded-b-md bg-background/40"
                           style={{ width: `${Math.round(task.progress * 100)}%` }}
                         />
                       ) : null}
