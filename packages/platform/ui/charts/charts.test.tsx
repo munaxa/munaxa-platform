@@ -282,8 +282,10 @@ describe('StatCard', () => {
     expect(container.querySelector('.text-success-strong')).not.toBeNull();
 
     // The same rise, on a metric where rising is bad, must not read as good news.
+    // `-strong` since Phase 8.4: the plain fill measured below AA as text on its own tint, and the
+    // whole status family now uses the AA-safe form. The assertion is unchanged in meaning.
     rerender(<StatCard label="Absences" value="31" delta={{ value: 3, goodWhen: 'down' }} />);
-    expect(container.querySelector('.text-destructive')).not.toBeNull();
+    expect(container.querySelector('.text-destructive-strong')).not.toBeNull();
     expect(container.querySelector('.text-success-strong')).toBeNull();
   });
 

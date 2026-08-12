@@ -61,6 +61,10 @@
   /* Status colours follow the same fill/text split as the brand: the plain role is a fill, the
      `-strong` form is the AA-safe text colour. `bg-success` + `text-success-strong`. */
   --color-success: var(--success);
+  /* `destructive` completes the family: it is a fill, and its `-strong` form is the AA-safe text
+     colour for `bg-destructive/10` and `/15` surfaces. Added in Phase 8.4 — before it existed the
+     danger tone had to reuse the fill as text, which measured below AA on its own tint. */
+  --color-destructive-strong: var(--destructive-strong);
   --color-success-strong: var(--success-strong);
   --color-warning: var(--warning);
   --color-warning-strong: var(--warning-strong);

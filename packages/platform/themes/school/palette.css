@@ -54,11 +54,12 @@
   --accent-warm: #e38e24;
   --accent-cool: #00b0d6;
   --success: #22c55e;
-  --success-strong: #008a22;
+  --destructive-strong: #cb1625;
+  --success-strong: #007c0f;
   --warning: #f59e0b;
-  --warning-strong: #b36100;
+  --warning-strong: #a65500;
   --info: #0ea5e9;
-  --info-strong: #007cbe;
+  --info-strong: #006eaf;
 
   /* Data-visualisation ramp */
   --chart-1: #00cfc1;
@@ -97,6 +98,7 @@
   --ring: #00cfc1;
   --accent-warm: #ffba73;
   --accent-cool: #67d5f6;
+  --destructive-strong: #ff5f5b;
   --success-strong: #22c55e;
   --warning-strong: #f59e0b;
   --info-strong: #0ea5e9;

@@ -53,12 +53,21 @@ const composite = (fg: string, bg: string, alpha: number): string =>
     })
     .join('');
 
-/** Read a custom property out of the `:root` (light) or `.dark` block. */
+/**
+ * Read a custom property as the cascade resolves it for a scheme.
+ *
+ * The dark block overrides only what differs, so `--success`, `--warning` and `--info` are declared
+ * once on `:root` and inherited by `.dark`. Reading the dark block alone therefore finds no value
+ * and would report a missing token where the browser sees an inherited one — so a dark lookup falls
+ * back to `:root`, which is what `.dark` actually resolves to.
+ */
 function readToken(css: string, name: string, scheme: 'light' | 'dark'): string {
-  const block = scheme === 'light' ? css.split(/\n\.dark\s*\{/)[0] : css.split(/\n\.dark\s*\{/)[1];
-  const found = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`).exec(block ?? '');
+  const [light = '', dark = ''] = css.split(/\n\.dark\s*\{/);
+  const pattern = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`);
+  const found =
+    scheme === 'dark' ? (pattern.exec(dark) ?? pattern.exec(light)) : pattern.exec(light);
   if (found?.[1] === undefined) {
-    throw new Error(`--${name} not found in the ${scheme} block`);
+    throw new Error(`--${name} resolves to nothing in the ${scheme} scheme`);
   }
   return found[1].toLowerCase();
 }
@@ -77,21 +86,38 @@ describe('generated palettes', () => {
 
     /*
      * The pairings are named rather than derived, because they are what the components declare:
-     * `badge.tsx` is `bg-primary/15`, `avatar.tsx` and `tag.tsx` are `bg-primary/10` — the latter
-     * over `--muted` in the shells they sit in. Deriving them from the components would couple this
-     * to their class strings; naming them means a *new* pairing at a lower alpha is a deliberate
-     * decision that has to come back here.
+     * `badge.tsx` is `bg-<tone>/15`, `avatar.tsx`, `tag.tsx` and `alert.tsx` are `bg-<tone>/10` —
+     * the latter over `--muted` in the shells they sit in. Deriving them from the components would
+     * couple this to their class strings; naming them means a *new* pairing at a lower alpha is a
+     * deliberate decision that has to come back here.
+     *
+     * Every `-strong` token is covered, not only the brand's. Phase 8.3 fixed `--primary-strong`
+     * and left the status family on the original white-only rule, because the product it measured
+     * renders only the default `Badge` tone. Phase 8.4 rendered all of them and found `success`,
+     * `warning`, `info` and `destructive` failing the same way. A test that had described the
+     * property rather than the one instance would have caught that a phase earlier.
      */
     it.each([
-      ['light', 'background', 'muted'],
-      ['dark', 'background', 'muted'],
-    ] as const)('keeps --primary-strong legible on brand tints in %s', (scheme, page, tint) => {
-      const strong = readToken(css, 'primary-strong', scheme);
-      const brand = readToken(css, 'primary', scheme);
+      ['primary', 'light'],
+      ['primary', 'dark'],
+      ['destructive', 'light'],
+      ['destructive', 'dark'],
+      ['success', 'light'],
+      ['success', 'dark'],
+      ['warning', 'light'],
+      ['warning', 'dark'],
+      ['info', 'light'],
+      ['info', 'dark'],
+    ] as const)('keeps --%s-strong legible on its own tint in %s', (role, scheme) => {
+      const strong = readToken(css, `${role}-strong`, scheme);
+      const fill = readToken(css, role, scheme);
+      const page = readToken(css, 'background', scheme);
+      const muted = readToken(css, 'muted', scheme);
+
       const surfaces = {
-        page: readToken(css, page, scheme),
-        'badge · brand/15 over the page': composite(brand, readToken(css, page, scheme), 0.15),
-        'avatar and tag · brand/10 over muted': composite(brand, readToken(css, tint, scheme), 0.1),
+        page,
+        [`badge · ${role}/15 over the page`]: composite(fill, page, 0.15),
+        [`tag, avatar and alert · ${role}/10 over muted`]: composite(fill, muted, 0.1),
       };
 
       const measured = Object.entries(surfaces).map(([label, surface]) => ({
@@ -103,7 +129,7 @@ describe('generated palettes', () => {
 
       expect(
         worst.ratio,
-        `${theme} ${scheme}: --primary-strong ${strong} on ${worst.label} (${worst.surface})`,
+        `${theme} ${scheme}: --${role}-strong ${strong} on ${worst.label} (${worst.surface})`,
       ).toBeGreaterThanOrEqual(AA);
     });
   });

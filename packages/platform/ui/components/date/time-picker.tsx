@@ -167,7 +167,7 @@ export function TimePicker({
         </button>
 
         {invalid ? (
-          <span id={errorId} role="alert" className="mt-1 block text-xs text-destructive">
+          <span id={errorId} role="alert" className="mt-1 block text-xs text-destructive-strong">
             {text.invalid}
           </span>
         ) : null}

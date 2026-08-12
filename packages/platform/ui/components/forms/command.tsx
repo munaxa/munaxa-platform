@@ -99,7 +99,10 @@ export const CommandGroup = forwardRef<
         '[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5',
         '[&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[10px]',
         '[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider',
-        '[&_[cmdk-group-heading]]:text-muted-foreground/70',
+        // Full-strength muted token, not a fade of it — Phase 8.4. This heading is the same
+        // 10px uppercase construction `SidebarNav` used, and it measured the same 2.79:1 light and
+        // 4.04:1 dark in the platform's own browser harness. Phase 8.3 could only call it likely.
+        '[&_[cmdk-group-heading]]:text-muted-foreground',
         className,
       )}
       {...props}

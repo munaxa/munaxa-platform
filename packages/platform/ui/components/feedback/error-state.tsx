@@ -27,7 +27,7 @@ export function ErrorState({
         className,
       )}
     >
-      <p className="text-sm font-medium text-destructive">{title}</p>
+      <p className="text-sm font-medium text-destructive-strong">{title}</p>
       {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
       {referenceId ? (
         <p className="font-mono text-xs text-muted-foreground">{referenceId}</p>

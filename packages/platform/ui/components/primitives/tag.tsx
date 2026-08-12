@@ -12,7 +12,7 @@ const TONE: Record<TagTone, string> = {
   primary: 'border-primary/30 bg-primary/10 text-primary-strong',
   success: 'border-success/30 bg-success/10 text-success-strong',
   warning: 'border-warning/30 bg-warning/10 text-warning-strong',
-  danger: 'border-destructive/30 bg-destructive/10 text-destructive',
+  danger: 'border-destructive/30 bg-destructive/10 text-destructive-strong',
 };
 
 const SIZE: Record<TagSize, string> = {

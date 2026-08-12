@@ -8,7 +8,7 @@ const toneAccent: Record<Tone, string> = {
   default: 'text-primary-strong',
   success: 'text-accent-cool',
   warning: 'text-accent-warm',
-  danger: 'text-destructive',
+  danger: 'text-destructive-strong',
   muted: 'text-muted-foreground',
 };
 
@@ -71,7 +71,7 @@ export function StatCard({
       ? 'text-muted-foreground'
       : (delta.goodWhen === 'up') === rising
         ? 'text-success-strong'
-        : 'text-destructive';
+        : 'text-destructive-strong';
   const DeltaIcon = rising ? TrendingUp : TrendingDown;
   return (
     <div

@@ -328,7 +328,7 @@ export function Calendar(props: CalendarProps) {
                     {showWeekNumbers ? (
                       <th
                         scope="row"
-                        className="pe-1 text-end font-mono text-[10px] font-normal text-muted-foreground/70"
+                        className="pe-1 text-end font-mono text-[10px] font-normal text-muted-foreground"
                       >
                         {week.weekNumber}
                       </th>
@@ -385,7 +385,7 @@ export function Calendar(props: CalendarProps) {
                             className={cn(
                               'relative flex size-9 items-center justify-center rounded-md text-sm transition-colors',
                               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                              !isSameMonth(cell.date, month) && 'text-muted-foreground/40',
+                              !isSameMonth(cell.date, month) && 'text-muted-foreground',
                               disabled && 'cursor-not-allowed text-muted-foreground/30',
                               !disabled && !state.selected && 'hover:bg-secondary',
                               state.selected && 'bg-primary font-medium text-primary-foreground',

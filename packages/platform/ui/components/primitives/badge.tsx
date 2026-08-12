@@ -13,7 +13,7 @@ const toneClass: Record<Tone, string> = {
   default: 'border-primary/30 bg-primary/15 text-primary-strong',
   success: 'border-success/30 bg-success/15 text-success-strong',
   warning: 'border-warning/30 bg-warning/15 text-warning-strong',
-  danger: 'border-destructive/30 bg-destructive/15 text-destructive',
+  danger: 'border-destructive/30 bg-destructive/15 text-destructive-strong',
   muted: 'border-border bg-secondary/60 text-muted-foreground',
 };
 

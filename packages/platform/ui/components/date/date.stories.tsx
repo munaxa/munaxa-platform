@@ -42,6 +42,30 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * The two calendar surfaces that carry information in a muted tone — Phase 8.4.
+ *
+ * `showWeekNumbers` and the days that fall outside the displayed month were both unreachable from
+ * any story, so the platform could not measure them and Phase 8.3 had to defer them unverified.
+ * They are real supported states of a shipped component; the gap was coverage, not capability.
+ */
+export const MutedCalendarDetail: Story = {
+  render: function MutedCalendarDetail() {
+    const [date, setDate] = useState('2026-04-15');
+    return (
+      <Container width="content" className="py-6">
+        <Stack gap={6}>
+          <Calendar value={date} onChange={setDate} showWeekNumbers />
+          {/* `optionalLabel` renders a muted suffix beside the label and had no coverage either. */}
+          <Field label="Cohort" optionalLabel="optional" hint="Left blank if it does not apply.">
+            <DatePicker value={date} onChange={setDate} clearable />
+          </Field>
+        </Stack>
+      </Container>
+    );
+  },
+};
+
 export const Pickers: Story = {
   render: function Pickers() {
     const [date, setDate] = useState('2026-04-15');

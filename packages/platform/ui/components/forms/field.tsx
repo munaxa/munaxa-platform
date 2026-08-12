@@ -98,7 +98,7 @@ export function Field({
               *
             </span>
           ) : optionalLabel ? (
-            <span className="text-muted-foreground/70"> ({optionalLabel})</span>
+            <span className="text-muted-foreground"> ({optionalLabel})</span>
           ) : null}
         </label>
 
@@ -111,7 +111,7 @@ export function Field({
         {children}
 
         {error ? (
-          <p id={errorId} role="alert" className="text-xs text-destructive">
+          <p id={errorId} role="alert" className="text-xs text-destructive-strong">
             {error}
           </p>
         ) : hint ? (
