@@ -296,10 +296,18 @@ def fit_width(im: Image.Image, width: int) -> Image.Image:
 
 
 def share_image(im: Image.Image) -> Image.Image:
-    """The dark share card: the on-dark stacked lockup on the palette's own dark background."""
+    """The dark share card: the on-dark stacked lockup on the palette's own dark background.
+
+    The canvas is **RGB**, and that is the fix rather than a detail. Pasting onto an RGBA canvas
+    composites the alpha channel along with the colour, so every antialiased pixel at the edge of
+    the mark came out part-transparent — about 2% of the card, at alpha 191–255. A share card is
+    flattened by whatever renders it, usually onto white, so that rim would have lightened into a
+    hairline halo around the logo on exactly the surface nobody previews. An opaque canvas cannot
+    carry the flaw: the lockup is composited into it and the card is a card.
+    """
     art = im.copy()
     art.thumbnail((660, 400), Image.LANCZOS)
-    canvas = Image.new("RGBA", (1200, 630), (*DARK_CANVAS, 255))
+    canvas = Image.new("RGB", (1200, 630), DARK_CANVAS)
     canvas.paste(art, ((1200 - art.width) // 2, (630 - art.height) // 2), art)
     return canvas
 
