@@ -4,6 +4,49 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.1.0] — 2026-08-11
+
+Phase 8.4 gives the platform a real-browser accessibility path and then uses it. Every defect below
+was found by rendering a component in Storybook under Chromium — none was visible to the unit suite,
+which runs under happy-dom with `color-contrast` necessarily disabled.
+
+### Added
+
+- `--destructive-strong`, completing the status family. `success`, `warning` and `info` each had an
+  AA-safe text form; `destructive` did not, so components pairing danger text with a danger tint had
+  to reuse the fill and measured below AA.
+- `test/a11y/` — a Storybook-driven accessibility harness with `color-contrast` **enabled**, plus
+  `pnpm test:a11y`. It proves it can fail before its silence means anything: a deliberately
+  low-contrast element is injected into a rendered story and axe is required to report it.
+- Story coverage for three states that no story reached, so the platform could not measure them:
+  calendar week numbers, a `Field` with `optionalLabel`, and outside-month days.
+
+### Fixed
+
+- **The status `-strong` tokens repeated the Phase 8.3 defect.** That phase fixed `--primary-strong`
+  to be chosen against the tint it ships on and left `success`, `warning` and `info` on the old
+  white-only rule, because the product it measured renders only the default `Badge` tone. Rendering
+  every tone here showed all three failing. The rule is now shared by the whole family.
+- **`Command` group headings** used `text-muted-foreground/70` at 10px — the same construction
+  `SidebarNav` used before 1.0.1. Measured 2.79:1 light and 4.04:1 dark. Phase 8.3 could only call
+  this "likely" because no consuming product imports `Command`.
+- **`Calendar` outside-month days** used a 40% fade and measured **1.71:1** light, 2.15:1 dark. They
+  are selectable dates, so the inactive-control exemption does not apply. The worst ratio found in
+  this sequence.
+- **`Calendar` week numbers**, **`Autocomplete` option descriptions** and **`Field`'s optional
+  label** each faded the muted token: 2.79:1, 2.68:1 and 2.79:1 light respectively.
+- **`Alert` descriptions** re-muted `text-muted-foreground` on a tone tint, measuring 4.31:1 on the
+  danger tone. The box already sets `text-foreground`; the title stays distinct by weight.
+- **Danger text across `Badge`, `Tag`, `ErrorState`, `StatCard`, the menus and the form/date error
+  messages** now uses `--destructive-strong` rather than the raw fill.
+
+Measured after, in the browser: Command headings 4.97:1 / 6.89:1; calendar week numbers and
+outside-month days 4.97:1 / 7.44:1; autocomplete descriptions 4.60:1 / 5.99:1; the optional label
+4.97:1 / 7.44:1; `Badge` default 5.93:1 / 5.65:1 and danger 4.67:1 / 5.74:1. Zero `color-contrast`
+violations across 12 stories × 4 brands × 2 schemes.
+
+`SidebarNav`'s Phase 8.2 correction was re-verified rather than assumed: 4.97:1 light, 6.89:1 dark.
+
 ## [1.0.2] — 2026-08-11
 
 ### Fixed

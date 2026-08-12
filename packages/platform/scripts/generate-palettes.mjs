@@ -5,38 +5,73 @@ const OUT = process.argv[2];
 
 /* Shared neutral ramp — greyscale is product-agnostic, so all four themes share it. */
 const NEUTRAL = {
-  50:'#FAFBFC',100:'#F2F4F7',200:'#E4E7EC',300:'#D0D5DD',400:'#98A2B3',500:'#667085',
-  600:'#475467',700:'#344054',800:'#1D2939',900:'#101828',950:'#0A0F1A',
+  50: '#FAFBFC',
+  100: '#F2F4F7',
+  200: '#E4E7EC',
+  300: '#D0D5DD',
+  400: '#98A2B3',
+  500: '#667085',
+  600: '#475467',
+  700: '#344054',
+  800: '#1D2939',
+  900: '#101828',
+  950: '#0A0F1A',
 };
 
 /* Relative luminance / WCAG contrast, for picking a legible foreground. */
-const lin=(c)=>c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4);
-const lum=(hex)=>{const[r,g,b]=[0,2,4].map(i=>lin(parseInt(hex.slice(1+i,3+i),16)/255));
-  return 0.2126*r+0.7152*g+0.0722*b;};
-const contrast=(a,b)=>{const[x,y]=[lum(a),lum(b)].sort((p,q)=>q-p);return (x+0.05)/(y+0.05);};
-const bestFg=(bg,cands)=>cands.map(c=>[contrast(bg,c),c]).sort((a,b)=>b[0]-a[0])[0];
-const rgbChannels=(hex)=>[0,2,4].map(i=>parseInt(hex.slice(1+i,3+i),16)).join(' ');
+const lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+const lum = (hex) => {
+  const [r, g, b] = [0, 2, 4].map((i) => lin(parseInt(hex.slice(1 + i, 3 + i), 16) / 255));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => {
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+};
+const bestFg = (bg, cands) => cands.map((c) => [contrast(bg, c), c]).sort((a, b) => b[0] - a[0])[0];
+const rgbChannels = (hex) => [0, 2, 4].map((i) => parseInt(hex.slice(1 + i, 3 + i), 16)).join(' ');
 
 const THEMES = [
-  { id:'group', name:'Group', anchor:800, brand:'#2B3A67',
-    gradient:['#2B3A67','#5768AB'],
-    semantic:{success:'#22C55E',warning:'#F59E0B',error:'#EF4444',info:'#0EA5E9'},
-    description:'Deep slate-blue corporate brand — the group-level identity.' },
-  { id:'school', name:'School', anchor:400, brand:'#00CFC1',
-    gradient:['#00CFC1','#7FF4EC'],
-    semantic:{success:'#22C55E',warning:'#F59E0B',error:'#EF4444',info:'#0EA5E9'},
-    description:'Bright teal brand for the education platform.' },
-  { id:'work', name:'Work', anchor:800, brand:'#6E1E43',
-    gradient:['#6E1E43','#B44F73'],
-    semantic:{success:'#22C55E',warning:'#F59E0B',error:'#EF4444',info:'#0EA5E9'},
-    description:'Raspberry brand for the human-capital platform.' },
-  { id:'docs', name:'Docs', anchor:500, brand:'#6B8E62',
-    gradient:['#6B8E62','#8FBC8F'],
-    semantic:{success:'#2E7D32',warning:'#F59E0B',error:'#E53935',info:'#0284C7'},
-    description:'Olive-green brand for the document and knowledge platform.' },
+  {
+    id: 'group',
+    name: 'Group',
+    anchor: 800,
+    brand: '#2B3A67',
+    gradient: ['#2B3A67', '#5768AB'],
+    semantic: { success: '#22C55E', warning: '#F59E0B', error: '#EF4444', info: '#0EA5E9' },
+    description: 'Deep slate-blue corporate brand — the group-level identity.',
+  },
+  {
+    id: 'school',
+    name: 'School',
+    anchor: 400,
+    brand: '#00CFC1',
+    gradient: ['#00CFC1', '#7FF4EC'],
+    semantic: { success: '#22C55E', warning: '#F59E0B', error: '#EF4444', info: '#0EA5E9' },
+    description: 'Bright teal brand for the education platform.',
+  },
+  {
+    id: 'work',
+    name: 'Work',
+    anchor: 800,
+    brand: '#6E1E43',
+    gradient: ['#6E1E43', '#B44F73'],
+    semantic: { success: '#22C55E', warning: '#F59E0B', error: '#EF4444', info: '#0EA5E9' },
+    description: 'Raspberry brand for the human-capital platform.',
+  },
+  {
+    id: 'docs',
+    name: 'Docs',
+    anchor: 500,
+    brand: '#6B8E62',
+    gradient: ['#6B8E62', '#8FBC8F'],
+    semantic: { success: '#2E7D32', warning: '#F59E0B', error: '#E53935', info: '#0284C7' },
+    description: 'Olive-green brand for the document and knowledge platform.',
+  },
 ];
 
-const INK = NEUTRAL[900], WHITE = '#FFFFFF';
+const INK = NEUTRAL[900],
+  WHITE = '#FFFFFF';
 
 for (const t of THEMES) {
   const p = ramp(t.brand, t.anchor);
@@ -139,11 +174,11 @@ for (const t of THEMES) {
    * accent is ornament, and one value for two roles makes them indistinguishable on screen.
    */
   const RAD = Math.PI / 180;
-  const brandDeg = ((toLch(t.brand).h / RAD) % 360 + 360) % 360;
-  const nudge = ((brandDeg / 360) * 30 - 15); // deterministic per brand, within +/-15 degrees
+  const brandDeg = (((toLch(t.brand).h / RAD) % 360) + 360) % 360;
+  const nudge = (brandDeg / 360) * 30 - 15; // deterministic per brand, within +/-15 degrees
   const at = (deg, L, C) => fromLch({ L, C, h: (deg + nudge) * RAD });
   const accentWarm = at(65, 0.72, 0.15);
-  const accentCool = at(220, 0.70, 0.13);
+  const accentCool = at(220, 0.7, 0.13);
   const accentWarmDark = at(65, 0.84, 0.12);
   const accentCoolDark = at(220, 0.82, 0.11);
 
@@ -153,36 +188,58 @@ for (const t of THEMES) {
    * status colour is unreadable. Each `-strong` is the same hue darkened until it clears AA, found
    * by measurement rather than by eye.
    */
-  const darkenToAA = (hex, bg) => {
+  const strongFor = (fill, walk, page, tintBase) => {
+    const surfaces = [page, ...tintedSurfaces(fill, page, tintBase)];
+    return walk(fill, surfaces);
+  };
+  const darkenUntilAll = (hex, surfaces) => {
     const c = toLch(hex);
     for (let L = c.L; L > 0.15; L -= 0.005) {
       const candidate = fromLch({ L, C: c.C, h: c.h });
-      if (contrast(candidate, bg) >= 4.5) return candidate;
+      if (clearsAll(candidate, surfaces)) return candidate;
     }
     return INK;
   };
-  const lightenToAA = (hex, bg) => {
+  const lightenUntilAll = (hex, surfaces) => {
     const c = toLch(hex);
     for (let L = c.L; L < 0.98; L += 0.005) {
       const candidate = fromLch({ L, C: c.C, h: c.h });
-      if (contrast(candidate, bg) >= 4.5) return candidate;
+      if (clearsAll(candidate, surfaces)) return candidate;
     }
     return WHITE;
   };
   const strong = Object.fromEntries(
-    Object.entries(t.semantic).map(([k, v]) => [k, darkenToAA(v, WHITE)]),
+    Object.entries(t.semantic).map(([k, v]) => [
+      k,
+      strongFor(v, darkenUntilAll, WHITE, NEUTRAL[100]),
+    ]),
   );
   const strongDark = Object.fromEntries(
-    Object.entries(t.semantic).map(([k, v]) => [k, lightenToAA(v, NEUTRAL[950])]),
+    Object.entries(t.semantic).map(([k, v]) => [
+      k,
+      strongFor(v, lightenUntilAll, NEUTRAL[950], NEUTRAL[800]),
+    ]),
   );
-  const [, primaryFgDark]    = bestFg(primaryDark, [WHITE, INK]);
-  const [, destructiveFg]    = bestFg(t.semantic.error, [WHITE, INK]);
+  const [, primaryFgDark] = bestFg(primaryDark, [WHITE, INK]);
+  const [, destructiveFg] = bestFg(t.semantic.error, [WHITE, INK]);
 
-  const scale = Object.entries(p).map(([k,v]) => `  --primary-${k}: ${v};`).join('\n');
+  const scale = Object.entries(p)
+    .map(([k, v]) => `  --primary-${k}: ${v};`)
+    .join('\n');
   // Ten-step categorical chart ramp: brand-led, then evenly-spaced distinct hues.
-  const charts = [p[t.anchor], p[Math.max(200, t.anchor-400)], t.semantic.info, t.semantic.warning,
-                  t.semantic.success, '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#64748B'];
-  const chartVars = (arr) => arr.map((c,i)=>`  --chart-${i+1}: ${c};`).join('\n');
+  const charts = [
+    p[t.anchor],
+    p[Math.max(200, t.anchor - 400)],
+    t.semantic.info,
+    t.semantic.warning,
+    t.semantic.success,
+    '#8B5CF6',
+    '#EC4899',
+    '#14B8A6',
+    '#F97316',
+    '#64748B',
+  ];
+  const chartVars = (arr) => arr.map((c, i) => `  --chart-${i + 1}: ${c};`).join('\n');
 
   const css = `/**
  * ${t.name} palette — the complete set of values for the theme contract.
@@ -230,6 +287,7 @@ ${scale}
   --accent-warm: ${accentWarm};
   --accent-cool: ${accentCool};
   --success: ${t.semantic.success};
+  --destructive-strong: ${strong.error};
   --success-strong: ${strong.success};
   --warning: ${t.semantic.warning};
   --warning-strong: ${strong.warning};
@@ -264,6 +322,7 @@ ${chartVars(charts)}
   --ring: ${ringDark};
   --accent-warm: ${accentWarmDark};
   --accent-cool: ${accentCoolDark};
+  --destructive-strong: ${strongDark.error};
   --success-strong: ${strongDark.success};
   --warning-strong: ${strongDark.warning};
   --info-strong: ${strongDark.info};
@@ -307,7 +366,9 @@ export const brand = {
 `;
   writeFileSync(`${OUT}/${t.id}/brand.ts`, brandTs);
 
-  writeFileSync(`${OUT}/${t.id}/index.css`, `/**
+  writeFileSync(
+    `${OUT}/${t.id}/index.css`,
+    `/**
  * ${t.name} theme entry point.
  *
  *   @import 'tailwindcss';
@@ -315,12 +376,14 @@ export const brand = {
  */
 @import '../base/base.css';
 @import './palette.css';
-`);
+`,
+  );
 
   console.log(
     `${t.id.padEnd(7)} fill=${t.brand} on=${primaryFg} (${fgRatio.toFixed(2)}:1)  ` +
-    `text=${primaryStrong} (${contrast(primaryStrong, WHITE).toFixed(2)}:1)  ` +
-    `dark text=${primaryStrongDark} (${contrast(primaryStrongDark, NEUTRAL[950]).toFixed(2)}:1)`);
+      `text=${primaryStrong} (${contrast(primaryStrong, WHITE).toFixed(2)}:1)  ` +
+      `dark text=${primaryStrongDark} (${contrast(primaryStrongDark, NEUTRAL[950]).toFixed(2)}:1)`,
+  );
 }
 
 const neutrals = `/**
@@ -333,7 +396,9 @@ const neutrals = `/**
  * Imported by \`base.css\`; never imported directly by an application.
  */
 :root {
-${Object.entries(NEUTRAL).map(([k,v])=>`  --neutral-${k}: ${v};`).join('\n')}
+${Object.entries(NEUTRAL)
+  .map(([k, v]) => `  --neutral-${k}: ${v};`)
+  .join('\n')}
 }
 `;
 writeFileSync(`${OUT}/base/neutrals.css`, neutrals);

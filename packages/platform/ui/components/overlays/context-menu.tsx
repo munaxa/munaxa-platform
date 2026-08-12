@@ -53,7 +53,8 @@ export const ContextMenuItem = forwardRef<
       className={cn(
         menuItemClass,
         inset && 'ps-8',
-        destructive && 'text-destructive focus:bg-destructive/10 focus:text-destructive',
+        destructive &&
+          'text-destructive-strong focus:bg-destructive/10 focus:text-destructive-strong',
         className,
       )}
       {...props}

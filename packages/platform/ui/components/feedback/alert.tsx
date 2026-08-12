@@ -61,7 +61,15 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
       {glyph ? <span className={cn('mt-0.5 shrink-0', TONE[tone].icon)}>{glyph}</span> : null}
       <div className="min-w-0 flex-1 space-y-1">
         {title ? <p className="font-medium leading-none">{title}</p> : null}
-        {children ? <div className="text-muted-foreground">{children}</div> : null}
+        {/*
+          The description is not muted *again* on a tinted box — Phase 8.4.
+
+          `--muted-foreground` is chosen against the page, where it measures 4.97:1. An alert paints
+          a tone tint behind it, and on `bg-destructive/10` the same token measured 4.31:1 in the
+          browser. The box already sets `text-foreground`, so dropping the muted class is enough;
+          the title stays distinct by weight, which is how it was distinguished anyway.
+        */}
+        {children ? <div>{children}</div> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-start gap-2">{actions}</div> : null}
     </div>

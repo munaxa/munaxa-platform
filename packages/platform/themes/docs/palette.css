@@ -54,11 +54,12 @@
   --accent-warm: #e68c2d;
   --accent-cool: #00b1d2;
   --success: #2e7d32;
-  --success-strong: #2e7d32;
+  --destructive-strong: #ca141c;
+  --success-strong: #25752a;
   --warning: #f59e0b;
-  --warning-strong: #b36100;
+  --warning-strong: #a65500;
   --info: #0284c7;
-  --info-strong: #007cbf;
+  --info-strong: #006cad;
 
   /* Data-visualisation ramp */
   --chart-1: #6b8e62;
@@ -97,7 +98,8 @@
   --ring: #85a37e;
   --accent-warm: #ffb876;
   --accent-cool: #64d6f2;
-  --success-strong: #3d8b3f;
+  --destructive-strong: #ff5e54;
+  --success-strong: #59a75a;
   --warning-strong: #f59e0b;
-  --info-strong: #0284c7;
+  --info-strong: #349fe3;
 }

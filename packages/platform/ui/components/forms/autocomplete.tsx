@@ -192,7 +192,7 @@ export function Autocomplete({
                 >
                   <span>{option.label}</span>
                   {option.description ? (
-                    <span className="font-mono text-[10px] text-muted-foreground/70">
+                    <span className="font-mono text-[10px] text-muted-foreground">
                       {option.description}
                     </span>
                   ) : null}

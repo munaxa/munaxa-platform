@@ -77,7 +77,7 @@ const Brand = ({ collapsed }: { collapsed: boolean }) => (
 const SessionFooter = () => (
   <Surface tone="muted" padding={3} className="text-xs">
     <p className="truncate text-muted-foreground">Administrator</p>
-    <p className="truncate font-mono text-[10px] text-muted-foreground/70">tenant-0421</p>
+    <p className="truncate font-mono text-[10px] text-muted-foreground">tenant-0421</p>
   </Surface>
 );
 
