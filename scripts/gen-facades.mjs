@@ -6,7 +6,21 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = process.argv[2];
-const VERSION = '1.0.0';
+/**
+ * The version every façade publishes at.
+ *
+ * The single place it is written down. The façades are generated, so editing a version into one
+ * of the emitted `package.json` files makes the next regeneration revert it — which is exactly
+ * what the "Façades match the platform surface" gate exists to catch, and did.
+ *
+ * 1.1.0 is skipped deliberately. It was published by hand with `npm publish`, which does not
+ * rewrite pnpm's `workspace:` protocol, so all six of those versions carry a literal
+ * `"@munaxa/platform": "workspace:^"` and fail to install with `EUNSUPPORTEDPROTOCOL`. They are
+ * unusable and should be deleted from the package settings UI; nothing may be published at that
+ * number again. Releases go out through `.github/workflows/release.yml`, which runs
+ * `pnpm publish` and rewrites the protocol properly.
+ */
+const VERSION = '1.1.1';
 
 /** @type {Array<{name:string, dir:string, desc:string, entries:Array<[string,string]>, css?:Record<string,string>}>} */
 const PACKAGES = [
