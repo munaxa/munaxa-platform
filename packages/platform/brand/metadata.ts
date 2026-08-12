@@ -10,7 +10,28 @@
  * Next `Metadata` export, and they are equally usable from an Express route, a static
  * `manifest.json` generator or a test.
  */
-import { productBrands, type ProductBrand } from './products.js';
+import {
+  corporateBrand,
+  productBrands,
+  type BrandAssets,
+  type CorporateBrand,
+  type ProductBrand,
+} from './products.js';
+
+/**
+ * What these helpers actually need.
+ *
+ * Structural rather than `ProductBrand`, so the corporate identity — which has icons but no
+ * lockup — can use them too. A favicon and a manifest are things the company has as much as a
+ * product does; an Open Graph card built from a stacked lockup is not, which is why
+ * `brandOpenGraphImage` below still asks for a full product.
+ */
+type IconBearing = Pick<ProductBrand, 'name' | 'color' | 'descriptor'> & {
+  readonly assets: Pick<BrandAssets, 'favicon' | 'faviconSmall' | 'appIcon' | 'appleTouchIcon'>;
+};
+
+/** Anything these helpers accept: a product id, a product brand, or the corporate identity. */
+export type BrandLike = IconBearing | CorporateBrand | keyof typeof productBrands | 'group';
 
 /** One icon declaration, in the shape `<link rel>` and the manifest both describe. */
 export interface IconDescriptor {
@@ -32,8 +53,10 @@ export interface BrandIcons {
   readonly apple: IconDescriptor[];
 }
 
-const brandOf = (product: ProductBrand | keyof typeof productBrands): ProductBrand =>
-  typeof product === 'string' ? productBrands[product] : product;
+const brandOf = (product: BrandLike): IconBearing => {
+  if (typeof product !== 'string') return { descriptor: null, ...product };
+  return product === 'group' ? { descriptor: null, ...corporateBrand } : productBrands[product];
+};
 
 /**
  * The favicon set for a product.
@@ -41,7 +64,7 @@ const brandOf = (product: ProductBrand | keyof typeof productBrands): ProductBra
  * Two sizes rather than one: the 32px export is drawn for the tab strip, where a downscaled 512
  * turns the M into three grey smudges, and the 512 is what a bookmark or a high-DPI tab uses.
  */
-export function brandIcons(product: ProductBrand | keyof typeof productBrands): BrandIcons {
+export function brandIcons(product: BrandLike): BrandIcons {
   const { assets } = brandOf(product);
   return {
     icon: [
@@ -68,7 +91,7 @@ export interface BrandOpenGraphImage {
 export function brandOpenGraphImage(
   product: ProductBrand | keyof typeof productBrands,
 ): BrandOpenGraphImage {
-  const brand = brandOf(product);
+  const brand = typeof product === 'string' ? productBrands[product] : product;
   return {
     url: brand.assets.openGraph.src,
     width: brand.assets.openGraph.width,
@@ -95,10 +118,7 @@ export interface BrandManifest {
  * `background_color` is the neutral page background rather than the brand, so the splash screen
  * matches the application that follows it instead of flashing a saturated field first.
  */
-export function brandManifest(
-  product: ProductBrand | keyof typeof productBrands,
-  description?: string,
-): BrandManifest {
+export function brandManifest(product: BrandLike, description?: string): BrandManifest {
   const brand = brandOf(product);
   return {
     name: brand.name,

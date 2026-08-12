@@ -9,15 +9,15 @@
 export const brand = {
   /** Primary brand hue, light and deep variants. */
   color: {
-    DEFAULT: '#60661C',
-    light: '#8F955B',
-    dark: '#1E2004',
+    DEFAULT: '#6B8E62',
+    light: '#85A37E',
+    dark: '#152211',
   },
   /** Gradient stops used by brand surfaces (light → primary → deep). */
   gradientStops: {
-    from: '#A8B266',
-    via: '#60661C',
-    to: '#1E2004',
+    from: '#8FBC8F',
+    via: '#6B8E62',
+    to: '#152211',
   },
   /** Static neutral scale, for surfaces that cannot read CSS variables (email, OG images). */
   neutral: {

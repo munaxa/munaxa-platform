@@ -182,11 +182,53 @@ export function productBrandsWithAssetBase(base: string): Record<SizedProduct, P
 /**
  * Every product brand, keyed by id.
  *
- * `group` is deliberately absent. It is the corporate identity — the company rather than a
- * product — and it has no product lockup to show. Corporate surfaces keep corporate branding; see
- * `assets/README.md`.
+ * `group` is deliberately absent, and has its own export below. It is the corporate identity —
+ * the company rather than a product — and it has no lockup, so it does not satisfy the shape a
+ * product does. Keeping it out is what lets `ProductLogo` promise that a lockup exists.
  */
 export const productBrands = productBrandsWithAssetBase(DEFAULT_ASSET_BASE);
+
+/** What the corporate identity has: the mark and the icons, and no lockup. */
+export interface CorporateBrand {
+  readonly id: 'group';
+  readonly name: string;
+  readonly wordmark: string;
+  readonly themeId: 'group';
+  readonly color: string;
+  readonly assets: Pick<
+    BrandAssets,
+    'symbol' | 'favicon' | 'faviconSmall' | 'appIcon' | 'appleTouchIcon'
+  >;
+}
+
+/**
+ * The corporate identity — Munaxa the company, not one of its products.
+ *
+ * It carries the same M in the corporate navy, and no lockup. That is a limit of the approved
+ * artwork rather than a decision: every lockup in it sets a product word beneath `munaxa.`, so a
+ * corporate lockup would have to be composed, and composing one is redrawing the logo. Corporate
+ * surfaces keep rendering the wordmark as text, which is what they already did; what this adds is
+ * a real favicon and app icon, which they did not have.
+ */
+export function corporateBrandWithAssetBase(base: string): CorporateBrand {
+  const root = `${base}/group`;
+  return {
+    id: 'group',
+    name: 'Munaxa',
+    wordmark: 'munaxa.',
+    themeId: 'group',
+    color: themes.group.brand.color.DEFAULT,
+    assets: {
+      symbol: { src: `${root}/logos/symbol.png`, width: 512, height: 512 },
+      favicon: { src: `${root}/favicon/favicon.png`, width: 512, height: 512 },
+      faviconSmall: { src: `${root}/favicon/favicon-32.png`, width: 32, height: 32 },
+      appIcon: { src: `${root}/favicon/app-icon.png`, width: 512, height: 512 },
+      appleTouchIcon: { src: `${root}/favicon/apple-touch-icon.png`, width: 180, height: 180 },
+    },
+  };
+}
+
+export const corporateBrand = corporateBrandWithAssetBase(DEFAULT_ASSET_BASE);
 
 /** The products a switcher offers, in the order they are presented. */
 export const PRODUCT_ORDER = ['school', 'work', 'docs'] as const satisfies readonly SizedProduct[];

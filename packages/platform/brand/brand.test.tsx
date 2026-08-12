@@ -7,6 +7,7 @@ import { ProductLogo } from './logo.js';
 import { brandIcons, brandManifest, brandOpenGraphImage } from './metadata.js';
 import {
   PRODUCT_ORDER,
+  corporateBrand,
   productBrands,
   productBrandsWithAssetBase,
   type BrandImage,
@@ -37,9 +38,13 @@ describe('the product brand registry', () => {
   });
 
   it('takes each product colour from that product’s theme, never a second copy', () => {
+    // The platform is the colour authority. If this ever reads from anywhere else — a constant, a
+    // value someone measured off a PNG — the mark in the sidebar and the button beside it stop
+    // being the same colour, which is the whole defect the registry exists to make impossible.
     for (const id of PRODUCT_ORDER) {
       expect(productBrands[id].color).toBe(themes[id].brand.color.DEFAULT);
     }
+    expect(corporateBrand.color).toBe(themes.group.brand.color.DEFAULT);
   });
 
   it('gives every product a distinct colour', () => {
@@ -180,6 +185,26 @@ describe('ProductSwitcher', () => {
 
     await user.click(options[2]!);
     expect(onSelect).toHaveBeenCalledWith('docs');
+  });
+});
+
+describe('the corporate identity', () => {
+  it('is the company, kept out of the product registry', () => {
+    expect(corporateBrand.name).toBe('Munaxa');
+    expect(Object.keys(productBrands)).not.toContain('group');
+  });
+
+  it('has the mark and the icons, and deliberately no lockup', () => {
+    // Every lockup in the approved artwork carries a product word, so a corporate one would have
+    // to be composed — and composing a lockup is redrawing the logo.
+    expect(corporateBrand.assets.symbol.src).toContain('/branding/group/');
+    expect(corporateBrand.assets).not.toHaveProperty('horizontal');
+    expect(corporateBrand.assets).not.toHaveProperty('wordmark');
+  });
+
+  it('can still ask for a favicon and a manifest, because those it does have', () => {
+    expect(brandIcons(corporateBrand).icon[0]!.url).toContain('/branding/group/');
+    expect(brandManifest('group').theme_color).toBe(themes.group.brand.color.DEFAULT);
   });
 });
 

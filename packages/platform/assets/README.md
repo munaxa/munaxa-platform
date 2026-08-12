@@ -68,36 +68,58 @@ active palette.
 
 | Product    | Logos | Favicon | Social | Illustrations |
 | ---------- | ----- | ------- | ------ | ------------- |
-| **group**  | —     | —       | —      | —             |
-| **school** | 8     | 4       | 1      | —             |
-| **work**   | 8     | 4       | 1      | —             |
-| **docs**   | 8     | 4       | 1      | —             |
+| **group**  | 1     | 4       | —      | —             |
+| **school** | 9     | 4       | 1      | —             |
+| **work**   | 9     | 4       | 1      | —             |
+| **docs**   | 9     | 4       | 1      | —             |
 
-Group is the corporate identity and still has no artwork; its folders are reserved so the
-structure is settled before the work lands. Empty buckets carry a `.gitkeep` — delete it when you
-add the first real file.
+Group has the mark and the icons, and deliberately no lockup. Every lockup in the supplied
+artwork carries a product word — even the file named "wordmark" sets `school` beneath `munaxa.` —
+so a corporate lockup would have to be composed, and composing one is redrawing the logo. What
+the M *is* is product-independent, so recolouring it to the corporate navy is honest; anything
+more is not. Empty buckets carry a `.gitkeep` — delete it when you add the first real file.
 
 ## Provenance
 
-School, Work and Docs artwork comes from the approved product logo exports. The originals are the
-authority and were **not** redrawn: the `munaxa.` wordmark, the M symbol, the square punctuation
-mark, the type treatment and the proportions are the approved ones for all three products, and the
-only thing that differs between them is the product colour and the product name.
+**Two sources, and they answer different questions.**
 
-Three transformations were applied when the exports were brought into this folder, and only three:
+| Question | Answer comes from |
+| --- | --- |
+| What does the logo *look* like — geometry, proportions, lockup, spacing, negative space, typography, the square punctuation mark | the approved logo exports |
+| What *colour* is it | [`../themes/<id>/brand.ts`](../themes), and nothing else |
+
+The colour baked into a supplied export is **not** consulted. Those files were drawn against
+values that no longer match the palettes this package ships, and a logo whose teal disagrees with
+`--primary` on the same screen is a logo that makes the product look broken. So the artwork is
+**recoloured** on the way in: the mark keeps its shape and gets the platform's colour.
+
+Nothing is redrawn, retraced, re-spaced or rescaled non-uniformly. A pixel that was inside the
+mark is still inside the mark, in the same place, with the same alpha. Five operations, and only
+these:
 
 - **Trim.** The empty margin around the artboard was cropped away. Only padding was removed; the
   aspect ratio of the artwork itself is untouched.
 - **Key.** Exports delivered without an alpha channel had their flat white ground made
   transparent, with the antialiased rim feathered so the mark keeps a clean edge.
+- **Recolour.** A flat-colour logo has two inks: the product colour and a neutral — the wordmark's
+  black, the white knocked out of the app icon, the paper. Every chromatic pixel is therefore the
+  product ink blended with one of those neutrals at some coverage, and an antialiased curve is
+  nothing but a run of pixels at intermediate coverage. That coverage is *recovered*, by
+  projecting the pixel onto the segment from the neutral to the source ink in **linear light** —
+  the space the blend physically happened in; averaging gamma-encoded values would thicken or thin
+  every edge — and the canonical colour is laid back down at the same coverage against the same
+  neutral. The source ink is measured for this and only this: it is the reference length for
+  recovering geometry, and it never reaches the output.
 - **On-dark.** The `munaxa.` wordmark is set in neutral ink, and on a dark ground it has to be
-  white — which is what the approved dark-background export already does. The `-on-dark` lockups
-  apply exactly that: the neutral ink is remapped to white pixel for pixel, alpha preserved, and
-  nothing else moves. The product-colour symbol, the product name and the square mark keep their
-  approved values.
+  white. The `-on-dark` lockups apply exactly that: the neutral ink is remapped to white pixel for
+  pixel, alpha preserved. **The product colour does not change between schemes** — only the
+  neutral does. There is no separate dark-mode brand colour and none was invented.
+- **Compose.** Finished artwork centred, unscaled in aspect, on a flat canvas for the icons and
+  the share image.
 
-Nothing else was recoloured, rescaled non-uniformly, re-spaced or redrawn, and no logo was traced
-into vector — the exports are raster and are shipped as raster.
+Measured after: every one of the 47 files carries its product's canonical hex exactly, `recolour`
+changes **zero** alpha values and **zero** neutral pixels, and every lockup's aspect ratio is
+unchanged.
 
 ## Brand usage
 
@@ -105,16 +127,16 @@ into vector — the exports are raster and are shipped as raster.
   the square punctuation mark, the typography and the proportions. Only the product colour and the
   product name change.
 
-  | Product | Product colour | Sampled from                     |
-  | ------- | -------------- | -------------------------------- |
-  | School  | `#00CFC1`      | teal symbol and app icon         |
-  | Work    | `#80133D`      | burgundy symbol and app icon     |
-  | Docs    | `#60661C`      | olive symbol in the lockups      |
+  | Product   | Canonical colour | Defined in                    |
+  | --------- | ---------------- | ----------------------------- |
+  | Corporate | `#2B3A67`        | `themes/group/brand.ts`       |
+  | School    | `#00CFC1`        | `themes/school/brand.ts`      |
+  | Work      | `#6E1E43`        | `themes/work/brand.ts`        |
+  | Docs      | `#6B8E62`        | `themes/docs/brand.ts`        |
 
-  The Docs mark ships in two greens — olive in the lockups, a lighter sage in the standalone
-  symbol and the app icon. The lockup is the canonical logo, so the olive is the product colour;
-  the Docs palette's dark-scheme step lands in the sage range, so both approved greens are
-  reachable from the one hue.
+  These are the same values `--primary` resolves to, which is the point: the mark in the sidebar
+  and the fill on the button beside it are one colour, not two that nearly match. The supplied
+  exports arrived in different values; those were replaced rather than adopted.
 
 - **Never mix products.** A School surface never shows the Work or Docs mark, and the reverse.
   `ProductLogo` takes the product from context precisely so this cannot be got wrong by hand.

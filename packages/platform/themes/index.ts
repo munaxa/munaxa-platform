@@ -73,7 +73,7 @@ const work = {
   id: 'work',
   name: 'Work',
   cssEntry: '@munaxa/platform/css/themes/work',
-  description: 'Burgundy brand for the human-capital platform.',
+  description: 'Raspberry brand for the human-capital platform.',
   brand: workBrand,
 } as const satisfies Theme;
 
@@ -81,7 +81,7 @@ const docs = {
   id: 'docs',
   name: 'Docs',
   cssEntry: '@munaxa/platform/css/themes/docs',
-  description: 'Olive brand for the document and knowledge platform.',
+  description: 'Olive-green brand for the document and knowledge platform.',
   brand: docsBrand,
 } as const satisfies Theme;
 

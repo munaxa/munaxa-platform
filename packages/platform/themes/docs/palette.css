@@ -8,27 +8,27 @@
  * Only branding lives here. Structure — spacing, radius, elevation, motion, the neutral ramp —
  * is shared by every theme and must never be forked into this file. Light = :root, dark = .dark.
  *
- * GENERATED from the brand hex #60661C by scripts/generate-palettes.mjs. Re-run that script
+ * GENERATED from the brand hex #6B8E62 by scripts/generate-palettes.mjs. Re-run that script
  * rather than hand-editing a scale step, so the ramp stays perceptually even.
  */
 
 :root {
   /* Brand tints consumed by the shared elevation geometry in base.css (R G B channels). */
-  --shadow-tint: 45 49 6;
-  --glow-tint: 96 102 28;
+  --shadow-tint: 36 54 31;
+  --glow-tint: 107 142 98;
 
   /* Primary scale */
-  --primary-50: #f6f8f0;
-  --primary-100: #dcdecf;
-  --primary-200: #c1c5a9;
-  --primary-300: #a8ad82;
-  --primary-400: #8f955b;
-  --primary-500: #777e34;
-  --primary-600: #60661c;
-  --primary-700: #4e540f;
-  --primary-800: #3e4208;
-  --primary-900: #2d3106;
-  --primary-950: #1e2004;
+  --primary-50: #f4f8f3;
+  --primary-100: #dae1d8;
+  --primary-200: #bdccb9;
+  --primary-300: #a1b79b;
+  --primary-400: #85a37e;
+  --primary-500: #6b8e62;
+  --primary-600: #56774d;
+  --primary-700: #43613c;
+  --primary-800: #334b2c;
+  --primary-900: #24361f;
+  --primary-950: #152211;
 
   /* Semantic roles — light */
   --background: #ffffff;
@@ -37,26 +37,26 @@
   --card-foreground: #101828;
   --popover: #ffffff;
   --popover-foreground: #101828;
-  --primary: #60661c;
-  --primary-foreground: #ffffff;
-  --primary-strong: #60661c;
+  --primary: #6b8e62;
+  --primary-foreground: #101828;
+  --primary-strong: #43613c;
   --secondary: #f2f4f7;
   --secondary-foreground: #1d2939;
   --muted: #f2f4f7;
   --muted-foreground: #667085;
-  --accent: #f6f8f0;
-  --accent-foreground: #3e4208;
+  --accent: #f4f8f3;
+  --accent-foreground: #334b2c;
   --destructive: #de312f;
   --destructive-foreground: #ffffff;
   --border: #e4e7ec;
   --input: #e4e7ec;
-  --ring: #60661c;
-  --accent-warm: #e88b31;
-  --accent-cool: #00b2d0;
+  --ring: #6b8e62;
+  --accent-warm: #e68c2d;
+  --accent-cool: #00b1d2;
   --success: #2e7d32;
   --success-foreground: #ffffff;
-  --destructive-strong: #c60c18;
-  --success-strong: #227327;
+  --destructive-strong: #c8101a;
+  --success-strong: #247429;
   --warning: #f59e0b;
   --warning-foreground: #101828;
   --warning-strong: #a65500;
@@ -65,8 +65,8 @@
   --info-strong: #0068aa;
 
   /* Data-visualisation ramp */
-  --chart-1: #60661c;
-  --chart-2: #c1c5a9;
+  --chart-1: #6b8e62;
+  --chart-2: #bdccb9;
   --chart-3: #0284c7;
   --chart-4: #f59e0b;
   --chart-5: #2e7d32;
@@ -86,9 +86,9 @@
   --card-foreground: #fafbfc;
   --popover: #101828;
   --popover-foreground: #fafbfc;
-  --primary: #8f955b;
+  --primary: #85a37e;
   --primary-foreground: #101828;
-  --primary-strong: #a8ad82;
+  --primary-strong: #85a37e;
   --secondary: #1d2939;
   --secondary-foreground: #fafbfc;
   --muted: #1d2939;
@@ -98,9 +98,9 @@
   --destructive: #de312f;
   --border: rgb(255 255 255 / 0.12);
   --input: rgb(255 255 255 / 0.16);
-  --ring: #8f955b;
-  --accent-warm: #ffb778;
-  --accent-cool: #62d6f0;
+  --ring: #85a37e;
+  --accent-warm: #ffb876;
+  --accent-cool: #64d6f2;
   --destructive-strong: #ff5a51;
   --success-strong: #59a75a;
   --warning-strong: #f59e0b;

@@ -18,22 +18,31 @@ the files — three implementations of one rule, none of which could be checked.
   `src`, so no screen can render one product's mark inside another by accident.
 - **Approved artwork for all three products** under `assets/{school,work,docs}/` — horizontal,
   stacked and wordmark lockups in both colour schemes, the symbol, the descriptor lockup, favicons,
-  app icons and a share image. Provenance and the three permitted transformations are recorded in
+  app icons and a share image. Provenance and the permitted transformations are recorded in
   [`assets/README.md`](./assets/README.md).
 - **`scripts/sync-brand-assets.mjs`**, published with the package, so a product's `prebuild` copies
   the artwork it needs into its own `public/` rather than committing a snapshot that goes stale.
+- **`scripts/import-brand-artwork.py`**, the pipeline that produced the assets. Offline tooling
+  outside the Node build, checked in because the artwork is *generated*: it must be re-run when
+  the approved exports change **and** when a canonical colour changes, or a product ships a mark
+  and a `--primary` that are two different colours.
+- **A corporate identity with artwork.** `corporateBrand` carries the M in the corporate navy plus
+  a favicon and an app icon, which corporate surfaces did not have. Deliberately no lockup: every
+  lockup in the approved artwork sets a product word beneath `munaxa.`, so a corporate one would
+  have to be composed, and composing a lockup is redrawing the logo.
 
 ### Changed
 
-- **The Work brand is `#80133D` and the Docs brand is `#60661C`**, both sampled from the approved
-  logo artwork. The previous `#6E1E43` and `#6B8E62` were plausible values that appear in no
-  approved asset, so each product's colour and its own logo disagreed wherever they were shown
-  together. Both palettes are regenerated, and every `-strong`, ring and status pairing is
-  re-measured against the composed surfaces by the existing palette suite.
-- Docs moves to anchor step 600 to seat its darker olive on the ramp; its dark-scheme `--primary`
-  lands in the sage range the approved dark-background export already uses.
+- **The artwork is recoloured to the palettes, not the other way round.** The approved exports
+  arrived in colours that no longer match what this package ships — School's teal read `#049FA2`
+  against a canonical `#00CFC1`, and Docs' mark came in two different greens depending on which
+  file you opened. A logo whose teal disagrees with the `--primary` beside it makes the product
+  look broken, so the mark now takes the platform's value: coverage is recovered per pixel in
+  linear light and the canonical colour is laid back down at the same coverage, leaving alpha,
+  silhouette, spacing and aspect ratio untouched.
 
-School and Group are unchanged: `#00CFC1` and `#2B3A67` were already the approved values.
+**No palette changed.** `#2B3A67`, `#00CFC1`, `#6E1E43` and `#6B8E62` are exactly what they were;
+the colour authority runs one way, from the palette to the artwork.
 
 ## [1.2.0] — 2026-08-11
 
