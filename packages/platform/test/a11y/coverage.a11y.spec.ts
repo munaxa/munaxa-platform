@@ -54,10 +54,18 @@ beforeAll(async () => {
     const context = await timed('browser context', () =>
       harness!.browser.newContext({ viewport: { width: 1280, height: 900 } }),
     );
+    /*
+     * One page per worker rather than one per combination — Phase 8.10.
+     *
+     * Every combination begins with a full navigation, which replaces the document, so a reused
+     * page carries nothing across. Creating 800 pages cost 237 worker-seconds and bought no
+     * isolation that the navigation was not already providing. A page is replaced only when a
+     * combination throws, where its state is genuinely unknown.
+     */
+    let page = await timed('new page', () => context.newPage());
     for (;;) {
       const job = queue.shift();
       if (job === undefined) break;
-      const page = await timed('new page', () => context.newPage());
       let interacted = false;
       try {
         await timed('story render', async () => {
@@ -95,9 +103,12 @@ beforeAll(async () => {
           error: error instanceof Error ? error.message.slice(0, 160) : String(error),
           interacted,
         });
+        // A combination that threw leaves the page in a state nobody has reasoned about.
+        await page.close();
+        page = await timed('new page', () => context.newPage());
       }
-      await page.close();
     }
+    await page.close();
     await context.close();
   };
 

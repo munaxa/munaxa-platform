@@ -70,10 +70,19 @@ beforeAll(async () => {
     const context = await timed('browser context', () =>
       harness!.browser.newContext({ viewport: { width: 1280, height: 900 } }),
     );
+    /*
+     * One page per worker rather than one per combination — Phase 8.10.
+     *
+     * Every combination begins with a full navigation, which replaces the document, so a reused
+     * page carries nothing across: no marker attributes, no listeners, no component state. Creating
+     * 800 pages cost 216 worker-seconds and bought none of that isolation, because the isolation
+     * comes from the navigation. A page is replaced only if a combination throws, where its state
+     * is genuinely unknown.
+     */
+    let page = await timed('new page', () => context.newPage());
     for (;;) {
       const job = queue.shift();
       if (job === undefined) break;
-      const page = await timed('new page', () => context.newPage());
       const failures: string[] = [];
       let kinds: Kind[] = [];
       /*
@@ -145,6 +154,21 @@ beforeAll(async () => {
             }
           }
 
+          /*
+           * Links first, and on the render the walk just used — Phase 8.10.
+           *
+           * This contract only reads: it asks which anchors lack an `href`. Reading needs no fresh
+           * render, but it does need to run before anything that changes the story, because a
+           * contract that filtered a list away would leave fewer links to inspect and quietly check
+           * less. Ordering it here keeps the sensitivity and saves 96 renders.
+           */
+          if (kinds.includes('link')) {
+            const orphans = await timed('link targets', () => linksHaveTargets(page));
+            if (orphans.length > 0) {
+              failures.push(`K9 link with no activation target: ${orphans.join(' · ')}`);
+            }
+          }
+
           // Activation, where the story renders a control whose state a keypress should change.
           if (kinds.includes('switch') || kinds.includes('checkbox')) {
             await reload();
@@ -171,16 +195,6 @@ beforeAll(async () => {
               !(await timed('typing', () => typingEntersText(page)))
             ) {
               failures.push('K8 typing into the field did not enter text');
-            }
-          }
-
-          // Links owe an activation target; without one Enter does nothing and the browser offers
-          // no way to open it anywhere.
-          if (kinds.includes('link')) {
-            await reload();
-            const orphans = await timed('link targets', () => linksHaveTargets(page));
-            if (orphans.length > 0) {
-              failures.push(`K9 link with no activation target: ${orphans.join(' · ')}`);
             }
           }
 
@@ -249,10 +263,14 @@ beforeAll(async () => {
           failures: [],
           error: error instanceof Error ? error.message.slice(0, 160) : String(error),
         });
+        // A combination that threw leaves the page in a state nobody has reasoned about; the next
+        // one gets a new one rather than inheriting it.
+        await page.close();
+        page = await timed('new page', () => context.newPage());
       }
-      await page.close();
       counted('combination');
     }
+    await page.close();
     await context.close();
   };
 
