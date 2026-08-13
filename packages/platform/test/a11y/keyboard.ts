@@ -1,5 +1,7 @@
 import { type Page } from 'playwright';
 
+import { MARK_TYPABLE } from './stories.js';
+
 /**
  * The keyboard instrument — Phase 8.7.
  *
@@ -18,18 +20,68 @@ import { type Page } from 'playwright';
  *     same element at rest.
  */
 
-/** How far Tab is pressed before a control is called unreachable. Generous; stories are small. */
+/**
+ * How far Tab is pressed before a control is called unreachable.
+ *
+ * A floor rather than a limit: the walk now visits every stop a story renders, and the largest here
+ * has sixty. The bound is derived from the story — twice its stops plus a margin — so it stays
+ * generous for a small component and sufficient for a token reference page, and a fixed 40 can no
+ * longer quietly truncate the biggest stories.
+ */
 export const MAX_TABS = 40;
 
-/** Enough landings to show the order is real without walking every control in a large story. */
-export const ENOUGH_LANDINGS = 4;
+const boundFor = (stops: number): number => Math.max(MAX_TABS, stops * 2 + 10);
 
 export interface Walk {
   /** Controls belonging to the story that Tab actually reached. */
   readonly reached: number;
+  /** Controls the story renders that a person is entitled to reach. */
+  readonly expected: number;
   /** Whether any reached control was painted differently while focused. */
   readonly visible: boolean;
+  /** Accessible names of the controls Tab never landed on. */
+  readonly missed: readonly string[];
 }
+
+/**
+ * What Tab is expected to visit — Phase 8.9.
+ *
+ * Phase 8.7 stopped the walk after four landings, which proved the order was real but could not
+ * notice a twelfth control falling out of it. Everything the browser puts in the tab order counts,
+ * and nothing else does:
+ *
+ *   - `tabindex="-1"` is excluded, because a roving composite deliberately owns **one** Tab stop.
+ *     A `DataGrid` with forty cells is one stop, not forty, and demanding otherwise would report a
+ *     correct component as broken — the K3 mistake this suite has already made once.
+ *   - disabled and `aria-disabled` controls are excluded: WCAG exempts inactive controls.
+ *   - hidden controls are excluded: a person cannot reach what is not rendered.
+ *   - radios are counted as one per group, because that is how the browser's roving works.
+ */
+const EXPECTED_STOPS = `() => {
+  const root = document.querySelector('#storybook-root');
+  if (root === null) return [];
+  const candidates = [...root.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')];
+  const seenRadioGroups = new Set();
+  return candidates.filter((el) => {
+    if (el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+    if (el.getAttribute('tabindex') === '-1') return false;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    if (el.type === 'radio') {
+      const group = el.name || '(unnamed)';
+      if (seenRadioGroups.has(group)) return false;
+      seenRadioGroups.add(group);
+    }
+    return true;
+  });
+}`;
+
+/** Describe a control well enough that a report names it rather than counting it. */
+const NAME_OF = `(el) =>
+  (el.getAttribute('aria-label') ??
+    el.getAttribute('placeholder') ??
+    el.textContent?.trim().slice(0, 30) ??
+    '') + ' <' + el.tagName.toLowerCase() + '>'`;
 
 /**
  * Walk Tab from the document body and report which of the story's own controls received focus.
@@ -62,8 +114,15 @@ export async function tabThroughStory(page: Page): Promise<Walk> {
     };
   });
 
+  // Mark the stops a person is entitled to reach, before walking, so the walk can be compared with
+  // them rather than with a number someone chose.
+  const expected = await page.evaluate<string[]>(`(${EXPECTED_STOPS})().map((el, index) => {
+    el.setAttribute('data-kb-expected', String(index));
+    return (${NAME_OF})(el);
+  })`);
+
   let reached = 0;
-  for (let step = 0; step < MAX_TABS; step += 1) {
+  for (let step = 0; step < boundFor(expected.length); step += 1) {
     await page.keyboard.press('Tab');
     const landed = await page.evaluate((index: number) => {
       const active = document.activeElement;
@@ -78,13 +137,16 @@ export async function tabThroughStory(page: Page): Promise<Walk> {
       );
       return true;
     }, reached);
-    if (landed) {
-      reached += 1;
-      if (reached >= ENOUGH_LANDINGS) break;
-    }
+    if (landed) reached += 1;
+    // Every expected stop has been visited; pressing on would only re-walk the same ring.
+    if (reached >= expected.length) break;
   }
 
-  if (reached === 0) return { reached: 0, visible: false };
+  const missed = await page.evaluate<string[]>(
+    `[...document.querySelectorAll('[data-kb-expected]:not([data-kb-step])')].map((${NAME_OF}))`,
+  );
+
+  if (reached === 0) return { reached: 0, expected: expected.length, visible: false, missed };
 
   const visible = await page.evaluate(() => {
     // Park focus on the body first: every element visited is then at rest and comparable.
@@ -100,7 +162,7 @@ export async function tabThroughStory(page: Page): Promise<Walk> {
       return wasFocused !== '|' && wasFocused !== signature(el);
     });
   });
-  return { reached, visible };
+  return { reached, expected: expected.length, visible, missed };
 }
 
 /** Read a control's state, so an activation can be shown to have changed something. */
@@ -228,4 +290,77 @@ export async function openRendered(
     { timeout: 15_000 },
   );
   await page.waitForTimeout(120);
+}
+
+/**
+ * Typing — Phase 8.9's `input` contract.
+ *
+ * The field is the one the classifier counted, tagged in the page rather than re-selected here, so
+ * the contract cannot end up typing into something the classifier never considered.
+ */
+export async function typingEntersText(page: Page): Promise<boolean> {
+  const marked = await page.evaluate<boolean>(`(${MARK_TYPABLE})()`);
+  if (!marked) return true; // nothing typable: nothing owed
+  const field = page.locator('[data-kb-typable]').first();
+  const before = await field.inputValue();
+  await field.focus();
+  await page.keyboard.type('kb');
+  const after = await field.inputValue();
+  return after !== before && after.includes('kb');
+}
+
+/**
+ * Links — Phase 8.9's `link` contract.
+ *
+ * A link owes an activation target, not a synthetic keypress: `href` is what makes Enter work, what
+ * the browser exposes to assistive technology, and what lets a person open it in a new tab. Driving
+ * Enter instead would navigate the story away and prove less.
+ */
+export async function linksHaveTargets(page: Page): Promise<readonly string[]> {
+  return await page.evaluate<string[]>(
+    `[...document.querySelectorAll('#storybook-root a')]
+       .filter((el) => {
+         const style = getComputedStyle(el);
+         if (style.display === 'none' || style.visibility === 'hidden') return false;
+         return el.getAttribute('href') === null && el.getAttribute('role') !== 'button';
+       })
+       .map((${NAME_OF}))`,
+  );
+}
+
+/**
+ * Radio groups — Phase 8.9's `radio` contract.
+ *
+ * One Tab stop, and the arrows move the selection within it. Reached by Tab rather than by
+ * `focus()`, for the reason the whole harness exists: reachability is a keyboard question.
+ */
+export async function arrowsMoveSelection(page: Page): Promise<boolean> {
+  const selector = '#storybook-root input[type=radio], #storybook-root [role=radio]';
+  const read = async (): Promise<string> =>
+    page.evaluate(
+      (sel) =>
+        [...document.querySelectorAll(sel)]
+          .map((el) => el.getAttribute('aria-checked') ?? String((el as HTMLInputElement).checked))
+          .join(','),
+      selector,
+    );
+
+  await page.evaluate(() => {
+    document.body.setAttribute('tabindex', '-1');
+    document.body.focus();
+  });
+  let inGroup = false;
+  for (let step = 0; step < MAX_TABS && !inGroup; step += 1) {
+    await page.keyboard.press('Tab');
+    inGroup = await page.evaluate(
+      (sel) => [...document.querySelectorAll(sel)].includes(document.activeElement as Element),
+      selector,
+    );
+  }
+  if (!inGroup) return false;
+
+  const before = await read();
+  await page.keyboard.press('ArrowDown');
+  await page.waitForTimeout(150);
+  return (await read()) !== before;
 }

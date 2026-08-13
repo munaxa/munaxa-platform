@@ -3,7 +3,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type Page } from 'playwright';
 
 import { type Harness, startHarness, stopHarness } from './harness.js';
-import { openRendered, stateOf, tabThroughStory } from './keyboard.js';
+import {
+  arrowsMoveSelection,
+  linksHaveTargets,
+  openRendered,
+  stateOf,
+  tabThroughStory,
+  typingEntersText,
+} from './keyboard.js';
 import { DETECT_KINDS, type Kind, readIndex } from './stories.js';
 
 /**
@@ -23,6 +30,14 @@ const TOGGLES = 'forms-overview--toggles';
 const BUTTONS = 'primitives-button--variants';
 /** Badges: text and colour, no focusable control anywhere. */
 const STATIC = 'primitives-badge--tones';
+/** A theme page: thirty-five Tab stops, far past anything a four-landing cap could see. */
+const MANY_STOPS = 'foundations-themes--munaxa-docs';
+/** A form of text fields. */
+const TYPING = 'forms-overview--states';
+/** Links with real destinations. */
+const LINKS = 'shell-menus--top-bar-menus';
+/** The only story with a radio group. */
+const RADIO = 'forms-overview--toggles';
 
 let harness: Harness | null = null;
 let page: Page;
@@ -156,4 +171,116 @@ describe('the keyboard instrument can fail', () => {
       'the proofs run against the same inventory the matrix does',
     ).toBe(discovered.total);
   }, 180_000);
+
+  it('proof E — the walk visits every stop, and notices one falling out of the order', async () => {
+    // Phase 8.9. The Phase 8.7 walk stopped after four landings, so a story whose later controls
+    // left the tab order passed in silence. A large story is used deliberately: four is not enough
+    // to notice anything here.
+    await open(MANY_STOPS);
+    const before = await tabThroughStory(page);
+    expect(before.expected, 'this proof needs a story with many stops').toBeGreaterThan(8);
+    expect(before.missed, 'every control must be reachable to begin with').toStrictEqual([]);
+    expect(before.reached).toBe(before.expected);
+
+    await open(MANY_STOPS);
+    /*
+     * Take one control — not the first — out of the tab order and leave everything else alone.
+     *
+     * The victim has to be a control the walk was actually entitled to reach. The first version of
+     * this proof picked the seventh button on the page and landed on a *disabled* one, which was
+     * already excluded from the expected stops: nothing changed, the walk still reached 35 of 35,
+     * and the proof reported a working instrument as broken. The filter below is the one
+     * `EXPECTED_STOPS` uses.
+     */
+    const removed = await page.evaluate(() => {
+      const stops = [
+        ...document.querySelectorAll<HTMLElement>(
+          '#storybook-root a[href], #storybook-root button, #storybook-root input, #storybook-root select',
+        ),
+      ].filter(
+        (el) =>
+          !(el as HTMLButtonElement).disabled &&
+          el.getAttribute('aria-disabled') !== 'true' &&
+          el.getAttribute('tabindex') !== '-1' &&
+          getComputedStyle(el).display !== 'none' &&
+          getComputedStyle(el).visibility !== 'hidden',
+      );
+      const victim = stops[6] ?? stops.at(-1);
+      if (victim === undefined) return null;
+      victim.setAttribute('tabindex', '-1');
+      return victim.textContent?.trim().slice(0, 30) ?? '(unnamed)';
+    });
+    expect(removed, 'the proof needs a reachable control to remove').not.toBe(null);
+
+    const after = await tabThroughStory(page);
+    expect(
+      after.expected,
+      'the removed control must leave the set of stops a person is entitled to reach',
+    ).toBe(before.expected - 1);
+    expect(
+      after.reached,
+      'removing a control must reduce what the walk reaches — a four-landing cap would not see this',
+    ).toBe(before.reached - 1);
+  }, 240_000);
+
+  it('proof F — typing is reported from the field, and lost when the field refuses input', async () => {
+    await open(TYPING);
+    expect(await typingEntersText(page), 'the field must accept text to begin with').toBe(true);
+
+    await open(TYPING);
+    // Read-only rather than disabled: the field stays focusable and looks identical, so the proof
+    // is about text arriving rather than about the control disappearing.
+    await page.evaluate(() => {
+      for (const el of document.querySelectorAll(
+        '#storybook-root input, #storybook-root textarea',
+      )) {
+        (el as HTMLInputElement).readOnly = true;
+      }
+    });
+    // The classifier no longer counts a read-only field, so the contract is asked directly.
+    const field = page.locator('#storybook-root input, #storybook-root textarea').first();
+    const before = await field.inputValue();
+    await field.focus();
+    await page.keyboard.type('kb');
+    expect(await field.inputValue(), 'K8 must fire when typing changes nothing').toBe(before);
+  }, 240_000);
+
+  it('proof G — a link without an activation target is reported', async () => {
+    await open(LINKS);
+    expect(
+      await linksHaveTargets(page),
+      'the story must start with every link targeted',
+    ).toStrictEqual([]);
+
+    await open(LINKS);
+    await page.evaluate(() => {
+      document.querySelector('#storybook-root a')?.removeAttribute('href');
+    });
+    expect(
+      (await linksHaveTargets(page)).length,
+      'K9 must fire for a link the browser cannot activate',
+    ).toBe(1);
+  }, 240_000);
+
+  it('proof H — radio selection is reported from the arrow key, and lost when it is swallowed', async () => {
+    await open(RADIO);
+    expect(await arrowsMoveSelection(page), 'arrows must move the selection to begin with').toBe(
+      true,
+    );
+
+    await open(RADIO);
+    await page.evaluate(() => {
+      document.addEventListener(
+        'keydown',
+        (event) => {
+          if (event.key.startsWith('Arrow')) event.preventDefault();
+        },
+        true,
+      );
+    });
+    expect(
+      await arrowsMoveSelection(page),
+      'K3 must fire when the arrow key changes no selection',
+    ).toBe(false);
+  }, 240_000);
 });

@@ -4,11 +4,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { type Brand, type Harness, type Scheme, startHarness, stopHarness } from './harness.js';
 import {
   arrowsMove,
+  arrowsMoveSelection,
+  linksHaveTargets,
   MAX_TABS,
   openAndDismiss,
   openRendered,
   stateOf,
   tabThroughStory,
+  typingEntersText,
 } from './keyboard.js';
 import {
   CONTRACT,
@@ -41,7 +44,7 @@ interface Outcome {
   readonly brand: Brand;
   readonly scheme: Scheme;
   readonly kinds: readonly Kind[];
-  /** `K1`…`K7` with a sentence, or empty when the story met its contract. */
+  /** `K1`…`K9` with a sentence, or empty when the story met its contract. */
   readonly failures: readonly string[];
   readonly error?: string;
 }
@@ -77,13 +80,22 @@ beforeAll(async () => {
         if (kinds.length === 0) kinds = ['static'];
 
         if (!kinds.includes('static')) {
-          const { reached, visible } = await tabThroughStory(page);
+          const { reached, expected, visible, missed } = await tabThroughStory(page);
           if (reached === 0) {
             failures.push(
-              `K1 no control in the story received focus after ${String(MAX_TABS)} Tab presses`,
+              `K1 no control in the story received focus after ${String(MAX_TABS)}+ Tab presses`,
             );
-          } else if (!visible) {
-            failures.push('K6 focus reached a control but its painted appearance did not change');
+          } else {
+            if (!visible) {
+              failures.push('K6 focus reached a control but its painted appearance did not change');
+            }
+            // Phase 8.9: every stop, not the first four. A story whose twelfth control has fallen
+            // out of the tab order used to pass this suite in silence.
+            if (missed.length > 0) {
+              failures.push(
+                `K1 Tab reached ${String(reached)} of ${String(expected)} controls; never reached: ${missed.join(' · ')}`,
+              );
+            }
           }
 
           // Activation, where the story renders a control whose state a keypress should change.
@@ -101,6 +113,25 @@ beforeAll(async () => {
             }
           }
 
+          // Typing, where the story renders a field a person can type into.
+          if (kinds.includes('input') && !(await typingEntersText(page))) {
+            failures.push('K8 typing into the field did not enter text');
+          }
+
+          // Links owe an activation target; without one Enter does nothing and the browser offers
+          // no way to open it anywhere.
+          if (kinds.includes('link')) {
+            const orphans = await linksHaveTargets(page);
+            if (orphans.length > 0) {
+              failures.push(`K9 link with no activation target: ${orphans.join(' · ')}`);
+            }
+          }
+
+          // A radio group is one Tab stop whose arrows move the selection.
+          if (kinds.includes('radio') && !(await arrowsMoveSelection(page))) {
+            failures.push('K3 ArrowDown did not move the selection within the radio group');
+          }
+
           // Roving focus, where the story renders a composite that owns one Tab stop.
           if (
             kinds.includes('tabs') &&
@@ -116,6 +147,14 @@ beforeAll(async () => {
           for (const [kind, trigger, surface] of [
             ['menu', '[aria-haspopup="menu"]', '[role="menu"]'],
             ['dialog', '[aria-haspopup="dialog"]', '[role="dialog"]'],
+            /*
+             * Phase 8.9. Measured rather than assumed: the platform has two comboboxes and they
+             * open differently — the `Popover`-backed one opens on Enter, the `Autocomplete`-backed
+             * one is already open once focused — but both dismiss on Escape and both put focus back
+             * where it started. `openAndDismiss` tolerates an already-open surface, so one contract
+             * covers both without either being asked to behave like the other.
+             */
+            ['combobox', '[role="combobox"]', '[role="listbox"]'],
           ] as const) {
             if (!kinds.includes(kind)) continue;
             const { opened, closed, restored } = await openAndDismiss(page, trigger, surface);
@@ -183,7 +222,7 @@ describe('keyboard across the matrix', () => {
         (o) =>
           `${o.story.id} · ${o.brand} · ${o.scheme} · [${o.kinds.join(',')}] → ${o.failures.join(' | ')}`,
       );
-    // eslint-disable-next-line no-console -- the failure inventory, classified K1…K7.
+    // eslint-disable-next-line no-console -- the failure inventory, classified K1…K9.
     if (failing.length > 0) console.log('[keyboard failures]', JSON.stringify(failing, null, 1));
     expect(failing).toStrictEqual([]);
   });
