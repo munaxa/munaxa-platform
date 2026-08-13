@@ -13,6 +13,7 @@ import {
   tabThroughStory,
   typingEntersText,
 } from './keyboard.js';
+import { counted, ledger, timed } from './timing.js';
 import {
   CONTRACT,
   DETECT_KINDS,
@@ -57,7 +58,7 @@ let discovered: { total: number; eligible: Story[] } = { total: 0, eligible: [] 
 
 beforeAll(async () => {
   discovered = readIndex(ROOT);
-  harness = await startHarness(ROOT);
+  harness = await timed('harness startup (server + browser)', () => startHarness(ROOT));
 
   const queue: { story: Story; brand: Brand; scheme: Scheme }[] = [];
   for (const story of discovered.eligible) {
@@ -66,11 +67,13 @@ beforeAll(async () => {
 
   const collected: Outcome[] = [];
   const worker = async (): Promise<void> => {
-    const context = await harness!.browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const context = await timed('browser context', () =>
+      harness!.browser.newContext({ viewport: { width: 1280, height: 900 } }),
+    );
     for (;;) {
       const job = queue.shift();
       if (job === undefined) break;
-      const page = await context.newPage();
+      const page = await timed('new page', () => context.newPage());
       const failures: string[] = [];
       let kinds: Kind[] = [];
       /*
@@ -86,7 +89,9 @@ beforeAll(async () => {
        * Reloading is cheap next to being wrong, and it is only paid where the story has that kind.
        */
       const reload = async (): Promise<void> => {
-        await openRendered(page, harness!.origin, job.story.id, job.brand, job.scheme);
+        await timed('story render (reload for a contract)', () =>
+          openRendered(page, harness!.origin, job.story.id, job.brand, job.scheme),
+        );
       };
 
       /*
@@ -100,22 +105,29 @@ beforeAll(async () => {
        * so the flicker stays visible instead of turning into either a failure or a silent pass.
        */
       const stillRenders = async (kind: Kind): Promise<boolean> => {
-        const now = (await page.evaluate<Kind[]>(`(${DETECT_KINDS})()`)) ?? [];
+        const now =
+          (await timed('re-detect kinds after reload', () =>
+            page.evaluate<Kind[]>(`(${DETECT_KINDS})()`),
+          )) ?? [];
         if (now.includes(kind)) return true;
         reclassified.push(`${job.story.id} · ${job.brand} · ${job.scheme}: ${kind}`);
         return false;
       };
 
       try {
-        await reload();
+        await timed('story render (first)', () =>
+          openRendered(page, harness!.origin, job.story.id, job.brand, job.scheme),
+        );
 
         // Invoked, not merely evaluated: a bare function source is an expression whose value is a
         // function, which does not serialise and arrives as `undefined`.
-        kinds = (await page.evaluate(`(${DETECT_KINDS})()`)) ?? [];
+        kinds = (await timed('classify', () => page.evaluate(`(${DETECT_KINDS})()`))) ?? [];
         if (kinds.length === 0) kinds = ['static'];
 
         if (!kinds.includes('static')) {
-          const { reached, expected, visible, missed } = await tabThroughStory(page);
+          const { reached, expected, visible, missed } = await timed('tab walk', () =>
+            tabThroughStory(page),
+          );
           if (reached === 0) {
             failures.push(
               `K1 no control in the story received focus after ${String(MAX_TABS)}+ Tab presses`,
@@ -139,11 +151,13 @@ beforeAll(async () => {
             const sel = kinds.includes('switch')
               ? '[role="switch"]'
               : 'input[type="checkbox"], [role="checkbox"]';
-            const before = await stateOf(page, sel);
-            await page.locator(sel).first().focus();
-            await page.keyboard.press('Space');
-            await page.waitForTimeout(120);
-            const after = await stateOf(page, sel);
+            const { before, after } = await timed('activation (Space)', async () => {
+              const first = await stateOf(page, sel);
+              await page.locator(sel).first().focus();
+              await page.keyboard.press('Space');
+              await page.waitForTimeout(120);
+              return { before: first, after: await stateOf(page, sel) };
+            });
             if (before !== null && before === after) {
               failures.push(`K2 Space did not change the control's state (${String(before)})`);
             }
@@ -152,7 +166,10 @@ beforeAll(async () => {
           // Typing, where the story renders a field a person can type into.
           if (kinds.includes('input')) {
             await reload();
-            if ((await stillRenders('input')) && !(await typingEntersText(page))) {
+            if (
+              (await stillRenders('input')) &&
+              !(await timed('typing', () => typingEntersText(page)))
+            ) {
               failures.push('K8 typing into the field did not enter text');
             }
           }
@@ -161,7 +178,7 @@ beforeAll(async () => {
           // no way to open it anywhere.
           if (kinds.includes('link')) {
             await reload();
-            const orphans = await linksHaveTargets(page);
+            const orphans = await timed('link targets', () => linksHaveTargets(page));
             if (orphans.length > 0) {
               failures.push(`K9 link with no activation target: ${orphans.join(' · ')}`);
             }
@@ -170,7 +187,10 @@ beforeAll(async () => {
           // A radio group is one Tab stop whose arrows move the selection.
           if (kinds.includes('radio')) {
             await reload();
-            if ((await stillRenders('radio')) && !(await arrowsMoveSelection(page))) {
+            if (
+              (await stillRenders('radio')) &&
+              !(await timed('radio arrows', () => arrowsMoveSelection(page)))
+            ) {
               failures.push('K3 ArrowDown did not move the selection within the radio group');
             }
           }
@@ -180,7 +200,9 @@ beforeAll(async () => {
             await reload();
             if (
               (await stillRenders('tabs')) &&
-              !(await arrowsMove(page, TABLIST_WITH_TABS, 'ArrowRight'))
+              !(await timed('tablist arrows', () =>
+                arrowsMove(page, TABLIST_WITH_TABS, 'ArrowRight'),
+              ))
             ) {
               failures.push('K3 ArrowRight did not move focus within the tablist');
             }
@@ -189,7 +211,7 @@ beforeAll(async () => {
             await reload();
             if (
               (await stillRenders('grid')) &&
-              !(await arrowsMove(page, GRID_WITH_CELLS, 'ArrowDown'))
+              !(await timed('grid arrows', () => arrowsMove(page, GRID_WITH_CELLS, 'ArrowDown')))
             ) {
               failures.push('K3 ArrowDown did not move focus within the grid');
             }
@@ -211,7 +233,9 @@ beforeAll(async () => {
             if (!kinds.includes(kind)) continue;
             await reload();
             if (!(await stillRenders(kind))) continue;
-            const { opened, closed, restored } = await openAndDismiss(page, trigger, surface);
+            const { opened, closed, restored } = await timed(`overlay (${kind})`, () =>
+              openAndDismiss(page, trigger, surface),
+            );
             if (!opened) failures.push(`K4 Enter did not open the ${kind}`);
             else if (!closed) failures.push(`K5 Escape did not close the ${kind}`);
             else if (!restored) failures.push(`K7 focus did not return to the ${kind} trigger`);
@@ -227,6 +251,7 @@ beforeAll(async () => {
         });
       }
       await page.close();
+      counted('combination');
     }
     await context.close();
   };
@@ -267,6 +292,13 @@ describe('keyboard across the matrix', () => {
     };
     // eslint-disable-next-line no-console -- the classification matrix the phase asks to publish.
     console.log('[keyboard coverage]', JSON.stringify(summary, null, 1));
+    /*
+     * Worker-seconds, not wall-clock: six workers run in parallel, so these sum to roughly six
+     * times the elapsed time. It is the right number for deciding what to change, and the wrong
+     * one for predicting how long a run takes.
+     */
+    // eslint-disable-next-line no-console -- Phase 8.10 measures before it optimises.
+    console.log('[keyboard timing]', JSON.stringify(ledger(), null, 1));
     expect(summary.combinations).toBeGreaterThan(0);
   });
 

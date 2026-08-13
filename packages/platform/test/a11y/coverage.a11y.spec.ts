@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { type Brand, type Harness, type Scheme, startHarness, stopHarness } from './harness.js';
 import { axeOn } from './measure.js';
+import { counted, ledger, timed } from './timing.js';
 import { EXCLUDED, INTERACTIONS, MINIMUM_STORIES, readIndex, type Story } from './stories.js';
 
 /**
@@ -41,7 +42,7 @@ let elapsedMs = 0;
 beforeAll(async () => {
   const started = Date.now();
   discovered = readIndex(ROOT);
-  harness = await startHarness(ROOT);
+  harness = await timed('harness startup (server + browser)', () => startHarness(ROOT));
 
   const queue: { story: Story; brand: Brand; scheme: Scheme }[] = [];
   for (const story of discovered.eligible) {
@@ -50,22 +51,26 @@ beforeAll(async () => {
 
   const collected: Result[] = [];
   const worker = async (): Promise<void> => {
-    const context = await harness!.browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const context = await timed('browser context', () =>
+      harness!.browser.newContext({ viewport: { width: 1280, height: 900 } }),
+    );
     for (;;) {
       const job = queue.shift();
       if (job === undefined) break;
-      const page = await context.newPage();
+      const page = await timed('new page', () => context.newPage());
       let interacted = false;
       try {
-        await page.goto(
-          `${harness!.origin}/iframe.html?id=${job.story.id}&globals=brand:${job.brand};scheme:${job.scheme}`,
-          { waitUntil: 'load', timeout: 30_000 },
-        );
-        await page.waitForFunction(
-          () => (document.querySelector('#storybook-root')?.children.length ?? 0) > 0,
-          undefined,
-          { timeout: 15_000 },
-        );
+        await timed('story render', async () => {
+          await page.goto(
+            `${harness!.origin}/iframe.html?id=${job.story.id}&globals=brand:${job.brand};scheme:${job.scheme}`,
+            { waitUntil: 'load', timeout: 30_000 },
+          );
+          await page.waitForFunction(
+            () => (document.querySelector('#storybook-root')?.children.length ?? 0) > 0,
+            undefined,
+            { timeout: 15_000 },
+          );
+        });
 
         for (const step of INTERACTIONS.get(job.story.id) ?? []) {
           if (step.clickByName !== undefined) {
@@ -79,8 +84,9 @@ beforeAll(async () => {
 
         // A short settle rather than `settleColours`: this runs 768 times, and the expensive
         // per-element sampling is reserved for the measurement suite that reports ratios.
-        await page.waitForTimeout(150);
-        const outcome = await axeOn(page);
+        await timed('settle (fixed 150ms)', () => page.waitForTimeout(150));
+        const outcome = await timed('axe', () => axeOn(page));
+        counted('combination');
         collected.push({ ...job, violations: outcome.violations, interacted });
       } catch (error) {
         collected.push({
@@ -152,6 +158,8 @@ describe('accessibility across the matrix', () => {
     };
     // eslint-disable-next-line no-console -- the machine-readable summary Part 9 asks for.
     console.log('[a11y coverage]', JSON.stringify(summary, null, 1));
+    // eslint-disable-next-line no-console -- Phase 8.10 measures before it optimises. Worker-seconds.
+    console.log('[contrast timing]', JSON.stringify(ledger(), null, 1));
     expect(summary.combinations).toBe(summary.passed + summary.failed);
   });
 
