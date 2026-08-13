@@ -71,8 +71,24 @@ beforeAll(async () => {
       const page = await context.newPage();
       const failures: string[] = [];
       let kinds: Kind[] = [];
-      try {
+      /*
+       * A fresh render before each contract that changes the story — Phase 8.9.
+       *
+       * The contracts run one after another on one page, and some of them leave the component in a
+       * different state than they found it. Typing `kb` into `DataGrid`'s search box is the clearest
+       * case: the grid filters correctly from 96 cells to none, and the arrow contract that ran next
+       * then found a grid with nothing to move between and reported 80 combinations of a working
+       * component as broken. An entity picker did the same to the combobox contract, opening a
+       * listbox with no matches.
+       *
+       * Reloading is cheap next to being wrong, and it is only paid where the story has that kind.
+       */
+      const reload = async (): Promise<void> => {
         await openRendered(page, harness!.origin, job.story.id, job.brand, job.scheme);
+      };
+
+      try {
+        await reload();
 
         // Invoked, not merely evaluated: a bare function source is an expression whose value is a
         // function, which does not serialise and arrives as `undefined`.
@@ -100,6 +116,7 @@ beforeAll(async () => {
 
           // Activation, where the story renders a control whose state a keypress should change.
           if (kinds.includes('switch') || kinds.includes('checkbox')) {
+            await reload();
             const sel = kinds.includes('switch')
               ? '[role="switch"]'
               : 'input[type="checkbox"], [role="checkbox"]';
@@ -114,13 +131,17 @@ beforeAll(async () => {
           }
 
           // Typing, where the story renders a field a person can type into.
-          if (kinds.includes('input') && !(await typingEntersText(page))) {
-            failures.push('K8 typing into the field did not enter text');
+          if (kinds.includes('input')) {
+            await reload();
+            if (!(await typingEntersText(page))) {
+              failures.push('K8 typing into the field did not enter text');
+            }
           }
 
           // Links owe an activation target; without one Enter does nothing and the browser offers
           // no way to open it anywhere.
           if (kinds.includes('link')) {
+            await reload();
             const orphans = await linksHaveTargets(page);
             if (orphans.length > 0) {
               failures.push(`K9 link with no activation target: ${orphans.join(' · ')}`);
@@ -128,19 +149,25 @@ beforeAll(async () => {
           }
 
           // A radio group is one Tab stop whose arrows move the selection.
-          if (kinds.includes('radio') && !(await arrowsMoveSelection(page))) {
-            failures.push('K3 ArrowDown did not move the selection within the radio group');
+          if (kinds.includes('radio')) {
+            await reload();
+            if (!(await arrowsMoveSelection(page))) {
+              failures.push('K3 ArrowDown did not move the selection within the radio group');
+            }
           }
 
           // Roving focus, where the story renders a composite that owns one Tab stop.
-          if (
-            kinds.includes('tabs') &&
-            !(await arrowsMove(page, TABLIST_WITH_TABS, 'ArrowRight'))
-          ) {
-            failures.push('K3 ArrowRight did not move focus within the tablist');
+          if (kinds.includes('tabs')) {
+            await reload();
+            if (!(await arrowsMove(page, TABLIST_WITH_TABS, 'ArrowRight'))) {
+              failures.push('K3 ArrowRight did not move focus within the tablist');
+            }
           }
-          if (kinds.includes('grid') && !(await arrowsMove(page, GRID_WITH_CELLS, 'ArrowDown'))) {
-            failures.push('K3 ArrowDown did not move focus within the grid');
+          if (kinds.includes('grid')) {
+            await reload();
+            if (!(await arrowsMove(page, GRID_WITH_CELLS, 'ArrowDown'))) {
+              failures.push('K3 ArrowDown did not move focus within the grid');
+            }
           }
 
           // Overlays, where the story renders a trigger that owes open, dismiss and return.
@@ -157,6 +184,7 @@ beforeAll(async () => {
             ['combobox', '[role="combobox"]', '[role="listbox"]'],
           ] as const) {
             if (!kinds.includes(kind)) continue;
+            await reload();
             const { opened, closed, restored } = await openAndDismiss(page, trigger, surface);
             if (!opened) failures.push(`K4 Enter did not open the ${kind}`);
             else if (!closed) failures.push(`K5 Escape did not close the ${kind}`);
