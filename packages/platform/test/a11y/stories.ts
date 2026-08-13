@@ -128,20 +128,29 @@ export type Kind =
  * Deliberately minimal per kind. A grid owes roving arrows rather than a Tab stop per cell —
  * asserting Tab there would report a defect where the component is correct, which is exactly the
  * K3 failure class this phase must avoid manufacturing.
+ *
+ * Phase 8.9 marks each line "checked" once the matrix drives it. `combobox` reads the way it does
+ * because the platform ships two of them and they open differently: the `Popover`-backed one opens
+ * on Enter, the `Autocomplete`-backed one is open as soon as it has focus. Both dismiss on Escape
+ * and both restore focus, so the contract is written around what they share rather than around one
+ * of them. Opening a select-only combobox with ArrowDown is an ARIA authoring-practice
+ * recommendation this platform does not implement; it is recorded as a deferred enhancement rather
+ * than asserted here, because the control is fully operable without it.
  */
 export const CONTRACT: Readonly<Record<Kind, string>> = {
   static: 'none — renders no focusable control',
   button: 'Tab reaches it; Enter or Space activates',
-  link: 'Tab reaches it; it exposes an activation target',
-  input: 'Tab reaches it; typing enters text',
-  checkbox: 'Tab reaches it; Space toggles checked',
-  radio: 'Tab reaches the group; arrows move selection',
-  switch: 'Tab reaches it; Space toggles state',
-  tabs: 'Tab reaches the tablist; arrows move between tabs',
-  menu: 'Tab reaches the trigger; Enter opens; Escape closes',
-  combobox: 'Tab reaches it; arrows operate it; Escape closes',
-  dialog: 'Tab reaches the trigger; Enter opens; Escape closes',
-  grid: 'roving focus: arrows move the cell, Enter activates the row',
+  link: 'Tab reaches it; it exposes an activation target — checked',
+  input: 'Tab reaches it; typing enters text — checked',
+  checkbox: 'Tab reaches it; Space toggles checked — checked',
+  radio: 'Tab reaches the group; arrows move the selection — checked',
+  switch: 'Tab reaches it; Space toggles state — checked',
+  tabs: 'Tab reaches the tablist; arrows move between tabs — checked',
+  menu: 'Tab reaches the trigger; Enter opens; Escape closes and returns focus — checked',
+  combobox:
+    'Tab reaches it; it opens (on Enter, or already open once focused); Escape closes and returns focus — checked',
+  dialog: 'Tab reaches the trigger; Enter opens; Escape closes and returns focus — checked',
+  grid: 'roving focus: one Tab stop, arrows move the cell — checked',
 };
 
 /*
@@ -166,9 +175,43 @@ export const TABLIST_WITH_TABS = '[role="tablist"]:has([role="tab"])';
  * component. `primitives-button--disabled` is exactly that story and was the whole of the first
  * matrix run's failure list.
  */
+/**
+ * A field a person can type into — Phase 8.9, and one definition rather than two.
+ *
+ * The Phase 8.7 selector was "an input that is not a checkbox or a radio", which swept in
+ * `<input type="file">`. The files stories render one, visually hidden behind a Browse button as
+ * every upload control does, and typing into it does nothing because typing into a file field is
+ * meaningless. A contract built on that selector would have called two correct components broken.
+ *
+ * Hidden, disabled and read-only fields are out for the same reason: nobody can type into them, so
+ * they owe nothing. The classifier and the contract share this source so they cannot disagree about
+ * what the story contains — a disagreement of exactly that kind cost Phase 8.7 a whole failure
+ * family, when a page-wide classification met a first-match driver.
+ */
+const TYPABLE_IN = `(root) => {
+  const TYPES = ['text', 'search', 'email', 'url', 'tel', 'password', 'number'];
+  if (root === null) return [];
+  return [...root.querySelectorAll('input, textarea')].filter((el) => {
+    if (el.disabled || el.readOnly || el.getAttribute('aria-disabled') === 'true') return false;
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    return el.tagName === 'TEXTAREA' || TYPES.includes(el.type);
+  });
+}`;
+
+/** Tag the first typable field so the contract types into exactly what the classifier counted. */
+export const MARK_TYPABLE = `() => {
+  const typableIn = ${TYPABLE_IN};
+  const first = typableIn(document.querySelector('#storybook-root'))[0];
+  if (first === undefined) return false;
+  first.setAttribute('data-kb-typable', '');
+  return true;
+}`;
+
 export const DETECT_KINDS = `() => {
   const GRID_WITH_CELLS = ${JSON.stringify(GRID_WITH_CELLS)};
   const TABLIST_WITH_TABS = ${JSON.stringify(TABLIST_WITH_TABS)};
+  const typableIn = ${TYPABLE_IN};
   const root = document.querySelector('#storybook-root');
   if (root === null) return [];
   const kinds = new Set();
@@ -186,7 +229,7 @@ export const DETECT_KINDS = `() => {
   if (has('[role="combobox"]')) kinds.add('combobox');
   if (has('[aria-haspopup="menu"]')) kinds.add('menu');
   if (has('[aria-haspopup="dialog"]')) kinds.add('dialog');
-  if (has('input:not([type=checkbox]):not([type=radio]), textarea')) kinds.add('input');
+  if (typableIn(root).length > 0) kinds.add('input');
   if (has('a[href]')) kinds.add('link');
   if (has('button')) kinds.add('button');
 

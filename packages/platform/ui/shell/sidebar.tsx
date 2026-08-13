@@ -45,8 +45,20 @@ export function Sidebar({
   // accessibility tree and in the tab order.
   if (isMobile) return null;
 
+  /*
+   * A `<div>`, not an `<aside>` — Phase 8.12.
+   *
+   * The rail is a container: brand, the navigation, a footer slot. The landmark that matters is the
+   * `<nav>` inside it, which carries its own name. Wrapping that in an unnamed `complementary`
+   * landmark added a second, nameless entry to every landmark list — and where a screen also used
+   * `Split`'s inspector, two unnamed complementary landmarks became indistinguishable from each
+   * other, which is what axe reports as `landmark-unique`.
+   *
+   * Removing the redundant landmark is the fix rather than inventing a name for it: nobody
+   * navigating by landmark wants "complementary" wrapped around "navigation".
+   */
   return (
-    <aside
+    <div
       className={cn(
         'sticky top-0 hidden h-screen shrink-0 self-start p-3 md:block',
         'transition-[width] duration-300 ease-in-out motion-reduce:transition-none',
@@ -98,6 +110,6 @@ export function Sidebar({
 
         {footer && !collapsed ? <div className="mt-4">{footer}</div> : null}
       </div>
-    </aside>
+    </div>
   );
 }

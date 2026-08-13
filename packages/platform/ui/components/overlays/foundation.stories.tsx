@@ -278,6 +278,10 @@ export const Display: Story = {
               ]}
             />
             <Breadcrumb
+              // Two trails on one page need two names, which is exactly what `label` is for: two
+              // `<nav>` landmarks sharing an accessible name are indistinguishable in a landmark
+              // list. Phase 8.12, found by `landmark-unique`.
+              label="Breadcrumb, collapsed"
               maxItems={3}
               items={[
                 { label: 'Home', href: '/' },

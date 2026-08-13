@@ -4,6 +4,37 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.4.0] — 2026-08-13
+
+Phase 8.12 widened the accessibility matrix past colour contrast for the first time. From Phase 8.4
+until now it ran exactly **one** axe rule across all 800 combinations; everything else axe knows went
+unchecked for six phases. The full ruleset reported 221 findings, and once the page-structure rules
+that no component-in-isolation can satisfy were set aside, three real defects remained. None of them
+changes a pixel, which is why only a machine was ever going to find them.
+
+### Added
+
+- `InspectorLayout` gains **`inspectorLabel`** (default `'Inspector'`), the accessible name for the
+  inspector's `complementary` landmark. Overridable for a screen with more than one inspector, or in
+  any language other than English.
+
+### Fixed
+
+- **`Breadcrumb` announced nothing where it had collapsed crumbs.** The ellipsis carried its name in
+  an `aria-label` on a `<span>` with no role, which ARIA prohibits — so assistive technology dropped
+  it, and with the icon `aria-hidden` the collapsed levels were silent. A listener heard the first
+  crumb, then the last two, with no hint that anything had been left out. The name is now real text.
+- **`ScrollArea`'s viewport could not be reached from the keyboard.** A region that scrolls but
+  cannot be focused leaves everything that overflowed unavailable to anyone not using a mouse —
+  WCAG 2.1.1. The viewport is now a Tab stop, which is the remedy the rule itself names.
+- **The shell emitted two nameless `complementary` landmarks.** The navigation rail wrapped its
+  already-named `<nav>` in an unnamed `<aside>`, and `InspectorLayout` rendered another; a landmark
+  list could not tell them apart. The rail is now a plain container — nobody navigating by landmark
+  wants "complementary" wrapped around "navigation" — and the inspector carries a name.
+
+Measured after, in the browser: **800 of 800 combinations clean** under the widened ruleset, and the
+per-combination inventory is identical to 1.3.1 row by row, so nothing else moved.
+
 ## [1.3.1] — 2026-08-13
 
 Phase 8.7 extends keyboard verification from two hand-picked assertions to the whole discovered

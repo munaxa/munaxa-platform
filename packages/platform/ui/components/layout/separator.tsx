@@ -51,7 +51,19 @@ export const ScrollArea = forwardRef<
       className={cn('relative overflow-hidden', className)}
       {...props}
     >
-      <ScrollAreaPrimitive.Viewport className="size-full rounded-[inherit]">
+      {/*
+       * The viewport is a Tab stop — Phase 8.12.
+       *
+       * A region that scrolls but cannot be focused is unreachable from the keyboard: a person
+       * using arrow keys has nothing to put focus on, so whatever has overflowed is simply
+       * unavailable to them. That is WCAG 2.1.1, and axe reports it as
+       * `scrollable-region-focusable`.
+       *
+       * `tabIndex={0}` is the remedy the rule itself names. It adds one stop per scroll area, which
+       * is redundant where the content already holds focusable controls and essential where it does
+       * not — and the harmless case is much cheaper than the unreachable one.
+       */}
+      <ScrollAreaPrimitive.Viewport tabIndex={0} className="size-full rounded-[inherit]">
         {children}
       </ScrollAreaPrimitive.Viewport>
       {orientation !== 'horizontal' ? <ScrollBar orientation="vertical" /> : null}
