@@ -396,4 +396,40 @@ describe('the keyboard instrument can fail', () => {
       'a re-render restores the canonical state for the keyboard contracts',
     ).toBe(0);
   }, 240_000);
+
+  it('proof L — the shared render still catches a contrast regression', async () => {
+    /*
+     * Phase 8.11. Proofs I and J show the shared render does not *contaminate* contrast. This shows
+     * it still *detects*: the same sequence the matrix performs — canonical render, then axe on that
+     * render — reports a deliberately unreadable element, and reports nothing once it is gone.
+     * Without this, the previous two proofs would only establish that a blind instrument stays blind.
+     */
+    await open(MUTATES);
+    expect(
+      (await axeOn(page)).violations,
+      'the story must be clean before anything is injected',
+    ).toStrictEqual([]);
+
+    await page.evaluate(() => {
+      const bad = document.createElement('p');
+      bad.id = 'a11y-shared-render-control';
+      bad.textContent = 'Deliberately unreadable control text';
+      // ~1.6:1 against the page — unambiguously below AA, computed from the cascade like anything else.
+      bad.style.color = '#9a9a9a';
+      bad.style.background = '#bdbdbd';
+      document.querySelector('#storybook-root')?.append(bad);
+    });
+
+    const introduced = (await axeOn(page)).violations;
+    expect(
+      introduced.filter((entry) => entry.includes('a11y-shared-render-control')).length,
+      'axe on the shared render must report the injected element',
+    ).toBeGreaterThan(0);
+
+    await page.evaluate(() => document.querySelector('#a11y-shared-render-control')?.remove());
+    expect(
+      (await axeOn(page)).violations,
+      'and must fall silent again once it is removed',
+    ).toStrictEqual([]);
+  }, 240_000);
 });
