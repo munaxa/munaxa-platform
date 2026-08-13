@@ -187,14 +187,31 @@ export const States: Story = {
       <Container width="wide" className="py-6">
         <Stack gap={8}>
           <Section title="Loading">
-            <FileManager aria-label="Loading" items={[]} path={[{ label: 'Documents' }]} loading />
+            {/*
+              Each manager names its own path landmark — Phase 8.12. Three file managers on one
+              page otherwise produce three `<nav>` landmarks all called "Folder path", which is
+              what `landmark-unique` reports and what a landmark list would show.
+            */}
+            <FileManager
+              aria-label="Loading"
+              labels={{ breadcrumb: 'Folder path, loading' }}
+              items={[]}
+              path={[{ label: 'Documents' }]}
+              loading
+            />
           </Section>
           <Section title="Empty folder">
-            <FileManager aria-label="Empty" items={[]} path={[{ label: 'Documents' }]} />
+            <FileManager
+              aria-label="Empty"
+              labels={{ breadcrumb: 'Folder path, empty' }}
+              items={[]}
+              path={[{ label: 'Documents' }]}
+            />
           </Section>
           <Section title="Read only" description="No upload handler, so no dropzone.">
             <FileManager
               aria-label="Read only"
+              labels={{ breadcrumb: 'Folder path, read only' }}
               locale="en-GB"
               items={TREE.policies ?? []}
               path={[{ label: 'Documents', href: '#' }, { label: 'Policies' }]}

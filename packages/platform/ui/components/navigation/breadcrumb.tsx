@@ -64,11 +64,18 @@ export function Breadcrumb({
             <Fragment key={item ? `${item.label}-${index}` : `ellipsis-${index}`}>
               <li className="inline-flex min-w-0 items-center gap-1.5">
                 {item === null ? (
-                  <span
-                    className="flex size-5 items-center justify-center"
-                    aria-label="Hidden levels"
-                  >
+                  <span className="flex size-5 items-center justify-center">
                     <MoreHorizontal className="size-4" aria-hidden="true" />
+                    {/*
+                     * Real text rather than `aria-label` — Phase 8.12.
+                     *
+                     * The label used to sit on this `<span>`, which has no role. ARIA forbids
+                     * naming a generic element, so assistive technology dropped it: the icon is
+                     * `aria-hidden`, the span was unnameable, and the collapsed crumbs announced
+                     * nothing at all. A listener heard the first crumb, then the last two, with no
+                     * hint that anything had been left out.
+                     */}
+                    <span className="sr-only">Hidden levels</span>
                   </span>
                 ) : isLast || !item.href ? (
                   <span

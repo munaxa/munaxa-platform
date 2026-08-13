@@ -138,6 +138,34 @@ export interface AxeOutcome {
 }
 
 /**
+ * Which axe rules a *component* can be held to — Phase 8.12.
+ *
+ * From Phase 8.4 until now this matrix ran exactly one rule, `color-contrast`, across all eight
+ * hundred combinations. Everything else axe knows — prohibited ARIA attributes, unreachable
+ * scrolling regions, duplicate landmark names, missing accessible names — went unchecked for six
+ * phases. Widening it found two serious defects that no amount of contrast measurement could ever
+ * have surfaced, both fixed in this phase.
+ *
+ * Three rules are switched off, and only these three. They are page-structure rules, and a story is
+ * not a page: a component rendered alone in an iframe has no `<main>`, no `<h1>` and no landmark to
+ * contain it, and it never should — those belong to the application that assembles components into
+ * a screen.
+ *
+ * That is not a suppression, because the rules are still enforced where they apply. Munaxa Docs
+ * runs `axe.run(document)` with **no** `runOnly` against real application routes — `/audit`,
+ * `/approvals`, `/reports`, `/admin/users`, `/documents` — and reports zero violations. Turning
+ * them off here moves them to their owner; it does not excuse them.
+ *
+ * Anything added to this list needs the same standard: evidence that the rule cannot apply to a
+ * component in isolation, and evidence that something else checks it.
+ */
+const PAGE_STRUCTURE_RULES = ['landmark-one-main', 'page-has-heading-one', 'region'] as const;
+
+const RULES = {
+  rules: Object.fromEntries(PAGE_STRUCTURE_RULES.map((id) => [id, { enabled: false }])),
+};
+
+/**
  * Run axe over the rendered story with `color-contrast` **enabled**.
  *
  * `incomplete` is returned alongside `violations` deliberately. axe computes a ratio only where it
@@ -188,7 +216,7 @@ export async function axeOn(page: Page, selector = 'document'): Promise<AxeOutco
     let result: Awaited<ReturnType<typeof runner.run>> | null = null;
     for (let attempt = 0; attempt < 25 && result === null; attempt += 1) {
       try {
-        result = await runner.run(target, { runOnly: ['color-contrast'] });
+        result = await runner.run(target, RULES);
       } catch (error) {
         if (!String((error as Error).message).includes('already running')) throw error;
         await sleep(120);
