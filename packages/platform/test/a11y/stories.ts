@@ -96,20 +96,99 @@ export const INTERACTIONS: ReadonlyMap<string, readonly Interaction[]> = new Map
 ]);
 
 /**
- * Keyboard expectations by component kind.
+ * What a story actually renders, and therefore what it owes a keyboard user — Phase 8.7.
  *
- * Deliberately not "every key on every story": a `Badge` has no keyboard contract, and asserting
- * one would be theatre. Kinds are matched from the story title, and only the interaction a control
- * of that kind actually owes a keyboard user is required.
+ * The Phase 8.4 version classified on the story *title*: `includes('datagrid')` meant grid,
+ * `includes('selection')` meant combobox. Enough for the two stories it covered; not enough for a
+ * matrix. A title cannot tell a button from a switch, cannot see that a foundations page renders
+ * live inputs, and cannot know an icons gallery renders none — so it would both miss real controls
+ * and invent contracts for decorative pages.
+ *
+ * Classification is therefore taken from the rendered DOM of the story, inside `#storybook-root`
+ * and any portal it opens, never from Storybook's own chrome. `static` is a real answer rather than
+ * a skip: a typography page has no keyboard contract, and asserting one would be theatre.
  */
-export type Kind = 'navigation' | 'dialog' | 'grid' | 'combobox' | 'menu' | 'none';
+export type Kind =
+  | 'static'
+  | 'button'
+  | 'link'
+  | 'input'
+  | 'checkbox'
+  | 'radio'
+  | 'switch'
+  | 'tabs'
+  | 'menu'
+  | 'combobox'
+  | 'dialog'
+  | 'grid';
 
-export function kindOf(story: Story): Kind {
-  const title = story.title.toLowerCase();
-  if (title.includes('appshell') || title.includes('navigation')) return 'navigation';
-  if (story.id === 'forms-selection--palette') return 'dialog';
-  if (title.includes('datagrid')) return 'grid';
-  if (title.includes('selection')) return 'combobox';
-  if (title.includes('menus')) return 'menu';
-  return 'none';
-}
+/**
+ * The contract each kind owes, in the order a person performs it.
+ *
+ * Deliberately minimal per kind. A grid owes roving arrows rather than a Tab stop per cell —
+ * asserting Tab there would report a defect where the component is correct, which is exactly the
+ * K3 failure class this phase must avoid manufacturing.
+ */
+export const CONTRACT: Readonly<Record<Kind, string>> = {
+  static: 'none — renders no focusable control',
+  button: 'Tab reaches it; Enter or Space activates',
+  link: 'Tab reaches it; it exposes an activation target',
+  input: 'Tab reaches it; typing enters text',
+  checkbox: 'Tab reaches it; Space toggles checked',
+  radio: 'Tab reaches the group; arrows move selection',
+  switch: 'Tab reaches it; Space toggles state',
+  tabs: 'Tab reaches the tablist; arrows move between tabs',
+  menu: 'Tab reaches the trigger; Enter opens; Escape closes',
+  combobox: 'Tab reaches it; arrows operate it; Escape closes',
+  dialog: 'Tab reaches the trigger; Enter opens; Escape closes',
+  grid: 'roving focus: arrows move the cell, Enter activates the row',
+};
+
+/*
+ * A composite is only a composite once it has something to move between: a loading `DataGrid`
+ * renders eight skeleton rows and no cell at all, and arrow keys with nowhere to go are correct
+ * behaviour rather than a defect.
+ *
+ * Exported because a states story renders *several* grids — the empty one, the loading one, the
+ * populated one — and classifying from the page while driving the first match on it accuses a
+ * component that works. The selector that decides a story has a grid is the one that picks which
+ * grid to drive.
+ */
+export const GRID_WITH_CELLS = '[role="grid"]:has([role="gridcell"])';
+export const TABLIST_WITH_TABS = '[role="tablist"]:has([role="tab"])';
+
+/**
+ * Detect every kind a rendered story contains, so a story with two controls owes both contracts.
+ *
+ * Disabled controls do not count. WCAG exempts inactive controls, and a correct disabled `Button`
+ * is deliberately out of the tab order — so a story that renders only disabled controls has no
+ * keyboard contract, and reporting one would be a defect in the instrument rather than the
+ * component. `primitives-button--disabled` is exactly that story and was the whole of the first
+ * matrix run's failure list.
+ */
+export const DETECT_KINDS = `() => {
+  const GRID_WITH_CELLS = ${JSON.stringify(GRID_WITH_CELLS)};
+  const TABLIST_WITH_TABS = ${JSON.stringify(TABLIST_WITH_TABS)};
+  const root = document.querySelector('#storybook-root');
+  if (root === null) return [];
+  const kinds = new Set();
+  const INACTIVE = ':not(:disabled):not([aria-disabled="true"]):not([data-disabled])';
+  const has = (selector) =>
+    selector
+      .split(',')
+      .some((part) => root.querySelector(part.trim() + INACTIVE) !== null);
+
+  if (has(GRID_WITH_CELLS)) kinds.add('grid');
+  if (has(TABLIST_WITH_TABS)) kinds.add('tabs');
+  if (has('[role="switch"]')) kinds.add('switch');
+  if (has('input[type="checkbox"], [role="checkbox"]')) kinds.add('checkbox');
+  if (has('input[type="radio"], [role="radio"]')) kinds.add('radio');
+  if (has('[role="combobox"]')) kinds.add('combobox');
+  if (has('[aria-haspopup="menu"]')) kinds.add('menu');
+  if (has('[aria-haspopup="dialog"]')) kinds.add('dialog');
+  if (has('input:not([type=checkbox]):not([type=radio]), textarea')) kinds.add('input');
+  if (has('a[href]')) kinds.add('link');
+  if (has('button')) kinds.add('button');
+
+  return [...kinds];
+}`;

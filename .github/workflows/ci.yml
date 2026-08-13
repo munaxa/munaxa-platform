@@ -63,7 +63,7 @@ jobs:
         run: pnpm format:check
 
   accessibility:
-    name: Accessibility · every story, four brands, light and dark
+    name: Accessibility · contrast and keyboard, every story, four brands, light and dark
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -97,7 +97,10 @@ jobs:
       - name: Build Storybook
         run: pnpm --filter @munaxa/platform run build-storybook
 
-      - name: Accessibility matrix
+      # One command deliberately: `test:a11y` runs everything under `test/a11y/`, so the keyboard
+      # matrix added in Phase 8.7 and the proofs that it can fail are enforced here without anyone
+      # having to remember to add a step. A suite discovered by glob cannot be half-wired.
+      - name: Accessibility matrix — contrast, keyboard, and the proofs behind both
         run: pnpm --filter @munaxa/platform run test:a11y
 
       # Only on failure: the run prints every failing story with its brand, scheme and selector, and

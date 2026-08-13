@@ -347,6 +347,84 @@ describe('DataGrid', () => {
       await waitFor(() => expect(header).toHaveFocus());
     });
 
+    /*
+     * Phase 8.7. The grid's handler sits on the table, so a keystroke aimed at a control *inside* a
+     * cell bubbles to it, and the grid used to answer: Enter on a row's action button activated the
+     * row while `preventDefault` stopped the button's own menu from ever opening. The action worked
+     * for a mouse and not for a keyboard. Measured on `workspace-files--browser`, in all four
+     * brands and both schemes.
+     */
+    const ACTION: ColumnDef<Person> = {
+      id: 'actions',
+      header: 'Actions',
+      value: () => '',
+      cell: (row) => (
+        <button type="button" data-testid={`act-${row.id}`}>
+          Actions for {row.name}
+        </button>
+      ),
+    };
+
+    it('leaves Enter to the control inside a body cell rather than activating the row', async () => {
+      const onRowActivate = vi.fn();
+      const onAction = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <Grid
+          searchable={false}
+          columnMenu={false}
+          onRowActivate={onRowActivate}
+          columns={[
+            ...COLUMNS.filter((column) => column.id !== 'active'),
+            {
+              ...ACTION,
+              cell: (row) => <button type="button" onClick={onAction}>{`Act ${row.id}`}</button>,
+            },
+          ]}
+        />,
+      );
+      const action = screen.getByRole('button', { name: 'Act 1' });
+      action.focus();
+      await user.keyboard('{Enter}');
+
+      expect(onAction, "the button's own Enter must reach the button").toHaveBeenCalledTimes(1);
+      expect(onRowActivate, 'the grid must not activate the row underneath').not.toHaveBeenCalled();
+    });
+
+    // Space is covered by the same one-line guard, and this asserts the behaviour it protects. It
+    // is not a falsification proof: it passes with the guard reverted too, because reaching this
+    // state through happy-dom leaves the grid's own row focus where Space finds nothing to select.
+    // The Enter test above is the one that fails without the fix.
+    it('leaves Space to the control inside a body cell rather than selecting the row', async () => {
+      const onSelectionChange = vi.fn();
+      const onAction = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <Grid
+          searchable={false}
+          columnMenu={false}
+          selectedIds={[]}
+          onSelectionChange={onSelectionChange}
+          columns={[
+            ...COLUMNS.filter((column) => column.id !== 'active'),
+            {
+              ...ACTION,
+              cell: (row) => <button type="button" onClick={onAction}>{`Act ${row.id}`}</button>,
+            },
+          ]}
+        />,
+      );
+      // Into a body row first: with the grid's own focus still on the header there is no row to
+      // select, and the assertion would pass whether or not the guard exists.
+      await user.tab();
+      await user.keyboard('{ArrowDown}');
+      screen.getByRole('button', { name: 'Act 1' }).focus();
+      await user.keyboard(' ');
+
+      expect(onAction, "the button's own Space must reach the button").toHaveBeenCalledTimes(1);
+      expect(onSelectionChange, 'the grid must not select the row').not.toHaveBeenCalled();
+    });
+
     it('resizes a column with the arrow keys', async () => {
       const user = userEvent.setup();
       const onStateChange = vi.fn();
