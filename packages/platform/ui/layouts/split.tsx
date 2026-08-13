@@ -109,6 +109,14 @@ export interface InspectorLayoutProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   /** The contextual detail panel. Omit or pass null to give the content the full width. */
   inspector?: ReactNode;
+  /**
+   * Accessible name for the inspector's `complementary` landmark.
+   *
+   * Override it when a screen shows more than one, or in any language other than English: two
+   * unnamed complementary landmarks are indistinguishable in a landmark list, which is what
+   * `landmark-unique` reports.
+   */
+  inspectorLabel?: string;
   width?: 'sm' | 'md' | 'lg';
   /** Below this breakpoint the inspector moves under the content instead of beside it. */
   stackBelow?: 'lg' | 'xl';
@@ -137,7 +145,16 @@ const INSPECTOR_ROW: Record<NonNullable<InspectorLayoutProps['stackBelow']>, str
  */
 export const InspectorLayout = forwardRef<HTMLDivElement, InspectorLayoutProps>(
   function InspectorLayout(
-    { children, inspector, width = 'md', stackBelow = 'lg', gap = 6, className, ...props },
+    {
+      children,
+      inspector,
+      inspectorLabel = 'Inspector',
+      width = 'md',
+      stackBelow = 'lg',
+      gap = 6,
+      className,
+      ...props
+    },
     ref,
   ) {
     return (
@@ -148,7 +165,18 @@ export const InspectorLayout = forwardRef<HTMLDivElement, InspectorLayoutProps>(
       >
         <div className="min-w-0 flex-1">{children}</div>
         {inspector ? (
-          <aside className={cn('w-full shrink-0', INSPECTOR_WIDTH[width])}>{inspector}</aside>
+          /*
+           * Named, because an unnamed `complementary` landmark is indistinguishable from any other
+           * one on the page — Phase 8.12, found by `landmark-unique`. The default is overridable
+           * for the same reason every other label here is: an application that shows two inspectors,
+           * or speaks another language, has to be able to say so.
+           */
+          <aside
+            aria-label={inspectorLabel}
+            className={cn('w-full shrink-0', INSPECTOR_WIDTH[width])}
+          >
+            {inspector}
+          </aside>
         ) : null}
       </div>
     );
