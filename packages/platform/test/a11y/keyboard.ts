@@ -318,11 +318,34 @@ export async function openRendered(
     await page.waitForTimeout(120);
   };
 
-  try {
-    await attempt();
-  } catch {
-    counted('story render retried');
-    await attempt();
+  /*
+   * Up to three attempts — Phase 8.11, and still a *render* retry rather than a blanket one.
+   *
+   * Measured: the heaviest story renders in about 300ms on an idle machine, and render time is flat
+   * across two dozen navigations on one page — there is no accumulation. When a run does lose a
+   * render it loses it to a 15-second wait, fifty times the honest cost, under six workers on four
+   * cores. That is starvation rather than a broken story, and Phase 8.10 saw the same failure under
+   * the previous architecture.
+   *
+   * A story that genuinely cannot render still fails: it fails all three attempts and reports the
+   * same error as before. Nothing is suppressed and no timeout is inflated — the counters make
+   * every retry, every recovery and every exhaustion visible in the ledger.
+   */
+  const ATTEMPTS = 3;
+  for (let n = 1; n <= ATTEMPTS; n += 1) {
+    try {
+      await attempt();
+      if (n > 1) counted('story render retry succeeded');
+      return;
+    } catch (error) {
+      counted('story render retried');
+      if (n === ATTEMPTS) {
+        counted('story render retry exhausted');
+        throw error;
+      }
+      // The machine is busy; trying again instantly only competes with whatever is making it busy.
+      await page.waitForTimeout(250 * n);
+    }
   }
 }
 
