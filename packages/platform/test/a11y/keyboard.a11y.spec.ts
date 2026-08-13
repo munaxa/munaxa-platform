@@ -13,6 +13,7 @@ import {
   tabThroughStory,
   typingEntersText,
 } from './keyboard.js';
+import { byCombination, writeInventory } from './inventory.js';
 import { counted, ledger, timed } from './timing.js';
 import {
   CONTRACT,
@@ -276,6 +277,19 @@ beforeAll(async () => {
 
   await Promise.all(Array.from({ length: WORKERS }, worker));
   outcomes = collected;
+
+  // Phase 8.11: the oracle a shared-render architecture has to reproduce, row by row.
+  writeInventory(
+    'keyboard',
+    byCombination(collected).map((row) => ({
+      id: row.story.id,
+      brand: row.brand,
+      scheme: row.scheme,
+      kinds: [...row.kinds].sort((a, b) => a.localeCompare(b)),
+      error: row.error ?? null,
+      failures: [...row.failures].sort((a, b) => a.localeCompare(b)),
+    })),
+  );
 }, 2_400_000);
 
 afterAll(async () => {

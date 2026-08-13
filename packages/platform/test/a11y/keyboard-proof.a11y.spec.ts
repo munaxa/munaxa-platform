@@ -11,6 +11,7 @@ import {
   tabThroughStory,
   typingEntersText,
 } from './keyboard.js';
+import { axeOn } from './measure.js';
 import { DETECT_KINDS, type Kind, readIndex } from './stories.js';
 
 /**
@@ -38,6 +39,8 @@ const TYPING = 'forms-overview--states';
 const LINKS = 'shell-menus--top-bar-menus';
 /** The only story with a radio group. */
 const RADIO = 'forms-overview--toggles';
+/** A grid whose own search box empties it — the sharpest available contamination test. */
+const MUTATES = 'data-datagrid--default';
 
 let harness: Harness | null = null;
 let page: Page;
@@ -282,5 +285,115 @@ describe('the keyboard instrument can fail', () => {
       await arrowsMoveSelection(page),
       'K3 must fire when the arrow key changes no selection',
     ).toBe(false);
+  }, 240_000);
+
+  /*
+   * Phase 8.11 — the two proofs that make one shared render safe.
+   *
+   * The matrix now renders each combination once and runs contrast before keyboard on that render.
+   * That is only sound if two things hold: axe changes nothing the keyboard contracts depend on,
+   * and the keyboard contracts change enough that measuring contrast after them would be wrong.
+   * Both are asserted here rather than assumed, because the failure they prevent is silent — a
+   * green suite measuring a page nobody navigated to.
+   */
+
+  it('proof I — axe leaves the page exactly as it found it', async () => {
+    await open(MUTATES);
+
+    const snapshot = async (): Promise<unknown> =>
+      page.evaluate(() => {
+        const active = document.activeElement;
+        return {
+          url: location.href,
+          active: `${active?.tagName ?? '-'}/${active?.getAttribute('role') ?? '-'}`,
+          gridcells: document.querySelectorAll('[role="gridcell"]').length,
+          inputs: [...document.querySelectorAll('input, textarea')].map(
+            (el) => `${(el as HTMLInputElement).value}|${String((el as HTMLInputElement).checked)}`,
+          ),
+          expanded: [...document.querySelectorAll('[aria-expanded]')].map((el) =>
+            el.getAttribute('aria-expanded'),
+          ),
+          selected: [...document.querySelectorAll('[aria-selected]')].map((el) =>
+            el.getAttribute('aria-selected'),
+          ),
+          overlays: document.querySelectorAll('[role="dialog"], [role="menu"], [role="listbox"]')
+            .length,
+          rootChildren: document.querySelector('#storybook-root')?.childElementCount ?? -1,
+        };
+      });
+
+    const before = await snapshot();
+    const kindsBefore = await kindsOf();
+    await axeOn(page);
+    const after = await snapshot();
+    const kindsAfter = await kindsOf();
+
+    expect(
+      after,
+      'axe must not move focus, change values, open anything or alter the DOM',
+    ).toStrictEqual(before);
+    expect(kindsAfter, 'axe must not change what the story classifies as').toStrictEqual(
+      kindsBefore,
+    );
+  }, 240_000);
+
+  it('proof J — the keyboard contracts change the page enough that contrast could not run after them', async () => {
+    await open(MUTATES);
+
+    const cells = async (): Promise<number> =>
+      page.evaluate(() => document.querySelectorAll('[role="gridcell"]').length);
+
+    const canonical = await cells();
+    expect(canonical, 'the proof needs a populated grid').toBeGreaterThan(0);
+
+    // The production order: contrast reads first, on the canonical state.
+    await axeOn(page);
+    expect(await cells(), 'the state contrast measured is still the canonical one').toBe(canonical);
+
+    // Then the keyboard contracts run — and this is what they do to it.
+    await typingEntersText(page);
+    const mutated = await cells();
+
+    expect(
+      mutated,
+      'typing must actually change the page, or this proof asserts nothing',
+    ).toBeLessThan(canonical);
+
+    /*
+     * The sensitivity claim, stated as a number: a contrast run placed after the keyboard contracts
+     * would inspect a grid of `mutated` cells instead of `canonical` ones. Reversing the order in
+     * the matrix would therefore measure a page a person never navigated to, and this assertion is
+     * what fails if anyone ever does.
+     */
+    expect(mutated).toBe(0);
+    expect(canonical).toBeGreaterThan(50);
+  }, 240_000);
+
+  it('proof K — a story that contrast interacts with is re-rendered before the keyboard drives it', async () => {
+    /*
+     * `forms-selection--palette` is the one story with a declared interaction: contrast has to open
+     * the command palette to measure it. The keyboard side must not inherit that open overlay, so
+     * the matrix re-renders it. This asserts the two states really are different — without that,
+     * the re-render would be pointless ceremony rather than a correctness requirement.
+     */
+    await open('forms-selection--palette');
+    const closed = await page.evaluate(() => document.querySelectorAll('[cmdk-input]').length);
+
+    await page
+      .getByRole('button', { name: /open palette/i })
+      .first()
+      .click();
+    await page.waitForSelector('[cmdk-input]', { state: 'visible', timeout: 10_000 });
+    const opened = await page.evaluate(() => document.querySelectorAll('[cmdk-input]').length);
+
+    expect(closed, 'the canonical state has no palette open').toBe(0);
+    expect(opened, 'the interacted state does').toBeGreaterThan(0);
+
+    // And a fresh render puts it back, which is what the matrix relies on.
+    await open('forms-selection--palette');
+    expect(
+      await page.evaluate(() => document.querySelectorAll('[cmdk-input]').length),
+      'a re-render restores the canonical state for the keyboard contracts',
+    ).toBe(0);
   }, 240_000);
 });

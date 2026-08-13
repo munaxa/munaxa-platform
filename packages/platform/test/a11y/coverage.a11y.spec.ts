@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { type Brand, type Harness, type Scheme, startHarness, stopHarness } from './harness.js';
 import { axeOn } from './measure.js';
+import { byCombination, writeInventory } from './inventory.js';
 import { counted, ledger, timed } from './timing.js';
 import { EXCLUDED, INTERACTIONS, MINIMUM_STORIES, readIndex, type Story } from './stories.js';
 
@@ -115,6 +116,19 @@ beforeAll(async () => {
   await Promise.all(Array.from({ length: WORKERS }, worker));
   results = collected;
   elapsedMs = Date.now() - started;
+
+  // Phase 8.11: the oracle a shared-render architecture has to reproduce, row by row.
+  writeInventory(
+    'contrast',
+    byCombination(collected).map((row) => ({
+      id: row.story.id,
+      brand: row.brand,
+      scheme: row.scheme,
+      interacted: row.interacted,
+      error: row.error ?? null,
+      violations: [...row.violations].sort((a, b) => a.localeCompare(b)),
+    })),
+  );
 }, 1_800_000);
 
 afterAll(async () => {
