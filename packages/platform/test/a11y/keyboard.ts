@@ -1,6 +1,7 @@
 import { type Page } from 'playwright';
 
 import { MARK_TYPABLE } from './stories.js';
+import { counted } from './timing.js';
 
 /**
  * The keyboard instrument — Phase 8.7.
@@ -284,7 +285,19 @@ export async function openAndDismiss(
   return { opened, closed, restored };
 }
 
-/** Open a story in one brand and scheme and wait for it to render. */
+/**
+ * Open a story in one brand and scheme and wait for it to render.
+ *
+ * Retried once — Phase 8.10. A render that times out is treated as a failure by this suite, and
+ * that is the right default: a story nobody can render is a story nobody can use. But the matrix
+ * runs six workers on four cores, and one measured run lost three renders of the heaviest story to
+ * a 15-second wait that a repeat run made comfortably. Failing a suite for machine contention
+ * teaches a team to re-run rather than to read.
+ *
+ * One retry keeps the sensitivity — a story that genuinely cannot render fails both attempts — and
+ * every retry is counted, so contention shows up in the ledger instead of hiding inside a green
+ * run.
+ */
 export async function openRendered(
   page: Page,
   origin: string,
@@ -292,16 +305,25 @@ export async function openRendered(
   brand: string,
   scheme: string,
 ): Promise<void> {
-  await page.goto(`${origin}/iframe.html?id=${id}&globals=brand:${brand};scheme:${scheme}`, {
-    waitUntil: 'load',
-    timeout: 30_000,
-  });
-  await page.waitForFunction(
-    () => (document.querySelector('#storybook-root')?.children.length ?? 0) > 0,
-    undefined,
-    { timeout: 15_000 },
-  );
-  await page.waitForTimeout(120);
+  const attempt = async (): Promise<void> => {
+    await page.goto(`${origin}/iframe.html?id=${id}&globals=brand:${brand};scheme:${scheme}`, {
+      waitUntil: 'load',
+      timeout: 30_000,
+    });
+    await page.waitForFunction(
+      () => (document.querySelector('#storybook-root')?.children.length ?? 0) > 0,
+      undefined,
+      { timeout: 15_000 },
+    );
+    await page.waitForTimeout(120);
+  };
+
+  try {
+    await attempt();
+  } catch {
+    counted('story render retried');
+    await attempt();
+  }
 }
 
 /**
