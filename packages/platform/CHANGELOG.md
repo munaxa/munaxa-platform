@@ -4,6 +4,25 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.3.1] — 2026-08-13
+
+Phase 8.7 extends keyboard verification from two hand-picked assertions to the whole discovered
+matrix — 100 stories × 4 brands × 2 schemes — with each story's contract derived from the DOM it
+renders rather than from its title. One product defect came out of it.
+
+### Fixed
+
+- **`DataGrid` answered keystrokes aimed at controls inside its cells.** The grid's handler sits on
+  the `<table>`, so a keypress on a row's action button bubbles to it — and it responded: Enter
+  activated the row while `preventDefault()` stopped the button's own menu from opening. The same
+  action worked with a mouse, which is the definition of a keyboard-only defect. Space selected the
+  row instead of pressing the button, and the arrows moved the grid instead of the caret in a cell's
+  text field. Keys now belong to whatever holds focus; Escape stays the grid's, because that is how
+  a person gets back out of a cell's control to the cell itself.
+
+  Measured on the files browser: the row action menu opened on a click and not on Enter, in all four
+  brands and both schemes.
+
 ## [1.3.0] — 2026-08-12
 
 Product branding becomes part of the platform. School, Work and Docs had authored palettes but no

@@ -236,6 +236,18 @@ export function DataGrid<T>({
     const { row, col } = focus;
     const viewportRows = Math.max(1, Math.floor(readViewport(scrollRef.current) / rowHeight) - 1);
 
+    /*
+     * Keys belong to whatever holds focus. The grid's handler sits on the table, so every keystroke
+     * aimed at a control *inside* a cell — an action menu, a sort button, a text field — bubbles
+     * here too, and the grid used to answer them: Enter on a row's menu button activated the row
+     * instead of opening the menu, and `preventDefault` stopped the menu from opening at all. The
+     * same control opened on a click, so the feature existed for a mouse and not for a keyboard.
+     *
+     * Escape is the exception, and deliberately so: it is how a person gets back out of a cell's
+     * control to the cell itself, which is what makes the arrows work again.
+     */
+    if (!(event.target as HTMLElement).matches('[data-cell]') && event.key !== 'Escape') return;
+
     switch (event.key) {
       case 'ArrowRight':
         event.preventDefault();
