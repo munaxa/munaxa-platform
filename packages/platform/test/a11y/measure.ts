@@ -188,48 +188,51 @@ export async function axeOn(page: Page, selector = 'document'): Promise<AxeOutco
     () => typeof (window as { axe?: unknown }).axe !== 'undefined',
   );
   if (!present) await page.addScriptTag({ path: AXE_PATH });
-  return page.evaluate(async (sel) => {
-    /*
-     * The whole document, not `#storybook-root` — Phase 8.4.
-     *
-     * Scoping to the story root looked tidy and silently skipped every portalled layer: dialogs,
-     * popovers, dropdowns and the command palette all render outside it. The `Command` group
-     * heading measured 2.79:1 by direct measurement while a root-scoped axe run reported the same
-     * story clean, which is the same shape of false confidence Phase 8.3 found in a suppression.
-     */
-    const target = sel === 'document' ? document : (document.querySelector(sel) ?? document);
-    const runner = (
-      window as unknown as {
-        axe: {
-          run: (
-            ctx: Element | Document,
-            options: unknown,
-          ) => Promise<{
-            violations: { id: string; impact: string; nodes: { target: string[] }[] }[];
-            incomplete: { id: string; nodes: { target: string[] }[] }[];
-          }>;
-        };
+  return page.evaluate(
+    async ({ sel, rules }) => {
+      /*
+       * The whole document, not `#storybook-root` — Phase 8.4.
+       *
+       * Scoping to the story root looked tidy and silently skipped every portalled layer: dialogs,
+       * popovers, dropdowns and the command palette all render outside it. The `Command` group
+       * heading measured 2.79:1 by direct measurement while a root-scoped axe run reported the same
+       * story clean, which is the same shape of false confidence Phase 8.3 found in a suppression.
+       */
+      const target = sel === 'document' ? document : (document.querySelector(sel) ?? document);
+      const runner = (
+        window as unknown as {
+          axe: {
+            run: (
+              ctx: Element | Document,
+              options: unknown,
+            ) => Promise<{
+              violations: { id: string; impact: string; nodes: { target: string[] }[] }[];
+              incomplete: { id: string; nodes: { target: string[] }[] }[];
+            }>;
+          };
+        }
+      ).axe;
+      const sleep = async (ms: number): Promise<void> =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+      let result: Awaited<ReturnType<typeof runner.run>> | null = null;
+      for (let attempt = 0; attempt < 25 && result === null; attempt += 1) {
+        try {
+          result = await runner.run(target, rules);
+        } catch (error) {
+          if (!String((error as Error).message).includes('already running')) throw error;
+          await sleep(120);
+        }
       }
-    ).axe;
-    const sleep = async (ms: number): Promise<void> =>
-      new Promise((resolve) => setTimeout(resolve, ms));
-    let result: Awaited<ReturnType<typeof runner.run>> | null = null;
-    for (let attempt = 0; attempt < 25 && result === null; attempt += 1) {
-      try {
-        result = await runner.run(target, RULES);
-      } catch (error) {
-        if (!String((error as Error).message).includes('already running')) throw error;
-        await sleep(120);
-      }
-    }
-    if (result === null) throw new Error('axe stayed busy for three seconds');
-    return {
-      violations: result.violations.flatMap((v) =>
-        v.nodes.map((n) => `${v.impact}: ${v.id} ${n.target.join(' ')}`.slice(0, 140)),
-      ),
-      incomplete: result.incomplete.flatMap((i) =>
-        i.nodes.map((n) => `${i.id} ${n.target.join(' ')}`.slice(0, 140)),
-      ),
-    };
-  }, selector);
+      if (result === null) throw new Error('axe stayed busy for three seconds');
+      return {
+        violations: result.violations.flatMap((v) =>
+          v.nodes.map((n) => `${v.impact}: ${v.id} ${n.target.join(' ')}`.slice(0, 140)),
+        ),
+        incomplete: result.incomplete.flatMap((i) =>
+          i.nodes.map((n) => `${i.id} ${n.target.join(' ')}`.slice(0, 140)),
+        ),
+      };
+    },
+    { sel: selector, rules: RULES },
+  );
 }
