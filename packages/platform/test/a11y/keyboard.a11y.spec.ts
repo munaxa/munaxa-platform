@@ -51,6 +51,8 @@ interface Outcome {
 
 let harness: Harness | null = null;
 let outcomes: Outcome[] = [];
+/** Kinds that classification saw but a repeat render did not — reported, never hidden. */
+const reclassified: string[] = [];
 let discovered: { total: number; eligible: Story[] } = { total: 0, eligible: [] };
 
 beforeAll(async () => {
@@ -85,6 +87,23 @@ beforeAll(async () => {
        */
       const reload = async (): Promise<void> => {
         await openRendered(page, harness!.origin, job.story.id, job.brand, job.scheme);
+      };
+
+      /*
+       * Re-detect on the fresh render, because a contract applies to what the story shows now.
+       *
+       * Classification runs once, and three combinations out of eight hundred classified a `dialog`
+       * that a repeat render never produced — an `AppShell` at this viewport has no dialog trigger
+       * in five runs out of five. Something transient was caught mid-mount. Driving a contract for a
+       * control that is not there timed the locator out and reported the story as unrenderable,
+       * which it is not. A kind that does not survive the reload is counted rather than asserted,
+       * so the flicker stays visible instead of turning into either a failure or a silent pass.
+       */
+      const stillRenders = async (kind: Kind): Promise<boolean> => {
+        const now = (await page.evaluate<Kind[]>(`(${DETECT_KINDS})()`)) ?? [];
+        if (now.includes(kind)) return true;
+        reclassified.push(`${job.story.id} · ${job.brand} · ${job.scheme}: ${kind}`);
+        return false;
       };
 
       try {
@@ -133,7 +152,7 @@ beforeAll(async () => {
           // Typing, where the story renders a field a person can type into.
           if (kinds.includes('input')) {
             await reload();
-            if (!(await typingEntersText(page))) {
+            if ((await stillRenders('input')) && !(await typingEntersText(page))) {
               failures.push('K8 typing into the field did not enter text');
             }
           }
@@ -151,7 +170,7 @@ beforeAll(async () => {
           // A radio group is one Tab stop whose arrows move the selection.
           if (kinds.includes('radio')) {
             await reload();
-            if (!(await arrowsMoveSelection(page))) {
+            if ((await stillRenders('radio')) && !(await arrowsMoveSelection(page))) {
               failures.push('K3 ArrowDown did not move the selection within the radio group');
             }
           }
@@ -159,13 +178,19 @@ beforeAll(async () => {
           // Roving focus, where the story renders a composite that owns one Tab stop.
           if (kinds.includes('tabs')) {
             await reload();
-            if (!(await arrowsMove(page, TABLIST_WITH_TABS, 'ArrowRight'))) {
+            if (
+              (await stillRenders('tabs')) &&
+              !(await arrowsMove(page, TABLIST_WITH_TABS, 'ArrowRight'))
+            ) {
               failures.push('K3 ArrowRight did not move focus within the tablist');
             }
           }
           if (kinds.includes('grid')) {
             await reload();
-            if (!(await arrowsMove(page, GRID_WITH_CELLS, 'ArrowDown'))) {
+            if (
+              (await stillRenders('grid')) &&
+              !(await arrowsMove(page, GRID_WITH_CELLS, 'ArrowDown'))
+            ) {
               failures.push('K3 ArrowDown did not move focus within the grid');
             }
           }
@@ -185,6 +210,7 @@ beforeAll(async () => {
           ] as const) {
             if (!kinds.includes(kind)) continue;
             await reload();
+            if (!(await stillRenders(kind))) continue;
             const { opened, closed, restored } = await openAndDismiss(page, trigger, surface);
             if (!opened) failures.push(`K4 Enter did not open the ${kind}`);
             else if (!closed) failures.push(`K5 Escape did not close the ${kind}`);
@@ -235,6 +261,7 @@ describe('keyboard across the matrix', () => {
       interactive: interactive.length,
       static: outcomes.length - interactive.length,
       failed: outcomes.filter((o) => o.failures.length > 0).length,
+      reclassifiedOnReload: reclassified,
       byKind,
       contracts: CONTRACT,
     };
