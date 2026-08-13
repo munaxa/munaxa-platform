@@ -235,8 +235,9 @@ export async function arrowsMove(page: Page, container: string, key: string): Pr
 }
 
 /**
- * A trigger owes: Enter opens, Escape closes, and focus comes back. Reported as three separate
- * answers so a component that opens but strands focus is not confused with one that never opened.
+ * A trigger owes: the surface opens, Escape closes it, and focus comes back. Reported as three
+ * separate answers so a component that opens but strands focus is not confused with one that never
+ * opened.
  */
 export async function openAndDismiss(
   page: Page,
@@ -259,7 +260,18 @@ export async function openAndDismiss(
   };
 
   await page.locator(trigger).first().focus();
-  await page.keyboard.press('Enter');
+
+  /*
+   * Enter is pressed only if the surface is not already showing — Phase 8.9.
+   *
+   * A menu or a dialog is closed until its trigger is activated, but the `Autocomplete`-backed
+   * combobox opens as soon as it has focus, and Enter there *commits* the highlighted option and
+   * closes the list. Pressing Enter unconditionally made the instrument close what was already open
+   * and then report that it never opened — sixteen combinations of a component doing exactly the
+   * right thing for its pattern.
+   */
+  const alreadyOpen = await page.evaluate((sel) => document.querySelector(sel) !== null, surface);
+  if (!alreadyOpen) await page.keyboard.press('Enter');
   const opened = await settle(true);
   if (!opened) return { opened: false, closed: false, restored: false };
 
