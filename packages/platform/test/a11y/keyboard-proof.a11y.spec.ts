@@ -432,4 +432,43 @@ describe('the keyboard instrument can fail', () => {
       'and must fall silent again once it is removed',
     ).toStrictEqual([]);
   }, 240_000);
+
+  it('proof M — the widened ruleset is live, and page-structure rules are not', async () => {
+    /*
+     * Phase 8.12. The matrix ran `color-contrast` alone from Phase 8.4 until now, so every other
+     * rule axe knows was unchecked. Widening it is only worth anything if the new rules actually
+     * report — and if the three page-structure rules really are off, because a component rendered
+     * alone in an iframe fails those by construction and the suite would be red on every story.
+     */
+    await open(BUTTONS);
+    expect(
+      (await axeOn(page)).violations,
+      'the story must be clean before anything is injected',
+    ).toStrictEqual([]);
+
+    // A rule that is not `color-contrast`: naming a role-less element, which ARIA prohibits. This
+    // is the exact defect the widened ruleset found in `Breadcrumb`.
+    await page.evaluate(() => {
+      // The exact shape the widened ruleset found in `Breadcrumb`: a role-less span carrying a
+      // name, with only an `aria-hidden` icon inside it. axe reports the name as unusable.
+      const span = document.createElement('span');
+      span.setAttribute('aria-label', 'named generic');
+      const icon = document.createElement('svg');
+      icon.setAttribute('aria-hidden', 'true');
+      span.append(icon);
+      document.querySelector('#storybook-root')?.append(span);
+    });
+
+    const violations = (await axeOn(page)).violations;
+    expect(
+      violations.join(' '),
+      'a non-contrast rule must be reported, or widening the ruleset bought nothing',
+    ).toContain('aria-prohibited-attr');
+
+    // …and the page-structure rules stay off, or every story in the matrix would fail on them.
+    expect(
+      violations.join(' '),
+      'page-structure rules belong to the application and are checked there',
+    ).not.toMatch(/landmark-one-main|page-has-heading-one|region/);
+  }, 240_000);
 });
