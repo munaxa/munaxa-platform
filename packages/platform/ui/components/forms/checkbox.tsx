@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '../../lib/cn.js';
+import { useFieldAria } from './field-context.js';
 
 const boxBase =
   'h-4 w-4 shrink-0 rounded border-input text-primary-strong accent-primary ' +
@@ -39,6 +40,23 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
     [indeterminate, ref],
   );
 
+  /*
+   * Read the enclosing `Field` — Phase 8.15, and the same defect `Switch` carried.
+   *
+   * `Field` labels its control through `htmlFor={controlId}`, and a checkbox that never took that
+   * id left the label resolving to nothing. `label` here is the *inline* label for a standalone
+   * checkbox; it does not help the `Field` case, which is the one products reach for when the
+   * checkbox sits in a form beside other fields.
+   */
+  const field = useFieldAria({
+    ...(props.id === undefined ? {} : { id: props.id }),
+    ...(props['aria-describedby'] === undefined
+      ? {}
+      : { 'aria-describedby': props['aria-describedby'] }),
+    ...(props.required === undefined ? {} : { required: props.required }),
+    ...(props.disabled === undefined ? {} : { disabled: props.disabled }),
+  });
+
   const input = (
     <input
       ref={applyIndeterminate}
@@ -46,6 +64,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
       className={cn(boxBase, className)}
       {...(indeterminate ? { 'aria-checked': 'mixed' as const } : {})}
       {...props}
+      {...field}
     />
   );
   if (label === undefined) return input;

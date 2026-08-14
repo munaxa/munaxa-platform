@@ -1,4 +1,5 @@
 import { cn } from '../../lib/cn.js';
+import { useFieldAria } from './field-context.js';
 
 export interface SwitchProps {
   checked: boolean;
@@ -23,13 +24,33 @@ export function Switch({
   id,
   ...aria
 }: SwitchProps) {
+  /*
+   * Read the enclosing `Field` — Phase 8.15.
+   *
+   * `Field` renders `<label htmlFor={controlId}>` and publishes `controlId` through context.
+   * `Input` and `Textarea` consumed it; this did not, so `<Field label="Value"><Switch /></Field>`
+   * produced a label pointing at nothing and a `role="switch"` with **no accessible name** —
+   * `button-name`, which axe rates **critical**. Measured on Munaxa Docs' `/admin/settings`: twelve
+   * unnamed switches, in both themes.
+   *
+   * The asymmetry was the real defect. Two of the package's form controls honoured the labelling
+   * contract and two ignored it, so the correct-looking composition silently produced an unusable
+   * control — and a product that noticed had to wire `id`/`htmlFor` by hand at every call site.
+   */
+  const field = useFieldAria({
+    ...(id === undefined ? {} : { id }),
+    ...(disabled === undefined ? {} : { disabled }),
+  });
   return (
     <button
       type="button"
       role="switch"
-      id={id}
+      {...(field.id === undefined ? {} : { id: field.id })}
+      {...(field['aria-describedby'] === undefined
+        ? {}
+        : { 'aria-describedby': field['aria-describedby'] })}
       aria-checked={checked}
-      disabled={disabled}
+      disabled={field.disabled ?? disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
         'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-transparent transition-colors',
