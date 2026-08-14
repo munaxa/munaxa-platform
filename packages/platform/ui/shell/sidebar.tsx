@@ -15,6 +15,13 @@ export interface SidebarProps {
   expandLabel?: string;
   /** Hide the collapse control for a shell whose rail is fixed. */
   collapsible?: boolean;
+  /**
+   * Accessible name for the rail itself, which is a `navigation` landmark — Phase 8.16.
+   *
+   * Overridable for the same reason `InspectorLayout`'s is: a product in another language, or one
+   * with a second rail, has to be able to say so.
+   */
+  railLabel?: string;
   children: ReactNode;
   className?: string;
 }
@@ -36,6 +43,7 @@ export function Sidebar({
   collapseLabel = 'Collapse navigation',
   expandLabel = 'Expand navigation',
   collapsible = true,
+  railLabel = 'Workspace',
   children,
   className,
 }: SidebarProps) {
@@ -46,19 +54,29 @@ export function Sidebar({
   if (isMobile) return null;
 
   /*
-   * A `<div>`, not an `<aside>` — Phase 8.12.
+   * A **named `<nav>`** — Phase 8.16, and the third answer this element has had.
    *
-   * The rail is a container: brand, the navigation, a footer slot. The landmark that matters is the
-   * `<nav>` inside it, which carries its own name. Wrapping that in an unnamed `complementary`
-   * landmark added a second, nameless entry to every landmark list — and where a screen also used
-   * `Split`'s inspector, two unnamed complementary landmarks became indistinguishable from each
-   * other, which is what axe reports as `landmark-unique`.
+   * Phase 8.12 found two *unnamed* `complementary` landmarks here and in `Split`'s inspector, which
+   * a landmark list showed as two indistinguishable entries (`landmark-unique`). It turned this
+   * `<aside>` into a `<div>`, which was right about the duplicate and wrong about what it left
+   * behind: the rail also holds the brand, and with no landmark around it the brand lockup sat
+   * outside the landmark tree entirely. Phase 8.16 measured the result — `region` on **every route
+   * of the product, in both themes**, one node each, always the brand image.
    *
-   * Removing the redundant landmark is the fix rather than inventing a name for it: nobody
-   * navigating by landmark wants "complementary" wrapped around "navigation".
+   * Neither `<aside>` nor `<div>` is the answer. The rail is not complementary content and it is
+   * not structureless: it is the workspace's navigation column, holding the brand, the primary
+   * `<nav>` and a footer slot. So it says that, with a name — the pattern `InspectorLayout`
+   * already uses. A landmark list now reads "Workspace › Main" rather than either an anonymous
+   * `complementary` or nothing at all.
+   *
+   * Nesting a named `navigation` inside a named `navigation` is valid and is the honest shape:
+   * "everything you navigate the workspace with" contains "the primary links". The alternative
+   * considered and rejected was moving the brand inside the inner `<nav>`, which `Sidebar` cannot
+   * do — the inner nav is the consumer's `children`.
    */
   return (
-    <div
+    <nav
+      aria-label={railLabel}
       className={cn(
         'sticky top-0 hidden h-screen shrink-0 self-start p-3 md:block',
         'transition-[width] duration-300 ease-in-out motion-reduce:transition-none',
@@ -110,6 +128,6 @@ export function Sidebar({
 
         {footer && !collapsed ? <div className="mt-4">{footer}</div> : null}
       </div>
-    </div>
+    </nav>
   );
 }

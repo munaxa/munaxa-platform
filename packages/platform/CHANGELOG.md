@@ -4,6 +4,38 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.5.0] — 2026-08-14
+
+Phase 8.16 measured the dimensions nothing had ever looked at — the writing direction, the
+parameterised routes, and a session with different permissions — and found them clean. What it did
+find was that one moderate violation had been firing on **every page of Munaxa Docs, in both
+themes, for three releases**, and that Phase 8.12 put it there.
+
+### Added
+
+- `Sidebar` gains **`railLabel`** (default `'Workspace'`), the accessible name for the rail's
+  `navigation` landmark. Overridable for another language or a second rail, the same shape as
+  `InspectorLayout`'s `inspectorLabel`.
+
+### Fixed
+
+- **The navigation rail was not a landmark, so the brand sat outside the landmark tree.** This
+  element has now had three shapes and each answered a different measurement. It was an `<aside>` —
+  an *unnamed* `complementary`, which alongside `Split`'s unnamed inspector produced two entries a
+  landmark list could not tell apart (`landmark-unique`, Phase 8.12). Phase 8.12 made it a `<div>`,
+  which was right about the duplicate and wrong about what it left behind: the rail also holds the
+  brand lockup, and with no landmark around it that content was outside the landmark tree entirely
+  — `region`, one node on every route of the product, in both themes.
+
+  Neither shape was correct. The rail is not complementary content and it is not structureless: it
+  is the workspace's navigation column, holding the brand, the primary `<nav>` and a footer. It now
+  says so, with a name. A landmark list reads "Workspace › Main" rather than an anonymous
+  `complementary` or nothing at all.
+
+  It stayed invisible for three releases because the two checks that could have caught it each
+  looked elsewhere: the component matrix disables page-structure rules by design, and the
+  application sweep filtered to critical and serious.
+
 ## [1.4.3] — 2026-08-14
 
 Phase 8.15 swept the full axe ruleset over **every** Munaxa Docs route rather than the five its
