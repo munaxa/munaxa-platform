@@ -4,6 +4,28 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.4.3] — 2026-08-14
+
+Phase 8.15 swept the full axe ruleset over **every** Munaxa Docs route rather than the five its
+suite sampled. `/admin/settings` — a screen no accessibility check had ever visited — was shipping
+twelve controls with no accessible name at all, and the cause was in this package.
+
+### Fixed
+
+- **`Switch` and `Checkbox` ignored the `Field` labelling contract.** `Field` renders
+  `<label htmlFor={controlId}>` and publishes `controlId` through context; `Input` and `Textarea`
+  consumed it and these two did not. So the obvious composition —
+  `<Field label="Value"><Switch … /></Field>` — rendered a label pointing at nothing and a
+  `role="switch"` with **no accessible name**: `button-name`, which axe rates **critical**.
+  Measured in a real browser on a real product screen: twelve of them, in both themes.
+
+  The asymmetry was the defect rather than either control. Two of four form controls honoured the
+  contract, so a correct-looking call site silently produced an unusable control — and the one
+  product that noticed had been wiring `id`/`htmlFor` by hand in its own wrapper, which is a
+  host-side patch for a gap that belongs here. Both now read the enclosing `Field` and pick up its
+  id and its `aria-describedby`, exactly as `Input` does. Standalone use is unchanged: no `Field`,
+  no generated id.
+
 ## [1.4.2] — 2026-08-14
 
 Phase 8.14 measured the states the matrix actually lays out, rather than the components it renders.
