@@ -4,6 +4,40 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.4.1] — 2026-08-14
+
+Phase 8.13 measured what the accessibility matrix was checking *against*, rather than what it was
+checking. The matrix has reported "100 stories, 0 excluded" since Phase 8.5, and that is a fact about
+stories: discovery reads Storybook's index, so a public component nobody wrote a story for is not
+excluded and not skipped — it is invisible, and the run is green because it was never asked.
+**Eighteen** renderable public exports were in that state, rendered by no story and by no other
+component, so none of the 800 brand x scheme combinations had ever laid one out. Two real defects
+were waiting there.
+
+### Fixed
+
+- **`Progress` shipped a progressbar with no accessible name.** With `label` omitted it rendered
+  `role="progressbar"` and `aria-label={undefined}`, so a screen reader announced "progress bar, 40
+  percent" and left a listener to guess what was at forty percent — WCAG 4.1.2, and true of every
+  call site that took the prop's optionality at face value. `label` now defaults to `'Progress'`,
+  matching `Breadcrumb`'s `label` and `InspectorLayout`'s `inspectorLabel`. Pass something specific
+  wherever the surrounding text does not already say it.
+- **`CommandSeparator` made every palette that used it an invalid listbox.** `CommandList` is a
+  `role="listbox"`, ARIA lets a listbox own `option` and `group` and nothing else, and `cmdk` renders
+  the separator as `role="separator"` directly inside it — `aria-required-children`, which axe rates
+  **critical**, and which entitles a screen reader to disregard options it cannot account for. The
+  divider is now `aria-hidden`; it carries no information a listener needs, and the groups it sits
+  between are already named.
+
+### Changed
+
+- Six new stories bring all eighteen previously unrendered components into the accessibility matrix,
+  which now runs **106 stories, 848 contrast and 848 keyboard combinations, 0 excluded**. The 800
+  pre-existing rows are identical to 1.4.0 field by field.
+- `ui/story-coverage.test.ts` fails when a public component is added with nothing rendering it, and
+  fails just as loudly when its exemption list names something that is now rendered — so the gap
+  cannot silently reopen.
+
 ## [1.4.0] — 2026-08-13
 
 Phase 8.12 widened the accessibility matrix past colour contrast for the first time. From Phase 8.4
