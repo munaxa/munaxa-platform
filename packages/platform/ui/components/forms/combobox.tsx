@@ -191,15 +191,37 @@ export function Combobox({
             onValueChange={setQuery}
             placeholder={text.searchPlaceholder}
           />
-          <CommandList>
-            {loading ? (
-              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                <Spinner className="size-4" />
-                {text.loading}
-              </div>
-            ) : (
+          {/*
+            The busy state sits *outside* the list — Phase 8.14.
+
+            `CommandList` is `role="listbox"`, and ARIA lets a listbox own `option` and `group`.
+            While loading, its only child was a plain `div`, so the listbox owned a generic element
+            and no options at all: `aria-required-children`, which axe rates **critical**. An empty
+            listbox is valid; a listbox full of something that is not an option is not.
+
+            `aria-live="polite"` is the other half. The old markup announced nothing when results
+            arrived, so a screen-reader user was left with a silent box.
+          */}
+          {loading ? (
+            <div
+              aria-live="polite"
+              className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
+            >
+              <Spinner className="size-4" />
+              {text.loading}
+            </div>
+          ) : null}
+          {/*
+            `CommandEmpty` sits outside the list for the same reason the busy text does. `cmdk`
+            renders it `role="presentation"`, and a `listbox` whose only child is presentational
+            has, as far as ARIA is concerned, no required children at all — axe reports the same
+            critical `aria-required-children`. A listbox with *nothing* in it is valid; a listbox
+            holding only a message is not.
+          */}
+          <CommandEmpty>{text.empty}</CommandEmpty>
+          <CommandList aria-busy={loading || undefined}>
+            {loading ? null : (
               <>
-                <CommandEmpty>{text.empty}</CommandEmpty>
                 {grouped.map(([group, groupItems]) => (
                   <CommandGroup key={group ?? '__ungrouped'} heading={group}>
                     {groupItems.map((option) => (
@@ -340,15 +362,37 @@ export function MultiSelect({
             onValueChange={setQuery}
             placeholder={text.searchPlaceholder}
           />
-          <CommandList>
-            {loading ? (
-              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                <Spinner className="size-4" />
-                {text.loading}
-              </div>
-            ) : (
+          {/*
+            The busy state sits *outside* the list — Phase 8.14.
+
+            `CommandList` is `role="listbox"`, and ARIA lets a listbox own `option` and `group`.
+            While loading, its only child was a plain `div`, so the listbox owned a generic element
+            and no options at all: `aria-required-children`, which axe rates **critical**. An empty
+            listbox is valid; a listbox full of something that is not an option is not.
+
+            `aria-live="polite"` is the other half. The old markup announced nothing when results
+            arrived, so a screen-reader user was left with a silent box.
+          */}
+          {loading ? (
+            <div
+              aria-live="polite"
+              className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"
+            >
+              <Spinner className="size-4" />
+              {text.loading}
+            </div>
+          ) : null}
+          {/*
+            `CommandEmpty` sits outside the list for the same reason the busy text does. `cmdk`
+            renders it `role="presentation"`, and a `listbox` whose only child is presentational
+            has, as far as ARIA is concerned, no required children at all — axe reports the same
+            critical `aria-required-children`. A listbox with *nothing* in it is valid; a listbox
+            holding only a message is not.
+          */}
+          <CommandEmpty>{text.empty}</CommandEmpty>
+          <CommandList aria-busy={loading || undefined}>
+            {loading ? null : (
               <>
-                <CommandEmpty>{text.empty}</CommandEmpty>
                 {grouped.map(([group, groupItems]) => (
                   <CommandGroup key={group ?? '__ungrouped'} heading={group}>
                     {groupItems.map((option) => {

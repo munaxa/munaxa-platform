@@ -161,48 +161,65 @@ export function Autocomplete({
       />
 
       {open ? (
-        // A listbox owns its options directly: `role="listbox"` replaces a `<ul>`'s implicit list
-        // role, orphaning any `<li>` inside it, and an option may not contain a control.
+        /*
+         * A listbox owns its options directly: `role="listbox"` replaces a `<ul>`'s implicit list
+         * role, orphaning any `<li>` inside it, and an option may not contain a control.
+         *
+         * Which is exactly why the busy text, the empty text and the footer now sit *outside* it —
+         * Phase 8.14. ARIA lets a listbox own `option` and `group` and nothing else, so all three
+         * made it own a plain `div`: `aria-required-children`, which axe rates **critical**. An
+         * empty listbox is valid; a listbox full of things that are not options is not.
+         */
         <div
-          id={listId}
-          role="listbox"
-          className="absolute z-dropdown mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-card p-1 shadow-card"
+          className="absolute z-dropdown mt-1 w-full rounded-lg border border-border bg-card shadow-card"
           onMouseDown={() => blurTimer.current && clearTimeout(blurTimer.current)}
         >
           {loading ? (
-            <div className="px-2 py-1.5 text-sm text-muted-foreground">{text.loading}</div>
-          ) : (
-            <>
-              {filtered.map((option, index) => (
-                <div
-                  key={option.value}
-                  id={`${listId}-opt-${option.value}`}
-                  role="option"
-                  aria-selected={option.value === value}
-                  onClick={() => choose(option.value)}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  className={cn(
-                    'flex w-full cursor-pointer flex-col items-start rounded-md px-2 py-1.5 text-start text-sm',
-                    index === activeIndex
-                      ? 'bg-secondary/80 text-foreground'
-                      : option.value === value
-                        ? 'bg-secondary/50 text-foreground'
-                        : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-                  )}
-                >
-                  <span>{option.label}</span>
-                  {option.description ? (
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {option.description}
-                    </span>
-                  ) : null}
-                </div>
-              ))}
-              {filtered.length === 0 ? (
-                <div className="px-2 py-1.5 text-sm text-muted-foreground">{text.empty}</div>
-              ) : null}
-            </>
-          )}
+            <div aria-live="polite" className="px-2 py-1.5 text-sm text-muted-foreground">
+              {text.loading}
+            </div>
+          ) : null}
+          {!loading && filtered.length === 0 ? (
+            <div aria-live="polite" className="px-2 py-1.5 text-sm text-muted-foreground">
+              {text.empty}
+            </div>
+          ) : null}
+          <div
+            id={listId}
+            role="listbox"
+            aria-busy={loading || undefined}
+            className="max-h-64 overflow-auto p-1"
+          >
+            {loading ? null : (
+              <>
+                {filtered.map((option, index) => (
+                  <div
+                    key={option.value}
+                    id={`${listId}-opt-${option.value}`}
+                    role="option"
+                    aria-selected={option.value === value}
+                    onClick={() => choose(option.value)}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    className={cn(
+                      'flex w-full cursor-pointer flex-col items-start rounded-md px-2 py-1.5 text-start text-sm',
+                      index === activeIndex
+                        ? 'bg-secondary/80 text-foreground'
+                        : option.value === value
+                          ? 'bg-secondary/50 text-foreground'
+                          : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+                    )}
+                  >
+                    <span>{option.label}</span>
+                    {option.description ? (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {option.description}
+                      </span>
+                    ) : null}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
           {footer ? <div className="border-t border-border pt-1">{footer}</div> : null}
         </div>
       ) : null}

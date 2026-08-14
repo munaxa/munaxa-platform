@@ -6,7 +6,7 @@ import { Clock } from '../../../icons/index.js';
 import { Popover, PopoverAnchor, PopoverContent } from '../overlays/popover.js';
 import { Input } from '../forms/input.js';
 import { useFieldAria } from '../forms/field-context.js';
-import { Command, CommandEmpty, CommandItem, CommandList } from '../forms/command.js';
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '../forms/command.js';
 import { DatePicker } from './date-picker.js';
 import {
   timeOptions,
@@ -182,9 +182,25 @@ export function TimePicker({
           triggerRef.current?.focus();
         }}
       >
-        {/* `Command` supplies the listbox semantics and the arrow-key handling the platform already
-            uses everywhere else. No input: the field above *is* the search box. */}
+        {/*
+          `Command` supplies the listbox semantics and the arrow-key handling the platform already
+          uses everywhere else — but only through its input, which is where `cmdk` binds every key.
+
+          This read "No input: the field above *is* the search box", and that was the intent rather
+          than the behaviour: the field sits outside `Command`, so `cmdk` never saw it, and Radix
+          moves focus into the popover on open, so it did not even keep the caret. Phase 8.14
+          measured the result — the popover contained **zero** tabbable elements, focus parked on a
+          `tabindex="-1"` container, and eighty-five ArrowDown presses moved neither the selection
+          nor a list scrolling 1 544px inside 224px. Anyone not using a mouse could open the times
+          and then choose nothing but the one already chosen. WCAG 2.1.1.
+
+          The input is visually hidden rather than absent: it is the element `cmdk` binds to and the
+          element Radix hands focus to, so ArrowUp/ArrowDown move the active option, the list
+          scrolls to follow it, Enter commits, and typing filters. Nothing about the visible design
+          changes.
+        */}
         <Command loop>
+          <CommandInput className="sr-only" aria-label={text.list} icon={false} />
           <CommandList className="max-h-56">
             <CommandEmpty>{text.empty}</CommandEmpty>
             {options.map((option) => (
