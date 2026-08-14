@@ -129,6 +129,26 @@ export const CommandItem = forwardRef<
   );
 });
 
+/**
+ * A rule between groups. Presentational, and that is a correctness requirement rather than a
+ * preference — Phase 8.13.
+ *
+ * `cmdk` renders it as `role="separator"` directly inside the list, and the list is a
+ * `role="listbox"`. ARIA lets a listbox own `option` and `group` and nothing else, so a separator
+ * there makes the whole listbox invalid — axe reports `aria-required-children` at **critical**, and
+ * a screen reader is entitled to drop the options it cannot account for. The divider carries no
+ * information a listener needs; the groups it sits between are already named and announced.
+ *
+ * `role="presentation"` would say it more directly and cannot be used: `cmdk` writes
+ * `role="separator"` *after* the prop spread, so the role is not overridable from here.
+ * `aria-hidden` is passed through untouched and takes the divider out of the accessibility tree
+ * entirely, which is the same outcome by the only route the dependency leaves open. Replacing the
+ * primitive was the alternative and would have dropped its behaviour of hiding itself while a
+ * search is active — a real behaviour, lost to work around a role attribute.
+ *
+ * This was invisible for nine phases because the palette is only measured while it is open, and no
+ * story put a separator in one.
+ */
 export const CommandSeparator = forwardRef<
   ElementRef<typeof CommandPrimitive.Separator>,
   ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
@@ -137,6 +157,7 @@ export const CommandSeparator = forwardRef<
     <CommandPrimitive.Separator
       ref={ref}
       className={cn('-mx-1 my-1 h-px bg-border', className)}
+      aria-hidden="true"
       {...props}
     />
   );
