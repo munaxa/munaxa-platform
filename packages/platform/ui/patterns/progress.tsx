@@ -21,15 +21,23 @@ export interface ProgressProps extends Omit<HTMLAttributes<HTMLDivElement>, 'chi
   tone?: Tone;
   /** Track height in Tailwind units (default 2 => h-2). */
   size?: 'sm' | 'md';
+  /**
+   * Accessible name for the bar.
+   *
+   * Defaulted rather than optional: a `progressbar` with no name announces "progress bar, 40%" and
+   * leaves a listener to guess what is at forty percent. The default keeps every bar named; pass
+   * something specific — "Upload", "Storage used" — wherever the surrounding text does not already
+   * say it.
+   */
   label?: string;
 }
 
-/** Linear progress/completion bar. Accessible (role=progressbar). */
+/** Linear progress/completion bar, always with an accessible name. */
 export function Progress({
   value,
   tone = 'default',
   size = 'md',
-  label,
+  label = 'Progress',
   className,
   ...props
 }: ProgressProps) {

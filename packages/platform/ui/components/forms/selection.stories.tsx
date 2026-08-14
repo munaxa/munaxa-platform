@@ -6,6 +6,7 @@ import { EntityPicker } from './entity-picker.js';
 import { Field } from './field.js';
 import {
   CommandPalette,
+  CommandSeparator,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -211,6 +212,12 @@ export const Palette: Story = {
                 </CommandItem>
                 <CommandItem onSelect={() => setOpen(false)}>Import records</CommandItem>
               </CommandGroup>
+              {/*
+                Phase 8.13: a separator in an open palette is the shape that exposed
+                `aria-required-children` — `cmdk` gave it `role="separator"` inside a `listbox`,
+                which ARIA does not allow to own one. Kept here so the matrix keeps measuring it.
+              */}
+              <CommandSeparator />
               <CommandGroup heading="Organisations">
                 {OPTIONS.map((option) => (
                   <CommandItem key={option.value} onSelect={() => setOpen(false)}>
