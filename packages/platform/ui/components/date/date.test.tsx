@@ -555,6 +555,38 @@ describe('TimePicker', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Not a valid time.');
   });
 
+  /*
+   * Phase 8.14. The popup used to contain nothing focusable at all.
+   *
+   * The component's own comment said the field above "*is* the search box", which was the intent
+   * and not the behaviour: the field sits outside `Command`, so `cmdk` — which binds every key to
+   * its input — never saw it, and Radix moves focus into the popover on open anyway. Measured in a
+   * real browser, the opened popup held zero tabbable elements, focus parked on a `tabindex="-1"`
+   * container, and eighty-five ArrowDown presses moved neither the selection nor a list scrolling
+   * 1 544px inside 224px. A person not using a mouse could open the times and pick nothing.
+   */
+  it('puts something focusable in the popup, so the list can be driven at all', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole('button', { name: 'Choose time' }));
+
+    const list = await screen.findByRole('listbox');
+    const popup = list.closest('[role="dialog"]') ?? list.parentElement!;
+    const focusable = popup.querySelectorAll(
+      'input, button, a[href], select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    expect(
+      focusable.length,
+      'a popup with nothing focusable in it cannot be operated from the keyboard — WCAG 2.1.1',
+    ).toBeGreaterThan(0);
+
+    // And specifically the element `cmdk` binds its arrow keys to.
+    expect(
+      popup.querySelector('[cmdk-input]'),
+      'the arrow keys live on the cmdk input; without one the listbox is inert',
+    ).not.toBeNull();
+  });
+
   it('offers a list on the chosen step', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

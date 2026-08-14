@@ -4,6 +4,45 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.4.2] — 2026-08-14
+
+Phase 8.14 measured the states the matrix actually lays out, rather than the components it renders.
+The contrast matrix measures the **canonical** render — the story as a person meets it on arrival —
+and exactly one story out of 106 was opened before axe ran. A census found 79 collapsed disclosure
+nodes against 9 expanded ones: the *contents* of almost every menu, popover, select and time list
+had never been through a single rule. Opening the other 78 triggers found four defects in shared
+components, one of them an outright keyboard failure.
+
+### Fixed
+
+- **`TimePicker`'s list could not be operated from the keyboard.** The popup contained zero tabbable
+  elements, focus parked on a `tabindex="-1"` container, and eighty-five ArrowDown presses moved
+  neither the selection nor a list scrolling 1 544px inside 224px — so anyone not using a mouse
+  could open the times and then choose nothing but the one already chosen. WCAG 2.1.1. The
+  component's own comment said the field above "*is* the search box", which was the intent and not
+  the behaviour: that field sits outside `Command`, so `cmdk` — which binds every key to its input —
+  never saw it. The popup now carries the input `cmdk` binds to, visually hidden, so arrow keys move
+  the active option, the list follows it, and Enter commits. Nothing visible changed.
+- **`OrganizationSwitcher` and `NotificationMenu` owned no menu items.** Both wrapped their items in
+  a `ScrollArea`, which put a role-less `div` between `role="menu"` and its contents. ARIA lets a
+  menu own `menuitem`, `menuitemradio`, `menuitemcheckbox` and `group`, so the menu owned a generic
+  element and no items at all — `aria-required-children`, which axe rates **critical**. The scroll
+  is now on the menu itself.
+- **`Combobox`, `MultiSelect` and `Autocomplete` put non-options inside their `listbox`.** The busy
+  text, the empty text and `Autocomplete`'s footer sat directly inside `role="listbox"`, which may
+  own only `option` and `group` — the same critical rule. An empty listbox is valid; a listbox
+  holding only a message is not, because a presentational child is ignored and leaves it with no
+  required children at all. All three now sit outside the list, and the busy state gained
+  `aria-busy` and a polite live region, so arriving results are announced rather than silent.
+
+### Changed
+
+- A new **overlay pass** opens every collapsed disclosure trigger the matrix can find — 74 of them —
+  and checks each opened layer both for ARIA validity and for whether a keyboard can reach the
+  choices it offers. The second check exists because `TimePicker` passed every rule axe has while
+  being unusable. The canonical 848 contrast and 848 keyboard combinations are unchanged, row for
+  row.
+
 ## [1.4.1] — 2026-08-14
 
 Phase 8.13 measured what the accessibility matrix was checking *against*, rather than what it was
