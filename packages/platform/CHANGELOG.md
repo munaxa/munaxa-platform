@@ -4,6 +4,30 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.5.2] — 2026-08-15
+
+### Fixed
+
+- **The calendar's month arrows did nothing.** The visible pane is driven by `cursor`, and an
+  effect keeps the focused day on screen by pulling `cursor` back to the month `focused` sits in.
+  The header arrows moved only `cursor`, so the effect undid the move on the very next commit:
+  clicking *next* set the pane to May while focus stayed on 15 April, focus read as behind the
+  pane, and the cursor snapped back. Neither direction ever changed the month, from the moment the
+  calendar opened on its selected day.
+
+  For a product this makes every `DatePicker` single-month — a date outside the month the field
+  opens on can only be typed, never picked. Reported from Munaxa School against a field whose
+  value needed moving to another month.
+
+  The arrows now carry the focused day along with the pane, which is what the effect is waiting
+  for. DOM focus stays on the button rather than jumping into the grid, so the pointer keeps its
+  place and a second click pages again.
+
+  It survived a 48-case suite because every one of those cases paged with the keyboard, where
+  `PageDown` moves `focused` and the pane follows by design. Nothing had ever clicked the button.
+  Three cases now do: both directions on `Calendar`, repeated clicks on one arrow, and paging
+  inside a `DatePicker` popover then selecting a day in the new month.
+
 ## [1.5.1] — 2026-08-15
 
 Phase 8.22 opened the product's overlays in the running application for the first time. Every menu
