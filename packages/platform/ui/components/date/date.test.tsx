@@ -161,6 +161,31 @@ describe('Calendar', () => {
     expect(onChange).toHaveBeenCalledWith('2026-04-20');
   });
 
+  it('pages the month with the header arrows', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    expect(screen.getByText('April 2026')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(screen.getByText('May 2026')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(screen.getByText('April 2026')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(screen.getByText('March 2026')).toBeInTheDocument();
+  });
+
+  it('keeps paging from the same arrow across repeated clicks', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const next = screen.getByRole('button', { name: 'Next month' });
+    await user.click(next);
+    await user.click(next);
+    await user.click(next);
+    expect(screen.getByText('July 2026')).toBeInTheDocument();
+  });
+
   it('moves a day at a time with the arrows and selects with Enter', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
@@ -414,6 +439,22 @@ describe('DatePicker', () => {
     await user.click(within(dialog).getByRole('button', { name: new RegExp('\\b20 April 2026$') }));
     expect(onChange).toHaveBeenCalledWith('2026-04-20');
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('pages the month from inside the popover, then selects the new month', async () => {
+    // The path a user actually takes: open the field's calendar, arrow to another month, pick a
+    // day there. Paging has to survive the popover, which keeps its own focus.
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(<Harness value="2026-04-15" onChange={onChange} />);
+    await user.click(screen.getByRole('button', { name: 'Choose date' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Calendar' });
+
+    await user.click(within(dialog).getByRole('button', { name: 'Next month' }));
+    expect(within(dialog).getByText('May 2026')).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: new RegExp('\\b20 May 2026$') }));
+    expect(onChange).toHaveBeenCalledWith('2026-05-20');
   });
 
   it('opens the calendar with Alt+ArrowDown from the field', async () => {
