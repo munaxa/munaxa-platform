@@ -236,6 +236,21 @@ export function Calendar(props: CalendarProps) {
   const weekdayNames = useMemo(() => formatter.weekdayNames('short'), [formatter]);
   const weekdayLongNames = useMemo(() => formatter.weekdayNames('long'), [formatter]);
 
+  /**
+   * Page the visible months.
+   *
+   * The focused day has to travel with the pane. The effect above pulls the cursor back to
+   * wherever focus is, so moving the cursor alone is undone on the very next commit and the
+   * arrows do nothing at all. DOM focus deliberately stays where it is — `focusPending` is not
+   * set — so the pointer keeps its place on the button and a second click pages again.
+   */
+  function page(delta: number): void {
+    setCursor(adapter.addMonths(cursor, delta));
+    setFocused((current) =>
+      clampDate(adapter, adapter.addMonths(current, delta), minDate, maxDate),
+    );
+  }
+
   const paging = {
     previous: adapter.addMonths(cursor, -1),
     next: adapter.addMonths(cursor, 1),
@@ -260,7 +275,7 @@ export function Calendar(props: CalendarProps) {
         <NavButton
           label={text.previousMonth}
           disabled={!canPageBack}
-          onClick={() => setCursor(paging.previous)}
+          onClick={() => page(-1)}
           direction={direction}
           back
         />
@@ -278,7 +293,7 @@ export function Calendar(props: CalendarProps) {
         <NavButton
           label={text.nextMonth}
           disabled={!canPageForward}
-          onClick={() => setCursor(paging.next)}
+          onClick={() => page(1)}
           direction={direction}
         />
       </div>
