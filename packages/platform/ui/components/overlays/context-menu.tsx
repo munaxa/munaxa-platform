@@ -15,7 +15,20 @@ import { menuItemClass, menuSurface } from './dropdown-menu.js';
  * on touch it competes with the browser's own selection handling. Offer the same actions from a
  * visible control and treat this as the accelerator it is.
  */
-export const ContextMenu = ContextMenuPrimitive.Root;
+/**
+ * Not modal, for the reason `DropdownMenu` states at length — Phase 8.22.
+ *
+ * Measured in the same minimal composition and it behaved identically: two focusable elements
+ * outside, both inside an `aria-hidden="true"` subtree the moment the menu opened, and a
+ * `role="menu"` with no `aria-modal` to account for it. Fixing one menu and leaving the other
+ * would be fixing the instance rather than the defect.
+ */
+export function ContextMenu({
+  modal = false,
+  ...props
+}: ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Root>) {
+  return <ContextMenuPrimitive.Root modal={modal} {...props} />;
+}
 export const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
 export const ContextMenuGroup = ContextMenuPrimitive.Group;
 export const ContextMenuSub = ContextMenuPrimitive.Sub;
