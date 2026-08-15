@@ -4,6 +4,34 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.5.1] — 2026-08-15
+
+Phase 8.22 opened the product's overlays in the running application for the first time. Every menu
+in Munaxa Docs — 56 of 56, on every route — was hiding the entire application from assistive
+technology while it was open, and had been since the menus were written.
+
+### Fixed
+
+- **An open menu no longer marks the rest of the page `aria-hidden`.** `DropdownMenu` and
+  `ContextMenu` re-exported Radix's `Root` unchanged, and its `modal` default is `true`. A modal
+  menu sets `aria-hidden="true"` on every other element in the document, so while a menu was open a
+  screen reader was offered a page containing nothing but menu items — no heading, no landmarks, not
+  even the control the menu belongs to. Nothing in the accessibility tree declared that state: the
+  popup is `role="menu"` with no `aria-modal`, so what the DOM did and what the semantics said
+  disagreed. axe reports it as `aria-hidden-focus` (serious), because the hidden subtree still held
+  focusable elements — 25 of them on a typical Munaxa Docs screen.
+
+  `Dialog` in this library is the contrast that settles which side was wrong: it declares
+  `aria-modal="true"` and leaves the page alone, so it is coherent in both directions. The menus
+  were claiming more than the dialogue does. `modal={false}` is also what the ARIA authoring
+  practices describe for a menu button — the menu is a popup over a page that is still there.
+
+  **What changes for a consumer.** The menu still opens, still closes on Escape and on an outside
+  click, and still returns focus to its trigger. Two behaviours that came with modality are gone by
+  design: focus is no longer trapped inside the menu (Tab now leaves it, as the menu-button pattern
+  expects), and the body is no longer scroll-locked while it is open. The `modal` prop is unchanged
+  and still accepted — a consumer that wants the previous behaviour passes `modal` explicitly.
+
 ## [1.5.0] — 2026-08-14
 
 Phase 8.16 measured the dimensions nothing had ever looked at — the writing direction, the

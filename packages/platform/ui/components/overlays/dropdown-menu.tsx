@@ -17,7 +17,33 @@ import { overlaySurface } from './popover.js';
  * Menu items are actions, not links. For navigation, use a link inside `DropdownMenuItem asChild`
  * so the element stays an anchor and middle-click, copy-link and open-in-new-tab keep working.
  */
-export const DropdownMenu = DropdownMenuPrimitive.Root;
+/**
+ * A menu is a popup, not a modal — Phase 8.22, and this default is the whole point of the wrapper.
+ *
+ * Radix's `Root` defaults to `modal` **true**, and re-exporting it bare inherited that. A modal
+ * menu marks every other element on the page `aria-hidden="true"`, so while a menu is open a
+ * screen reader is offered a page containing nothing but menu items — no heading, no landmarks,
+ * not even the control the menu belongs to. Nothing declares that state: the popup is
+ * `role="menu"` with no `aria-modal`, so the accessibility tree says "ordinary menu" while the DOM
+ * has hidden the application behind it. Measured in Munaxa Docs, that was 56 of 56 open menus on
+ * every route, each reporting `aria-hidden-focus` — the rule for exactly this mismatch, since the
+ * hidden subtree still held 25 focusable elements.
+ *
+ * `Dialog` in this same library is the contrast that settles it: it declares `aria-modal="true"`
+ * and does **not** hide the page, so it is coherent both ways. A menu should not be claiming more
+ * than a dialogue does.
+ *
+ * `modal={false}` is also what the ARIA authoring practices describe for a menu button: the menu
+ * is a popup over a page that is still there, Escape closes it and returns focus, and Tab moves on
+ * rather than being trapped. Consumers that genuinely want the modal behaviour can still pass
+ * `modal` — the prop is unchanged, only its default is.
+ */
+export function DropdownMenu({
+  modal = false,
+  ...props
+}: ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Root>) {
+  return <DropdownMenuPrimitive.Root modal={modal} {...props} />;
+}
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 export const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
