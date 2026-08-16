@@ -100,15 +100,18 @@ job that reports a result without doing its work.
 ## 5. Before / after evidence
 
 Both states were measured on **PR #17**, this pull request, rather than argued from the `munaxa-docs`
-measurement. Its first commit adds only this Markdown file; its second removes the filter.
+measurement. Its first commit adds only this Markdown file; its second removes the filter. Commit
+hashes are not cited: the branch was rebased onto `main` to satisfy the strict up-to-date rule, and
+the merge itself rebases again, so any hash written here would be stale by the time it was read. The
+two states are identified by their content instead.
 
-**Before — head `3317a1c`, one Markdown file:**
+**Before — the Markdown-only head, one file changed:**
 
 ```
 workflow runs for the head sha : 0
 required contexts published    : 0 of 3
 check-runs present             : 1  — 'Workers Builds: platform-storybook' (in_progress)
-mergeable                      : not mergeable
+mergeable                      : no
 ```
 
 The single check-run is the Cloudflare integration, and it is *useful* evidence rather than noise: it
@@ -120,7 +123,14 @@ None of `Lint · Typecheck · Test · Build`,
 `Façades match the platform surface` existed. The ruleset had nothing to evaluate and would have held
 this pull request pending indefinitely.
 
-**After — head `9c67e10`, the same Markdown file plus the one-trigger change:** see §7.
+**After — the same Markdown file plus the one-trigger change:**
+
+```
+workflow runs for the head sha : 1  — CI, event: pull_request
+required contexts published    : 3 of 3, executing the real jobs
+```
+
+See §7 for their conclusions.
 
 ## 6. Required check contexts
 
