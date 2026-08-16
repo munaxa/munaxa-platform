@@ -99,7 +99,28 @@ job that reports a result without doing its work.
 
 ## 5. Before / after evidence
 
-*(measured in this repository; filled from the pull request that carries this report)*
+Both states were measured on **PR #17**, this pull request, rather than argued from the `munaxa-docs`
+measurement. Its first commit adds only this Markdown file; its second removes the filter.
+
+**Before — head `3317a1c`, one Markdown file:**
+
+```
+workflow runs for the head sha : 0
+required contexts published    : 0 of 3
+check-runs present             : 1  — 'Workers Builds: platform-storybook' (in_progress)
+mergeable                      : not mergeable
+```
+
+The single check-run is the Cloudflare integration, and it is *useful* evidence rather than noise: it
+fired on the same commit that produced no workflow run, which confirms that integration has its own
+triggers and is unaffected by anything in `ci.yml`.
+
+None of `Lint · Typecheck · Test · Build`,
+`Accessibility · contrast and keyboard, every story, four brands, light and dark` or
+`Façades match the platform surface` existed. The ruleset had nothing to evaluate and would have held
+this pull request pending indefinitely.
+
+**After — head `9c67e10`, the same Markdown file plus the one-trigger change:** see §7.
 
 ## 6. Required check contexts
 
