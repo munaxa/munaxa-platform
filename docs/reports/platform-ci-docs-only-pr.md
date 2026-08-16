@@ -151,4 +151,101 @@ Deliberately **not** required, and not changed here:
 
 ## 7. Result
 
-*(filled from the pull request that carries this report)*
+All three required contexts reported, and all three passed:
+
+```
+Lint · Typecheck · Test · Build                                          success
+Accessibility · contrast and keyboard, every story, four brands, …       success
+Façades match the platform surface                                       success
+```
+
+`Workers Builds: platform-storybook` failed, as it does on `main`. It is not a required context and
+is out of scope (§6). Its failure is why the pull request's `mergeable_state` reads `unstable` rather
+than `clean` — that state means *mergeable, with a non-required check red*, and the ruleset evaluates
+only the three contexts above.
+
+### The `@munaxa/rbac` failure on the first run
+
+**The first run of `Lint · Typecheck · Test · Build` failed.** It is recorded here rather than
+retried out of the history, because the first run is part of the evidence.
+
+The failing task was `@munaxa/rbac#test`. Diagnosed before anything was re-run:
+
+| Evidence | Finding |
+| --- | --- |
+| This pull request's diff | one CI trigger block and one Markdown file — `rbac` source and tests untouched |
+| `main` at `72009f2` | the same check: **success** |
+| Full workspace, locally | 15 packages, ~1,540 tests, all pass — `@munaxa/rbac` 81/81 |
+| The failing file | `packages/platform/rbac/test/performance.test.ts`, asserting wall-clock budgets of 7 500 ms and 1 250 ms |
+| That file's own comment | *"a budget tuned on an idle laptop fails on a busy CI runner"* |
+| Local measurement of the 7 500 ms case | **743 ms** — roughly 90 % headroom |
+| Munaxa Docs Phase 8.22 | the same package, the same budget: 8 120 ms against 7 500 ms on CI, passing on re-run with nothing changed; runners measured 13–15× slower than local |
+
+A 90 % margin does not survive a 13× slowdown. The classification is therefore:
+
+```
+INFRASTRUCTURE — CI RUNNER VARIANCE
+```
+
+**Disposition:**
+
+```
+initial run:              failed  @munaxa/rbac#test
+single disclosed retry:   passed
+budgets changed:          none
+```
+
+`rerun_failed_jobs` was used rather than re-running the workflow, so the two already-green contexts
+were not re-run to manufacture a fresher result. The 7 500 ms and 1 250 ms budgets were not touched:
+the remedy for a slow runner is not a looser assertion, and no evidence was gathered that would
+justify moving either number.
+
+### Why this incident argues *for* the change rather than against it
+
+The failure is the clearest available demonstration of why §3 rejected the shim. What happened was:
+
+```
+Markdown-only pull request → real workflow → real job → real result → failure visible
+```
+
+Under the shim, the same pull request would have produced:
+
+```
+Markdown-only pull request → synthetic green for 'Lint · Typecheck · Test · Build' → no job ran
+```
+
+— and it would have merged with a green tick, nobody any the wiser that `@munaxa/rbac` had failed at
+all. A gate that can only ever report success is not a gate.
+
+## 8. Performance impact
+
+| | Before | After |
+| --- | --- | --- |
+| Jobs in the workflow | 3 | 3 |
+| Required check contexts | 3 | 3 |
+| Job names | unchanged | unchanged |
+| Runs on a code pull request | 1 | 1 |
+| Runs on a documentation-only pull request | **0** | **1** |
+| Runs on a push to `main` | unchanged (filter retained) | unchanged |
+
+The only material change is the last-but-one row, and it is the entire point. Wall-clock per run is
+unaffected — no job was added, removed, split or reordered. The cost is one suite execution on a
+pull request that changes only documentation, which previously cost nothing and also could not merge.
+
+## 9. Final state
+
+```
+Platform main:            protected, ruleset 20906222 active, bypass_actors null
+Required contexts:        3, unchanged, each matching a real job name
+ci.yml pull_request:      no paths-ignore
+ci.yml push:              branches [main], paths-ignore retained
+release.yml:              workflow_dispatch only — unchanged
+@munaxa/platform:         1.5.1 — no release, no version bump
+Synthetic checks:         none introduced
+Protection weakened:      none
+```
+
+The invariant this establishes, matching the one already established for Munaxa Docs:
+
+> Every pull request that can merge has had the real required checks execute, report, and be
+> evaluated by branch protection.
