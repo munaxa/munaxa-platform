@@ -1,14 +1,38 @@
 name: CI
 
 on:
+  # No `paths-ignore` here, and that is deliberate.
+  #
+  # `main` is protected by a ruleset that requires all three of this workflow's checks. A path
+  # filter and a required status check disagree about what "did not run" means: the filter means
+  # "nothing to test", the ruleset means "not yet proven" — so it holds the context *pending*
+  # rather than satisfied. A pull request whose changed files are all Markdown therefore triggered
+  # no workflow, published none of the three contexts, and could never merge.
+  #
+  # Measured on the pull request that added `docs/reports/platform-ci-docs-only-pr.md`: one file,
+  # zero workflow runs, and none of the required contexts present. The same defect was measured
+  # first in `munaxa-docs`, where the pull request publishing that repository's production
+  # certification report could not be merged into the repository it certified.
+  #
+  # The published remedy — a second workflow whose jobs reuse these names and succeed trivially —
+  # is rejected. Path filters cannot express "all changed files are Markdown", only "some changed
+  # file matches", so a pull request touching both a Markdown file and a source file fires both
+  # workflows and both publish a check of the same name. The shim finishes in seconds while this
+  # suite takes minutes, and for that window the ruleset sees green for a check nothing has run.
+  # The wedge fails closed and somebody notices; the shim fails open, silently, on exactly the
+  # pull requests that mix documentation with code.
+  #
+  # So a pull request runs the suite, always. Every required context is produced by the job that
+  # actually did the work it names.
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'LICENSE'
   # Also on push to main. Without this, main is ungated: a direct push — or a merge whose base
   # moved after the pull request last ran — lands with nothing checking it, and the first person
   # to notice is whoever opens the next pull request and inherits a red build they did not cause.
+  #
+  # The filter stays here. A push run gates nothing — this trigger is scoped to `main`, which is
+  # reachable only through a pull request that has already run the suite. The wedge above is a
+  # property of *required* checks, and only pull requests are subject to them.
   push:
     branches: [main]
     paths-ignore:
