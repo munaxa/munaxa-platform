@@ -4,6 +4,46 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.6.0] — 2026-08-17
+
+### Added
+
+- **`TreeView` — the APG tree, as a set of destinations.** A hierarchy whose items are the
+  product's own elements: `renderItem` receives `treeItemProps`, and whatever the product renders
+  *is* the treeitem. That is the point of the seam. A navigation tree needs real anchors — an
+  `href`, a middle click, a context menu, a status-bar URL — and the alternative shape, a
+  `role="treeitem"` wrapper around a focusable link, gives two tab stops per row and announces the
+  focused element without the level, position or expanded state that make a tree a tree.
+
+  The markup is flat: every visible item is a direct child of one `role="tree"` list and
+  `aria-level`, `aria-setsize` and `aria-posinset` carry the structure. Nesting a `role="group"`
+  under each parent is the shape a chart needs and the shape a navigation tree cannot have, because
+  an anchor cannot contain the list of its own children.
+
+  `aria-selected` and `aria-current` stay separate, and the API makes it hard to confuse them:
+  `TreeView` emits `aria-selected` only when `selectedId` is given, never emits `aria-current` at
+  all, and a navigation consumer marks its own links. Expansion is controlled or uncontrolled on
+  the usual convention. Guides are `border-s` and off by default.
+
+### Changed
+
+- **`OrgChart` now runs on the extracted engine.** Its public API, its markup and its visual
+  behaviour are unchanged; the expansion model, the visible-node walk, the keyboard, the direction
+  mirroring and the ARIA arithmetic moved to `useTreeNavigation` and both components share them.
+  `buildTree` is the same function under the same name.
+
+  Two things did change inside it, both fixes the extraction forced into the open:
+
+  - **The treeitem is now the focusable element.** `role="treeitem"` and the ARIA state were on the
+    `<li>` while `tabindex` and the focus handler were on the box inside it, so a screen reader
+    landing on that box was told nothing about the node's level, position or expanded state. They
+    are on one element now, and the focus ring moved with them.
+  - **Focus tracking ignores bubbled events.** React's `onFocus` is `focusin`, which bubbles, and
+    in a nested tree the items are ancestors of one another — so focusing a leaf let every ancestor
+    claim it and the arrow keys stopped moving. Guarded on `event.target === event.currentTarget`.
+
+  Both were found by `OrgChart`'s own tests during the extraction, and those tests are unchanged.
+
 ## [1.5.2] — 2026-08-15
 
 ### Fixed

@@ -6,3 +6,12 @@ export {
   type BreadcrumbItem,
   type RenderBreadcrumbLink,
 } from './breadcrumb.js';
+export {
+  TreeView,
+  type TreeViewProps,
+  type TreeNode,
+  type TreeBranch,
+  type TreeItemProps,
+  type TreeItemContext,
+  type TreeViewLabels,
+} from './tree-view.js';
