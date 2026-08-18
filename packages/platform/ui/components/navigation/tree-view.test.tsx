@@ -285,6 +285,96 @@ describe('keyboard', () => {
     await user.keyboard('{ArrowDown}[Space]');
     expect(onActivate).toHaveBeenCalledWith(FOLDERS[1]);
   });
+
+  /*
+   * The case the three above could not see, and the one this component exists for.
+   *
+   * `onActivate` is documented as unnecessary for a navigation tree — *"the anchor is real"* — and
+   * every activation test here supplied one anyway, so nothing ever exercised the documented
+   * arrangement. It was broken: the handler called `preventDefault()` before checking whether
+   * anybody was listening, which cancelled the browser's own activation of the link and then
+   * handed the key to a callback that did not exist. Enter on a folder did nothing at all.
+   *
+   * Asserted as the anchor's *activation* rather than as a flag on the event, because activation is
+   * what a reader is deprived of. jsdom dispatches the click that Enter's default action produces,
+   * so this is the real behaviour rather than a proxy for it; `preventDefault` in the listener only
+   * stops jsdom complaining that it cannot navigate.
+   */
+  it('lets a link-shaped item activate itself when nothing is listening', async () => {
+    // The href is read inside the handler: `currentTarget` is null again by the time the mock's
+    // recorded call is inspected, so asserting it afterwards would assert nothing.
+    const activated: string[] = [];
+    const clicked = vi.fn((event: MouseEvent) => {
+      activated.push((event.currentTarget as HTMLAnchorElement).getAttribute('href') ?? '');
+      event.preventDefault();
+    });
+    const user = userEvent.setup();
+    render(
+      <TreeView<Folder>
+        aria-label="Document structure"
+        nodes={FOLDERS}
+        renderItem={({ node, treeItemProps }) => (
+          <a href={node.href} {...treeItemProps} onClick={clicked as never}>
+            {node.label}
+          </a>
+        )}
+      />,
+    );
+    await user.tab();
+    await user.keyboard('{ArrowDown}{Enter}');
+
+    expect(clicked).toHaveBeenCalledTimes(1);
+    // The item the arrow key had reached — so this is the link that activated, not merely a link.
+    expect(activated).toStrictEqual(['/q/p']);
+  });
+
+  it('does not cancel the keystroke it has no handler for', async () => {
+    // The mechanism behind the test above, stated directly: a cancelled `keydown` is exactly how
+    // the activation was lost, so a regression that reintroduced the unconditional
+    // `preventDefault()` would fail here as well as there.
+    const user = userEvent.setup();
+    const cancelled = vi.fn<(prevented: boolean) => void>();
+    render(<Tree />);
+    await user.tab();
+    const focused = document.activeElement as HTMLElement;
+    focused.addEventListener('keydown', (event) => {
+      // Listening at the target, after the tree's own handler has run on the way back down.
+      setTimeout(() => {
+        cancelled(event.defaultPrevented);
+      }, 0);
+    });
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(cancelled).toHaveBeenCalledWith(false));
+  });
+
+  it('still swallows the keys a selection tree handles', async () => {
+    /*
+     * The other half of the guard. A tree that *does* pass a handler must go on cancelling both
+     * keys — otherwise `OrgChart`'s Space would scroll the page underneath it — so the fix is
+     * "prevent when something will act", not "stop preventing".
+     */
+    const onActivate = vi.fn();
+    const clicked = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TreeView<Folder>
+        aria-label="Document structure"
+        nodes={FOLDERS}
+        onActivate={onActivate}
+        renderItem={({ node, treeItemProps }) => (
+          <a href={node.href} {...treeItemProps} onClick={clicked as never}>
+            {node.label}
+          </a>
+        )}
+      />,
+    );
+    await user.tab();
+    await user.keyboard('{ArrowDown}{Enter}');
+
+    expect(onActivate).toHaveBeenCalledWith(FOLDERS[1]);
+    // And the anchor did *not* also navigate: one keystroke is one action, never both.
+    expect(clicked).not.toHaveBeenCalled();
+  });
 });
 
 describe('right to left', () => {
