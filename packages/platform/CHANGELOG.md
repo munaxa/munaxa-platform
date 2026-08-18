@@ -4,6 +4,33 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.6.1] — 2026-08-18
+
+### Fixed
+
+- **`TreeView`: a link-shaped item can activate itself again.** `onActivate` is documented as
+  unnecessary for a navigation tree — *"the anchor is real"* — and the key handler did not honour
+  that: it called `preventDefault()` on Enter before checking whether anybody was listening, so the
+  browser's own activation of the link was cancelled and the key was then handed to a callback that
+  did not exist. An item that looked like a link and announced itself as one did nothing when a
+  keyboard reached it, and a consumer had to pass `onActivate` and navigate programmatically to get
+  a working folder tree — duplicating the `href` it had already rendered.
+
+  Enter and Space are now cancelled only when a handler will act on them. A tree that supplies
+  `onActivate` is unchanged: Enter still calls it, Space still calls it under `activateOnSpace`, and
+  both are still cancelled so a selection control does not scroll the page underneath itself.
+  `OrgChart` supplies one and is unaffected. Nothing else about the keyboard, the focus model, the
+  ARIA or the direction mirroring moved.
+
+  One nuance, stated rather than left to be found: a tree that sets `activateOnSpace` and supplies
+  no `onActivate` no longer swallows Space. That combination configures an activation with nothing
+  to activate, and suppressing a keystroke on its behalf was never a behaviour worth keeping.
+
+  Two regression tests cover the arrangement the three existing activation tests could not, because
+  each of them supplied a handler: Enter on an anchor with no `onActivate` now *activates the
+  anchor* — asserted as the click its default action produces, not as a flag on the event — and the
+  keystroke is not cancelled.
+
 ## [1.6.0] — 2026-08-17
 
 ### Added

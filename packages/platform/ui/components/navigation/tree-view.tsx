@@ -304,9 +304,24 @@ export function useTreeNavigation<T extends TreeNode>({
       } else if (event.key === 'End') {
         event.preventDefault();
         focusNode(visible[visible.length - 1]?.node.id);
-      } else if (event.key === 'Enter' || (activateOnSpace && event.key === ' ')) {
+      } else if (onActivate && (event.key === 'Enter' || (activateOnSpace && event.key === ' '))) {
+        /*
+         * Only when something is listening.
+         *
+         * `onActivate`'s own documentation says a navigation tree needs nothing here because the
+         * anchor is real — and the anchor is only real if its default action survives. This branch
+         * used to call `preventDefault()` before checking, so Enter on a link-shaped treeitem was
+         * cancelled and then handed to a callback that did not exist: the item looked like a link,
+         * announced itself as one, and did nothing when a keyboard reached it.
+         *
+         * Guarding the whole branch rather than moving the `preventDefault()` inside it keeps the
+         * selection case identical — `OrgChart` passes a handler, so it still swallows both keys —
+         * and lets an unhandled Enter or Space fall through to the browser, which is the only
+         * behaviour that can navigate a link. Neither key reaches the typeahead below: `Enter` is
+         * five characters, and `' '` fails its `\S` test.
+         */
         event.preventDefault();
-        onActivate?.(current.node);
+        onActivate(current.node);
       } else if (event.key.length === 1 && /\S/.test(event.key)) {
         // Typeahead: search after the current node and wrap, so repeating a letter cycles.
         const letter = event.key.toLowerCase();
