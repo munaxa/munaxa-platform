@@ -1,10 +1,15 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { cn } from '../../lib/cn.js';
-import { isRtlElement } from '../../lib/direction.js';
 import { ChevronDown, ChevronRight } from '../../../icons/index.js';
 import { EmptyState } from '../feedback/empty-state.js';
+import {
+  buildBranches,
+  useTreeNavigation,
+  type TreeBranch,
+  type TreeItemProps,
+} from '../navigation/tree-view.js';
 
 export interface OrgNode {
   id: string;
@@ -46,11 +51,13 @@ export interface OrgChartProps<T extends OrgNode> {
   'aria-label'?: string;
 }
 
-interface TreeNode<T extends OrgNode> {
-  node: T;
-  children: TreeNode<T>[];
-  depth: number;
-}
+/**
+ * Assemble a flat list into a forest.
+ *
+ * The implementation moved to `TreeView` with the rest of the tree engine; this is the same
+ * function under the name products already import.
+ */
+export const buildTree = buildBranches;
 
 /**
  * A reporting hierarchy.
@@ -69,12 +76,23 @@ interface TreeNode<T extends OrgNode> {
  *
  * **A flat list in, a tree out.** Products hand over what their query returned; assembling it is
  * this component's job, not a transformation every caller writes.
+ *
+ * ---
+ *
+ * **That behaviour is `useTreeNavigation`'s now**, shared with `TreeView`. The two cannot share
+ * markup — a chart draws its children *inside* the parent, which needs a nested list, while a
+ * navigation tree needs each item to be an anchor, and an anchor cannot contain the list of its own
+ * children. So the DOM here is unchanged and only the engine beneath it moved.
+ *
+ * `activateOnSpace` is set because this chart is a *selection* control rather than a set of links.
+ * Space has always picked a node here, and `TreeView`'s Enter-only default would otherwise have
+ * been a silent behaviour change to a released component.
  */
 export function OrgChart<T extends OrgNode>({
   nodes,
   renderNode,
   defaultExpanded,
-  expanded: controlled,
+  expanded,
   onExpandedChange,
   selectedId,
   onSelect,
@@ -84,93 +102,15 @@ export function OrgChart<T extends OrgNode>({
   ...rest
 }: OrgChartProps<T>) {
   const text = { ...DEFAULT_LABELS, ...labels };
-  const treeRef = useRef<HTMLUListElement>(null);
-
-  const roots = useMemo(() => buildTree(nodes), [nodes]);
-  const allIds = useMemo(() => nodes.map((node) => node.id), [nodes]);
-
-  const [uncontrolled, setUncontrolled] = useState<string[]>(defaultExpanded ?? allIds);
-  const expanded = controlled ?? uncontrolled;
-  const expandedSet = useMemo(() => new Set(expanded), [expanded]);
-
-  const setExpanded = useCallback(
-    (next: string[]) => {
-      if (controlled === undefined) setUncontrolled(next);
-      onExpandedChange?.(next);
-    },
-    [controlled, onExpandedChange],
-  );
-
-  const toggle = useCallback(
-    (id: string, open: boolean) => {
-      setExpanded(open ? [...expanded, id] : expanded.filter((value) => value !== id));
-    },
-    [expanded, setExpanded],
-  );
-
-  /** Nodes the user can actually see, in visual order — what the arrow keys walk. */
-  const visible = useMemo(() => flatten(roots, expandedSet), [roots, expandedSet]);
-  const [focusedId, setFocusedId] = useState<string | undefined>(() => visible[0]?.node.id);
-
-  // The focused node may have been collapsed away or removed; fall back to the first visible one
-  // rather than leaving the tree with no tab stop at all.
-  const activeId = visible.some((entry) => entry.node.id === focusedId)
-    ? focusedId
-    : visible[0]?.node.id;
-
-  const focusNode = useCallback((id: string | undefined) => {
-    if (!id) return;
-    setFocusedId(id);
-    treeRef.current?.querySelector<HTMLElement>(`[data-node="${cssEscape(id)}"]`)?.focus();
-  }, []);
-
-  function onKeyDown(event: KeyboardEvent<HTMLUListElement>) {
-    const index = visible.findIndex((entry) => entry.node.id === activeId);
-    const current = visible[index];
-    if (!current) return;
-
-    const rtl = isRtlElement(treeRef.current);
-    const forward = event.key === (rtl ? 'ArrowLeft' : 'ArrowRight');
-    const backward = event.key === (rtl ? 'ArrowRight' : 'ArrowLeft');
-    const hasChildren = current.children.length > 0;
-    const isOpen = expandedSet.has(current.node.id);
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      focusNode(visible[Math.min(index + 1, visible.length - 1)]?.node.id);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      focusNode(visible[Math.max(index - 1, 0)]?.node.id);
-    } else if (forward) {
-      event.preventDefault();
-      // Right opens a closed node, then steps into it — the APG behaviour, and the reason a tree
-      // can be explored with one hand on the arrow keys.
-      if (hasChildren && !isOpen) toggle(current.node.id, true);
-      else if (hasChildren) focusNode(visible[index + 1]?.node.id);
-    } else if (backward) {
-      event.preventDefault();
-      if (hasChildren && isOpen) toggle(current.node.id, false);
-      else focusNode(current.node.parentId ?? undefined);
-    } else if (event.key === 'Home') {
-      event.preventDefault();
-      focusNode(visible[0]?.node.id);
-    } else if (event.key === 'End') {
-      event.preventDefault();
-      focusNode(visible[visible.length - 1]?.node.id);
-    } else if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onSelect?.(current.node);
-    } else if (event.key.length === 1 && /\S/.test(event.key)) {
-      // Typeahead: search after the current node and wrap, so repeating a letter cycles.
-      const letter = event.key.toLowerCase();
-      const order = [...visible.slice(index + 1), ...visible.slice(0, index + 1)];
-      const match = order.find((entry) => entry.node.label.toLowerCase().startsWith(letter));
-      if (match) {
-        event.preventDefault();
-        focusNode(match.node.id);
-      }
-    }
-  }
+  const tree = useTreeNavigation<T>({
+    nodes,
+    itemAttribute: 'data-node',
+    activateOnSpace: true,
+    ...(defaultExpanded === undefined ? {} : { defaultExpanded }),
+    ...(expanded === undefined ? {} : { expanded }),
+    ...(onExpandedChange === undefined ? {} : { onExpandedChange }),
+    ...(onSelect === undefined ? {} : { onActivate: onSelect }),
+  });
 
   if (nodes.length === 0) {
     return <EmptyState title={text.empty} {...(className === undefined ? {} : { className })} />;
@@ -179,22 +119,21 @@ export function OrgChart<T extends OrgNode>({
   return (
     <div className={cn('overflow-auto', className)}>
       <ul
-        ref={treeRef}
+        ref={tree.treeRef}
         role="tree"
-        onKeyDown={onKeyDown}
+        onKeyDown={tree.onKeyDown}
         {...(rest['aria-label'] === undefined ? {} : { 'aria-label': rest['aria-label'] })}
         className={cn('flex list-none', orientation === 'vertical' ? 'justify-center' : 'flex-col')}
       >
-        {roots.map((root, index) => (
+        {tree.roots.map((root, index) => (
           <Branch
             key={root.node.id}
             entry={root}
             index={index}
-            siblingCount={roots.length}
-            expandedSet={expandedSet}
-            toggle={toggle}
-            activeId={activeId}
-            onFocusNode={setFocusedId}
+            siblingCount={tree.roots.length}
+            expandedSet={tree.expandedSet}
+            toggle={tree.toggle}
+            itemPropsFor={tree.itemPropsFor}
             {...(selectedId === undefined ? {} : { selectedId })}
             {...(onSelect === undefined ? {} : { onSelect })}
             {...(renderNode === undefined ? {} : { renderNode })}
@@ -213,21 +152,24 @@ function Branch<T extends OrgNode>({
   siblingCount,
   expandedSet,
   toggle,
-  activeId,
-  onFocusNode,
+  itemPropsFor,
   selectedId,
   onSelect,
   renderNode,
   orientation,
   text,
 }: {
-  entry: TreeNode<T>;
+  entry: TreeBranch<T>;
   index: number;
   siblingCount: number;
   expandedSet: Set<string>;
   toggle: (id: string, open: boolean) => void;
-  activeId: string | undefined;
-  onFocusNode: (id: string) => void;
+  itemPropsFor: (
+    entry: TreeBranch<T>,
+    index: number,
+    siblingCount: number,
+    selectedId: string | undefined,
+  ) => TreeItemProps;
   selectedId?: string;
   onSelect?: (node: T) => void;
   renderNode?: (node: T, context: { depth: number; childCount: number }) => ReactNode;
@@ -240,20 +182,20 @@ function Branch<T extends OrgNode>({
   const vertical = orientation === 'vertical';
 
   return (
+    /*
+      The treeitem **is** the focusable element now.
+
+      It used to be two: `role="treeitem"` and the ARIA state on this `<li>`, with `tabindex` and the
+      focus handler on the box inside it. A screen reader landing on that box was therefore told
+      nothing about the level, the position or the expanded state, because those attributes sat on an
+      element it never reached. The extraction puts them on one element, which is what the pattern
+      asks for — and is why the focus ring moved up here with them.
+    */
     <li
-      role="treeitem"
-      // Named explicitly, not from its content. A treeitem's accessible name is computed from
-      // everything inside it — which, for a branch, is its entire subtree: the chief executive
-      // would be announced as their own name followed by every person in the company. The node's
-      // own label is the only correct answer, which is why `OrgNode.label` is plain text.
-      aria-label={node.label}
-      aria-level={depth + 1}
-      aria-setsize={siblingCount}
-      aria-posinset={index + 1}
-      {...(hasChildren ? { 'aria-expanded': isOpen } : {})}
-      {...(selectedId === undefined ? {} : { 'aria-selected': selectedId === node.id })}
+      {...itemPropsFor(entry, index, siblingCount, selectedId)}
       className={cn(
         'relative flex list-none',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         vertical ? 'flex-col items-center px-2' : 'flex-col ps-4',
         // The connector into this node, drawn from the parent's rail.
         !vertical && depth > 0 && 'border-s border-border',
@@ -269,7 +211,10 @@ function Branch<T extends OrgNode>({
               // Hidden from assistive technology on purpose: `aria-expanded` on the treeitem is
               // already the accessible control, and exposing a second one would announce the same
               // state twice and put a stop inside a single-tab-stop widget.
-              onClick={() => toggle(node.id, !isOpen)}
+              title={isOpen ? text.collapse(node.label) : text.expand(node.label)}
+              onClick={() => {
+                toggle(node.id, !isOpen);
+              }}
               className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
             >
               {isOpen ? (
@@ -283,13 +228,9 @@ function Branch<T extends OrgNode>({
           )}
 
           <div
-            data-node={node.id}
-            tabIndex={activeId === node.id ? 0 : -1}
-            onFocus={() => onFocusNode(node.id)}
             onClick={() => onSelect?.(node)}
             className={cn(
               'min-w-40 cursor-default rounded-lg border border-border bg-card px-3 py-2 text-sm shadow-xs',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               selectedId === node.id && 'border-primary ring-2 ring-primary/40',
             )}
           >
@@ -327,8 +268,7 @@ function Branch<T extends OrgNode>({
               siblingCount={children.length}
               expandedSet={expandedSet}
               toggle={toggle}
-              activeId={activeId}
-              onFocusNode={onFocusNode}
+              itemPropsFor={itemPropsFor}
               {...(selectedId === undefined ? {} : { selectedId })}
               {...(onSelect === undefined ? {} : { onSelect })}
               {...(renderNode === undefined ? {} : { renderNode })}
@@ -340,58 +280,4 @@ function Branch<T extends OrgNode>({
       ) : null}
     </li>
   );
-}
-
-/**
- * Assemble a flat list into a forest.
- *
- * Nodes whose parent is missing from the list become roots rather than disappearing: a query that
- * returns one department's people will not include their director, and silently dropping every one
- * of them would render an empty chart with no error to explain it.
- */
-export function buildTree<T extends OrgNode>(nodes: T[]): TreeNode<T>[] {
-  const byId = new Map<string, TreeNode<T>>(
-    nodes.map((node) => [node.id, { node, children: [], depth: 0 }]),
-  );
-  const roots: TreeNode<T>[] = [];
-
-  for (const node of nodes) {
-    const entry = byId.get(node.id) as TreeNode<T>;
-    const parent = node.parentId ? byId.get(node.parentId) : undefined;
-    if (parent && parent !== entry) parent.children.push(entry);
-    else roots.push(entry);
-  }
-
-  // Depth is assigned by walking, not by counting parents — a cycle in the data would otherwise
-  // loop forever, and bad hierarchy data is common enough to defend against.
-  const seen = new Set<string>();
-  const walk = (entry: TreeNode<T>, depth: number) => {
-    if (seen.has(entry.node.id)) return;
-    seen.add(entry.node.id);
-    entry.depth = depth;
-    for (const child of entry.children) walk(child, depth + 1);
-  };
-  for (const root of roots) walk(root, 0);
-
-  return roots;
-}
-
-/** Visible nodes in visual order — the sequence the up and down arrows walk. */
-function flatten<T extends OrgNode>(roots: TreeNode<T>[], expanded: Set<string>): TreeNode<T>[] {
-  const out: TreeNode<T>[] = [];
-  const walk = (entries: TreeNode<T>[]) => {
-    for (const entry of entries) {
-      out.push(entry);
-      if (expanded.has(entry.node.id)) walk(entry.children);
-    }
-  };
-  walk(roots);
-  return out;
-}
-
-/** `CSS.escape` is not in every runtime this renders in, and an id can contain anything. */
-function cssEscape(value: string): string {
-  return typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-    ? CSS.escape(value)
-    : value.replace(/["\\]/g, '\\$&');
 }
