@@ -265,9 +265,7 @@ export function useTreeNavigation<T extends TreeNode>({
     (id: string | undefined) => {
       if (!id) return;
       setFocusedId(id);
-      treeRef.current
-        ?.querySelector<HTMLElement>(`[${itemAttribute}="${cssEscape(id)}"]`)
-        ?.focus();
+      treeRef.current?.querySelector<HTMLElement>(`[${itemAttribute}="${cssEscape(id)}"]`)?.focus();
     },
     [itemAttribute],
   );
@@ -441,7 +439,10 @@ export function TreeView<T extends TreeNode>({
           <li
             key={node.id}
             role="none"
-            className={cn('flex items-center gap-1', guides && depth > 0 && 'border-s border-border')}
+            className={cn(
+              'flex items-center gap-1',
+              guides && depth > 0 && 'border-s border-border',
+            )}
             style={{ paddingInlineStart: `${String(depth)}rem` }}
           >
             {hasChildren ? (
@@ -473,7 +474,12 @@ export function TreeView<T extends TreeNode>({
               depth,
               expanded: isOpen,
               hasChildren,
-              treeItemProps: tree.itemPropsFor(entry, position.index, position.siblingCount, selectedId),
+              treeItemProps: tree.itemPropsFor(
+                entry,
+                position.index,
+                position.siblingCount,
+                selectedId,
+              ),
               toggle: () => {
                 tree.toggle(node.id, !isOpen);
               },
