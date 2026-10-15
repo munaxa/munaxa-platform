@@ -4,7 +4,7 @@ import { AppShellProvider } from './app-shell-context.js';
 import { AppShell } from './app-shell.js';
 import { Sidebar } from './sidebar.js';
 import { NavigationDrawer } from './navigation-drawer.js';
-import { TopBar, SidebarTrigger } from './top-bar.js';
+import { TopBar, SidebarTrigger, SidebarCollapseToggle } from './top-bar.js';
 import { SidebarNav, type NavigationGroup } from './navigation.js';
 import { Container } from '../layouts/container.js';
 import { Grid } from '../layouts/grid.js';
@@ -110,11 +110,15 @@ type Story = StoryObj<typeof meta>;
 function Demo({
   collapsed,
   onCollapsedChange,
+  flush = false,
 }: {
   collapsed?: boolean;
   onCollapsedChange?: (v: boolean) => void;
+  /** The flush rail, indicator navigation and top-bar collapse control together. */
+  flush?: boolean;
 }) {
-  const nav = <SidebarNav groups={GROUPS} label="Main" />;
+  const variant = flush ? 'indicator' : 'filled';
+  const nav = <SidebarNav groups={GROUPS} label="Main" variant={variant} />;
   return (
     <AppShellProvider
       {...(collapsed === undefined ? {} : { collapsed })}
@@ -124,6 +128,8 @@ function Demo({
         skipLinkLabel="Skip to content"
         sidebar={
           <Sidebar
+            variant={flush ? 'flush' : 'floating'}
+            collapsible={!flush}
             brand={(isCollapsed) => <Brand collapsed={isCollapsed} />}
             footer={<SessionFooter />}
           >
@@ -136,7 +142,7 @@ function Demo({
             brand={<Brand collapsed={false} />}
             footer={<SessionFooter />}
           >
-            <SidebarNav groups={GROUPS} label="Main" collapsed={false} />
+            <SidebarNav groups={GROUPS} label="Main" collapsed={false} variant={variant} />
           </NavigationDrawer>
         }
         topBar={
@@ -150,6 +156,7 @@ function Demo({
               </>
             }
           >
+            {flush ? <SidebarCollapseToggle /> : null}
             <SidebarTrigger />
             <Input aria-label="Search" placeholder="Search…" className="max-w-sm" />
           </TopBar>
@@ -185,6 +192,15 @@ function Demo({
 
 export const Default: Story = {
   render: () => <Demo />,
+};
+
+/**
+ * The flush frame: a full-height rail meeting the top bar, separated from the page by one border,
+ * with the current page marked by an accent row and an inline-start bar instead of the brand fill.
+ * The rail has no edge control, so `SidebarCollapseToggle` sits at the start of the top bar.
+ */
+export const FlushRail: Story = {
+  render: () => <Demo flush />,
 };
 
 /** Collapsed to the icon rail. Every link keeps its accessible name through `title` + `sr-only`. */

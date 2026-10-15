@@ -115,9 +115,22 @@ describe('generated palettes', () => {
       const muted = readToken(css, 'muted', scheme);
 
       const brand = readToken(css, 'primary', scheme);
+      /*
+       * The page and the card are separate grounds once a theme gives its page a canvas — Docs v2
+       * paints `--background` a pale green-grey and keeps `--card` white. A badge sits on either, so
+       * both are measured. Where they are the same colour this measures one surface twice.
+       */
+      const card = readToken(css, 'card', scheme);
       const surfaces = {
         page,
+        card,
         [`badge · ${role}/15 over the page`]: composite(fill, page, 0.15),
+        [`badge · ${role}/15 over a card`]: composite(fill, card, 0.15),
+        [`badge in a selected row on a card · ${role}/15 over primary/5 over the card`]: composite(
+          fill,
+          composite(brand, card, 0.05),
+          0.15,
+        ),
         [`tag, avatar and alert · ${role}/10 over muted`]: composite(fill, muted, 0.1),
         /*
          * A tint over another tint — Phase 8.6.

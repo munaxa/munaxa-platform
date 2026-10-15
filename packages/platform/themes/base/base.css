@@ -18,6 +18,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * The base radius, defaulted.
+ *
+ * `--radius-sm/md/lg` below derive from `--radius`, and the contract left it for each application to
+ * declare. Docs never did — its architecture forbids a product naming a radius — so every `rounded-md`
+ * and `rounded-lg` in that product computed `calc(undefined - 2px)` and rendered square. A default
+ * here makes the contract complete on its own: 8px, the Docs v2 design's control radius. An
+ * application that declares its own `--radius` after the theme import still wins, as before.
+ */
+:root {
+  --radius: 0.5rem;
+}
+
 @theme inline {
   /* Radius — sm/md/lg derive from the app-level `--radius`; xl/2xl/3xl keep Tailwind defaults
      (apps that customise them override locally). */

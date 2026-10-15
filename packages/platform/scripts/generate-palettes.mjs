@@ -66,6 +66,14 @@ const THEMES = [
     brand: '#6B8E62',
     gradient: ['#6B8E62', '#8FBC8F'],
     semantic: { success: '#2E7D32', warning: '#F59E0B', error: '#E53935', info: '#0284C7' },
+    /*
+     * The light page canvas — the approved Docs v2 design. Cards stay white and sit on a pale
+     * green-grey page, which is what separates a panel from the page without a heavier border. Every
+     * other theme keeps a white page; `canvas` is optional for that reason.
+     */
+    canvas: '#F3F5F2',
+    /* Docs ships its own faces — `themes/docs/typography.css`. */
+    typography: true,
     description: 'Olive-green brand for the document and knowledge platform.',
   },
 ];
@@ -75,6 +83,13 @@ const INK = NEUTRAL[900],
 
 for (const t of THEMES) {
   const p = ramp(t.brand, t.anchor);
+  /*
+   * The light page. White unless the theme names a canvas — and when it does, cards, popovers and
+   * inputs stay white on top of it, so every text colour below has to clear *both* grounds. A
+   * `-strong` chosen against white alone would pass the card and fail the page beside it.
+   */
+  const canvas = t.canvas ?? WHITE;
+  const lightPages = canvas === WHITE ? [WHITE] : [WHITE, canvas];
   // Light scheme uses the brand as-is; dark lifts to a lighter step so it reads on a dark ground.
   const primaryDark = p[t.anchor <= 400 ? 300 : 400];
   const [fgRatio] = bestFg(t.brand, [WHITE, INK]);
@@ -144,7 +159,10 @@ for (const t of THEMES) {
   const clearsAll = (candidate, surfaces) =>
     surfaces.every((surface) => contrast(candidate, surface) >= 4.5);
 
-  const lightSurfaces = [WHITE, ...tintedSurfaces(t.brand, WHITE, NEUTRAL[100], t.brand)];
+  const lightSurfaces = lightPages.flatMap((page) => [
+    page,
+    ...tintedSurfaces(t.brand, page, NEUTRAL[100], t.brand),
+  ]);
   const primaryStrong = clearsAll(t.brand, lightSurfaces)
     ? t.brand
     : (STEPS_DARKWARD.map((s) => p[s]).find((c) => clearsAll(c, lightSurfaces)) ??
@@ -176,7 +194,10 @@ for (const t of THEMES) {
    * rather than the 4.5:1 used for text, because a ring is a graphical boundary and holding it to
    * the text ratio would force every brand to a near-black ring and lose the brand entirely.
    */
-  const ring = contrast(t.brand, WHITE) >= 3 ? t.brand : firstPassing(STEPS_DARKWARD, WHITE, 3);
+  const ringClears = (c) => lightPages.every((page) => contrast(c, page) >= 3);
+  const ring = ringClears(t.brand)
+    ? t.brand
+    : (STEPS_DARKWARD.map((s) => p[s]).find(ringClears) ?? firstPassing(STEPS_DARKWARD, WHITE, 3));
   const ringDark = firstPassing(STEPS_LIGHTWARD, NEUTRAL[950], 3);
 
   /*
@@ -203,8 +224,11 @@ for (const t of THEMES) {
    * status colour is unreadable. Each `-strong` is the same hue darkened until it clears AA, found
    * by measurement rather than by eye.
    */
-  const strongFor = (fill, walk, page, tintBase, brandTint) => {
-    const surfaces = [page, ...tintedSurfaces(fill, page, tintBase, brandTint)];
+  const strongFor = (fill, walk, pages, tintBase, brandTint) => {
+    const surfaces = pages.flatMap((page) => [
+      page,
+      ...tintedSurfaces(fill, page, tintBase, brandTint),
+    ]);
     return walk(fill, surfaces);
   };
   const darkenUntilAll = (hex, surfaces) => {
@@ -278,13 +302,13 @@ for (const t of THEMES) {
   const strong = Object.fromEntries(
     Object.entries(statusFill).map(([k, v]) => [
       k,
-      strongFor(v, darkenUntilAll, WHITE, NEUTRAL[100], t.brand),
+      strongFor(v, darkenUntilAll, lightPages, NEUTRAL[100], t.brand),
     ]),
   );
   const strongDark = Object.fromEntries(
     Object.entries(statusFill).map(([k, v]) => [
       k,
-      strongFor(v, lightenUntilAll, NEUTRAL[950], NEUTRAL[800], primaryDark),
+      strongFor(v, lightenUntilAll, [NEUTRAL[950]], NEUTRAL[800], primaryDark),
     ]),
   );
   const [, primaryFgDark] = bestFg(primaryDark, [WHITE, INK]);
@@ -330,7 +354,7 @@ for (const t of THEMES) {
 ${scale}
 
   /* Semantic roles — light */
-  --background: ${WHITE};
+  --background: ${canvas};
   --foreground: ${NEUTRAL[900]};
   --card: ${WHITE};
   --card-foreground: ${NEUTRAL[900]};
@@ -445,7 +469,7 @@ export const brand = {
  */
 @import '../base/base.css';
 @import './palette.css';
-`,
+${t.typography ? "@import './typography.css';\n" : ''}`,
   );
 
   console.log(

@@ -2,6 +2,7 @@
 
 import { type ReactNode } from 'react';
 import { cn } from '../lib/cn.js';
+import { Overline } from '../components/primitives/overline.js';
 import { useAppShell } from './app-shell-context.js';
 
 /**
@@ -58,6 +59,23 @@ export interface SidebarNavProps {
   renderLink?: RenderNavigationLink;
   /** Force the icon-only rail. Defaults to the shell's collapsed state. */
   collapsed?: boolean;
+  /**
+   * How the current page is marked.
+   *
+   * `filled` (the default) paints the active row in the brand fill. `indicator` keeps it on the
+   * quiet accent surface and draws a 2px brand bar on its inline-start edge — the Docs v2 rail, set
+   * a step denser and with sans-serif group headings, where a column of mostly-text rows reads
+   * better with one thin mark than with a solid block. The bar is an inset shadow rather than a
+   * border so the row does not shift by 2px when it becomes active, and it flips side in RTL.
+   */
+  variant?: 'filled' | 'indicator';
+  /**
+   * A rule between groups. For a long settings menu whose groups are the main structure — the
+   * headings alone are small, and a hairline makes the break between "Identity" and "Organisation"
+   * visible at a glance. Not drawn above the first group, and not drawn in the collapsed rail, which
+   * already marks each group with its own rule.
+   */
+  dividers?: boolean;
   className?: string;
 }
 
@@ -73,23 +91,49 @@ export function SidebarNav({
   label,
   renderLink = defaultRenderLink,
   collapsed: collapsedProp,
+  variant = 'filled',
+  dividers = false,
   className,
 }: SidebarNavProps) {
   const shell = useAppShell();
   const collapsed = collapsedProp ?? shell.collapsed;
+  const indicator = variant === 'indicator';
 
   return (
     <nav
       aria-label={label}
-      className={cn('flex flex-1 flex-col', collapsed ? 'gap-2' : 'gap-5', className)}
+      className={cn(
+        'flex flex-1 flex-col',
+        collapsed ? 'gap-2' : indicator ? 'gap-3.5' : 'gap-5',
+        className,
+      )}
     >
       {groups.map((group, index) => (
-        <div key={group.id ?? group.title ?? index} className="flex flex-col gap-1">
+        <div
+          key={group.id ?? group.title ?? index}
+          className={cn(
+            'flex flex-col',
+            indicator ? 'gap-0.5' : 'gap-1',
+            dividers && !collapsed && index > 0 && 'border-t border-border pt-3',
+          )}
+        >
           {group.title ? (
             collapsed ? (
               <div className="mx-auto my-1 h-px w-6 bg-border" aria-hidden="true" />
+            ) : indicator ? (
+              <Overline as="p" className="px-2.5 pb-0.5">
+                {group.title}
+              </Overline>
             ) : (
-              <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              <p
+                className={cn(
+                  'px-3 pb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground',
+                  // Letter-spacing pulls apart the joins between Arabic letters, and Arabic has no
+                  // case for `uppercase` to change — so in a right-to-left document the heading is
+                  // set without either.
+                  'rtl:tracking-normal',
+                )}
+              >
                 {group.title}
               </p>
             )
@@ -97,13 +141,21 @@ export function SidebarNav({
 
           {group.items.map((item) => {
             const className = cn(
-              'group flex items-center gap-3 rounded-lg text-sm transition-colors',
+              'group flex items-center rounded-lg transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
+              indicator ? 'gap-2.5 text-[13px]' : 'gap-3 text-sm',
+              collapsed ? 'justify-center px-0 py-2.5' : indicator ? 'px-2.5 py-2' : 'px-3 py-2',
               item.disabled && 'pointer-events-none opacity-50',
               item.active
-                ? 'bg-primary font-medium text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                ? indicator
+                  ? [
+                      'bg-accent font-semibold text-accent-foreground',
+                      'shadow-[inset_2px_0_0_var(--primary)] rtl:shadow-[inset_-2px_0_0_var(--primary)]',
+                    ]
+                  : 'bg-primary font-medium text-primary-foreground'
+                : indicator
+                  ? 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
             );
             return (
               <div key={item.id ?? item.href}>

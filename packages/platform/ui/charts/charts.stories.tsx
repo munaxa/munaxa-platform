@@ -166,6 +166,44 @@ export const States: Story = {
  * good; absences going up is not, and colouring every increase green tells half the dashboard the
  * opposite of the truth.
  */
+/**
+ * The three ways a tile is set: `feature` for the numbers somebody must act on, `default` for dense
+ * metrics, `compact` for a quiet row of holdings.
+ */
+export const StatCardVariants: Story = {
+  render: function StatCardVariants() {
+    return (
+      <Container width="wide" className="flex flex-col gap-3 py-6">
+        <KpiGrid>
+          <StatCard
+            variant="feature"
+            label="Awaiting my decision"
+            value="4"
+            hint="Tasks assigned to you"
+          />
+          <StatCard
+            variant="feature"
+            label="Overdue"
+            value="1"
+            tone="danger"
+            hint="Past their deadline"
+          />
+          <StatCard label="Staff" value="146" hint="of 152 posts" />
+        </KpiGrid>
+        <KpiGrid>
+          <StatCard variant="compact" label="Drafts" value="7" icon={<span aria-hidden>✎</span>} />
+          <StatCard
+            variant="compact"
+            label="Favourites"
+            value="12"
+            icon={<span aria-hidden>★</span>}
+          />
+        </KpiGrid>
+      </Container>
+    );
+  },
+};
+
 export const Kpis: Story = {
   render: function Kpis() {
     return (

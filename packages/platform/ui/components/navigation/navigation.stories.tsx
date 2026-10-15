@@ -40,6 +40,31 @@ export const TabbedPanels: Story = {
   },
 };
 
+/** The page-level set: a rule under the row and a brand bar under the selected section. */
+export const UnderlineTabs: Story = {
+  render: function UnderlineTabsStory() {
+    const [tab, setTab] = useState('overview');
+    return (
+      <Tabs value={tab} onValueChange={setTab} variant="underline" className="max-w-xl">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="approvals">Approvals</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="pt-3 text-sm text-muted-foreground">
+          Overview panel.
+        </TabsContent>
+        <TabsContent value="approvals" className="pt-3 text-sm text-muted-foreground">
+          Approvals panel.
+        </TabsContent>
+        <TabsContent value="history" className="pt-3 text-sm text-muted-foreground">
+          History panel.
+        </TabsContent>
+      </Tabs>
+    );
+  },
+};
+
 export const Pager: Story = {
   render: function PagerStory() {
     const [page, setPage] = useState(3);

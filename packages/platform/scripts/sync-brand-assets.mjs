@@ -10,7 +10,7 @@
  *
  * The destination mirrors `DEFAULT_ASSET_BASE` in `brand/products.ts`:
  *
- *   <public-dir>/branding/<product>/{logos,favicon,social}/…
+ *   <public-dir>/branding/<product>/{logos,favicon,social,fonts}/…
  *
  * Copying rather than importing is deliberate. The platform is the *source* of the artwork, not a
  * runtime CDN: the application owns caching, hashing and its own asset pipeline, and nothing in a
@@ -24,7 +24,17 @@ import { fileURLToPath } from 'node:url';
 // `group` is the corporate identity: the mark and the icons, no lockup. It is copied the same
 // way, because a corporate site needs a favicon as much as a product does.
 const PRODUCTS = ['group', 'school', 'work', 'docs'];
-const BUCKETS = ['logos', 'favicon', 'social'];
+/*
+ * What each bucket may hold. `fonts/` is for a theme that ships its own faces — Docs does, and its
+ * `themes/docs/typography.css` points at `/branding/docs/fonts/…`. The licence travels with the
+ * files it licenses, so a product never serves a face without the text that permits it.
+ */
+const BUCKETS = {
+  logos: ['.png'],
+  favicon: ['.png'],
+  social: ['.png'],
+  fonts: ['.woff2', '.txt'],
+};
 
 const [product, publicDir] = process.argv.slice(2);
 
@@ -53,10 +63,12 @@ await rm(destination, { recursive: true, force: true });
 await mkdir(destination, { recursive: true });
 
 let copied = 0;
-for (const bucket of BUCKETS) {
+for (const [bucket, extensions] of Object.entries(BUCKETS)) {
   const from = join(source, bucket);
   if (!existsSync(from)) continue;
-  const files = (await readdir(from)).filter((name) => name.endsWith('.png'));
+  const files = (await readdir(from)).filter((name) =>
+    extensions.some((extension) => name.endsWith(extension)),
+  );
   if (files.length === 0) continue;
   await mkdir(join(destination, bucket), { recursive: true });
   for (const file of files) {

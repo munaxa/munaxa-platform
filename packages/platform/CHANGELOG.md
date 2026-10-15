@@ -4,6 +4,48 @@ All notable changes to `@munaxa/platform`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](./VERSIONING.md).
 
+## [1.7.0] — 2026-10-15
+
+The Docs v2 design. Everything below is additive or a fix: no prop was removed or renamed, every new
+prop defaults to the previous behaviour, and the other three themes render exactly as before except
+where a fix below says otherwise.
+
+### Added
+
+- **The Docs page canvas.** `scripts/generate-palettes.mjs` takes an optional `canvas` per theme, and
+  Docs sets it: `--background` is `#f3f5f2` in light, with cards, popovers and inputs still white on
+  top. Every `-strong` text colour and the focus ring are now chosen against *both* grounds, so the
+  Docs status text darkened a step to stay AA on the canvas (`--success-strong` `#1c6e23`,
+  `--warning-strong` `#a15000`, `--destructive-strong` `#bf0010`, `--info-strong` `#0064a5`). The
+  palette test now measures every tint over the card as well as the page.
+- **Docs typography.** `themes/docs/typography.css` sets IBM Plex Sans, IBM Plex Sans Arabic and IBM
+  Plex Mono as `--font-body`/`--font-display`, `--font-arabic` and `--font-mono`, and opens the body
+  leading for Arabic. The faces ship in `assets/docs/fonts/` (woff2, Latin and Arabic subsets, with
+  the OFL), and `munaxa-sync-brand` now copies a `fonts/` bucket to `<public>/branding/<product>/fonts/`.
+- **`Sidebar` `variant="flush"`** — a full-height rail that meets the top bar, separated by one
+  border, instead of the floating card.
+- **`SidebarNav` `variant="indicator"`** — the current page on the accent surface with a 2px
+  inline-start brand bar, a denser rhythm and `Overline` group headings; **`dividers`** draws a rule
+  between groups.
+- **`SidebarCollapseToggle`** — the desktop rail's collapse control for the top bar, the counterpart
+  of `SidebarTrigger`.
+- **`DataGrid` `onRowClick` and `activeRowId`** for master–detail screens (a click on a control inside
+  the row is the control's, not the row's), and **`headerStyle="caps"`**.
+- **`Overline`** — small spaced capitals labelling the group beneath them; no letter-spacing in RTL.
+- **`StatCard` `variant="feature" | "compact"`**.
+- **`Tabs` `variant="underline"`**, and `TabsList` accepts an `aria-label`.
+
+### Fixed
+
+- **`--radius` has a default (`0.5rem`).** The contract left it to each application, and an
+  application that never declared it rendered every `rounded-sm/md/lg` square. An application that
+  declares its own still wins.
+- **Surfaces paint the card, not the page.** `DataGrid`'s scroll container gains `bg-card`, `StatCard`
+  is `bg-card` rather than `bg-card/60`, and the selected pill tab is raised on `bg-card` rather than
+  `bg-background`. Identical wherever the page is white; on a tinted canvas the old classes let the
+  page show through.
+- **`SidebarNav` group headings** drop their letter-spacing in RTL, where it broke Arabic joins.
+
 ## [1.6.1] — 2026-08-18
 
 ### Fixed

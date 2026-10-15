@@ -147,6 +147,42 @@ export const Virtualized: Story = {
   },
 };
 
+/**
+ * Master–detail: a single click shows a row beside the grid, marked with the accent surface and an
+ * inline-start bar, while double click and Enter still activate it. Caps headings keep the header
+ * quiet so the rows carry the weight.
+ */
+export const MasterDetail: Story = {
+  render: function MasterDetail() {
+    const [shown, setShown] = useState<Employee>(SMALL[0] as Employee);
+    return (
+      <Container width="wide" className="py-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <div className="min-w-0 flex-1">
+            <DataGrid
+              aria-label="Employees"
+              rows={SMALL}
+              columns={COLUMNS}
+              getRowId={(row) => row.id}
+              getRowLabel={(row) => row.name}
+              headerStyle="caps"
+              activeRowId={shown.id}
+              onRowClick={setShown}
+            />
+          </div>
+          <aside
+            aria-label="Employee details"
+            className="rounded-xl border border-border bg-card p-4 text-sm lg:w-72"
+          >
+            <p className="font-semibold">{shown.name}</p>
+            <p className="text-muted-foreground">{shown.department}</p>
+          </aside>
+        </div>
+      </Container>
+    );
+  },
+};
+
 /** Selection, inline actions, and an extra toolbar control. */
 export const SelectionAndActions: Story = {
   render: function SelectionAndActions() {

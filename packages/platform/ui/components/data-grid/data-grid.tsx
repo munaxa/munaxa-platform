@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from 'react';
 import { cn } from '../../lib/cn.js';
@@ -68,6 +69,20 @@ export interface DataGridProps<T> {
 
   /** Fired by Enter on a row and by a double click — opening a record, usually. */
   onRowActivate?: (row: T) => void;
+  /**
+   * Fired by a single click on a row — showing it in a detail pane beside the grid, usually.
+   *
+   * Clicks that land on a control inside the row (the selection checkbox, a link, the row menu) are
+   * that control's, not the row's, and do not fire it. It pairs with `activeRowId`: the grid reports
+   * the click and the caller decides which row is the one being shown.
+   */
+  onRowClick?: (row: T) => void;
+  /**
+   * The row a master–detail screen is currently showing, marked with the accent surface and an
+   * inline-start brand bar and announced with `aria-current`. Independent of `selectedIds`: being
+   * looked at and being ticked for a bulk action are different questions.
+   */
+  activeRowId?: string | null;
   /** Rendered in a trailing column. Compose `DropdownMenu` for a menu. */
   rowActions?: (row: T) => ReactNode;
   /**
@@ -94,6 +109,13 @@ export interface DataGridProps<T> {
   columnMenu?: boolean;
   /** Extra controls in the toolbar — an export button, a saved-view picker. */
   toolbarActions?: ReactNode;
+  /**
+   * How the column headings are set. `sentence` (the default) is the heading as written, in the
+   * foreground colour on a muted band. `caps` is small, spaced capitals in the muted foreground on a
+   * lighter band — a quieter header for a dense list whose rows should carry the weight. Spacing is
+   * dropped in RTL, where it would break the joins between Arabic letters.
+   */
+  headerStyle?: 'sentence' | 'caps';
 
   loading?: boolean;
   emptyState?: ReactNode;
@@ -142,6 +164,8 @@ export function DataGrid<T>({
   onSelectionChange,
   getRowLabel,
   onRowActivate,
+  onRowClick,
+  activeRowId = null,
   rowActions,
   rowActionsWidth = 56,
   height,
@@ -150,6 +174,7 @@ export function DataGrid<T>({
   searchable = true,
   columnMenu = true,
   toolbarActions,
+  headerStyle = 'sentence',
   loading = false,
   emptyState,
   locale,
@@ -397,7 +422,9 @@ export function DataGrid<T>({
 
       <div
         ref={scrollRef}
-        className="relative overflow-auto rounded-xl border border-border"
+        // `bg-card` because the grid is a surface of its own. A theme whose page canvas is not white
+        // (Docs) would otherwise show the page through every row.
+        className="relative overflow-auto rounded-xl border border-border bg-card"
         style={height === undefined ? undefined : { height, maxHeight: height }}
       >
         <table
@@ -424,7 +451,12 @@ export function DataGrid<T>({
             {rowActions ? <col style={{ width: rowActionsWidth }} /> : null}
           </colgroup>
 
-          <thead className="sticky top-0 z-sticky bg-muted">
+          <thead
+            className={cn(
+              'sticky top-0 z-sticky',
+              headerStyle === 'caps' ? 'bg-muted/40' : 'bg-muted',
+            )}
+          >
             <tr aria-rowindex={1}>
               {hasSelection ? (
                 <th scope="col" className="p-0" {...cellProps(-1, 0, 'columnheader')}>
@@ -454,6 +486,7 @@ export function DataGrid<T>({
                   api={api}
                   text={text}
                   gridId={gridId}
+                  caps={headerStyle === 'caps'}
                   cellProps={cellProps(-1, index + leading, 'columnheader')}
                 />
               ))}
@@ -489,6 +522,7 @@ export function DataGrid<T>({
                   const index = virtual.start + offset;
                   const id = getRowId(row);
                   const isSelected = selected.has(id);
+                  const isActive = activeRowId !== null && id === activeRowId;
                   const label = getRowLabel?.(row) ?? id;
 
                   return (
@@ -498,11 +532,27 @@ export function DataGrid<T>({
                       // first row is 2, and page three starts wherever it actually starts.
                       aria-rowindex={(api.state.page - 1) * api.state.pageSize + index + 2}
                       {...(hasSelection ? { 'aria-selected': isSelected } : {})}
+                      {...(isActive ? { 'aria-current': 'true' as const } : {})}
                       style={{ height: rowHeight }}
                       onDoubleClick={() => onRowActivate?.(row)}
+                      {...(onRowClick
+                        ? {
+                            onClick: (event: MouseEvent<HTMLTableRowElement>) => {
+                              if (!isFromControl(event)) onRowClick(row);
+                            },
+                          }
+                        : {})}
                       className={cn(
                         'border-t border-border transition-colors',
-                        isSelected ? 'bg-primary/5' : 'hover:bg-muted/50',
+                        onRowClick && 'cursor-pointer',
+                        isActive
+                          ? [
+                              'bg-accent',
+                              'shadow-[inset_2px_0_0_var(--primary)] rtl:shadow-[inset_-2px_0_0_var(--primary)]',
+                            ]
+                          : isSelected
+                            ? 'bg-primary/5'
+                            : 'hover:bg-muted/50',
                       )}
                     >
                       {hasSelection ? (
@@ -592,12 +642,14 @@ function HeaderCell<T>({
   api,
   text,
   gridId,
+  caps,
   cellProps,
 }: {
   column: ColumnDef<T>;
   api: DataGridApi<T>;
   text: Required<DataGridLabels>;
   gridId: string;
+  caps: boolean;
   cellProps: Record<string, unknown>;
 }) {
   const label =
@@ -615,7 +667,10 @@ function HeaderCell<T>({
       // else. Only the sorted column may carry it, so it is omitted rather than set to "none".
       {...(sorted ? { 'aria-sort': sorted === 'asc' ? 'ascending' : 'descending' } : {})}
       className={cn(
-        'relative h-11 px-3 text-start align-middle font-medium text-foreground',
+        'relative h-11 px-3 text-start align-middle',
+        caps
+          ? 'text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground rtl:tracking-normal'
+          : 'font-medium text-foreground',
         'outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
         ALIGN[column.align ?? 'start'],
       )}
@@ -729,6 +784,21 @@ function ColumnResizer({
       )}
     />
   );
+}
+
+/**
+ * Whether a click on a row belongs to a control inside it rather than to the row.
+ *
+ * The selection checkbox, the row menu and any link or button a cell renders all sit inside the
+ * `<tr>`, so their clicks bubble to it. Treating those as "show this row" would open the detail pane
+ * every time somebody ticked a box or opened a menu.
+ */
+function isFromControl(event: MouseEvent<HTMLElement>): boolean {
+  const target = event.target as Element | null;
+  const control = target?.closest(
+    'a, button, input, select, textarea, label, [role="menuitem"], [role="checkbox"], [contenteditable="true"]',
+  );
+  return control !== null && control !== undefined && event.currentTarget.contains(control);
 }
 
 function SkeletonRows({ columns, rows }: { columns: number; rows: number }) {

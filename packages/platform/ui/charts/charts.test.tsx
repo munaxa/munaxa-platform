@@ -275,6 +275,36 @@ describe('Sparkline', () => {
 });
 
 describe('StatCard', () => {
+  it('paints an opaque card surface, so a tinted page canvas does not show through', () => {
+    const { container } = render(<StatCard label="Drafts" value="4" />);
+    expect(container.firstElementChild).toHaveClass('bg-card');
+    expect(container.firstElementChild?.className).not.toMatch(/bg-card\//);
+  });
+
+  it('sets a feature tile with a sentence-case label and the larger figure', () => {
+    render(<StatCard variant="feature" label="Awaiting my decision" value="4" hint="Open" />);
+    const label = screen.getByText('Awaiting my decision');
+    expect(label.parentElement).not.toHaveClass('uppercase');
+    expect(screen.getByText('4')).toHaveClass('text-3xl');
+    expect(screen.getByText('Open')).toBeInTheDocument();
+  });
+
+  it('sets a compact tile as figure and label beside a tinted icon, without hint or delta', () => {
+    render(
+      <StatCard
+        variant="compact"
+        label="Drafts"
+        value="7"
+        hint="hidden"
+        delta={{ value: 2 }}
+        icon={<svg data-testid="icon" />}
+      />,
+    );
+    expect(screen.getByText('7')).toHaveClass('text-xl');
+    expect(screen.getByTestId('icon').parentElement).toHaveClass('bg-accent');
+    expect(screen.queryByText('hidden')).toBeNull();
+  });
+
   it('colours a change by what it means, not by its direction', () => {
     const { container, rerender } = render(
       <StatCard label="Attendance" value="94%" delta={{ value: 3, goodWhen: 'up' }} />,

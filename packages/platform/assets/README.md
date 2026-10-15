@@ -8,6 +8,7 @@ assets/
     ├── logos/          lockups and marks
     ├── favicon/        browser and app icons
     ├── social/         Open Graph / share images
+    ├── fonts/          the theme's own faces, when it ships them (woff2 + licence)
     └── illustrations/  spot illustrations and empty-state art
 ```
 
@@ -23,6 +24,7 @@ The product folder name matches its theme id in [`../themes/`](../themes) and it
 | `logos/`         | `horizontal-lockup`, `stacked-lockup`, `wordmark`, `symbol`, `tagline-lockup` |
 | `favicon/`       | `favicon`, `favicon-32`, `app-icon`, `apple-touch-icon`                |
 | `social/`        | `og-default`, `og-<surface>`                                           |
+| `fonts/`         | `<family>-<subset>-<weight>.woff2`, plus the licence (`OFL.txt`)       |
 | `illustrations/` | `empty-<context>`, `error-<code>`                                      |
 
 A lockup that is drawn for a dark background takes the same name with an `-on-dark` suffix:
