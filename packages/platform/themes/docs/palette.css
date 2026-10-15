@@ -31,7 +31,7 @@
   --primary-950: #152211;
 
   /* Semantic roles — light */
-  --background: #ffffff;
+  --background: #f3f5f2;
   --foreground: #101828;
   --card: #ffffff;
   --card-foreground: #101828;
@@ -55,14 +55,14 @@
   --accent-cool: #00b1d2;
   --success: #2e7d32;
   --success-foreground: #ffffff;
-  --destructive-strong: #c8101a;
-  --success-strong: #247429;
+  --destructive-strong: #bf0010;
+  --success-strong: #1c6e23;
   --warning: #f59e0b;
   --warning-foreground: #101828;
-  --warning-strong: #a65500;
+  --warning-strong: #a15000;
   --info: #007cbf;
   --info-foreground: #ffffff;
-  --info-strong: #0068aa;
+  --info-strong: #0064a5;
 
   /* Data-visualisation ramp */
   --chart-1: #6b8e62;

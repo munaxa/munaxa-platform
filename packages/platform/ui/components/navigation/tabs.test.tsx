@@ -5,10 +5,18 @@ import userEvent from '@testing-library/user-event';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
 import { expectNoA11yViolations } from '../../../test/setup.js';
 
-function Harness({ initial = 'one', disabled }: { initial?: string; disabled?: string }) {
+function Harness({
+  initial = 'one',
+  disabled,
+  variant,
+}: {
+  initial?: string;
+  disabled?: string;
+  variant?: 'pill' | 'underline';
+}) {
   const [value, setValue] = useState(initial);
   return (
-    <Tabs value={value} onValueChange={setValue}>
+    <Tabs value={value} onValueChange={setValue} {...(variant ? { variant } : {})}>
       <TabsList>
         <TabsTrigger value="one" disabled={disabled === 'one'}>
           One
@@ -108,6 +116,29 @@ describe('Tabs', () => {
 
   it('has no accessibility violations', async () => {
     const { container } = render(<Harness />);
+    await expectNoA11yViolations(container);
+  });
+
+  it('raises the selected pill on the card surface, not the page', () => {
+    render(<Harness />);
+    const selected = screen.getByRole('tab', { name: 'One' });
+    expect(selected).toHaveClass('bg-card');
+    expect(selected).not.toHaveClass('bg-background');
+  });
+
+  it('draws the underline set with a brand bar under the selected tab only', async () => {
+    const user = userEvent.setup();
+    render(<Harness variant="underline" />);
+    expect(screen.getByRole('tablist')).toHaveClass('border-b');
+    expect(screen.getByRole('tab', { name: 'One' })).toHaveClass('border-primary');
+    expect(screen.getByRole('tab', { name: 'Two' })).toHaveClass('border-transparent');
+    await user.click(screen.getByRole('tab', { name: 'Two' }));
+    expect(screen.getByRole('tab', { name: 'Two' })).toHaveClass('border-primary');
+    expect(screen.getByText('Panel two')).toBeInTheDocument();
+  });
+
+  it('has no accessibility violations as an underline set', async () => {
+    const { container } = render(<Harness variant="underline" />);
     await expectNoA11yViolations(container);
   });
 });

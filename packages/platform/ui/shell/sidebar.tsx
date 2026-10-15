@@ -22,6 +22,17 @@ export interface SidebarProps {
    * with a second rail, has to be able to say so.
    */
   railLabel?: string;
+  /**
+   * How the rail sits against the page.
+   *
+   * `floating` (the default) is the inset card: a rounded, shadowed panel with a margin of page
+   * around it. `flush` is a full-height column that meets the top bar and is separated from the page
+   * by a single inline-end border — the Docs v2 shell. Both keep the same landmark, collapse
+   * behaviour and slots; only the frame differs. A `flush` rail usually pairs with
+   * `collapsible={false}` and a `SidebarCollapseToggle` in the top bar, because a control
+   * overhanging a border it does not float above reads as a stray button.
+   */
+  variant?: 'floating' | 'flush';
   children: ReactNode;
   className?: string;
 }
@@ -44,6 +55,7 @@ export function Sidebar({
   expandLabel = 'Expand navigation',
   collapsible = true,
   railLabel = 'Workspace',
+  variant = 'floating',
   children,
   className,
 }: SidebarProps) {
@@ -74,22 +86,34 @@ export function Sidebar({
    * considered and rejected was moving the brand inside the inner `<nav>`, which `Sidebar` cannot
    * do — the inner nav is the consumer's `children`.
    */
+  const flush = variant === 'flush';
+
   return (
     <nav
       aria-label={railLabel}
       className={cn(
-        'sticky top-0 hidden h-screen shrink-0 self-start p-3 md:block',
+        'sticky top-0 hidden h-screen shrink-0 self-start md:block',
         'transition-[width] duration-300 ease-in-out motion-reduce:transition-none',
-        collapsed ? 'w-[84px]' : 'w-64',
+        flush
+          ? ['border-e border-border bg-card', collapsed ? 'w-16' : 'w-[236px]']
+          : ['p-3', collapsed ? 'w-[84px]' : 'w-64'],
         className,
       )}
     >
-      <div className="relative flex h-full flex-col rounded-2xl border border-border bg-card p-3 shadow-card">
+      <div
+        className={cn(
+          'relative flex h-full flex-col',
+          !flush && 'rounded-2xl border border-border bg-card p-3 shadow-card',
+        )}
+      >
         {brand ? (
           <div
             className={cn(
-              'flex items-center gap-2 py-2',
-              collapsed ? 'justify-center px-0' : 'px-2',
+              'flex items-center gap-2',
+              // Flush, the brand row is the same 56px as the top bar beside it, so the two read as
+              // one band across the top of the frame.
+              flush ? 'min-h-14 py-3' : 'py-2',
+              collapsed ? 'justify-center px-0' : flush ? 'px-4' : 'px-2',
             )}
           >
             {typeof brand === 'function' ? brand(collapsed) : brand}
@@ -122,11 +146,16 @@ export function Sidebar({
           </button>
         ) : null}
 
-        <div className="mt-3 flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+        <div
+          className={cn(
+            'flex flex-1 flex-col overflow-y-auto overflow-x-hidden',
+            flush ? 'px-2 pb-4 pt-1' : 'mt-3',
+          )}
+        >
           {children}
         </div>
 
-        {footer && !collapsed ? <div className="mt-4">{footer}</div> : null}
+        {footer && !collapsed ? <div className={flush ? 'mx-3 mb-4' : 'mt-4'}>{footer}</div> : null}
       </div>
     </nav>
   );

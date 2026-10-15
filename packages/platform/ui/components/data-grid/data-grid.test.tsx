@@ -538,4 +538,61 @@ describe('DataGrid', () => {
     const { container } = render(<Grid rows={many} paginated={false} height={300} />);
     await expectNoA11yViolations(container);
   });
+
+  describe('master–detail', () => {
+    it('reports a single click on a row, but not a click on a control inside it', async () => {
+      const user = userEvent.setup();
+      const onRowClick = vi.fn();
+      render(
+        <Grid
+          onRowClick={onRowClick}
+          selectionMode="multiple"
+          selectedIds={[]}
+          onSelectionChange={() => {}}
+          rowActions={(row) => (
+            <button type="button" aria-label={`Actions for ${row.name}`}>
+              ⋯
+            </button>
+          )}
+        />,
+      );
+
+      await user.click(screen.getByText('Zoë Baker'));
+      expect(onRowClick).toHaveBeenCalledTimes(1);
+      expect(onRowClick.mock.calls[0]?.[0]).toMatchObject({ id: '3' });
+
+      // Ticking a row for a bulk action and opening its menu are not "show me this row".
+      await user.click(screen.getByRole('checkbox', { name: /Zoë Baker/ }));
+      await user.click(screen.getByRole('button', { name: 'Actions for Zoë Baker' }));
+      expect(onRowClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('marks the row being shown, independently of the bulk selection', () => {
+      render(<Grid activeRowId="2" selectionMode="multiple" selectedIds={['3']} />);
+      const shown = screen.getByText('Émile Rousseau').closest('tr');
+      const ticked = screen.getByText('Zoë Baker').closest('tr');
+      expect(shown).toHaveAttribute('aria-current', 'true');
+      expect(shown).toHaveClass('bg-primary/5');
+      expect(ticked).not.toHaveAttribute('aria-current');
+      expect(ticked).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('sets caps headings without spacing in right-to-left documents', () => {
+      render(<Grid headerStyle="caps" />);
+      const heading = screen.getByRole('columnheader', { name: /Department/ });
+      expect(heading).toHaveClass('uppercase', 'text-muted-foreground', 'rtl:tracking-normal');
+    });
+
+    it('paints its own surface rather than letting the page show through', () => {
+      const { container } = render(<Grid />);
+      expect(container.querySelector('[role="grid"]')?.parentElement).toHaveClass('bg-card');
+    });
+
+    it('has no accessibility violations with an active row and caps headings', async () => {
+      const { container } = render(
+        <Grid activeRowId="1" headerStyle="caps" onRowClick={() => {}} />,
+      );
+      await expectNoA11yViolations(container);
+    });
+  });
 });

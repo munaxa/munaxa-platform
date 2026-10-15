@@ -34,7 +34,14 @@ export {
 export { AppShell, SkipLink, type AppShellProps, type SkipLinkProps } from './app-shell.js';
 export { Sidebar, type SidebarProps } from './sidebar.js';
 export { NavigationDrawer, type NavigationDrawerProps } from './navigation-drawer.js';
-export { TopBar, SidebarTrigger, type TopBarProps, type SidebarTriggerProps } from './top-bar.js';
+export {
+  TopBar,
+  SidebarTrigger,
+  SidebarCollapseToggle,
+  type TopBarProps,
+  type SidebarTriggerProps,
+  type SidebarCollapseToggleProps,
+} from './top-bar.js';
 export {
   SidebarNav,
   type SidebarNavProps,

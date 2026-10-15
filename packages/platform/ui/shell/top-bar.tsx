@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react';
 import { cn } from '../lib/cn.js';
-import { Menu } from '../../icons/index.js';
+import { Menu, PanelLeft } from '../../icons/index.js';
 import { useAppShell } from './app-shell-context.js';
 
 export interface TopBarProps {
@@ -70,6 +70,55 @@ export function SidebarTrigger({ label = 'Open navigation', className }: Sidebar
       )}
     >
       <Menu className="size-5" aria-hidden="true" />
+    </button>
+  );
+}
+
+export interface SidebarCollapseToggleProps {
+  /** Accessible name while the rail is open, e.g. "Collapse navigation". */
+  collapseLabel?: string;
+  /** Accessible name while the rail is collapsed to icons, e.g. "Expand navigation". */
+  expandLabel?: string;
+  className?: string;
+}
+
+/**
+ * The desktop rail's collapse control, for the top bar.
+ *
+ * `Sidebar` carries its own control on the rail's edge, which suits the floating rail it overhangs.
+ * A `flush` rail has no edge to overhang, so a product that uses one passes `collapsible={false}`
+ * and puts this at the start of its `TopBar` instead — the same state, the same names, one place.
+ *
+ * It is the desktop counterpart of `SidebarTrigger` and the two never show together: below the
+ * drawer breakpoint there is no rail to collapse, so this renders nothing and the trigger takes over.
+ * The panel glyph is mirrored in RTL so it always points at the rail.
+ */
+export function SidebarCollapseToggle({
+  collapseLabel = 'Collapse navigation',
+  expandLabel = 'Expand navigation',
+  className,
+}: SidebarCollapseToggleProps) {
+  const { collapsed, toggleCollapsed, isMobile } = useAppShell();
+
+  if (isMobile) return null;
+
+  const label = collapsed ? expandLabel : collapseLabel;
+
+  return (
+    <button
+      type="button"
+      onClick={toggleCollapsed}
+      aria-label={label}
+      aria-expanded={!collapsed}
+      title={label}
+      className={cn(
+        'flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-foreground',
+        'transition-colors hover:bg-accent',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        className,
+      )}
+    >
+      <PanelLeft className="size-4 rtl:-scale-x-100" aria-hidden="true" />
     </button>
   );
 }

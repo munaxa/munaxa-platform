@@ -6,7 +6,7 @@ import { AppShellProvider, useAppShell } from './app-shell-context.js';
 import { AppShell, SkipLink } from './app-shell.js';
 import { Sidebar } from './sidebar.js';
 import { NavigationDrawer } from './navigation-drawer.js';
-import { TopBar, SidebarTrigger } from './top-bar.js';
+import { TopBar, SidebarTrigger, SidebarCollapseToggle } from './top-bar.js';
 import { SidebarNav, type NavigationGroup } from './navigation.js';
 import { expectNoA11yViolations } from '../../test/setup.js';
 
@@ -239,6 +239,101 @@ describe('Sidebar and SidebarNav', () => {
     // Only the trigger is present; the navigation itself lives in the closed drawer.
     expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open navigation' })).toBeInTheDocument();
+  });
+});
+
+/** The Docs v2 frame: a flush rail, the indicator treatment, and the collapse control up top. */
+function FlushShell() {
+  return (
+    <AppShellProvider>
+      <AppShell
+        sidebar={
+          <Sidebar
+            variant="flush"
+            collapsible={false}
+            brand={<span>Brand</span>}
+            footer={<span>Session</span>}
+          >
+            <SidebarNav groups={GROUPS} label="Main" variant="indicator" />
+          </Sidebar>
+        }
+        topBar={
+          <TopBar>
+            <SidebarCollapseToggle />
+            <SidebarTrigger />
+          </TopBar>
+        }
+      >
+        <p>Page content</p>
+      </AppShell>
+    </AppShellProvider>
+  );
+}
+
+describe('flush rail and indicator navigation', () => {
+  it('keeps the named rail landmark without the floating card', () => {
+    render(<FlushShell />);
+    const rail = screen.getByRole('navigation', { name: 'Workspace' });
+    expect(rail).toHaveClass('border-e');
+    expect(rail.querySelector('.shadow-card')).toBeNull();
+    // No overhanging control: the top bar owns collapsing.
+    expect(rail.querySelectorAll('button')).toHaveLength(0);
+  });
+
+  it('marks the active row with the accent surface and an edge bar rather than the brand fill', () => {
+    render(<FlushShell />);
+    const active = screen.getByRole('link', { name: 'Dashboard' });
+    expect(active).toHaveAttribute('aria-current', 'page');
+    expect(active).toHaveClass('bg-primary/5', 'font-semibold');
+    expect(active).not.toHaveClass('bg-primary');
+    expect(screen.getByRole('link', { name: 'Students' })).not.toHaveClass('bg-primary/5');
+  });
+
+  it('sets group headings without letter-spacing in right-to-left documents', () => {
+    render(<FlushShell />);
+    // Tracking breaks the joins between Arabic letters.
+    expect(screen.getByText('People')).toHaveClass('rtl:tracking-normal', 'text-muted-foreground');
+  });
+
+  it('collapses the rail from the top bar and keeps the control named for what it will do', async () => {
+    const user = userEvent.setup();
+    render(<FlushShell />);
+    const toggle = screen.getByRole('button', { name: 'Collapse navigation' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Session')).toBeInTheDocument();
+
+    await user.click(toggle);
+
+    expect(screen.getByRole('button', { name: 'Expand navigation' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByText('Session')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Students' })).toHaveAttribute('title', 'Students');
+  });
+
+  it('hands over to the drawer trigger below the drawer breakpoint', () => {
+    setViewport(true);
+    render(<FlushShell />);
+    expect(screen.queryByRole('button', { name: 'Collapse navigation' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open navigation' })).toBeInTheDocument();
+  });
+
+  it('rules off every group but the first when asked for dividers', () => {
+    render(
+      <AppShellProvider>
+        <SidebarNav groups={GROUPS} label="Settings" variant="indicator" dividers />
+      </AppShellProvider>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Settings' });
+    const groups = [...nav.children];
+    expect(groups[0]).not.toHaveClass('border-t');
+    expect(groups[1]).toHaveClass('border-t');
+  });
+
+  it('has no violations', async () => {
+    const { container } = render(<FlushShell />);
+    await expectNoA11yViolations(container);
   });
 });
 
