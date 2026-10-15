@@ -78,7 +78,7 @@ export interface DataGridProps<T> {
    */
   onRowClick?: (row: T) => void;
   /**
-   * The row a master–detail screen is currently showing, marked with the accent surface and an
+   * The row a master–detail screen is currently showing, marked with a faint brand wash (`primary/5`) and an
    * inline-start brand bar and announced with `aria-current`. Independent of `selectedIds`: being
    * looked at and being ticked for a bulk action are different questions.
    */
@@ -547,7 +547,10 @@ export function DataGrid<T>({
                         onRowClick && 'cursor-pointer',
                         isActive
                           ? [
-                              'bg-accent',
+                              // `primary/5`, not `accent`: a status badge inside the row paints its own
+                              // tint on top, and the palette guarantees that pair only over
+                              // `primary/5` — over `accent` it measured 4.15:1 in every dark theme.
+                              'bg-primary/5',
                               'shadow-[inset_2px_0_0_var(--primary)] rtl:shadow-[inset_-2px_0_0_var(--primary)]',
                             ]
                           : isSelected

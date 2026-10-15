@@ -63,7 +63,7 @@ export interface SidebarNavProps {
    * How the current page is marked.
    *
    * `filled` (the default) paints the active row in the brand fill. `indicator` keeps it on the
-   * quiet accent surface and draws a 2px brand bar on its inline-start edge — the Docs v2 rail, set
+   * faint brand wash (`primary/5`) and draws a 2px brand bar on its inline-start edge — the Docs v2 rail, set
    * a step denser and with sans-serif group headings, where a column of mostly-text rows reads
    * better with one thin mark than with a solid block. The bar is an inset shadow rather than a
    * border so the row does not shift by 2px when it becomes active, and it flips side in RTL.
@@ -149,12 +149,14 @@ export function SidebarNav({
               item.active
                 ? indicator
                   ? [
-                      'bg-accent font-semibold text-accent-foreground',
+                      // `primary/5` for the same reason as `DataGrid`'s active row: a badge in the
+                      // row (an approvals count) is only guaranteed AA over that wash.
+                      'bg-primary/5 font-semibold text-foreground',
                       'shadow-[inset_2px_0_0_var(--primary)] rtl:shadow-[inset_-2px_0_0_var(--primary)]',
                     ]
                   : 'bg-primary font-medium text-primary-foreground'
                 : indicator
-                  ? 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  ? 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground',
             );
             return (

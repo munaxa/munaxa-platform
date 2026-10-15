@@ -284,9 +284,9 @@ describe('flush rail and indicator navigation', () => {
     render(<FlushShell />);
     const active = screen.getByRole('link', { name: 'Dashboard' });
     expect(active).toHaveAttribute('aria-current', 'page');
-    expect(active).toHaveClass('bg-accent', 'text-accent-foreground');
+    expect(active).toHaveClass('bg-primary/5', 'font-semibold');
     expect(active).not.toHaveClass('bg-primary');
-    expect(screen.getByRole('link', { name: 'Students' })).not.toHaveClass('bg-accent');
+    expect(screen.getByRole('link', { name: 'Students' })).not.toHaveClass('bg-primary/5');
   });
 
   it('sets group headings without letter-spacing in right-to-left documents', () => {

@@ -572,7 +572,7 @@ describe('DataGrid', () => {
       const shown = screen.getByText('Émile Rousseau').closest('tr');
       const ticked = screen.getByText('Zoë Baker').closest('tr');
       expect(shown).toHaveAttribute('aria-current', 'true');
-      expect(shown).toHaveClass('bg-accent');
+      expect(shown).toHaveClass('bg-primary/5');
       expect(ticked).not.toHaveAttribute('aria-current');
       expect(ticked).toHaveAttribute('aria-selected', 'true');
     });

@@ -14,7 +14,7 @@ where a fix below says otherwise.
 
 - **The Docs page canvas.** `scripts/generate-palettes.mjs` takes an optional `canvas` per theme, and
   Docs sets it: `--background` is `#f3f5f2` in light, with cards, popovers and inputs still white on
-  top. Every `-strong` text colour and the focus ring are now chosen against *both* grounds, so the
+  top. Every `-strong` text colour and the focus ring are now chosen against _both_ grounds, so the
   Docs status text darkened a step to stay AA on the canvas (`--success-strong` `#1c6e23`,
   `--warning-strong` `#a15000`, `--destructive-strong` `#bf0010`, `--info-strong` `#0064a5`). The
   palette test now measures every tint over the card as well as the page.
@@ -24,7 +24,7 @@ where a fix below says otherwise.
   the OFL), and `munaxa-sync-brand` now copies a `fonts/` bucket to `<public>/branding/<product>/fonts/`.
 - **`Sidebar` `variant="flush"`** — a full-height rail that meets the top bar, separated by one
   border, instead of the floating card.
-- **`SidebarNav` `variant="indicator"`** — the current page on the accent surface with a 2px
+- **`SidebarNav` `variant="indicator"`** — the current page on a faint brand wash (`primary/5`, the one surface the palette guarantees a status badge on) with a 2px
   inline-start brand bar, a denser rhythm and `Overline` group headings; **`dividers`** draws a rule
   between groups.
 - **`SidebarCollapseToggle`** — the desktop rail's collapse control for the top bar, the counterpart
@@ -45,13 +45,15 @@ where a fix below says otherwise.
   `bg-background`. Identical wherever the page is white; on a tinted canvas the old classes let the
   page show through.
 - **`SidebarNav` group headings** drop their letter-spacing in RTL, where it broke Arabic joins.
+- **`FileManager` grid**: a selected tile keeps its card and gains a ring, rather than a `primary/5`
+  fill that replaced the card and dropped its metadata below AA on a tinted canvas.
 
 ## [1.6.1] — 2026-08-18
 
 ### Fixed
 
 - **`TreeView`: a link-shaped item can activate itself again.** `onActivate` is documented as
-  unnecessary for a navigation tree — *"the anchor is real"* — and the key handler did not honour
+  unnecessary for a navigation tree — _"the anchor is real"_ — and the key handler did not honour
   that: it called `preventDefault()` on Enter before checking whether anybody was listening, so the
   browser's own activation of the link was cancelled and the key was then handed to a callback that
   did not exist. An item that looked like a link and announced itself as one did nothing when a
@@ -69,8 +71,8 @@ where a fix below says otherwise.
   to activate, and suppressing a keystroke on its behalf was never a behaviour worth keeping.
 
   Two regression tests cover the arrangement the three existing activation tests could not, because
-  each of them supplied a handler: Enter on an anchor with no `onActivate` now *activates the
-  anchor* — asserted as the click its default action produces, not as a flag on the event — and the
+  each of them supplied a handler: Enter on an anchor with no `onActivate` now _activates the
+  anchor_ — asserted as the click its default action produces, not as a flag on the event — and the
   keystroke is not cancelled.
 
 ## [1.6.0] — 2026-08-17
@@ -79,7 +81,7 @@ where a fix below says otherwise.
 
 - **`TreeView` — the APG tree, as a set of destinations.** A hierarchy whose items are the
   product's own elements: `renderItem` receives `treeItemProps`, and whatever the product renders
-  *is* the treeitem. That is the point of the seam. A navigation tree needs real anchors — an
+  _is_ the treeitem. That is the point of the seam. A navigation tree needs real anchors — an
   `href`, a middle click, a context menu, a status-bar URL — and the alternative shape, a
   `role="treeitem"` wrapper around a focusable link, gives two tab stops per row and announces the
   focused element without the level, position or expanded state that make a tree a tree.
@@ -120,7 +122,7 @@ where a fix below says otherwise.
 - **The calendar's month arrows did nothing.** The visible pane is driven by `cursor`, and an
   effect keeps the focused day on screen by pulling `cursor` back to the month `focused` sits in.
   The header arrows moved only `cursor`, so the effect undid the move on the very next commit:
-  clicking *next* set the pane to May while focus stayed on 15 April, focus read as behind the
+  clicking _next_ set the pane to May while focus stayed on 15 April, focus read as behind the
   pane, and the cursor snapped back. Neither direction ever changed the month, from the moment the
   calendar opened on its selected day.
 
@@ -182,7 +184,7 @@ themes, for three releases**, and that Phase 8.12 put it there.
 
 - **The navigation rail was not a landmark, so the brand sat outside the landmark tree.** This
   element has now had three shapes and each answered a different measurement. It was an `<aside>` —
-  an *unnamed* `complementary`, which alongside `Split`'s unnamed inspector produced two entries a
+  an _unnamed_ `complementary`, which alongside `Split`'s unnamed inspector produced two entries a
   landmark list could not tell apart (`landmark-unique`, Phase 8.12). Phase 8.12 made it a `<div>`,
   which was right about the duplicate and wrong about what it left behind: the rail also holds the
   brand lockup, and with no landmark around it that content was outside the landmark tree entirely
@@ -224,7 +226,7 @@ twelve controls with no accessible name at all, and the cause was in this packag
 Phase 8.14 measured the states the matrix actually lays out, rather than the components it renders.
 The contrast matrix measures the **canonical** render — the story as a person meets it on arrival —
 and exactly one story out of 106 was opened before axe ran. A census found 79 collapsed disclosure
-nodes against 9 expanded ones: the *contents* of almost every menu, popover, select and time list
+nodes against 9 expanded ones: the _contents_ of almost every menu, popover, select and time list
 had never been through a single rule. Opening the other 78 triggers found four defects in shared
 components, one of them an outright keyboard failure.
 
@@ -234,7 +236,7 @@ components, one of them an outright keyboard failure.
   elements, focus parked on a `tabindex="-1"` container, and eighty-five ArrowDown presses moved
   neither the selection nor a list scrolling 1 544px inside 224px — so anyone not using a mouse
   could open the times and then choose nothing but the one already chosen. WCAG 2.1.1. The
-  component's own comment said the field above "*is* the search box", which was the intent and not
+  component's own comment said the field above "_is_ the search box", which was the intent and not
   the behaviour: that field sits outside `Command`, so `cmdk` — which binds every key to its input —
   never saw it. The popup now carries the input `cmdk` binds to, visually hidden, so arrow keys move
   the active option, the list follows it, and Enter commits. Nothing visible changed.
@@ -260,7 +262,7 @@ components, one of them an outright keyboard failure.
 
 ## [1.4.1] — 2026-08-14
 
-Phase 8.13 measured what the accessibility matrix was checking *against*, rather than what it was
+Phase 8.13 measured what the accessibility matrix was checking _against_, rather than what it was
 checking. The matrix has reported "100 stories, 0 excluded" since Phase 8.5, and that is a fact about
 stories: discovery reads Storybook's index, so a public component nobody wrote a story for is not
 excluded and not skipped — it is invisible, and the run is green because it was never asked.
@@ -361,7 +363,7 @@ the files — three implementations of one rule, none of which could be checked.
 - **`scripts/sync-brand-assets.mjs`**, published with the package, so a product's `prebuild` copies
   the artwork it needs into its own `public/` rather than committing a snapshot that goes stale.
 - **`scripts/import-brand-artwork.py`**, the pipeline that produced the assets. Offline tooling
-  outside the Node build, checked in because the artwork is *generated*: it must be re-run when
+  outside the Node build, checked in because the artwork is _generated_: it must be re-run when
   the approved exports change **and** when a canonical colour changes, or a product ships a mark
   and a `--primary` that are two different colours.
 - **A corporate identity with artwork.** `corporateBrand` carries the M in the corporate navy plus

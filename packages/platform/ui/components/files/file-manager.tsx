@@ -378,7 +378,9 @@ function GridView({
             key={item.id}
             className={cn(
               'group relative flex flex-col gap-1 rounded-xl border border-border bg-card p-3',
-              selected.has(item.id) && 'border-primary bg-primary/5',
+              // A ring rather than a tint: `bg-primary/5` replaced the card's own fill, so on a tinted
+              // page canvas the tile went translucent and its muted metadata fell below AA.
+              selected.has(item.id) && 'border-primary ring-1 ring-primary',
             )}
           >
             <span className="flex items-start justify-between gap-1">
