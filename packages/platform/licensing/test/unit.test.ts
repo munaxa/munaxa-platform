@@ -126,7 +126,7 @@ describe('access modes', () => {
   it('a product policy can tighten the default but never loosen it', () => {
     const policy = accessPolicy({ PAST_DUE: 'NO_GROWTH', SUSPENDED: 'FULL', CANCELLED: 'NONE' });
     expect(policy.PAST_DUE).toBe('NO_GROWTH');
-    expect(policy.SUSPENDED).toBe('EXPORT_ONLY');
+    expect(policy.SUSPENDED).toBe('READ_ONLY');
     expect(policy.CANCELLED).toBe('NONE');
   });
 });

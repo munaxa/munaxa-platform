@@ -67,9 +67,10 @@ export function permits(mode: AccessMode, operation: OperationKind): boolean {
  *
  * PAST_DUE keeps full access: an overdue invoice is a conversation, not an outage. GRACE_PERIOD
  * stops growth, so the customer keeps working but the bill does not grow while it is unpaid.
- * EXPIRED is read-only and SUSPENDED and CANCELLED are export-only — never NONE, because
- * withholding a customer's own records is not a collections strategy. NONE is reached only through
- * a product's own policy, after its contractual export window.
+ * EXPIRED and SUSPENDED are read-only — a suspension stops every change at once and still lets
+ * the customer see their own records — and CANCELLED is export-only. Never NONE, because
+ * withholding a customer's own records is not a collections strategy. NONE, or a stricter
+ * suspension, is reached only through a product's own policy.
  */
 export const DEFAULT_ACCESS_POLICY: Readonly<Record<SubscriptionStatus, AccessMode>> = {
   [SubscriptionStatus.TRIAL]: AccessMode.FULL,
@@ -77,7 +78,7 @@ export const DEFAULT_ACCESS_POLICY: Readonly<Record<SubscriptionStatus, AccessMo
   [SubscriptionStatus.PAST_DUE]: AccessMode.FULL,
   [SubscriptionStatus.GRACE_PERIOD]: AccessMode.NO_GROWTH,
   [SubscriptionStatus.EXPIRED]: AccessMode.READ_ONLY,
-  [SubscriptionStatus.SUSPENDED]: AccessMode.EXPORT_ONLY,
+  [SubscriptionStatus.SUSPENDED]: AccessMode.READ_ONLY,
   [SubscriptionStatus.CANCELLED]: AccessMode.EXPORT_ONLY,
 };
 
