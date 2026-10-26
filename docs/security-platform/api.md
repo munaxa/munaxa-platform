@@ -221,3 +221,26 @@ parameter — so it runs under vitest, jest or node's own.
   a failing ordering reproduces instead of becoming a flake.
 
 See the [adapter guide](./adapter-guide.md).
+
+---
+
+## @munaxa/licensing
+
+The subscription and licensing contract every product and the central service agree on. Pure rules
+and wire formats: no key, no table, no HTTP client, no product vocabulary. Versioned independently
+of the security lockstep group — [ADR-0022](./adr/0022-licensing-contracts.md).
+
+- **Lifecycle** — `SubscriptionStatus`, `LifecycleEvent`, `transition()`, `allowedEvents()`,
+  `effectiveStatus()`. Expiry, cancellation and suspension are distinct; cancellation is terminal and
+  reactivation returns to the state a suspension interrupted.
+- **Access** — `AccessMode`, `OperationKind`, `permits()`, `restrict()`, `DEFAULT_ACCESS_POLICY`,
+  `accessPolicy()` (which can only tighten the default).
+- **Entitlements** — `EntitlementSnapshot`, `parseEntitlementSnapshot()`, `checkOperation()`,
+  `checkFeature()`, `checkQuota()`, `limitOf()`, `DenialReason`, `DeploymentType`, `isKey()`.
+- **Outage policy** — `resolveSnapshot()`, `AvailabilityPolicy`, `SAAS_AVAILABILITY_POLICY`,
+  `SnapshotSource`.
+- **Offline licences** — `issueLicense()` (issuer only), `verifyLicense()`, `licenseVerifier()`,
+  `armorLicense()`, `parseLicensePayload()`, `snapshotOfLicense()`, `canonicalJson()`,
+  `LicenseRejection`, `encodeActivationRequest()`, `decodeActivationRequest()`.
+- **Audit and ports** — `LicensingAuditAction`, `LicensingAuditSubject`, `EntitlementSource`,
+  `UsageReport`, `UsageReporter`.

@@ -31,7 +31,7 @@ munaxa-platform
 
 ### The security platform
 
-`packages/platform/*` also holds twelve server-side packages that own every cross-cutting security
+`packages/platform/*` also holds the server-side packages that own every cross-cutting security
 concern in the ecosystem. Products consume them and write business logic; no product should
 implement authentication, RBAC, session management or auditing again.
 
@@ -46,6 +46,7 @@ implement authentication, RBAC, session management or auditing again.
 | `@munaxa/cache`         | CachePort, counters, distributed locks                                   |
 | `@munaxa/logging`       | Structured logs, correlation ids, redaction                              |
 | `@munaxa/notifications` | Email, SMS, push, in-app delivery                                        |
+| `@munaxa/licensing`     | Subscription lifecycle, entitlements, signed offline licences            |
 | `@munaxa/config`        | Typed environment schemas, secrets, feature flags, tenant config         |
 | `@munaxa/interfaces`    | Every port the platform can be given from outside                        |
 | `@munaxa/types`         | Identifiers, error taxonomy, the security-event vocabulary               |

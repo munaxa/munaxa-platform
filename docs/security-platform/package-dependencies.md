@@ -16,9 +16,11 @@ graph BT
   security["@munaxa/security"]
   notifications["@munaxa/notifications"]
   auth["@munaxa/auth"]
+  licensing["@munaxa/licensing"]
 
   interfaces --> types
   crypto --> types
+  licensing --> crypto
   config --> types
   config --> interfaces
   cache --> types

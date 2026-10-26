@@ -17,6 +17,7 @@ export default [
       'conformance/**',
       'crypto/**',
       'interfaces/**',
+      'licensing/**',
       'logging/**',
       'notifications/**',
       'rbac/**',
