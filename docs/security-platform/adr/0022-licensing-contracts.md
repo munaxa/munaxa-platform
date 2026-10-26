@@ -29,7 +29,7 @@ A new package, `@munaxa/licensing`, holding only what every party must agree on:
    `checkFeature`, `checkQuota` over it. Product, feature and limit keys are opaque strings: the
    platform evaluates a catalogue it never learns the meaning of.
 3. **Access is a ceiling, never a grant.** A product reaches an operation only when its own RBAC
-   and tenant isolation allow it *and* the access mode does. Product policy can only tighten the
+   and tenant isolation allow it _and_ the access mode does. Product policy can only tighten the
    default; no configuration gives a suspended tenant write access.
 4. **No outage grants access.** `resolveSnapshot` degrades a cached snapshot by age
    (full → no growth → read-only → export) and grants nothing when no snapshot was ever obtained.
@@ -37,6 +37,12 @@ A new package, `@munaxa/licensing`, holding only what every party must agree on:
    verifier holding an HMAC key holds a minting key. Domain-separated signing input, canonical JSON,
    installation binding, and clock-rollback detection against the last instant the installation
    observed.
+6. **One reading of the central service's answer** — `entitlementsPath`, `usagePath` and
+   `readEntitlementResponse`. `404` is "no subscription"; every other failure, including `401` and
+   `403`, a body that does not parse, and a snapshot about another tenant or product, is an outage.
+   The distinction decides whether a cached snapshot may bridge the gap, so it must not differ from
+   product to product. The package still sends nothing: each product calls through its own outbound
+   boundary.
 
 What it deliberately does **not** hold: a private key, a table, an HTTP client, a catalogue of
 plans, or anything that knows what a school or a document is. The authoritative records and the
@@ -68,5 +74,5 @@ of thirteen packages for a change to none of them. It starts at `0.1.0`: the wir
 - **Put the logic in the central service and have products call it per request** — couples every
   request to a network hop and makes offline installations impossible.
 - **Put School's model in the platform as-is** — it carries School vocabulary (`students`,
-  `campuses`, JoFotara) and a READ_ONLY *state* where this contract has a READ_ONLY *mode*. School
+  `campuses`, JoFotara) and a READ_ONLY _state_ where this contract has a READ_ONLY _mode_. School
   maps onto the contract instead (its own integration).

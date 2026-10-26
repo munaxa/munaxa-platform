@@ -12,3 +12,4 @@ export * from './availability.js';
 export * from './license.js';
 export * from './audit.js';
 export * from './ports.js';
+export * from './control-plane.js';
