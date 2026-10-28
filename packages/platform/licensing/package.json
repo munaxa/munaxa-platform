@@ -1,6 +1,6 @@
 {
   "name": "@munaxa/licensing",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Product-agnostic subscription and licensing contracts: lifecycle states and transitions, entitlement snapshots and their evaluation, signed offline licence documents, outage policy and the audit vocabulary. Holds no key, no table and no product vocabulary.",
   "keywords": [
     "licensing",
