@@ -1,0 +1,12 @@
+{
+  "//": "Editor, lint and typecheck config — covers source and tests. tsconfig.build.json is the narrower config that emits.",
+  "extends": "@munaxa/config-typescript/base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+}

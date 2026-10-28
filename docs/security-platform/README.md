@@ -25,6 +25,7 @@ logic. When a product needs a security capability that is not here, the answer i
 | [`@munaxa/notifications`](../../packages/platform/notifications) | Email, SMS, push, in-app delivery with templates | types, interfaces, crypto |
 | [`@munaxa/auth`](../../packages/platform/auth) | Passwords, login, tokens, MFA, reset, providers, API keys | types, interfaces, crypto |
 | [`@munaxa/conformance`](../../packages/platform/conformance) | The executable specification every adapter must pass | types, interfaces |
+| [`@munaxa/licensing`](../../packages/platform/licensing) | Subscription lifecycle, entitlement evaluation, signed offline licences, outage policy — versioned independently ([ADR-0022](./adr/0022-licensing-contracts.md)) | crypto |
 
 ## Documents
 

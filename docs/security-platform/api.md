@@ -41,18 +41,18 @@ Types are the source of truth — this is a map, not a substitute for reading th
 Ports only, plus `PORTS` (the token table), `ServiceRegistry`, `createToken()` and
 `REQUIRED_AUTH_PORTS`.
 
-| Port | Implemented by the platform as |
-| --- | --- |
-| `CachePort`, `CounterPort`, `LockPort` | `MemoryCache`, `RedisCache`, `FixedWindowCounter`, `SlidingWindowCounter`, `CacheLock` |
-| `LoggerPort`, `MetricsPort` | `StructuredLogger`, `MemoryLogger`, `nullLogger`, `MemoryMetrics` |
-| `AuditSinkPort`, `AuditRepositoryPort`, `AuditExporterPort` | `MemoryAuditRepository`, `LoggingAuditSink`, `BatchingSink`, `NdjsonExporter`, `CsvExporter`, `WebhookExporter` |
-| `UserDirectoryPort`, `PasswordHistoryPort`, `BreachRegistryPort`, `MfaEnrollmentStorePort` | `MemoryUserDirectory`, `MemoryPasswordHistory`, `StaticBreachRegistry`, `MemoryMfaEnrollmentStore` |
-| `SessionStorePort`, `DeviceRegistryPort` | `MemorySessionStore`, `MemoryDeviceRegistry` |
-| `RefreshTokenStorePort`, `ResetTokenStorePort`, `ApiKeyStorePort`, `SigningKeyPort` | `MemoryRefreshTokenStore`, `MemoryResetTokenStore`, `MemoryApiKeyStore` |
-| `RoleRepositoryPort`, `RoleAssignmentPort` | `MemoryRoleRepository`, `MemoryRoleAssignments` |
-| `NotificationTransportPort`, `TemplateRendererPort` | `MemoryTransport`, `LoggingTransport`, `NullTransport`, `TenantRoutingTransport`, `TemplateRegistry` |
-| `SecretsPort`, `FeatureFlagPort`, `TenantConfigPort` | `EnvSecrets`, `CachingSecrets`, `StaticSecrets`, `FeatureFlags`, `LayeredConfig` |
-| `IdentityProviderPort`, `HttpClientPort`, `RandomPort`, `IdGeneratorPort` | `OidcProvider`, `SamlProviderPlaceholder` |
+| Port                                                                                       | Implemented by the platform as                                                                                  |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `CachePort`, `CounterPort`, `LockPort`                                                     | `MemoryCache`, `RedisCache`, `FixedWindowCounter`, `SlidingWindowCounter`, `CacheLock`                          |
+| `LoggerPort`, `MetricsPort`                                                                | `StructuredLogger`, `MemoryLogger`, `nullLogger`, `MemoryMetrics`                                               |
+| `AuditSinkPort`, `AuditRepositoryPort`, `AuditExporterPort`                                | `MemoryAuditRepository`, `LoggingAuditSink`, `BatchingSink`, `NdjsonExporter`, `CsvExporter`, `WebhookExporter` |
+| `UserDirectoryPort`, `PasswordHistoryPort`, `BreachRegistryPort`, `MfaEnrollmentStorePort` | `MemoryUserDirectory`, `MemoryPasswordHistory`, `StaticBreachRegistry`, `MemoryMfaEnrollmentStore`              |
+| `SessionStorePort`, `DeviceRegistryPort`                                                   | `MemorySessionStore`, `MemoryDeviceRegistry`                                                                    |
+| `RefreshTokenStorePort`, `ResetTokenStorePort`, `ApiKeyStorePort`, `SigningKeyPort`        | `MemoryRefreshTokenStore`, `MemoryResetTokenStore`, `MemoryApiKeyStore`                                         |
+| `RoleRepositoryPort`, `RoleAssignmentPort`                                                 | `MemoryRoleRepository`, `MemoryRoleAssignments`                                                                 |
+| `NotificationTransportPort`, `TemplateRendererPort`                                        | `MemoryTransport`, `LoggingTransport`, `NullTransport`, `TenantRoutingTransport`, `TemplateRegistry`            |
+| `SecretsPort`, `FeatureFlagPort`, `TenantConfigPort`                                       | `EnvSecrets`, `CachingSecrets`, `StaticSecrets`, `FeatureFlags`, `LayeredConfig`                                |
+| `IdentityProviderPort`, `HttpClientPort`, `RandomPort`, `IdGeneratorPort`                  | `OidcProvider`, `SamlProviderPlaceholder`                                                                       |
 
 ---
 
@@ -221,3 +221,30 @@ parameter — so it runs under vitest, jest or node's own.
   a failing ordering reproduces instead of becoming a flake.
 
 See the [adapter guide](./adapter-guide.md).
+
+---
+
+## @munaxa/licensing
+
+The subscription and licensing contract every product and the central service agree on. Pure rules
+and wire formats: no key, no table, no HTTP client, no product vocabulary. Versioned independently
+of the security lockstep group — [ADR-0022](./adr/0022-licensing-contracts.md).
+
+- **Lifecycle** — `SubscriptionStatus`, `LifecycleEvent`, `transition()`, `allowedEvents()`,
+  `effectiveStatus()`. Expiry, cancellation and suspension are distinct; cancellation is terminal and
+  reactivation returns to the state a suspension interrupted.
+- **Access** — `AccessMode`, `OperationKind`, `permits()`, `restrict()`, `DEFAULT_ACCESS_POLICY`,
+  `accessPolicy()` (which can only tighten the default).
+- **Entitlements** — `EntitlementSnapshot`, `parseEntitlementSnapshot()`, `checkOperation()`,
+  `checkFeature()`, `checkQuota()`, `limitOf()`, `DenialReason`, `DeploymentType`, `isKey()`.
+- **Outage policy** — `resolveSnapshot()`, `AvailabilityPolicy`, `SAAS_AVAILABILITY_POLICY`,
+  `SnapshotSource`.
+- **Offline licences** — `issueLicense()` (issuer only), `verifyLicense()`, `licenseVerifier()`,
+  `armorLicense()`, `parseLicensePayload()`, `snapshotOfLicense()`, `canonicalJson()`,
+  `LicenseRejection`, `encodeActivationRequest()`, `decodeActivationRequest()`.
+- **Audit and ports** — `LicensingAuditAction`, `LicensingAuditSubject`, `EntitlementSource`,
+  `UsageReport`, `UsageReporter`.
+- **Central service wire format** — `entitlementsPath()`, `usagePath()`, `UsageBatch`,
+  `USAGE_BATCH_MAX`, `readEntitlementResponse()`, `unreachable()`, `EntitlementAnswer`. `404` reads
+  as no subscription; every other failure, an unparseable body and a snapshot about another subject
+  read as an outage.
