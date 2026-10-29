@@ -1,0 +1,247 @@
+# Terraform for the shared AWS stack (infra/aws/stack): Identity, Control, Work and School.
+#
+#   Pull request:    format, validate and the mocked plan tests. No AWS credential, no AWS call.
+#   Dispatch, plan:  a real plan as the shared deployer, reported only.
+#   Dispatch, apply: a plan that must match envs/<env>.expected-changes.json exactly, kept in the
+#                    state bucket; then a second job, behind the environment's approval again,
+#                    applies that saved plan and nothing else.
+#
+# **Nothing applies on a push or a merge.** An apply is always a dispatch on main, approved in the
+# protected `aws-<env>` environment (required reviewer: the owner), after the plan it will apply has
+# been printed. Bootstrap (infra/aws/bootstrap) is never run here: root applies it in CloudShell.
+#
+# The workflow is inert until the owner applies bootstrap and sets the repository variable
+# AWS_CI_ROLE_ARN; the dispatch jobs refuse to start without it.
+
+name: AWS Terraform
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'infra/aws/**'
+      - 'scripts/terraform/**'
+      - '.github/workflows/aws-terraform.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        type: choice
+        options: [nonprod, prod]
+      action:
+        description: 'plan reports only; apply plans, checks the declared intent, and waits for approval'
+        required: true
+        type: choice
+        options: [plan, apply]
+
+concurrency:
+  group: aws-terraform-${{ inputs.environment || github.ref }}
+  cancel-in-progress: false # never cancel a half-finished apply
+
+permissions:
+  contents: read
+
+env:
+  TERRAFORM_VERSION: 1.16.5
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: '229251310592'
+
+jobs:
+  static:
+    name: Format, validate, mocked plan tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff infra/aws
+
+      - name: terraform validate (bootstrap, stack)
+        run: |
+          set -euo pipefail
+          for root in infra/aws/bootstrap infra/aws/stack; do
+            terraform -chdir="$root" init -backend=false -input=false
+            terraform -chdir="$root" validate
+          done
+
+      - name: terraform test (mocked AWS provider)
+        run: terraform -chdir=infra/aws/stack test
+
+      - name: Declared intents are well formed
+        run: |
+          set -euo pipefail
+          for env in nonprod prod; do
+            scripts/terraform/check-plan-intent.sh --validate "infra/aws/stack/envs/$env.expected-changes.json"
+          done
+
+      - name: The db-admin script is valid POSIX shell
+        run: shellcheck --shell=sh infra/aws/stack/scripts/db-bootstrap.sh
+
+  plan:
+    name: Plan ${{ inputs.environment }} (${{ inputs.action }})
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: aws-${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      changes: ${{ steps.plan.outputs.changes }}
+      plan_sha256: ${{ steps.keep.outputs.sha256 }}
+    defaults:
+      run:
+        working-directory: infra/aws/stack
+    env:
+      TF_VAR_deployer_session_name: gha-run-${{ github.run_id }}
+    steps:
+      - name: Refuse to run before bootstrap
+        env:
+          CI_ROLE_ARN: ${{ vars.AWS_CI_ROLE_ARN }}
+          DEPLOYER_ROLE_ARN: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+        working-directory: .
+        run: |
+          if [ -z "$CI_ROLE_ARN" ] || [ -z "$DEPLOYER_ROLE_ARN" ]; then
+            echo "::error::AWS_CI_ROLE_ARN and AWS_DEPLOYER_ROLE_ARN are not set: apply infra/aws/bootstrap first (README)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Assume the CI role through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          role-session-name: gha-run-${{ github.run_id }}
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+          audience: sts.amazonaws.com
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+
+      - name: terraform init
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOYER_ROLE_ARN: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+        run: |
+          terraform init -input=false \
+            -backend-config="envs/$ENVIRONMENT.backend.hcl" \
+            -backend-config="assume_role={role_arn=\"$DEPLOYER_ROLE_ARN\",session_name=\"gha-run-$GITHUB_RUN_ID\",source_identity=\"github-actions\"}"
+
+      - name: terraform plan
+        id: plan
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+        run: |
+          set +e
+          terraform plan -input=false -lock-timeout=5m -detailed-exitcode -var-file="envs/$ENVIRONMENT.tfvars" -out=tfplan
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
+          echo "changes=$([ "$code" -eq 2 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # Addresses and actions only: no attribute value reaches the summary.
+      - name: Plan summary and declared intent
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          MODE: ${{ inputs.action == 'apply' && steps.plan.outputs.changes == 'true' && '--enforce' || '--report' }}
+          EXPECTED_ROOT: stack-${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          terraform show -json tfplan > plan.json
+          {
+            echo "## stack/$ENVIRONMENT"
+            "$GITHUB_WORKSPACE/scripts/terraform/plan-summary.sh" plan.json
+          } >> "$GITHUB_STEP_SUMMARY"
+          set +e
+          "$GITHUB_WORKSPACE/scripts/terraform/check-plan-intent.sh" "$MODE" plan.json "envs/$ENVIRONMENT.expected-changes.json" > intent.txt
+          code=$?
+          set -e
+          rm -f plan.json
+          { echo '```'; cat intent.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          cat intent.txt
+          exit "$code"
+
+      # The saved plan can hold sensitive values, so it stays in the state bucket (KMS-encrypted),
+      # under a key unique to this run; only its hash leaves the job.
+      - name: Keep the saved plan for the apply job
+        id: keep
+        if: inputs.action == 'apply' && steps.plan.outputs.changes == 'true'
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          echo "sha256=$(sha256sum tfplan | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          aws s3 cp tfplan "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" --sse aws:kms --only-show-errors
+          rm -f tfplan
+
+  apply:
+    name: Apply ${{ inputs.environment }} (the saved plan only)
+    needs: plan
+    if: inputs.action == 'apply' && needs.plan.outputs.changes == 'true'
+    runs-on: ubuntu-latest
+    environment: aws-${{ inputs.environment }} # approved again, after the plan above was printed
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: infra/aws/stack
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          role-session-name: gha-run-${{ github.run_id }}
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+          audience: sts.amazonaws.com
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+
+      - name: terraform init
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOYER_ROLE_ARN: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+        run: |
+          terraform init -input=false \
+            -backend-config="envs/$ENVIRONMENT.backend.hcl" \
+            -backend-config="assume_role={role_arn=\"$DEPLOYER_ROLE_ARN\",session_name=\"gha-run-$GITHUB_RUN_ID\",source_identity=\"github-actions\"}"
+
+      - name: Fetch and verify the saved plan
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          EXPECTED: ${{ needs.plan.outputs.plan_sha256 }}
+        run: |
+          set -euo pipefail
+          aws s3 cp "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" tfplan --only-show-errors
+          [ "$(sha256sum tfplan | cut -d' ' -f1)" = "$EXPECTED" ] || { echo "::error::the saved plan changed since it was reviewed"; exit 1; }
+
+      - name: terraform apply (saved plan)
+        env:
+          TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+        run: terraform apply -input=false -lock-timeout=5m tfplan

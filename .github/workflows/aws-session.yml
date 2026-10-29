@@ -1,0 +1,143 @@
+# On-demand Testing sessions for the shared stack's nonprod environment (owner decision, 29 Oct
+# 2026: Testing at US$50 a month or less, so nothing runs between sessions).
+#
+#   up:    start the database, then apply edge_enabled=true and services_enabled=true
+#   down:  apply both false (the ALB and every service are deleted), then stop the database
+#
+# A session has a hard limit: the scheduled run below takes every session down at 20:00 UTC, and
+# RDS restarts a stopped instance by itself after seven days, which the same schedule stops again.
+# Only nonprod. Production is never started or stopped here.
+#
+# The session changes only the two switches: the plan must contain nothing but the ALB, listeners,
+# listener rules, target groups, ALB egress rules, ECS services and service-discovery entries, or
+# the job stops before applying.
+
+name: AWS Testing session
+
+on:
+  workflow_dispatch:
+    inputs:
+      session:
+        description: 'up starts Testing, down stops it'
+        required: true
+        type: choice
+        options: [up, down]
+  schedule:
+    - cron: '0 20 * * *' # the backstop: every evening, down
+
+concurrency:
+  group: aws-terraform-nonprod # shared with aws-terraform.yml, so a session never races an apply
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TERRAFORM_VERSION: 1.16.5
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: '229251310592'
+  DB_INSTANCE: munaxa-nonprod-pg
+
+jobs:
+  session:
+    name: Testing ${{ inputs.session || 'down' }}
+    if: github.ref == 'refs/heads/main' && vars.AWS_CI_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    # No required reviewer, so the evening backstop can run unattended; main only, and the plan
+    # check above refuses anything but the session switches.
+    environment: aws-nonprod-session
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: infra/aws/stack
+    env:
+      SESSION: ${{ inputs.session || 'down' }}
+      TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+      TF_VAR_deployer_session_name: gha-run-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN }}
+          role-session-name: gha-run-${{ github.run_id }}
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+          audience: sts.amazonaws.com
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+
+      # The CI role can only assume the deployer; the database calls run as the deployer too.
+      - name: Assume the deployer for the database calls
+        env:
+          DEPLOYER_ROLE_ARN: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          creds=$(aws sts assume-role --role-arn "$DEPLOYER_ROLE_ARN" --role-session-name "gha-run-$GITHUB_RUN_ID" --source-identity github-actions --query Credentials --output json)
+          {
+            echo "::add-mask::$(jq -r .SecretAccessKey <<<"$creds")"
+            echo "::add-mask::$(jq -r .SessionToken <<<"$creds")"
+          }
+          {
+            echo "DEPLOYER_AWS_ACCESS_KEY_ID=$(jq -r .AccessKeyId <<<"$creds")"
+            echo "DEPLOYER_AWS_SECRET_ACCESS_KEY=$(jq -r .SecretAccessKey <<<"$creds")"
+            echo "DEPLOYER_AWS_SESSION_TOKEN=$(jq -r .SessionToken <<<"$creds")"
+          } >> "$GITHUB_ENV"
+
+      - name: Start the database
+        if: env.SESSION == 'up'
+        run: |
+          set -euo pipefail
+          export AWS_ACCESS_KEY_ID="$DEPLOYER_AWS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$DEPLOYER_AWS_SECRET_ACCESS_KEY" AWS_SESSION_TOKEN="$DEPLOYER_AWS_SESSION_TOKEN"
+          status=$(aws rds describe-db-instances --db-instance-identifier "$DB_INSTANCE" --query 'DBInstances[0].DBInstanceStatus' --output text)
+          [ "$status" = "stopped" ] && aws rds start-db-instance --db-instance-identifier "$DB_INSTANCE" >/dev/null
+          aws rds wait db-instance-available --db-instance-identifier "$DB_INSTANCE"
+
+      - name: terraform init
+        env:
+          DEPLOYER_ROLE_ARN: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+        run: |
+          terraform init -input=false \
+            -backend-config=envs/nonprod.backend.hcl \
+            -backend-config="assume_role={role_arn=\"$DEPLOYER_ROLE_ARN\",session_name=\"gha-run-$GITHUB_RUN_ID\",source_identity=\"github-actions\"}"
+
+      - name: Plan the switches
+        run: |
+          set -euo pipefail
+          on=$([ "$SESSION" = up ] && echo true || echo false)
+          terraform plan -input=false -lock-timeout=5m -var-file=envs/nonprod.tfvars \
+            -var "edge_enabled=$on" -var "services_enabled=$on" -out=tfplan
+          terraform show -json tfplan > plan.json
+          "$GITHUB_WORKSPACE/scripts/terraform/plan-summary.sh" plan.json >> "$GITHUB_STEP_SUMMARY"
+          # Anything beyond the session's own resource types stops the job before the apply.
+          unexpected=$(jq -r '[.resource_changes[]
+            | select(.change.actions != ["no-op"] and .change.actions != ["read"])
+            | select(.type | IN("aws_lb","aws_lb_listener","aws_lb_listener_rule","aws_lb_target_group",
+                                 "aws_acm_certificate_validation","aws_vpc_security_group_egress_rule",
+                                 "aws_vpc_security_group_ingress_rule","aws_ecs_service",
+                                 "aws_service_discovery_service") | not)
+            | .address] | join(", ")' plan.json)
+          rm -f plan.json
+          [ -z "$unexpected" ] || { echo "::error::the session plan changes more than the session: $unexpected"; exit 1; }
+
+      - name: Apply the switches
+        run: terraform apply -input=false -lock-timeout=5m tfplan
+
+      - name: Stop the database
+        if: env.SESSION == 'down'
+        working-directory: .
+        run: |
+          set -euo pipefail
+          export AWS_ACCESS_KEY_ID="$DEPLOYER_AWS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$DEPLOYER_AWS_SECRET_ACCESS_KEY" AWS_SESSION_TOKEN="$DEPLOYER_AWS_SESSION_TOKEN"
+          status=$(aws rds describe-db-instances --db-instance-identifier "$DB_INSTANCE" --query 'DBInstances[0].DBInstanceStatus' --output text)
+          if [ "$status" = "available" ]; then aws rds stop-db-instance --db-instance-identifier "$DB_INSTANCE" >/dev/null; fi
+          echo "database: $status → stopping requested if it was available"
