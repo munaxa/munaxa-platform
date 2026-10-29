@@ -38,12 +38,33 @@ const result = verifyLicense(fileText, {
 `checkQuota` is the decision, not the enforcement. Enforce a limit atomically in the transaction
 that commits the growth.
 
+### Revocation, offline
+
+A licence an offline installation holds stays valid until it ends — unless a signed revocation list
+names it. The issuing service publishes one cumulative list per product, numbered by a `sequence`
+that only grows; the installation verifies it with the same public keys, persists the newest one it
+accepted, and applies it on every check:
+
+```ts
+const accepted = verifyRevocationList(listText, {
+  verifier, product: 'my-product', now: new Date(), lastSequence: persisted?.sequence,
+});
+if (accepted.ok) persist(listText, accepted.list.sequence); // otherwise keep the persisted list
+const snapshot = applyRevocation(result.snapshot, revocationOf(result.license, persistedList));
+```
+
+A revoked licence is suspended (read-only under the default policy). An older list than the one
+persisted is `STALE`; a list issued after the local clock is `CLOCK_ROLLBACK`; a list for another
+product is `WRONG_PRODUCT`. A refused or missing list changes nothing — it never widens access.
+
 ## Guarantees
 
 - **Access is a ceiling.** Nothing here grants what a product's own permissions deny.
 - **No outage grants access.** A stale snapshot is capped; no snapshot grants nothing.
 - **Asymmetric only.** Licences are ES256 or RS256; HMAC is refused at both ends.
 - **Customers keep their records.** The default policy never goes below export-only.
+- **Revocation only narrows.** A list can suspend a licence; no list, or a refused one, leaves the
+  licence exactly as it was. A list and a licence cannot be replayed as each other.
 
 ## Documentation
 
