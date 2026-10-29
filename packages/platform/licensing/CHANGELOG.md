@@ -4,6 +4,29 @@ All notable changes to `@munaxa/licensing`. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-10-29
+
+Offline revocation: a licence an offline installation holds can now be withdrawn, once a signed
+list reaches the installation (ADR-0022).
+
+### Added
+
+- **Signed revocation lists (`mxr1`).** `issueRevocationList` for the service; `verifyRevocationList`
+  for installations, with the licence public keys, under its own domain-separation prefix so a list
+  and a licence cannot be replayed as each other. Lists are cumulative per product and numbered: an
+  older list than the one already verified is `STALE`, one issued after the local clock is
+  `CLOCK_ROLLBACK`, one for another product is `WRONG_PRODUCT`.
+- **`resolveRevocationList`**, the list in force on every check, from the list file and the list
+  persisted last time: a deleted, older, forged or foreign file leaves the persisted list in force; a
+  wound-back clock cannot discard it; a persisted list that no longer verifies fails closed.
+- **`revocationInForce` and `applyRevocation`.** A revoked licence is suspended (read-only under the
+  default policy, never no access); a cancelled one stays cancelled. Revocation only ever narrows.
+- `RevocationReason`, including `LIST_UNVERIFIABLE` for the fail-closed case.
+
+### Not changed
+
+Licence verification, every 0.1.0 export and its behaviour.
+
 ## [0.1.0] — 2026-10-28
 
 The first release: the contracts every Munaxa product and the central subscription service
