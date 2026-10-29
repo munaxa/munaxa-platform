@@ -539,7 +539,8 @@ module "school_api" {
   routed               = local.routed
   listener_arn         = local.listener
   health_check_path    = "/api/v1/health/ready"
-  routes               = [{ priority = 60, hosts = [var.hosts.school], paths = ["/api/*"] }]
+  # /api/v1/* only: the admin serves its own /api/health, and proxies /api/v1/* itself in development.
+  routes = [{ priority = 60, hosts = [var.hosts.school], paths = ["/api/v1/*"] }]
 }
 
 module "school_admin" {

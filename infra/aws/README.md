@@ -27,7 +27,7 @@ that creates, changes or deletes anything is an owner approval gate (G1 to G9).
         │ ALB  munaxa-<env>   HTTPS (TLS 1.2+), HTTP→HTTPS, default 404                       │
         │  id.*          ─────────────────────────────────────────► identity  (+ Valkey sidecar)
         │  work.*        /api/auth/* ► identity · /api/v1/* ► work-api · /* ► work-admin       │
-        │  school.*      /api/* ► school-api · /* ► school-admin                               │
+        │  school.*      /api/v1/* ► school-api · /* ► school-admin                               │
         │  control-api.* /api/v1/admin/* ► 403 · /* ► control-api                              │
         │  operator.*    from operator_cidrs: /api/auth/* ► identity · /* ► control-portal     │
         │                anyone else ► 403                                                     │

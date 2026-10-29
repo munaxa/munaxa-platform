@@ -18,7 +18,7 @@
 # | 39       | operator    | —                                  | 403 (Control ADR-0006)          |
 # | 40       | identity    | —                                  | Identity                        |
 # | 50-52    | work        | /api/auth/*, /api/v1/*, rest       | Identity, Work API, Work admin  |
-# | 60-61    | school      | /api/*, rest                       | School API, School admin        |
+# | 60-61    | school      | /api/v1/*, rest                    | School API, School admin        |
 # | default  | any other   | —                                  | 404                             |
 
 resource "aws_acm_certificate" "main" {
