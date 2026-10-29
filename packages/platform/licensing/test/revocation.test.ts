@@ -13,6 +13,7 @@ import {
   revocationOf,
   verifyLicense,
   verifyRevocationList,
+  resolveRevocationList,
   type RevocationListPayload,
 } from '../src/index.js';
 import { issuer, keyPair, licensePayload } from './fixtures.js';
@@ -195,5 +196,64 @@ describe('revocation lists', () => {
     for (const text of ['', 'mxr1.x', 'mxr2.a.b.c', 'mxr1..k.s']) {
       expect(verify(text).ok).toBe(false);
     }
+  });
+});
+
+describe('choosing the list in force (resolveRevocationList)', () => {
+  const opts = { verifier, product: 'product-a', now };
+  const v3 = issueRevocationList(list({ sequence: 3 }), signer);
+  const v4 = issueRevocationList(
+    list({
+      sequence: 4,
+      revoked: [
+        ...list().revoked,
+        { licenseId: 'lic_9', revokedAt: '2026-10-21T00:00:00.000Z', reason: 'CONTRACT_ENDED' },
+      ],
+    }),
+    signer,
+  );
+
+  it('takes and persists the first list it is offered', () => {
+    const r = resolveRevocationList(v3, null, opts);
+    expect(r.list?.sequence).toBe(3);
+    expect(r.persist).toBe(v3);
+  });
+
+  it('takes and persists a newer list', () => {
+    const r = resolveRevocationList(v4, v3, opts);
+    expect(r.list?.sequence).toBe(4);
+    expect(r.persist).toBe(v4);
+  });
+
+  it('keeps the persisted list when the file is deleted, older, forged or for another product', () => {
+    const forged = v4.replace(/\.[^.]+$/, '.AAAA');
+    const other = issueRevocationList(list({ product: 'product-b', sequence: 9 }), signer);
+    for (const offered of [null, '', v3, forged, other]) {
+      const r = resolveRevocationList(offered, v4, opts);
+      expect(r.list?.sequence).toBe(4);
+      expect(r.persist).toBeNull();
+    }
+    expect(resolveRevocationList(v3, v4, opts).rejected).toBe(RevocationListRejection.STALE);
+  });
+
+  it('re-reading the same list changes nothing', () => {
+    const r = resolveRevocationList(v4, v4, opts);
+    expect(r).toMatchObject({ persist: null, rejected: null });
+    expect(r.list?.sequence).toBe(4);
+  });
+
+  it('a wound-back clock cannot discard a persisted list', () => {
+    const past = new Date('2026-01-01T00:00:00Z');
+    const r = resolveRevocationList(null, v4, { ...opts, now: past });
+    expect(r.list?.sequence).toBe(4);
+    expect(r.persistedInvalid).toBe(false);
+  });
+
+  it('reports a persisted list that no longer verifies, and never invents one', () => {
+    const rotated = licenseVerifier('ES256', [
+      { kid: 'other', publicKey: keyPair('other').publicKey },
+    ]);
+    const r = resolveRevocationList(null, v4, { ...opts, verifier: rotated });
+    expect(r).toMatchObject({ list: null, persistedInvalid: true, persist: null });
   });
 });

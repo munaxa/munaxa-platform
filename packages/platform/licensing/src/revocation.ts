@@ -149,6 +149,11 @@ export interface RevocationListVerificationOptions {
   readonly lastSequence?: number | null;
   /** How far the issuing service's clock may lead this installation's. */
   readonly clockToleranceMs?: number;
+  /**
+   * Skip the clock check: only for re-reading a list this installation already accepted and
+   * persisted. A wound-back clock must not be able to discard a revocation it has already received.
+   */
+  readonly persisted?: boolean;
 }
 
 export type RevocationListVerificationResult =
@@ -203,7 +208,7 @@ export function verifyRevocationList(
   if (last !== undefined && last !== null && list.sequence < last)
     return { ok: false, reason: RevocationListRejection.STALE };
   const tolerance = options.clockToleranceMs ?? DEFAULT_CLOCK_TOLERANCE_MS;
-  if (options.now.getTime() < Date.parse(list.issuedAt) - tolerance)
+  if (options.persisted !== true && options.now.getTime() < Date.parse(list.issuedAt) - tolerance)
     return { ok: false, reason: RevocationListRejection.CLOCK_ROLLBACK };
 
   return { ok: true, list };
@@ -229,4 +234,61 @@ export function applyRevocation(
   if (revocation === null) return snapshot;
   if (snapshot.status === SubscriptionStatus.CANCELLED) return snapshot;
   return { ...snapshot, status: SubscriptionStatus.SUSPENDED };
+}
+
+/** What {@link resolveRevocationList} decided. */
+export interface RevocationListResolution {
+  /** The list in force: the newest one verified, offered or persisted. `null` when there is none. */
+  readonly list: RevocationListPayload | null;
+  /** Text to persist in place of what is stored, or `null` to keep what is stored. */
+  readonly persist: string | null;
+  /** Why the offered list was not taken, when one was offered and refused. */
+  readonly rejected: RevocationListRejection | null;
+  /** The persisted list no longer verified (its key was withdrawn, or the stored text altered). */
+  readonly persistedInvalid: boolean;
+}
+
+/**
+ * The one decision a product makes on every licence check: which revocation list is in force.
+ *
+ * `offered` is the list file as the installation holds it now (or `null`); `persisted` is the text
+ * the product stored the last time a list was accepted (or `null`). The persisted list is re-read
+ * without the clock check, so winding the clock back cannot discard it. The offered list is taken
+ * only when it verifies and is at least as new as the persisted one, and is persisted only when it
+ * is newer — so deleting the file, offering last year's list, or offering a forged one leaves the
+ * persisted list in force. Nothing here can make the list in force smaller than it was.
+ *
+ * Keep a retired licence key in the product's public keys for as long as lists it signed are
+ * persisted: a persisted list that no longer verifies cannot be applied, and is reported as
+ * `persistedInvalid` so the product can alert on it.
+ */
+export function resolveRevocationList(
+  offered: string | null,
+  persisted: string | null,
+  options: Omit<RevocationListVerificationOptions, 'lastSequence' | 'persisted'>,
+): RevocationListResolution {
+  let current: RevocationListPayload | null = null;
+  let persistedInvalid = false;
+  if (persisted !== null) {
+    const again = verifyRevocationList(persisted, { ...options, persisted: true });
+    if (again.ok) current = again.list;
+    else persistedInvalid = true;
+  }
+  if (offered === null || offered.trim().length === 0) {
+    return { list: current, persist: null, rejected: null, persistedInvalid };
+  }
+  const verified = verifyRevocationList(offered, {
+    ...options,
+    lastSequence: current?.sequence ?? null,
+  });
+  if (!verified.ok) {
+    return { list: current, persist: null, rejected: verified.reason, persistedInvalid };
+  }
+  const newer = current === null || verified.list.sequence > current.sequence;
+  return {
+    list: newer ? verified.list : current,
+    persist: newer ? offered.trim() : null,
+    rejected: null,
+    persistedInvalid,
+  };
 }

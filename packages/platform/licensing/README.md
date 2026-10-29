@@ -46,11 +46,10 @@ that only grows; the installation verifies it with the same public keys, persist
 accepted, and applies it on every check:
 
 ```ts
-const accepted = verifyRevocationList(listText, {
-  verifier, product: 'my-product', now: new Date(), lastSequence: persisted?.sequence,
-});
-if (accepted.ok) persist(listText, accepted.list.sequence); // otherwise keep the persisted list
-const snapshot = applyRevocation(result.snapshot, revocationOf(result.license, persistedList));
+// Every licence check: the list file now (or null) and the text persisted last time (or null).
+const r = resolveRevocationList(fileText, stored, { verifier, product: 'my-product', now: new Date() });
+if (r.persist !== null) store(r.persist); // only ever replaced by a newer verified list
+const snapshot = applyRevocation(result.snapshot, revocationOf(result.license, r.list));
 ```
 
 A revoked licence is suspended (read-only under the default policy). An older list than the one
