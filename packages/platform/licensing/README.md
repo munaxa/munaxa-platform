@@ -38,12 +38,35 @@ const result = verifyLicense(fileText, {
 `checkQuota` is the decision, not the enforcement. Enforce a limit atomically in the transaction
 that commits the growth.
 
+### Revocation, offline
+
+A licence an offline installation holds stays valid until it ends — unless a signed revocation list
+names it. The issuing service publishes one cumulative list per product, numbered by a `sequence`
+that only grows; the installation verifies it with the same public keys, persists the newest one it
+accepted, and applies it on every check:
+
+```ts
+// Every licence check: the list file now (or null) and the text persisted last time (or null).
+const r = resolveRevocationList(fileText, stored, { verifier, product: 'my-product', now: new Date() });
+if (r.persist !== null) store(r.persist); // only ever replaced by a newer verified list
+const snapshot = applyRevocation(result.snapshot, revocationInForce(result.license, r, new Date()));
+```
+
+A revoked licence is suspended (read-only under the default policy). An older list than the one
+persisted is `STALE`; a list issued after the local clock is `CLOCK_ROLLBACK`; a list for another
+product is `WRONG_PRODUCT`. A refused or missing list changes nothing — it never widens access. If
+the persisted list itself stops verifying (its key withdrawn, the stored text altered) and no valid
+list replaces it, the installation fails closed: every licence is suspended until one is installed.
+A fully offline installation learns of a revocation only when a list reaches it.
+
 ## Guarantees
 
 - **Access is a ceiling.** Nothing here grants what a product's own permissions deny.
 - **No outage grants access.** A stale snapshot is capped; no snapshot grants nothing.
 - **Asymmetric only.** Licences are ES256 or RS256; HMAC is refused at both ends.
 - **Customers keep their records.** The default policy never goes below export-only.
+- **Revocation only narrows.** A list can suspend a licence; no list, or a refused one, leaves the
+  licence exactly as it was. A list and a licence cannot be replayed as each other.
 
 ## Documentation
 

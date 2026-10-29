@@ -242,6 +242,12 @@ of the security lockstep group — [ADR-0022](./adr/0022-licensing-contracts.md)
 - **Offline licences** — `issueLicense()` (issuer only), `verifyLicense()`, `licenseVerifier()`,
   `armorLicense()`, `parseLicensePayload()`, `snapshotOfLicense()`, `canonicalJson()`,
   `LicenseRejection`, `encodeActivationRequest()`, `decodeActivationRequest()`.
+- **Offline revocation** — `issueRevocationList()` (issuer only), `verifyRevocationList()`,
+  `resolveRevocationList()` (the list in force, from the file and the persisted list; fails closed
+  when the persisted list no longer verifies), `revocationInForce()`,
+  `parseRevocationListPayload()`, `revocationOf()`, `applyRevocation()`, `RevocationReason`,
+  `RevocationListRejection`, `REVOCATION_LIST_FORMAT`. Cumulative signed lists with a growing
+  `sequence`; an older list than the one persisted is `STALE`. A revoked licence is suspended.
 - **Audit and ports** — `LicensingAuditAction`, `LicensingAuditSubject`, `EntitlementSource`,
   `UsageReport`, `UsageReporter`.
 - **Central service wire format** — `entitlementsPath()`, `usagePath()`, `UsageBatch`,

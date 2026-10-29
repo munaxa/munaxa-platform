@@ -58,8 +58,13 @@ of thirteen packages for a change to none of them. It starts at `0.1.0`: the wir
 
 ## Known limits, stated rather than discovered
 
-- **Offline revocation does not exist.** A licence that verifies keeps verifying until it ends. The
-  mitigation is short terms with renewal, and online validation where the installation allows it.
+- **Offline revocation is delivered, not pushed.** A signed revocation list (`mxr1`, cumulative, with
+  a `sequence` that only grows) suspends the licences it names once the installation receives it;
+  the installation persists the newest list it verified, so deleting the file or presenting an
+  older list does not undo a revocation. Until a list reaches a fully offline installation, its
+  licence keeps verifying — so short terms with renewal remain the bound on exposure, and online
+  validation the stronger choice wherever the installation allows it. A missing, forged or stale
+  list never widens access.
 - **Clock manipulation is detected, not prevented.** Rollback past the last observed instant, or
   before the licence was issued, is refused. A clock that was always wrong from first boot, and
   never moved back, is indistinguishable from a correct one.
