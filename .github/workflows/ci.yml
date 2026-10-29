@@ -86,6 +86,12 @@ jobs:
       - name: Format check
         run: pnpm format:check
 
+      # Every dependency, development ones included: Storybook, Vite and Wrangler run on
+      # developers' machines and in this CI with real credentials. A new high or critical
+      # advisory fails the build; fix it by upgrading, never by an ignore list.
+      - name: Dependency audit
+        run: pnpm audit --audit-level high
+
   accessibility:
     name: Accessibility · contrast and keyboard, every story, four brands, light and dark
     runs-on: ubuntu-latest
