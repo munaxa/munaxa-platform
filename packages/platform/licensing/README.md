@@ -49,12 +49,15 @@ accepted, and applies it on every check:
 // Every licence check: the list file now (or null) and the text persisted last time (or null).
 const r = resolveRevocationList(fileText, stored, { verifier, product: 'my-product', now: new Date() });
 if (r.persist !== null) store(r.persist); // only ever replaced by a newer verified list
-const snapshot = applyRevocation(result.snapshot, revocationOf(result.license, r.list));
+const snapshot = applyRevocation(result.snapshot, revocationInForce(result.license, r, new Date()));
 ```
 
 A revoked licence is suspended (read-only under the default policy). An older list than the one
 persisted is `STALE`; a list issued after the local clock is `CLOCK_ROLLBACK`; a list for another
-product is `WRONG_PRODUCT`. A refused or missing list changes nothing — it never widens access.
+product is `WRONG_PRODUCT`. A refused or missing list changes nothing — it never widens access. If
+the persisted list itself stops verifying (its key withdrawn, the stored text altered) and no valid
+list replaces it, the installation fails closed: every licence is suspended until one is installed.
+A fully offline installation learns of a revocation only when a list reaches it.
 
 ## Guarantees
 

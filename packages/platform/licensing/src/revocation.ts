@@ -39,6 +39,12 @@ export const RevocationReason = {
   CONTRACT_ENDED: 'CONTRACT_ENDED',
   /** The signing key it was issued under is no longer trusted. */
   KEY_COMPROMISE: 'KEY_COMPROMISE',
+  /**
+   * Not issued by anyone: what this installation applies when the list it persisted no longer
+   * verifies and no valid list replaces it. It cannot know which licences that list revoked, so it
+   * treats its own licence as revoked rather than as never revoked.
+   */
+  LIST_UNVERIFIABLE: 'LIST_UNVERIFIABLE',
 } as const;
 export type RevocationReason = (typeof RevocationReason)[keyof typeof RevocationReason];
 const REASONS: ReadonlySet<string> = new Set(Object.values(RevocationReason));
@@ -246,6 +252,12 @@ export interface RevocationListResolution {
   readonly rejected: RevocationListRejection | null;
   /** The persisted list no longer verified (its key was withdrawn, or the stored text altered). */
   readonly persistedInvalid: boolean;
+  /**
+   * The persisted list no longer verifies and no valid list replaced it: what it revoked is
+   * unknown, so every licence is treated as revoked ({@link revocationInForce}) until a valid list
+   * is installed. Failing closed is what keeps an unverifiable list from widening access.
+   */
+  readonly failClosed: boolean;
 }
 
 /**
@@ -259,8 +271,8 @@ export interface RevocationListResolution {
  * persisted list in force. Nothing here can make the list in force smaller than it was.
  *
  * Keep a retired licence key in the product's public keys for as long as lists it signed are
- * persisted: a persisted list that no longer verifies cannot be applied, and is reported as
- * `persistedInvalid` so the product can alert on it.
+ * persisted: a persisted list that no longer verifies cannot be read, so the installation fails
+ * closed (`failClosed`) — every licence suspended — until a valid list is installed.
  */
 export function resolveRevocationList(
   offered: string | null,
@@ -274,15 +286,28 @@ export function resolveRevocationList(
     if (again.ok) current = again.list;
     else persistedInvalid = true;
   }
+  const unreadable = persistedInvalid && current === null;
   if (offered === null || offered.trim().length === 0) {
-    return { list: current, persist: null, rejected: null, persistedInvalid };
+    return {
+      list: current,
+      persist: null,
+      rejected: null,
+      persistedInvalid,
+      failClosed: unreadable,
+    };
   }
   const verified = verifyRevocationList(offered, {
     ...options,
     lastSequence: current?.sequence ?? null,
   });
   if (!verified.ok) {
-    return { list: current, persist: null, rejected: verified.reason, persistedInvalid };
+    return {
+      list: current,
+      persist: null,
+      rejected: verified.reason,
+      persistedInvalid,
+      failClosed: unreadable,
+    };
   }
   const newer = current === null || verified.list.sequence > current.sequence;
   return {
@@ -290,5 +315,26 @@ export function resolveRevocationList(
     persist: newer ? offered.trim() : null,
     rejected: null,
     persistedInvalid,
+    failClosed: false,
   };
+}
+
+/**
+ * The revocation in force for `license` under a resolution: the list's entry for it, or — when the
+ * installation has failed closed — a revocation of every licence. Pass the result to
+ * {@link applyRevocation}.
+ */
+export function revocationInForce(
+  license: Pick<LicensePayload, 'licenseId' | 'product'>,
+  resolution: RevocationListResolution,
+  now: Date,
+): RevocationEntry | null {
+  if (resolution.failClosed) {
+    return {
+      licenseId: license.licenseId,
+      revokedAt: now.toISOString(),
+      reason: RevocationReason.LIST_UNVERIFIABLE,
+    };
+  }
+  return revocationOf(license, resolution.list);
 }

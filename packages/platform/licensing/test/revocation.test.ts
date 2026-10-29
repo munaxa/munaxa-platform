@@ -14,6 +14,7 @@ import {
   verifyLicense,
   verifyRevocationList,
   resolveRevocationList,
+  revocationInForce,
   type RevocationListPayload,
 } from '../src/index.js';
 import { issuer, keyPair, licensePayload } from './fixtures.js';
@@ -249,11 +250,38 @@ describe('choosing the list in force (resolveRevocationList)', () => {
     expect(r.persistedInvalid).toBe(false);
   });
 
-  it('reports a persisted list that no longer verifies, and never invents one', () => {
+  it('fails closed when the persisted list no longer verifies: every licence suspended', () => {
     const rotated = licenseVerifier('ES256', [
       { kid: 'other', publicKey: keyPair('other').publicKey },
     ]);
     const r = resolveRevocationList(null, v4, { ...opts, verifier: rotated });
-    expect(r).toMatchObject({ list: null, persistedInvalid: true, persist: null });
+    expect(r).toMatchObject({
+      list: null,
+      persistedInvalid: true,
+      failClosed: true,
+      persist: null,
+    });
+    const licence = licensePayload({ licenseId: 'lic_never_revoked' });
+    const entry = revocationInForce(licence, r, now);
+    expect(entry?.reason).toBe(RevocationReason.LIST_UNVERIFIABLE);
+    const snapshot = { ...licence, resolvedAt: licence.issuedAt } as never;
+    expect(applyRevocation(snapshot, entry).status).toBe('SUSPENDED');
+  });
+
+  it('a valid list installed after failing closed restores the normal decision', () => {
+    const tampered = v4.replace(/\.[^.]+$/, '.AAAA');
+    const r = resolveRevocationList(v3, tampered, opts);
+    expect(r).toMatchObject({ failClosed: false, persistedInvalid: true, persist: v3 });
+    expect(
+      revocationInForce(licensePayload({ licenseId: 'lic_never_revoked' }), r, now),
+    ).toBeNull();
+    expect(revocationInForce(licensePayload({ licenseId: 'lic_1' }), r, now)?.licenseId).toBe(
+      'lic_1',
+    );
+  });
+
+  it('a tampered persisted list with a forged replacement stays closed', () => {
+    const tampered = v4.replace(/\.[^.]+$/, '.AAAA');
+    expect(resolveRevocationList(tampered, tampered, opts).failClosed).toBe(true);
   });
 });
