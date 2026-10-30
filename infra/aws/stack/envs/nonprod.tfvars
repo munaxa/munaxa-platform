@@ -18,8 +18,13 @@ hosts = {
 }
 certificate_domains = ["*.test.munaxa.com", "operator-test.munaxa.com"]
 
-# The operator network (Control ADR-0006). Empty refuses every request to the operator host.
+# The operator network (Control ADR-0006). Empty, and with operator_access unset, refuses every
+# request to the operator host.
 operator_cidrs = []
+
+# Cloudflare Access (../../cloudflare-access.md). Set once the Access application exists; the team
+# domain and AUD tag are public. Required before any Control image is set.
+# operator_access = { team_domain = "https://<team>.cloudflareaccess.com", audience = "<AUD tag>" }
 
 database_backup_retention_days = 7
 database_deletion_protection   = true

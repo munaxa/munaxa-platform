@@ -13,8 +13,8 @@
 # | -------- | ----------- | ---------------------------------- | ------------------------------- |
 # | 10       | control_api | /api/v1/admin/*                    | 403 (the admin API is private)  |
 # | 20       | control_api | —                                  | Control API                     |
-# | 30       | operator    | /api/auth/*, operator source IPs   | Identity                        |
-# | 31       | operator    | operator source IPs                | Control portal                  |
+# | 30       | operator    | /api/auth/*; Access or source IPs  | Identity                        |
+# | 31       | operator    | Access or source IPs               | Control portal                  |
 # | 39       | operator    | —                                  | 403 (Control ADR-0006)          |
 # | 40       | identity    | —                                  | Identity                        |
 # | 50-52    | work        | /api/auth/*, /api/v1/*, rest       | Identity, Work API, Work admin  |

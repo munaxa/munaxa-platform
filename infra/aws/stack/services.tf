@@ -17,6 +17,14 @@ locals {
   routed   = var.edge_enabled
   listener = var.edge_enabled ? aws_lb_listener.https[0].arn : null
 
+  # The operator host is open only when something stands in front of it: Cloudflare Access, whose
+  # token Control verifies, or operator source ranges. Otherwise rule 39 refuses every request.
+  operator_open = var.operator_access != null || length(var.operator_cidrs) > 0
+  operator_access_environment = var.operator_access == null ? {} : {
+    OPERATOR_ACCESS_TEAM_DOMAIN = var.operator_access.team_domain
+    OPERATOR_ACCESS_AUDIENCE    = var.operator_access.audience
+  }
+
   common = {
     prefix                     = local.prefix
     region                     = var.region
@@ -159,11 +167,13 @@ module "identity" {
   routed            = local.routed
   listener_arn      = local.listener
   health_check_path = "/api/auth/health/ready"
-  routes = [
-    { priority = 30, hosts = [var.hosts.operator], paths = ["/api/auth/*"], source_ips = var.operator_cidrs },
-    { priority = 40, hosts = [var.hosts.identity] },
-    { priority = 50, hosts = [var.hosts.work], paths = ["/api/auth/*"] },
-  ]
+  routes = concat(
+    local.operator_open ? [{ priority = 30, hosts = [var.hosts.operator], paths = ["/api/auth/*"], source_ips = var.operator_cidrs }] : [],
+    [
+      { priority = 40, hosts = [var.hosts.identity] },
+      { priority = 50, hosts = [var.hosts.work], paths = ["/api/auth/*"] },
+    ],
+  )
 }
 
 # --- Control -----------------------------------------------------------------------------------
@@ -181,19 +191,79 @@ resource "aws_kms_key" "licence" {
   customer_master_key_spec = "ECC_NIST_P256"
   key_usage                = "SIGN_VERIFY"
   deletion_window_in_days  = 30
+}
 
-  policy = jsonencode({
+# Least privilege (ADR-0008): the account administers the key but cannot sign with it; only the
+# control-api task role signs, and only ES256 digests. A separate resource, because the task
+# role's own policy names the key. The account keeps kms:PutKeyPolicy, so the key stays
+# recoverable; no grant can hand signing to anyone else.
+resource "aws_kms_key_policy" "licence" {
+  count = local.defined.control_api ? 1 : 0
+
+  key_id = aws_kms_key.licence[0].id
+  policy = jsonencode(local.licence_policy)
+}
+
+locals {
+  licence_policy = !local.defined.control_api ? null : {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "AccountAdministration"
+        Sid       = "AccountAdministersNotSigns"
         Effect    = "Allow"
         Principal = { AWS = "arn:aws:iam::${var.account_id}:root" }
-        Action    = "kms:*"
+        Action = [
+          "kms:DescribeKey",
+          "kms:GetKeyPolicy",
+          "kms:PutKeyPolicy",
+          "kms:ListKeyPolicies",
+          "kms:GetPublicKey",
+          "kms:ListGrants",
+          "kms:RevokeGrant",
+          "kms:ListResourceTags",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:CreateAlias",
+          "kms:UpdateAlias",
+          "kms:DeleteAlias",
+          "kms:UpdateKeyDescription",
+          "kms:EnableKey",
+          "kms:DisableKey",
+          "kms:ScheduleKeyDeletion",
+          "kms:CancelKeyDeletion",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid       = "ControlApiSignsLicences"
+        Effect    = "Allow"
+        Principal = { AWS = module.control_api[0].task_role_arn }
+        Action    = "kms:Sign"
+        Resource  = "*"
+        Condition = {
+          StringEquals = {
+            "kms:SigningAlgorithm" = "ECDSA_SHA_256"
+            "kms:MessageType"      = "DIGEST"
+          }
+        }
+      },
+      {
+        Sid       = "NoOtherSigner"
+        Effect    = "Deny"
+        Principal = { AWS = "*" }
+        Action    = "kms:Sign"
+        Resource  = "*"
+        Condition = { ArnNotEquals = { "aws:PrincipalArn" = module.control_api[0].task_role_arn } }
+      },
+      {
+        Sid       = "NoGrants"
+        Effect    = "Deny"
+        Principal = { AWS = "*" }
+        Action    = "kms:CreateGrant"
         Resource  = "*"
       },
     ]
-  })
+  }
 }
 
 resource "aws_kms_alias" "licence" {
@@ -224,7 +294,7 @@ module "control_api" {
   memory = 512
   port   = 3100
 
-  environment = {
+  environment = merge(local.operator_access_environment, {
     NODE_ENV                   = "production"
     PORT                       = "3100"
     OPERATOR_AUTH_ISSUER       = local.https.identity
@@ -239,7 +309,7 @@ module "control_api" {
     LICENCE_SIGNING_KID        = var.control_licence_kid
     LICENCE_SIGNING_ALGORITHM  = "ES256"
     TRUST_PROXY_HOPS           = "1" # the ALB
-  }
+  })
   secret_arn        = aws_secretsmanager_secret.service["control-api"].arn
   secret_keys       = local.secret_keys["control-api"]
   secret_version_id = lookup(var.secret_version_ids, "control-api", "")
@@ -251,6 +321,12 @@ module "control_api" {
       Effect   = "Allow"
       Action   = ["kms:Sign"]
       Resource = [aws_kms_key.licence[0].arn]
+      Condition = {
+        StringEquals = {
+          "kms:SigningAlgorithm" = "ECDSA_SHA_256"
+          "kms:MessageType"      = "DIGEST"
+        }
+      }
     }]
   })
 
@@ -313,21 +389,21 @@ module "control_portal" {
   image                    = var.images.control_portal
   port                     = 3200
   readonly_root_filesystem = false # Next.js writes its cache
-  environment = {
+  environment = merge(local.operator_access_environment, {
     NODE_ENV        = "production"
     PORT            = "3200"
     HOSTNAME        = "0.0.0.0"
     CONTROL_API_URL = "http://control-api.${aws_service_discovery_private_dns_namespace.main.name}:3100"
-  }
+  })
 
   create_service    = local.running
   desired_count     = var.desired_counts["control-portal"]
   routed            = local.routed
   listener_arn      = local.listener
-  health_check_path = "/"
-  routes = [
+  health_check_path = "/healthz" # every other path answers 401 without an Access token
+  routes = local.operator_open ? [
     { priority = 31, hosts = [var.hosts.operator], source_ips = var.operator_cidrs },
-  ]
+  ] : []
   egress_to = local.defined.control_api ? { control-api = { port = 3100, security_group_id = module.control_api[0].security_group_id } } : {}
 }
 
