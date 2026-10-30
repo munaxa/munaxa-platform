@@ -53,5 +53,7 @@ output "run_task_network" {
     docs_api_group            = length(module.docs_api) > 0 ? module.docs_api[0].security_group_id : null
     # identity-bootstrap runs with db_admin_group, after identity-migrate.
     identity_bootstrap_definition = length(aws_ecs_task_definition.identity_bootstrap) > 0 ? aws_ecs_task_definition.identity_bootstrap[0].family : null
+    # school-bootstrap runs with db_admin_group, after school-migrate.
+    school_bootstrap_definition = length(aws_ecs_task_definition.school_bootstrap) > 0 ? aws_ecs_task_definition.school_bootstrap[0].family : null
   }
 }
