@@ -6,18 +6,18 @@ secrets, images or GitHub settings waits for Tamer.
 
 ## Phase A: no infrastructure, can start now (all in parallel)
 
-| #   | Task                                                                                                                                                          | Owner               | Gate                                   |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------------- |
-| A1  | Decide the US$50 scope (P1). If Testing only, Agent 1 changes `budget_limit_usd` or the budget filter by PR **before G2**, because the budget is in bootstrap | Tamer, then Agent 1 | Decision                               |
-| A2  | Press "Update branch" on docs#167; once GitHub shows head `a53852d` and the pull_request checks are green there, Agent 4 merges it                            | Tamer, then Agent 4 | Standing merge rule                    |
-| A3  | Platform PR: `OPENAPI_ENABLED=false` on work-api (T13 / W4)                                                                                                   | Agent 1             | Standing merge rule                    |
-| A4  | Platform PR: a CI diff check for `docs-cluster-roles.sql` against Docs (F-3)                                                                                  | Agent 1             | Standing merge rule                    |
-| A5  | Protect munaxa-control `main`                                                                                                                                 | Tamer               | GitHub settings                        |
-| A6  | Mark ADR-0008 accepted (one-line doc PR after Tamer confirms)                                                                                                 | Tamer, then Agent 2 | Decision                               |
-| A7  | Decide P4 (deployer scope), P6 (School Firebase), P7 (School owner seeding), P9 (Work GHCR)                                                                   | Tamer               | Decision                               |
-| A8  | Platform PR adding a `school-bootstrap` run-only task for the first School owner (P7; requested of Agent 1, in progress)                                      | Agent 1             | Standing merge rule; Tamer confirms P7 |
-| A9  | Re-audit `prod.tfvars` for the new Docs and storage resources                                                                                                 | Agent 1             | Code review only                       |
-| A10 | Sign in to the AWS connector again, then a read-only Pricing check to settle X8                                                                               | Tamer, then Agent 7 | Read only                              |
+| #   | Task                                                                                                                                                                   | Owner               | Gate                                   |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------------- |
+| A1  | Decide the US$50 scope (P1). If Testing only, Agent 1 changes `budget_limit_usd` or the budget filter by PR **before G2**, because the budget is in bootstrap          | Tamer, then Agent 1 | Decision                               |
+| A2  | Press "Update branch" on docs#167; once GitHub shows head `a53852d` and the pull_request checks are green there, Agent 4 merges it                                     | Tamer, then Agent 4 | Standing merge rule                    |
+| A3  | Platform PR: `OPENAPI_ENABLED=false` on work-api (T13 / W4), in progress on [platform#27](https://github.com/munaxa/munaxa-platform/pull/27)                           | Agent 1             | Standing merge rule                    |
+| A4  | Platform PR: a CI diff check for `docs-cluster-roles.sql` against Docs (F-3)                                                                                           | Agent 1             | Standing merge rule                    |
+| A5  | Protect munaxa-control `main`                                                                                                                                          | Tamer               | GitHub settings                        |
+| A6  | Mark ADR-0008 accepted (one-line doc PR after Tamer confirms)                                                                                                          | Tamer, then Agent 2 | Decision                               |
+| A7  | Decide P4 (deployer scope), P6 (School Firebase), P7 (School owner seeding), P9 (Work GHCR)                                                                            | Tamer               | Decision                               |
+| A8  | Platform PR adding a `school-bootstrap` run-only task for the first School owner (P7; in progress on [platform#27](https://github.com/munaxa/munaxa-platform/pull/27)) | Agent 1             | Standing merge rule; Tamer confirms P7 |
+| A9  | Re-audit `prod.tfvars` for the new Docs and storage resources                                                                                                          | Agent 1             | Code review only                       |
+| A10 | Sign in to the AWS connector again, then a read-only Pricing check to settle X8                                                                                        | Tamer, then Agent 7 | Read only                              |
 
 A1 must finish before G2 if it changes the budget. A2 must finish before the Docs part of G5.
 Everything else in Phase A is independent.

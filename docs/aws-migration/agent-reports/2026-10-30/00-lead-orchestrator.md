@@ -109,12 +109,12 @@ The lead's own output is this folder and its PR on munaxa-platform (see the PR d
   not attempt a merge: the PR belongs to Agent 4, and its head on GitHub is not the commit with the
   R-07b pins. **Merging at `6f0ea79` would leave R-07b open.**
 - School first-owner seeding (P7): the coordinator asked Agent 1 for a `school-bootstrap` run-only
-  task. No platform PR existed at 18:45 UTC.
+  task. Agent 1 opened [platform#27](https://github.com/munaxa/munaxa-platform/pull/27) (head `7de8106`, open at 18:50 UTC).
 - Agent 7's final report does not cross-review Agent 1's final report (no P9, P10, P11 in its
   register). Recorded in DECISIONS-AND-CONFLICTS §4.
 - T13 (`OPENAPI_ENABLED=false` on work-api) is still absent on platform `main` **[V]**: the only
   `OPENAPI_ENABLED` in `infra/aws/stack/*.tf` is Docs (`docs.tf:68`). The coordinator sent it to
-  Agent 1 as a follow-up PR; none existed at 18:45 UTC, so it is recorded as in progress.
+  Agent 1 as a follow-up; it is in [platform#27](https://github.com/munaxa/munaxa-platform/pull/27), open at 18:50 UTC, so it is recorded as in progress.
 
 ## 7. CI and test results (evidence checked by the lead at 15:18 UTC) [V]
 
