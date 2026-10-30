@@ -73,7 +73,8 @@ Docs' `TRUST_PROXY`).
 
 Run-only tasks: `db-admin` (shared databases), `<product>-migrate` (identity, control, work,
 school; owner role), `identity-bootstrap` (Identity's operator organisation, first operator and
-Control roles, as `identity_owner`), `docs-db-admin` (Docs cluster roles and the tenant database),
+Control roles, as `identity_owner`), `school-bootstrap` (School's seeds and first platform owner,
+as `school_owner`), `docs-db-admin` (Docs cluster roles and the tenant database),
 `docs-provision` (Docs migrate and first administrator).
 
 Private calls (Cloud Map, plain HTTP inside the VPC, security group to security group):
@@ -110,6 +111,7 @@ products goes over HTTPS by the public host (an on-premises installation does th
 | `docs-api`        | `DATABASE_URL`, `TENANT_CATALOGUE`, `REDIS_URL`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET`, `SIGNATURE_WITNESS_SECRET`, `AUDIT_CHECKPOINT_SECRET`, `MFA_TOTP_SEALING_KEY`, `METRICS_SCRAPE_TOKEN`, `MAIL_RESEND_API_KEY`, `CONTROL_PLANE_TOKEN` |
 | `docs-operator`   | `EDMS_OWNER_PASSWORD`, `EDMS_APP_PASSWORD`, `EDMS_BACKUP_PASSWORD` (docs-db-admin only) |
 | `identity-bootstrap` | `IDENTITY_OWNER_EMAIL`, `IDENTITY_OWNER_PASSWORD`; created by the owner for the first-operator runs, then deleted |
+| `school-bootstrap` | `PLATFORM_OWNER_EMAIL`, `PLATFORM_OWNER_PASSWORD`; created by the owner for the first-owner run, then deleted |
 | `docs-provision/<tenant slug>` | `TENANT_ID`, `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD`; created by the owner for one run, then deleted |
 
 Plain (non-secret) configuration is set in Terraform `environment` and is listed per service in
@@ -131,7 +133,7 @@ role (`NOBYPASSRLS`, `CONNECT` revoked from `PUBLIC`), created by `db-admin` fro
 
 Order in a session: `db-admin` → `docs-db-admin` → `identity-migrate` → `identity-bootstrap`
 (steps 1 to 3 of Identity's runbook) → `control-migrate` →
-`work-migrate` → `school-migrate` → `docs-provision`. Clean databases; no data is copied from
+`work-migrate` → `school-migrate` → `school-bootstrap` → `docs-provision`. Clean databases; no data is copied from
 Supabase, Render or Docs Production.
 
 ## 7. Identity (issuer and audience)

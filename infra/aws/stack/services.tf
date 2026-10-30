@@ -532,6 +532,8 @@ module "work_api" {
     # Production refuses NONE (work#24). Control is the licence source for hosted Work.
     LICENSING_MODE    = "CONTROL_PLANE"
     CONTROL_PLANE_URL = local.https.control_api
+    # Work serves its OpenAPI document unless told not to (packages/config defaults it on).
+    OPENAPI_ENABLED = "false"
   }
   secret_arn        = aws_secretsmanager_secret.service["work-api"].arn
   secret_keys       = local.secret_keys["work-api"]

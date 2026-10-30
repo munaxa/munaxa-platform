@@ -288,3 +288,109 @@ resource "aws_ecs_task_definition" "identity_bootstrap" {
     }
   }])
 }
+
+# --- School's first platform owner (run-only) ----------------------------------------------------
+#
+# School's seeds (its seed-environment.yml steps: prisma/seed.ts, then
+# scripts/seed-platform-owner.ts), run from the School migrate image, which carries the sources and
+# tsx, as school_owner (the seeds write across tenants). A CI runner cannot reach the private
+# database, so this task replaces that workflow on AWS. PLATFORM_OWNER_EMAIL and
+# PLATFORM_OWNER_PASSWORD come from a one-run secret, munaxa-<env>/school-bootstrap, which the
+# owner creates before the run and deletes after it; the script's development defaults never apply,
+# because the task does not start without the secret. Run with db_admin_group, after school-migrate.
+
+resource "aws_iam_role" "school_bootstrap_execution" {
+  count = local.defined.school_migrate ? 1 : 0
+
+  name                 = "${local.prefix}-school-bootstrap-execution"
+  path                 = "/munaxa-shared/"
+  permissions_boundary = "arn:aws:iam::${var.account_id}:policy/munaxa-shared/munaxa-shared-workload-boundary"
+  assume_role_policy   = aws_iam_role.db_admin_execution.assume_role_policy
+}
+
+resource "aws_iam_role_policy" "school_bootstrap_execution" {
+  count = local.defined.school_migrate ? 1 : 0
+
+  name = "execution"
+  role = aws_iam_role.school_bootstrap_execution[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      { Sid = "EcrSignIn", Effect = "Allow", Action = "ecr:GetAuthorizationToken", Resource = "*" },
+      {
+        Sid      = "PullSchoolMigrate"
+        Effect   = "Allow"
+        Action   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"]
+        Resource = "arn:aws:ecr:${var.region}:${var.account_id}:repository/munaxa-school/migrate"
+      },
+      {
+        Sid    = "ReadOwnerUrlAndOneRunSecret"
+        Effect = "Allow"
+        Action = "secretsmanager:GetSecretValue"
+        Resource = [
+          aws_secretsmanager_secret.service["school-migrate"].arn,
+          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/school-bootstrap-??????",
+        ]
+      },
+      {
+        Sid       = "DecryptThroughSecretsManager"
+        Effect    = "Allow"
+        Action    = "kms:Decrypt"
+        Resource  = aws_kms_key.data.arn
+        Condition = { StringEquals = { "kms:ViaService" = "secretsmanager.${var.region}.amazonaws.com" } }
+      },
+      {
+        Sid      = "WriteLogs"
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "${aws_cloudwatch_log_group.ops.arn}:*"
+      },
+    ]
+  })
+}
+
+resource "aws_ecs_task_definition" "school_bootstrap" {
+  count = local.defined.school_migrate ? 1 : 0
+
+  family                   = "${local.prefix}-school-bootstrap"
+  skip_destroy             = true
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.school_bootstrap_execution[0].arn
+
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
+
+  container_definitions = jsonencode([{
+    name                   = "school-bootstrap"
+    image                  = var.images.school_migrate
+    essential              = true
+    readonlyRootFilesystem = false # tsx compiles into its cache
+    linuxParameters        = { capabilities = { add = [], drop = ["ALL"] } }
+    # Working directory /repo/apps/api (the migrate target). The owner URL is the seeds' connection.
+    # No environment: NODE_ENV inherits production from the image, and no seed reads it.
+    entryPoint = ["sh", "-c"]
+    command = [join(" && ", [
+      "export DATABASE_URL=\"$DATABASE_MIGRATION_URL\" DIRECT_DATABASE_URL=\"$DATABASE_MIGRATION_URL\"",
+      "./node_modules/.bin/tsx ../../prisma/seed.ts",
+      "exec ./node_modules/.bin/tsx scripts/seed-platform-owner.ts",
+    ])]
+    secrets = [
+      { name = "DATABASE_MIGRATION_URL", valueFrom = "${aws_secretsmanager_secret.service["school-migrate"].arn}:DATABASE_MIGRATION_URL::${lookup(var.secret_version_ids, "school-migrate", "")}" },
+      { name = "PLATFORM_OWNER_EMAIL", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/school-bootstrap:PLATFORM_OWNER_EMAIL::" },
+      { name = "PLATFORM_OWNER_PASSWORD", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/school-bootstrap:PLATFORM_OWNER_PASSWORD::" },
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.ops.name
+        awslogs-region        = var.region
+        awslogs-stream-prefix = "school-bootstrap"
+      }
+    }
+  }])
+}
