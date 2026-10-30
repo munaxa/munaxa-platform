@@ -372,6 +372,7 @@ resource "aws_ecs_task_definition" "school_bootstrap" {
     readonlyRootFilesystem = false # tsx compiles into its cache
     linuxParameters        = { capabilities = { add = [], drop = ["ALL"] } }
     # Working directory /repo/apps/api (the migrate target). The owner URL is the seeds' connection.
+    # No environment: NODE_ENV inherits production from the image, and no seed reads it.
     entryPoint = ["sh", "-c"]
     command = [join(" && ", [
       "export DATABASE_URL=\"$DATABASE_MIGRATION_URL\" DIRECT_DATABASE_URL=\"$DATABASE_MIGRATION_URL\"",

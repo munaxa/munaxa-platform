@@ -137,9 +137,12 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
    `db-admin` (with `db_bootstrap_products` set), `identity-migrate`, `control-migrate`,
    `work-migrate`, `school-migrate`; `school-bootstrap` after `school-migrate` (School's seeds
    and first platform owner; db_admin's network; one-run secret `munaxa-nonprod/school-bootstrap`
-   with `PLATFORM_OWNER_EMAIL` and `PLATFORM_OWNER_PASSWORD`, deleted after the run; generate the
-   password, at least 24 characters, e.g. `openssl rand -base64 24`, never a memorable one: School
-   does not check it against a policy, and the account is the platform owner);
+   with `PLATFORM_OWNER_EMAIL` and `PLATFORM_OWNER_PASSWORD`, both non-empty, deleted after the
+   run; School requires 8 or more characters with an upper-case letter, a lower-case letter and a
+   digit, but generate a long one, at least 24 characters, e.g. `openssl rand -base64 24`, never a
+   memorable one, because the account is the platform owner; the script never logs the password;
+   the seeds have never run from this exact image, so treat the first run as their check and read
+   its log before going on);
    `identity-bootstrap` after `identity-migrate` (db_admin's
    network; the owner creates `munaxa-nonprod/identity-bootstrap` with the operator's email and
    password first and deletes it after Identity's steps 1 to 3, which override only the command);
