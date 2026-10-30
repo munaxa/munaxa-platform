@@ -51,5 +51,7 @@ output "run_task_network" {
     docs_db_admin_definition  = length(aws_ecs_task_definition.docs_db_admin) > 0 ? aws_ecs_task_definition.docs_db_admin[0].family : null
     docs_provision_definition = length(aws_ecs_task_definition.docs_provision) > 0 ? aws_ecs_task_definition.docs_provision[0].family : null
     docs_api_group            = length(module.docs_api) > 0 ? module.docs_api[0].security_group_id : null
+    # identity-bootstrap runs with db_admin_group, after identity-migrate.
+    identity_bootstrap_definition = length(aws_ecs_task_definition.identity_bootstrap) > 0 ? aws_ecs_task_definition.identity_bootstrap[0].family : null
   }
 }

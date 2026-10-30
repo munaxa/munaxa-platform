@@ -187,3 +187,104 @@ module "migrate" {
   create_service   = false
   connect_database = true
 }
+
+# --- Identity's first operator (run-only) --------------------------------------------------------
+#
+# Identity's bootstrap scripts (munaxa-identity docs/runbooks/aws.md, "Operator organisation and
+# Control roles"), run from the runtime image as identity_owner. The operator's email and password
+# come from a one-run secret, munaxa-<env>/identity-bootstrap (IDENTITY_OWNER_EMAIL,
+# IDENTITY_OWNER_PASSWORD), which the owner creates before the runs and deletes after them, never
+# from a run-task environment override (reviewer R-16). The default command is step 1; steps 2 and
+# 3 override only the command, whose arguments are not secret. Run with db_admin_group.
+
+resource "aws_iam_role" "identity_bootstrap_execution" {
+  count = local.defined.identity_api ? 1 : 0
+
+  name                 = "${local.prefix}-identity-bootstrap-execution"
+  path                 = "/munaxa-shared/"
+  permissions_boundary = "arn:aws:iam::${var.account_id}:policy/munaxa-shared/munaxa-shared-workload-boundary"
+  assume_role_policy   = aws_iam_role.db_admin_execution.assume_role_policy
+}
+
+resource "aws_iam_role_policy" "identity_bootstrap_execution" {
+  count = local.defined.identity_api ? 1 : 0
+
+  name = "execution"
+  role = aws_iam_role.identity_bootstrap_execution[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      { Sid = "EcrSignIn", Effect = "Allow", Action = "ecr:GetAuthorizationToken", Resource = "*" },
+      {
+        Sid      = "PullIdentityApi"
+        Effect   = "Allow"
+        Action   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"]
+        Resource = "arn:aws:ecr:${var.region}:${var.account_id}:repository/munaxa-identity/api"
+      },
+      {
+        Sid    = "ReadOwnerUrlAndOneRunSecret"
+        Effect = "Allow"
+        Action = "secretsmanager:GetSecretValue"
+        Resource = [
+          aws_secretsmanager_secret.service["identity-migrate"].arn,
+          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap-??????",
+        ]
+      },
+      {
+        Sid       = "DecryptThroughSecretsManager"
+        Effect    = "Allow"
+        Action    = "kms:Decrypt"
+        Resource  = aws_kms_key.data.arn
+        Condition = { StringEquals = { "kms:ViaService" = "secretsmanager.${var.region}.amazonaws.com" } }
+      },
+      {
+        Sid      = "WriteLogs"
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "${aws_cloudwatch_log_group.ops.arn}:*"
+      },
+    ]
+  })
+}
+
+resource "aws_ecs_task_definition" "identity_bootstrap" {
+  count = local.defined.identity_api ? 1 : 0
+
+  family                   = "${local.prefix}-identity-bootstrap"
+  skip_destroy             = true
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.identity_bootstrap_execution[0].arn
+
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "X86_64"
+  }
+
+  container_definitions = jsonencode([{
+    name                   = "identity-bootstrap"
+    image                  = var.images.identity_api
+    essential              = true
+    readonlyRootFilesystem = true
+    linuxParameters        = { capabilities = { add = [], drop = ["ALL"] } }
+    command                = ["node", "scripts/bootstrap-account.mjs", "--organisation", var.identity_operator_organisation.slug, "--organisation-name", var.identity_operator_organisation.name]
+    environment = [
+      { name = "NODE_ENV", value = "production" },
+    ]
+    secrets = [
+      { name = "DIRECT_DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.service["identity-migrate"].arn}:DATABASE_MIGRATION_URL::${lookup(var.secret_version_ids, "identity-migrate", "")}" },
+      { name = "IDENTITY_OWNER_EMAIL", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap:IDENTITY_OWNER_EMAIL::" },
+      { name = "IDENTITY_OWNER_PASSWORD", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap:IDENTITY_OWNER_PASSWORD::" },
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.ops.name
+        awslogs-region        = var.region
+        awslogs-stream-prefix = "identity-bootstrap"
+      }
+    }
+  }])
+}

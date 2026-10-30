@@ -351,3 +351,15 @@ variable "docs_outbound_http_allowlist_extra" {
     error_message = "Each entry is a lowercase hostname, optionally with a leading dot."
   }
 }
+
+variable "identity_operator_organisation" {
+  description = "The Identity organisation Munaxa Group operators belong to, created by the identity-bootstrap task."
+  type = object({
+    slug = string
+    name = string
+  })
+  default = {
+    slug = "munaxa-group"
+    name = "Munaxa Group"
+  }
+}

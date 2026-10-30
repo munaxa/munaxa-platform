@@ -72,7 +72,8 @@ Docs' `TRUST_PROXY`).
 | docs-scanner   | 1344 | 256/2048  | not routed                 | c-icap scan of a probe file    | no  | none |
 
 Run-only tasks: `db-admin` (shared databases), `<product>-migrate` (identity, control, work,
-school; owner role), `docs-db-admin` (Docs cluster roles and the tenant database),
+school; owner role), `identity-bootstrap` (Identity's operator organisation, first operator and
+Control roles, as `identity_owner`), `docs-db-admin` (Docs cluster roles and the tenant database),
 `docs-provision` (Docs migrate and first administrator).
 
 Private calls (Cloud Map, plain HTTP inside the VPC, security group to security group):
@@ -108,6 +109,7 @@ products goes over HTTPS by the public host (an on-premises installation does th
 | `<product>-migrate` | `DATABASE_MIGRATION_URL` (the owner role)                                            |
 | `docs-api`        | `DATABASE_URL`, `TENANT_CATALOGUE`, `REDIS_URL`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET`, `SIGNATURE_WITNESS_SECRET`, `AUDIT_CHECKPOINT_SECRET`, `MFA_TOTP_SEALING_KEY`, `METRICS_SCRAPE_TOKEN`, `MAIL_RESEND_API_KEY`, `CONTROL_PLANE_TOKEN` |
 | `docs-operator`   | `EDMS_OWNER_PASSWORD`, `EDMS_APP_PASSWORD`, `EDMS_BACKUP_PASSWORD` (docs-db-admin only) |
+| `identity-bootstrap` | `IDENTITY_OWNER_EMAIL`, `IDENTITY_OWNER_PASSWORD`; created by the owner for the first-operator runs, then deleted |
 | `docs-provision/<tenant slug>` | `TENANT_ID`, `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD`; created by the owner for one run, then deleted |
 
 Plain (non-secret) configuration is set in Terraform `environment` and is listed per service in
@@ -127,7 +129,8 @@ role (`NOBYPASSRLS`, `CONNECT` revoked from `PUBLIC`), created by `db-admin` fro
 | School   | `school`   | `school_owner`   | `munaxa_app`     |
 | Docs     | one per tenant, `edms_<tenant>` (ADR-0015) | `edms_owner` | `edms_app` (+ `edms_backup`, read-only `BYPASSRLS`) |
 
-Order in a session: `db-admin` → `docs-db-admin` → `identity-migrate` → `control-migrate` →
+Order in a session: `db-admin` → `docs-db-admin` → `identity-migrate` → `identity-bootstrap`
+(steps 1 to 3 of Identity's runbook) → `control-migrate` →
 `work-migrate` → `school-migrate` → `docs-provision`. Clean databases; no data is copied from
 Supabase, Render or Docs Production.
 
