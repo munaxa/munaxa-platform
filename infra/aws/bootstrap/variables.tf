@@ -43,14 +43,28 @@ variable "image_repositories" {
   }
 }
 
-variable "environments" {
-  description = "GitHub environments of munaxa-platform whose main-branch jobs may run Terraform for the stack."
-  type        = list(string)
-  default     = ["aws-nonprod", "aws-nonprod-session", "aws-prod"]
+variable "deploy_environments" {
+  description = "Per stack environment, the GitHub environments of munaxa-platform whose main-branch jobs may run its Terraform (one CI role and one deployer each, R-17)."
+  type        = map(list(string))
+  default = {
+    nonprod = ["aws-nonprod", "aws-nonprod-session"]
+    prod    = ["aws-prod"]
+  }
+
+  validation {
+    condition     = toset(keys(var.deploy_environments)) == toset(["nonprod", "prod"])
+    error_message = "deploy_environments has exactly the keys nonprod and prod."
+  }
 }
 
 variable "budget_limit_usd" {
   description = "The account's monthly budget (owner decision, 29 Oct 2026)."
+  type        = number
+  default     = 50
+}
+
+variable "testing_budget_limit_usd" {
+  description = "Testing's own monthly budget, on resources tagged Environment = nonprod (owner decision, 30 Oct 2026)."
   type        = number
   default     = 50
 }

@@ -13,7 +13,7 @@ that creates, changes or deletes anything is an owner approval gate (G1 to G9).
 
 | Path                     | What                                                                                           | Applied by                                 |
 | ------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `bootstrap/`             | State bucket and key, ECR repositories, workload boundary, deployer, CI role, image publishers | Root, in AWS CloudShell (as Docs' bootstrap) |
+| `bootstrap/`             | State bucket and key, ECR repositories, workload boundary, a deployer and a CI role per environment, image publishers | Root, in AWS CloudShell (as Docs' bootstrap) |
 | `stack/`                 | One environment: network, RDS, keys, secret bundles, cluster, ALB, services, operator tasks    | GitHub Actions (`aws-terraform.yml`)       |
 | `stack/envs/<env>.*`     | `nonprod` (on-demand Testing) and `prod`: variables, backend key, declared intent              |                                            |
 | `modules/service/`       | One ECS Fargate service or run-only task, with its roles, security group and routing           |                                            |
@@ -77,9 +77,9 @@ bundle. Runtime roles are `NOBYPASSRLS`, so each product's RLS policies apply.
 
 1. Check out the reviewed commit in CloudShell. In `bootstrap/backend.tf`, comment out the backend
    block for the first apply.
-2. `terraform init && terraform plan` and read the plan: about 41 resources (the bucket, a key, 11
-   ECR repositories with lifecycle policies, 1 policy, 6 roles and their inline policies, and the
-   account budget with its alerts to admin@ and alert@munaxa.com). Nothing else. Then
+2. `terraform init && terraform plan` and read the plan: about 46 resources (the bucket, a key, 11
+   ECR repositories with lifecycle policies, 1 policy, 8 roles and their inline policies (a CI role and a deployer for each of nonprod and prod, and four image publishers), and the
+   account budget and a Testing budget on the `Environment = nonprod` tag, both alerting admin@ and alert@munaxa.com). Nothing else. Then
    `terraform apply`. The Docs ECR repositories are the Docs bootstrap's and are not created here.
 3. Restore the backend block and run `terraform init -migrate-state`.
 
@@ -87,9 +87,13 @@ bundle. Runtime roles are `NOBYPASSRLS`, so each product's RLS policies apply.
    Docs and storage change needs it before `stack/` can create the buckets: the boundary admits the
    stack's own `munaxa-<env>-*` buckets and pulls from `munaxa-docs/*`, and the deployer may
    configure those buckets.
-4. In GitHub, set `AWS_CI_ROLE_ARN` and `AWS_DEPLOYER_ROLE_ARN` on `munaxa-platform`, and
-   `AWS_IMAGE_PUBLISHER_ROLE_ARN` on each product repository (the outputs). They are role names,
-   not credentials. Create the environments `aws-nonprod` and `aws-prod` (required reviewer: owner,
+4. In GitHub, set `AWS_CI_ROLE_ARN` and `AWS_DEPLOYER_ROLE_ARN` on `munaxa-platform` from the
+   `ci_role_arns` and `deployer_role_arns` outputs: the `nonprod` pair as repository variables
+   (`aws-session.yml` reads them before its job starts), and the `prod` pair as variables of the
+   `aws-prod` environment, which override the repository's for prod jobs. A prod job that finds the
+   nonprod role is refused by its trust, so a missing override fails closed (R-17). Set
+   `AWS_IMAGE_PUBLISHER_ROLE_ARN` on each product repository. They are role names, not
+   credentials. Create the environments `aws-nonprod` and `aws-prod` (required reviewer: owner,
    `main` only), `aws-nonprod-session` (`main` only) and, in each product repository,
    `image-release` (required reviewer, `image/*` tags only).
 

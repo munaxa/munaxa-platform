@@ -5,9 +5,10 @@
 # | State bucket and its key        | Terraform state for stack/ (nonprod and prod keys) and this root |
 # | ECR repositories                | One per image, immutable tags, scan on push                    |
 # | Workload boundary               | The ceiling for every role the stack creates                   |
-# | Deployer role                   | Runs stack/ Terraform; IAM only under /munaxa-shared/ with the  |
+# | Deployer roles (nonprod, prod)  | Run stack/ Terraform; IAM only under /munaxa-shared/ with the   |
 # |                                 | boundary; never touches Munaxa Docs                            |
-# | CI role                         | munaxa-platform main, environment aws-nonprod/aws-prod → deployer |
+# | CI roles (nonprod, prod)        | munaxa-platform main, that environment's GitHub environments →  |
+# |                                 | that environment's deployer only (R-17)                        |
 # | Image publisher roles           | One per product repository: push to its own ECR repositories   |
 #
 # The GitHub OIDC provider already exists in this account (Munaxa Docs bootstrap) and is read, not

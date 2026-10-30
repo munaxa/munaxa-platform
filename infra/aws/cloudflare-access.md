@@ -32,8 +32,13 @@ serve a certificate at the edge. The ALB's ACM certificate lists `operator-test.
   `/api/auth/*` are both behind it.
 - Policy: one **Allow** policy whose include rule lists the authorised staff email addresses one by
   one. No email-domain rule, no "Everyone", no Bypass or Service Auth policy.
-- Login method: the identity provider the owner uses for Zero Trust, or one-time PIN to those
-  addresses.
+- MFA (owner decision for Testing, TD-3): the same policy has a **Require** rule "Authentication
+  method: MFA", so Access, not Identity, is the second factor for operators while Identity's
+  `mfaSatisfied` is always false. One-time PIN alone is a single factor and does not satisfy it.
+- Login method: an identity provider that enforces MFA and reports it to Access (or Cloudflare's
+  own MFA for Access, where the account offers it). Before recording the AUD tag, sign in once
+  and confirm in the Access logs that the MFA rule matched; if the provider does not report MFA,
+  every login is refused, which is the safe failure.
 - Session duration: 8 hours or less.
 - CORS: not needed. The portal calls its API on the same host.
 - Edge TLS for the hostname: Full (strict), set with a configuration rule for

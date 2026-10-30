@@ -227,6 +227,7 @@ locals {
         Action = [
           "kms:DescribeKey",
           "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus", # Terraform reads it on every refresh (finding P10)
           "kms:PutKeyPolicy",
           "kms:ListKeyPolicies",
           "kms:GetPublicKey",

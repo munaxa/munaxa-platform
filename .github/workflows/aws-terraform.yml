@@ -74,7 +74,21 @@ jobs:
           done
 
       - name: terraform test (mocked AWS provider)
-        run: terraform -chdir=infra/aws/stack test
+        run: |
+          set -euo pipefail
+          terraform -chdir=infra/aws/bootstrap test
+          terraform -chdir=infra/aws/stack test
+
+      # docs-cluster-roles.sql is Docs' infra/sql/cluster/01-roles.sql below a 4-line header that
+      # records the original's sha256. The copy must still hash to it; Docs CI pins the same hash on
+      # its side, so a change there fails until this copy is refreshed (finding F-3).
+      - name: The vendored Docs cluster roles are unedited
+        run: |
+          set -euo pipefail
+          f=infra/aws/stack/scripts/docs-cluster-roles.sql
+          recorded=$(sed -n 2p "$f" | grep -oE '[0-9a-f]{64}')
+          actual=$(tail -n +5 "$f" | sha256sum | cut -d' ' -f1)
+          [ "$recorded" = "$actual" ] || { echo "::error file=$f::the copy hashes to $actual, the header records $recorded"; exit 1; }
 
       - name: Declared intents are well formed
         run: |
