@@ -1,6 +1,10 @@
 # Roles for GitHub Actions. No IAM user and no access key exists or is created (owner decision).
 # Every trust is GitHub OIDC with the immutable repository subject, a protected environment and,
 # for Terraform, the main branch.
+#
+# One CI role and one deployer per environment (review finding R-17): a job in a nonprod GitHub
+# environment can only reach the nonprod deployer, which can only read and write nonprod state and
+# is refused anything tagged, or named, for prod; and the other way round.
 
 # --- The workload boundary -----------------------------------------------------------------------
 #
@@ -85,13 +89,20 @@ resource "aws_iam_policy" "workload_boundary" {
 
 # --- The deployer --------------------------------------------------------------------------------
 
+locals {
+  # The other environment of each deployer, whose resources it must never touch.
+  other_environment = { nonprod = "prod", prod = "nonprod" }
+}
+
 data "aws_iam_policy_document" "deployer_trust" {
+  for_each = var.deploy_environments
+
   statement {
     sid     = "CiRoleWithSourceIdentity"
     actions = ["sts:AssumeRole", "sts:SetSourceIdentity"]
     principals {
       type        = "AWS"
-      identifiers = [aws_iam_role.ci.arn]
+      identifiers = [aws_iam_role.ci[each.key].arn]
     }
     condition {
       test     = "StringEquals"
@@ -102,13 +113,17 @@ data "aws_iam_policy_document" "deployer_trust" {
 }
 
 resource "aws_iam_role" "deployer" {
-  name                 = "${local.prefix}-deployer"
+  for_each = var.deploy_environments
+
+  name                 = "${local.prefix}-deployer-${each.key}"
   path                 = "/munaxa-shared/bootstrap/"
-  assume_role_policy   = data.aws_iam_policy_document.deployer_trust.json
+  assume_role_policy   = data.aws_iam_policy_document.deployer_trust[each.key].json
   max_session_duration = 3600
 }
 
 data "aws_iam_policy_document" "deployer" {
+  for_each = var.deploy_environments
+
   statement {
     sid = "StackServices"
     actions = [
@@ -172,10 +187,18 @@ data "aws_iam_policy_document" "deployer" {
     resources = ["arn:aws:s3:::munaxa-nonprod-*", "arn:aws:s3:::munaxa-prod-*"]
   }
 
+  # Its own environment's state and saved plans only (envs/<env>.backend.hcl, <env>/plans/).
+  # Listing stays bucket-wide: the S3 backend lists workspaces at init, and key names hold no secret.
+  statement {
+    sid       = "StateList"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.state.arn]
+  }
+
   statement {
     sid       = "State"
-    actions   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-    resources = [aws_s3_bucket.state.arn, "${aws_s3_bucket.state.arn}/nonprod/*", "${aws_s3_bucket.state.arn}/prod/*"]
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.state.arn}/${each.key}/*"]
   }
 
   # RDS creates the master-password secret and encrypts storage with the environment data key on the
@@ -225,6 +248,77 @@ data "aws_iam_policy_document" "deployer" {
     ]
   }
 
+  # Review finding P9: Docs Production's VPC, subnets, security groups, load balancer, listeners,
+  # target groups, database, cluster, keys and logs carry Project = MunaxaDocs (the Docs Terraform's
+  # default_tags), and their ARNs have generated ids that no name pattern above can match. ec2:*
+  # and elasticloadbalancing:* on "*" would otherwise reach them. The shared stack tags its own
+  # resources Project = munaxa and never reads a Docs resource. The deployer may also not create a
+  # resource with that tag, or put it on one.
+  statement {
+    sid       = "NeverMunaxaDocsProductionByTag"
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = ["MunaxaDocs"]
+    }
+  }
+
+  statement {
+    sid       = "NeverTagAsMunaxaDocs"
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Project"
+      values   = ["MunaxaDocs"]
+    }
+  }
+
+  # R-17: never the other environment, by its tag (stack/ tags Environment = nonprod | prod) or by
+  # the names stack/ gives it (munaxa-<env>-*, munaxa-<env>/*, /munaxa/<env>/).
+  statement {
+    sid       = "NeverTheOtherEnvironmentByTag"
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Environment"
+      values   = [local.other_environment[each.key]]
+    }
+  }
+
+  statement {
+    sid       = "NeverCreateForTheOtherEnvironment"
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Environment"
+      values   = [local.other_environment[each.key]]
+    }
+  }
+
+  statement {
+    sid     = "NeverTheOtherEnvironmentByName"
+    effect  = "Deny"
+    actions = ["*"]
+    resources = [
+      "arn:aws:iam::${var.account_id}:role/munaxa-shared/munaxa-${local.other_environment[each.key]}-*",
+      "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:munaxa-${local.other_environment[each.key]}/*",
+      "arn:aws:s3:::munaxa-${local.other_environment[each.key]}-*",
+      "arn:aws:rds:${var.region}:${var.account_id}:db:munaxa-${local.other_environment[each.key]}-*",
+      "arn:aws:ecs:${var.region}:${var.account_id}:cluster/munaxa-${local.other_environment[each.key]}*",
+      "arn:aws:logs:${var.region}:${var.account_id}:log-group:/munaxa/${local.other_environment[each.key]}/*",
+      "${aws_s3_bucket.state.arn}/${local.other_environment[each.key]}/*",
+    ]
+  }
+
   statement {
     sid    = "NoSecretValuesNoUsersNoKeys"
     effect = "Deny"
@@ -239,14 +333,18 @@ data "aws_iam_policy_document" "deployer" {
 }
 
 resource "aws_iam_role_policy" "deployer" {
+  for_each = var.deploy_environments
+
   name   = "deployer"
-  role   = aws_iam_role.deployer.id
-  policy = data.aws_iam_policy_document.deployer.json
+  role   = aws_iam_role.deployer[each.key].id
+  policy = data.aws_iam_policy_document.deployer[each.key].json
 }
 
-# --- The CI role: munaxa-platform, main, a protected environment ---------------------------------
+# --- The CI roles: munaxa-platform, main, a protected environment of that environment --------------
 
 data "aws_iam_policy_document" "ci_trust" {
+  for_each = var.deploy_environments
+
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
     principals {
@@ -261,7 +359,7 @@ data "aws_iam_policy_document" "ci_trust" {
     condition {
       test     = "StringEquals"
       variable = "${local.oidc}:sub"
-      values   = [for e in var.environments : "${local.subject["munaxa-platform"]}:environment:${e}"]
+      values   = [for e in each.value : "${local.subject["munaxa-platform"]}:environment:${e}"]
     }
     condition {
       test     = "StringEquals"
@@ -272,21 +370,25 @@ data "aws_iam_policy_document" "ci_trust" {
 }
 
 resource "aws_iam_role" "ci" {
-  name                 = "${local.prefix}-ci"
+  for_each = var.deploy_environments
+
+  name                 = "${local.prefix}-ci-${each.key}"
   path                 = "/munaxa-shared/bootstrap/"
-  assume_role_policy   = data.aws_iam_policy_document.ci_trust.json
+  assume_role_policy   = data.aws_iam_policy_document.ci_trust[each.key].json
   max_session_duration = 3600
 }
 
 resource "aws_iam_role_policy" "ci" {
-  name = "assume-deployer-only"
-  role = aws_iam_role.ci.id
+  for_each = var.deploy_environments
+
+  name = "assume-own-deployer-only"
+  role = aws_iam_role.ci[each.key].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
       Action   = ["sts:AssumeRole", "sts:SetSourceIdentity"]
-      Resource = aws_iam_role.deployer.arn
+      Resource = aws_iam_role.deployer[each.key].arn
     }]
   })
 }
