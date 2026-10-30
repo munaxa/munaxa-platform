@@ -349,7 +349,14 @@ module "control_api" {
   routed               = local.routed
   listener_arn         = local.listener
   health_check_path    = "/health/ready"
-  routes               = [{ priority = 20, hosts = [var.hosts.control_api] }]
+  # Only Control's product-facing surface is public. ALB path patterns match case-sensitively and
+  # Express routes do not, so a deny on /api/v1/admin/* alone would let /API/v1/Admin/* through:
+  # the public host forwards these prefixes and rule 21 refuses everything else.
+  routes = [{
+    priority = 20
+    hosts    = [var.hosts.control_api]
+    paths    = ["/api/v1/products/*", "/api/v1/licensing/*", "/health/*"]
+  }]
 
   discovery_namespace_id     = aws_service_discovery_private_dns_namespace.main.id
   register_discovery         = true

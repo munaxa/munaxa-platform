@@ -291,3 +291,25 @@ run "without_a_docs_host_there_is_no_docs" {
     error_message = "Docs exists only where hosts.docs is set (not in prod)."
   }
 }
+
+run "the_control_api_host_forwards_only_its_public_surface" {
+  command = plan
+
+  variables {
+    edge_enabled     = true
+    services_enabled = true
+    operator_access  = { team_domain = "https://munaxa-test.cloudflareaccess.com", audience = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+    images = {
+      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+
+  assert {
+    condition     = length(aws_lb_listener_rule.control_api_refused) == 1 && aws_lb_listener_rule.control_api_refused[0].priority == 21
+    error_message = "Anything the allow rule does not forward on the Control API host is refused, in any case."
+  }
+  assert {
+    condition     = length(module.control_api[0].listener_rule_paths["20"]) == 3 && !contains(module.control_api[0].listener_rule_paths["20"], "/*")
+    error_message = "The Control API host forwards only /api/v1/products/*, /api/v1/licensing/* and /health/*."
+  }
+}

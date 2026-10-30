@@ -30,7 +30,7 @@ that creates, changes or deletes anything is an owner approval gate (G1 to G9).
         │  id.*          ─────────────────────────────────────────► identity  (+ Valkey sidecar)
         │  work.*        /api/auth/* ► identity · /api/v1/* ► work-api · /* ► work-admin       │
         │  school.*      /api/v1/* ► school-api · /* ► school-admin                               │
-        │  control-api.* /api/v1/admin/* ► 403 · /* ► control-api                              │
+        │  control-api.* /api/v1/{products,licensing}/*, /health/* ► control-api · rest ► 403  │
         │  docs.*        /api/v1/preview/stream* ► docs-api (+ Redis) · /* ► docs-web          │
         │  operator.*    from operator_cidrs: /api/auth/* ► identity · /* ► control-portal     │
         │                anyone else ► 403                                                     │
@@ -184,7 +184,7 @@ See the migration report for the evidence and the price sources. In brief:
 
 ## Validation
 
-`terraform fmt -check`, `terraform validate` (both roots) and `terraform test` (13 plan-only runs
+`terraform fmt -check`, `terraform validate` (both roots) and `terraform test` (14 plan-only runs
 with a mocked AWS provider) pass locally; CI runs them and `shellcheck` on every PR. `tflint` and
 `actionlint` last ran locally on #24. `db-bootstrap.sh` was
 run against PostgreSQL 16. No real plan has run: it needs G2.

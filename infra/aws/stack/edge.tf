@@ -12,7 +12,9 @@
 # | Priority | Host        | Condition                          | Action                          |
 # | -------- | ----------- | ---------------------------------- | ------------------------------- |
 # | 10       | control_api | /api/v1/admin/*                    | 403 (the admin API is private)  |
-# | 20       | control_api | —                                  | Control API                     |
+# | 20       | control_api | /api/v1/products/*, /licensing/*,  | Control API                     |
+# |          |             | /health/* (case-sensitive allow)   |                                 |
+# | 21       | control_api | —                                  | 403 (anything else, any case)   |
 # | 30       | operator    | /api/auth/*; Access or source IPs  | Identity                        |
 # | 31       | operator    | Access or source IPs               | Control portal                  |
 # | 39       | operator    | —                                  | 403 (Control ADR-0006)          |
@@ -141,6 +143,29 @@ resource "aws_lb_listener_rule" "control_admin_refused" {
   condition {
     path_pattern {
       values = ["/api/v1/admin/*"]
+    }
+  }
+}
+
+# Everything on the Control API host that rule 20 does not forward, whatever its case.
+resource "aws_lb_listener_rule" "control_api_refused" {
+  count = var.edge_enabled ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 21
+
+  action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Forbidden"
+      status_code  = "403"
+    }
+  }
+
+  condition {
+    host_header {
+      values = [var.hosts.control_api]
     }
   }
 }

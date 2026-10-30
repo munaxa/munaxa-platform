@@ -21,7 +21,7 @@ Status: 30 Oct 2026. Nothing in it is applied. Account `229251310592`, region `e
 | Host key      | Testing                        | Routes                                                                 |
 | ------------- | ------------------------------ | ---------------------------------------------------------------------- |
 | `identity`    | `id.test.munaxa.com`           | `/*` → identity:4001                                                   |
-| `control_api` | `control-api.test.munaxa.com`  | `/api/v1/admin/*` → 403; `/*` → control-api:3100                       |
+| `control_api` | `control-api.test.munaxa.com`  | `/api/v1/products/*`, `/api/v1/licensing/*`, `/health/*` → control-api:3100; anything else (any case, including `/api/v1/admin/*`) → 403 |
 | `operator`    | `operator-test.munaxa.com` (proxied, Cloudflare Access) | `/api/auth/*` → identity; `/*` → control-portal:3200; closed (403) until `operator_access` is set |
 | `work`        | `work.test.munaxa.com`         | `/api/auth/*` → identity; `/api/v1/*` → work-api:3000; `/*` → work-admin:3001 |
 | `school`      | `school.test.munaxa.com`       | `/api/v1/*` → school-api:4000; `/*` → school-admin:3000                |
