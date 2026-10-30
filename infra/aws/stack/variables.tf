@@ -119,6 +119,13 @@ variable "operator_cidrs" {
     condition     = alltrue([for c in var.operator_cidrs : can(cidrhost(c, 0)) && !contains(["0.0.0.0/0", "::/0"], c)])
     error_message = "operator_cidrs are CIDR ranges, never the whole internet."
   }
+
+  # An ALB rule takes five condition values. The Identity rule on the operator host spends one on
+  # the host and one on the path, which leaves three for source ranges.
+  validation {
+    condition     = length(var.operator_cidrs) <= 3
+    error_message = "operator_cidrs holds at most three ranges (the ALB's five condition values per rule)."
+  }
 }
 
 # --- Images, by digest only --------------------------------------------------------------------

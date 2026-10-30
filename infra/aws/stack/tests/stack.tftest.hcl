@@ -130,6 +130,14 @@ run "the_whole_internet_is_not_an_operator_network" {
   expect_failures = [var.operator_cidrs]
 }
 
+run "more_operator_ranges_than_an_alb_rule_holds_are_refused" {
+  command = plan
+  variables {
+    operator_cidrs = ["198.51.100.0/26", "198.51.100.64/26", "198.51.100.128/26", "198.51.100.192/26"]
+  }
+  expect_failures = [var.operator_cidrs]
+}
+
 run "a_private_key_is_refused_where_public_keys_go" {
   command = plan
   variables {

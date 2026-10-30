@@ -46,6 +46,10 @@ that creates, changes or deletes anything is an owner approval gate (G1 to G9).
 Control portal → Work and School (both need Control for `LICENSING_MODE=CONTROL_PLANE`; Work needs
 Identity for every authenticated route) → Docs (its own stack; needs Control and docs#164's TLS fix).
 
+**Operator access:** the owner chose Cloudflare Access. The Testing operator host is
+`operator-test.munaxa.com`, the one proxied record; it stays closed (403) until Control verifies the
+Access token. Design, open decisions and the MFA limitation: [cloudflare-access.md](cloudflare-access.md).
+
 **Isolation:** one database, one owner role and one runtime role per product; `CONNECT` revoked from
 `PUBLIC`; a secret bundle per service and per migration job; each execution role reads only its own
 bundle. Runtime roles are `NOBYPASSRLS`, so each product's RLS policies apply.

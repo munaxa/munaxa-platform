@@ -12,11 +12,11 @@ services_enabled = false
 hosts = {
   identity    = "id.test.munaxa.com"
   control_api = "control-api.test.munaxa.com"
-  operator    = "operator.test.munaxa.com"
+  operator    = "operator-test.munaxa.com" # first level: Cloudflare Access proxies it (cloudflare-access.md)
   work        = "work.test.munaxa.com"
   school      = "school.test.munaxa.com"
 }
-certificate_domains = ["*.test.munaxa.com"]
+certificate_domains = ["*.test.munaxa.com", "operator-test.munaxa.com"]
 
 # The operator network (Control ADR-0006). Empty refuses every request to the operator host.
 operator_cidrs = []
