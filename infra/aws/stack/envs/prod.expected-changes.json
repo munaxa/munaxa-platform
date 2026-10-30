@@ -1,0 +1,5 @@
+{
+  "root": "stack-prod",
+  "intent": "Nothing is applied yet. The first apply of the persistent layer needs the owner's approval and a reviewed PR that declares its changes here (README, gate G3).",
+  "changes": []
+}

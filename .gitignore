@@ -74,3 +74,9 @@ dump.rdb
 # Python bytecode from the offline brand-artwork import script.
 __pycache__/
 *.pyc
+
+# Terraform (infra/aws)
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
