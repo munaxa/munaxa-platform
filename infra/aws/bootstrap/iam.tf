@@ -43,6 +43,16 @@ resource "aws_iam_policy" "workload_boundary" {
         Resource = "arn:aws:kms:${var.region}:${var.account_id}:key/*"
       },
       {
+        # The stack's own file buckets (stack/storage.tf), never Docs Production's munaxa-docs-*.
+        Sid    = "OwnFileBuckets"
+        Effect = "Allow"
+        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:AbortMultipartUpload", "s3:ListBucket"]
+        Resource = [
+          "arn:aws:s3:::munaxa-nonprod-*", "arn:aws:s3:::munaxa-nonprod-*/*",
+          "arn:aws:s3:::munaxa-prod-*", "arn:aws:s3:::munaxa-prod-*/*",
+        ]
+      },
+      {
         Sid      = "ScheduledTasks"
         Effect   = "Allow"
         Action   = ["ecs:RunTask", "iam:PassRole"]
@@ -56,10 +66,18 @@ resource "aws_iam_policy" "workload_boundary" {
         Condition = { StringNotEquals = { "aws:RequestedRegion" = var.region } }
       },
       {
-        Sid      = "NeverMunaxaDocs"
+        Sid      = "NeverMunaxaDocsProduction"
         Effect   = "Deny"
         Action   = "*"
-        Resource = ["arn:aws:secretsmanager:*:*:secret:munaxa-docs*", "arn:aws:ecr:*:*:repository/munaxa-docs/*"]
+        Resource = ["arn:aws:secretsmanager:*:*:secret:munaxa-docs*", "arn:aws:s3:::munaxa-docs*"]
+      },
+      # Docs in the shared stack (stack/docs.tf) runs the images the Docs bootstrap publishes to
+      # munaxa-docs/*: pulling them is allowed above, anything else on those repositories is not.
+      {
+        Sid       = "MunaxaDocsImagesPullOnly"
+        Effect    = "Deny"
+        NotAction = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"]
+        Resource  = "arn:aws:ecr:*:*:repository/munaxa-docs/*"
       },
     ]
   })
@@ -139,6 +157,19 @@ data "aws_iam_policy_document" "deployer" {
     sid       = "ServiceLinkedRoles"
     actions   = ["iam:CreateServiceLinkedRole"]
     resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/*"]
+  }
+
+  # The stack's file buckets (stack/storage.tf): bucket configuration only, no object access.
+  statement {
+    sid = "FileBuckets"
+    actions = [
+      "s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket", "s3:GetBucket*", "s3:PutBucket*",
+      "s3:DeleteBucketPolicy", "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration", "s3:GetAccelerateConfiguration",
+      "s3:GetReplicationConfiguration", "s3:GetAnalyticsConfiguration", "s3:GetInventoryConfiguration",
+      "s3:GetMetricsConfiguration", "s3:GetIntelligentTieringConfiguration",
+    ]
+    resources = ["arn:aws:s3:::munaxa-nonprod-*", "arn:aws:s3:::munaxa-prod-*"]
   }
 
   statement {

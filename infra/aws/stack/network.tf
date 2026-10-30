@@ -95,8 +95,9 @@ resource "aws_route_table_association" "db" {
   route_table_id = aws_route_table.db.id
 }
 
-# S3 gateway endpoint (no charge). Only the bucket ECR serves image layers from in this region is
-# admitted, read-only: nothing in this stack uses S3 otherwise.
+# S3 gateway endpoint (no charge). Every S3 request from the public subnets goes through it, so its
+# policy is the list of what tasks may reach: the bucket ECR serves image layers from (read-only)
+# and this environment's own file buckets (storage.tf). IAM still decides who may do what in them.
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${var.region}.s3"
@@ -105,13 +106,24 @@ resource "aws_vpc_endpoint" "s3" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid       = "EcrImageLayersOnly"
-      Effect    = "Allow"
-      Principal = "*"
-      Action    = ["s3:GetObject"]
-      Resource  = ["arn:aws:s3:::prod-${var.region}-starport-layer-bucket/*"]
-    }]
+    Statement = [
+      {
+        Sid       = "EcrImageLayers"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = ["s3:GetObject"]
+        Resource  = ["arn:aws:s3:::prod-${var.region}-starport-layer-bucket/*"]
+      },
+      {
+        Sid       = "OwnFileBuckets"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:AbortMultipartUpload", "s3:ListBucket"]
+        Resource = flatten([for b in local.buckets : [
+          "arn:aws:s3:::${b.name}", "arn:aws:s3:::${b.name}/*",
+        ]])
+      },
+    ]
   })
 
   tags = { Name = "${local.prefix}-s3" }

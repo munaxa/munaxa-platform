@@ -48,3 +48,14 @@ variable "environments" {
   type        = list(string)
   default     = ["aws-nonprod", "aws-nonprod-session", "aws-prod"]
 }
+
+variable "budget_limit_usd" {
+  description = "The account's monthly budget (owner decision, 29 Oct 2026)."
+  type        = number
+  default     = 50
+}
+
+variable "budget_alert_emails" {
+  type    = list(string)
+  default = ["admin@munaxa.com", "alert@munaxa.com"]
+}

@@ -92,15 +92,16 @@ variable "desired_counts" {
 variable "hosts" {
   description = "Public host names, each a CNAME in Cloudflare to the ALB (owner action; DNS is never changed here)."
   type = object({
-    identity    = string # Identity's own origin: IDENTITY_BASE_URL, the token issuer
-    control_api = string # products reach Control here; the admin API is refused on it
-    operator    = string # Control portal + /api/auth/* (Identity), restricted to the operator network
-    work        = string # Work admin, /api/v1/* (Work API), /api/auth/* (Identity): one origin (Identity ADR-0004)
-    school      = string # School admin, /api/* (School API)
+    identity    = string           # Identity's own origin: IDENTITY_BASE_URL, the token issuer
+    control_api = string           # products reach Control here; the admin API is refused on it
+    operator    = string           # Control portal + /api/auth/* (Identity), restricted to the operator network
+    work        = string           # Work admin, /api/v1/* (Work API), /api/auth/* (Identity): one origin (Identity ADR-0004)
+    school      = string           # School admin, /api/* (School API)
+    docs        = optional(string) # Docs web, /api/v1/preview/stream* (Docs API). Unset: no Docs in this environment
   })
 
   validation {
-    condition     = alltrue([for h in values(var.hosts) : can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+munaxa\\.com$", h))])
+    condition     = alltrue([for h in values(var.hosts) : h == null || can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+munaxa\\.com$", h))])
     error_message = "Every host is a lowercase name under munaxa.com."
   }
 }
@@ -167,6 +168,9 @@ variable "images" {
     school_api       = optional(string, "")
     school_admin     = optional(string, "")
     school_migrate   = optional(string, "")
+    docs_api         = optional(string, "") # the existing munaxa-docs/* repositories (Docs bootstrap)
+    docs_web         = optional(string, "")
+    docs_antivirus   = optional(string, "")
   })
   default = {}
 
@@ -297,5 +301,65 @@ variable "db_bootstrap_products" {
   validation {
     condition     = alltrue([for p in var.db_bootstrap_products : contains(["identity", "control", "work", "school"], p)])
     error_message = "db_bootstrap_products names identity, control, work or school."
+  }
+}
+
+# --- Docs (docs.tf) ----------------------------------------------------------------------------
+
+variable "docs_redis_image" {
+  description = "The Docs API's Redis sidecar, by digest (public.ecr.aws/docker/library/redis@sha256:…), as Docs Production runs it."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.docs_redis_image == "" || can(regex("^public\\.ecr\\.aws/docker/library/redis@sha256:[0-9a-f]{64}$", var.docs_redis_image))
+    error_message = "docs_redis_image is public.ecr.aws/docker/library/redis@sha256:<64 hex>."
+  }
+}
+
+variable "docs_tenant" {
+  description = "The one Docs tenant of this environment (database per tenant, Docs ADR-0015): docs-db-admin creates its database, docs-provision its first administrator."
+  type = object({
+    slug     = string
+    name     = string
+    database = string
+  })
+  default = {
+    slug     = "munaxa-internal"
+    name     = "Munaxa Internal"
+    database = "edms_munaxa_internal"
+  }
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{1,40}$", var.docs_tenant.slug)) && can(regex("^edms_[a-z0-9_]{1,50}$", var.docs_tenant.database))
+    error_message = "docs_tenant.slug is lowercase letters, digits and hyphens; docs_tenant.database is edms_<lowercase letters, digits, underscores>."
+  }
+}
+
+variable "docs_mail_from_address" {
+  type    = string
+  default = "docs@notify.munaxa.com"
+}
+
+variable "docs_outbound_http_allowlist_extra" {
+  description = "Hosts the Docs API may call besides Control (OUTBOUND_HTTP_ALLOWLIST), lowercase, optionally with a leading dot."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for h in var.docs_outbound_http_allowlist_extra : can(regex("^\\.?([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$", h))])
+    error_message = "Each entry is a lowercase hostname, optionally with a leading dot."
+  }
+}
+
+variable "identity_operator_organisation" {
+  description = "The Identity organisation Munaxa Group operators belong to, created by the identity-bootstrap task."
+  type = object({
+    slug = string
+    name = string
+  })
+  default = {
+    slug = "munaxa-group"
+    name = "Munaxa Group"
   }
 }

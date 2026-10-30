@@ -15,6 +15,7 @@ hosts = {
   operator    = "operator-test.munaxa.com" # first level: Cloudflare Access proxies it (cloudflare-access.md)
   work        = "work.test.munaxa.com"
   school      = "school.test.munaxa.com"
+  docs        = "docs.test.munaxa.com" # Docs recreated in the shared stack (docs.tf); DNS only
 }
 certificate_domains = ["*.test.munaxa.com", "operator-test.munaxa.com"]
 
@@ -38,7 +39,13 @@ desired_counts = {
   work-admin     = 1
   school-api     = 1
   school-admin   = 1
+  docs-api       = 1
+  docs-web       = 1
+  docs-scanner   = 1
 }
+
+# Docs' API Redis sidecar, the digest Docs Production runs (munaxa-docs launch.auto.tfvars).
+docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f"
 
 # Images are set by reviewed PRs after each product's "Publish image" run, by digest only.
 images = {}

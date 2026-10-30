@@ -124,6 +124,12 @@ variable "health_check_command" {
   default     = null
 }
 
+variable "health_check_start_period" {
+  description = "Seconds the container health check waits before counting failures (the Docs scanner needs 300 for its first signature download)."
+  type        = number
+  default     = 60
+}
+
 variable "task_role_policy_json" {
   description = "Inline policy for the task role (e.g. kms:Sign on Control's licence key). Null for no task role."
   type        = string

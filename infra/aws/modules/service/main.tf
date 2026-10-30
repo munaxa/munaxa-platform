@@ -243,7 +243,7 @@ resource "aws_ecs_task_definition" "this" {
     var.port == null ? {} : { portMappings = [{ containerPort = var.port, hostPort = var.port, protocol = "tcp" }] },
     var.command == null ? {} : { command = var.command },
     var.health_check_command == null ? {} : {
-      healthCheck = { command = var.health_check_command, interval = 15, timeout = 5, retries = 3, startPeriod = 60 }
+      healthCheck = { command = var.health_check_command, interval = 15, timeout = 5, retries = 3, startPeriod = var.health_check_start_period }
     },
     length(var.depends_on_sidecars) == 0 ? {} : {
       dependsOn = [for c in var.depends_on_sidecars : { containerName = c, condition = "HEALTHY" }]

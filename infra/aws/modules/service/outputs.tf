@@ -17,3 +17,8 @@ output "execution_role_arn" {
 output "service_name" {
   value = var.create_service ? aws_ecs_service.this[0].name : null
 }
+
+output "listener_rule_paths" {
+  description = "Path patterns per listener rule priority (for plan tests)."
+  value       = { for k, r in local.route_map : k => r.paths }
+}

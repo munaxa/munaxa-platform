@@ -12,13 +12,16 @@
 # | Priority | Host        | Condition                          | Action                          |
 # | -------- | ----------- | ---------------------------------- | ------------------------------- |
 # | 10       | control_api | /api/v1/admin/*                    | 403 (the admin API is private)  |
-# | 20       | control_api | —                                  | Control API                     |
+# | 20       | control_api | /api/v1/products/*, /licensing/*,  | Control API                     |
+# |          |             | /health/* (case-sensitive allow)   |                                 |
+# | 21       | control_api | —                                  | 403 (anything else, any case)   |
 # | 30       | operator    | /api/auth/*; Access or source IPs  | Identity                        |
 # | 31       | operator    | Access or source IPs               | Control portal                  |
 # | 39       | operator    | —                                  | 403 (Control ADR-0006)          |
 # | 40       | identity    | —                                  | Identity                        |
 # | 50-52    | work        | /api/auth/*, /api/v1/*, rest       | Identity, Work API, Work admin  |
 # | 60-61    | school      | /api/v1/*, rest                    | School API, School admin        |
+# | 70-71    | docs        | /api/v1/preview/stream*, rest      | Docs API, Docs web              |
 # | default  | any other   | —                                  | 404                             |
 
 resource "aws_acm_certificate" "main" {
@@ -70,7 +73,7 @@ resource "aws_lb" "main" {
   security_groups            = [aws_security_group.alb.id]
   subnets                    = [for s in aws_subnet.public : s.id]
   drop_invalid_header_fields = true
-  idle_timeout               = 60
+  idle_timeout               = 120 # Docs preview streams (as Docs Production)
   # Production keeps deletion protection; Testing deletes the ALB at every session end.
   enable_deletion_protection = var.environment == "prod"
 }
@@ -140,6 +143,29 @@ resource "aws_lb_listener_rule" "control_admin_refused" {
   condition {
     path_pattern {
       values = ["/api/v1/admin/*"]
+    }
+  }
+}
+
+# Everything on the Control API host that rule 20 does not forward, whatever its case.
+resource "aws_lb_listener_rule" "control_api_refused" {
+  count = var.edge_enabled ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 21
+
+  action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Forbidden"
+      status_code  = "403"
+    }
+  }
+
+  condition {
+    host_header {
+      values = [var.hosts.control_api]
     }
   }
 }
