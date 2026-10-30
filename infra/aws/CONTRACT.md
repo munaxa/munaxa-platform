@@ -157,6 +157,8 @@ Supabase, Render or Docs Production.
   ADR-0008): only the control-api task role may `kms:Sign`, `ECDSA_SHA_256` digests only; no grants.
   `LICENCE_SIGNING_KID` and `LICENCE_SIGNING_PUBLIC_KEY` (SPKI PEM, public) are set by PR after
   the key exists. Verifiers read `/api/v1/licensing/public-keys`.
+- Products call Control's public paths in **lowercase**, exactly as listed in §1. The ALB's allow
+  list is case-sensitive, so `/API/v1/products/...` gets 403 even though Express would serve it.
 - The Control admin API (`/api/v1/admin/*`) is never public: 403 on the public host, reachable
   only from the portal over Cloud Map; the portal and API verify the Cloudflare Access token
   (`OPERATOR_ACCESS_TEAM_DOMAIN`, `OPERATOR_ACCESS_AUDIENCE`).
