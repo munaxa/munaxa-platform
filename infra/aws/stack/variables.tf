@@ -111,7 +111,7 @@ variable "certificate_domains" {
 }
 
 variable "operator_cidrs" {
-  description = "Source ranges allowed to reach the operator host (Control ADR-0006). Empty refuses every request to it."
+  description = "Source ranges allowed to reach the operator host (Control ADR-0006). With operator_access unset, empty refuses every request to it; with it set, empty takes any source and the origin checks the Access token."
   type        = list(string)
   default     = []
 
@@ -125,6 +125,29 @@ variable "operator_cidrs" {
   validation {
     condition     = length(var.operator_cidrs) <= 3
     error_message = "operator_cidrs holds at most three ranges (the ALB's five condition values per rule)."
+  }
+}
+
+variable "operator_access" {
+  description = "Cloudflare Access in front of the operator host (../cloudflare-access.md): the team domain and the Access application's AUD tag. Public identifiers, not secrets. Control's API and portal verify the Access token with them; set, the operator host takes any source."
+  type = object({
+    team_domain = string
+    audience    = string
+  })
+  default = null
+
+  validation {
+    condition = var.operator_access == null ? true : (
+      can(regex("^https://[a-z0-9][a-z0-9-]*\\.cloudflareaccess\\.com$", var.operator_access.team_domain)) &&
+      can(regex("^[A-Za-z0-9]{32,128}$", var.operator_access.audience))
+    )
+    error_message = "operator_access is { team_domain = \"https://<team>.cloudflareaccess.com\", audience = \"<AUD tag>\" }."
+  }
+
+  # Control refuses to run in production without Access (its OPERATOR_ACCESS_* settings).
+  validation {
+    condition     = var.operator_access != null || (var.images.control_api == "" && var.images.control_portal == "")
+    error_message = "Control's API and portal need operator_access."
   }
 }
 

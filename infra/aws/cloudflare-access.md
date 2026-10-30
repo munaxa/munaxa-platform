@@ -48,19 +48,26 @@ Access protects requests that come through Cloudflare. The ALB is internet-facin
 can also go straight to it with `Host: operator-test.munaxa.com`. Three things stop that from
 reaching the portal, in this order:
 
-1. **Today, the host is closed.** With `operator_cidrs = []` the ALB answers 403 to every request
-   on the operator host (rule 39), from Cloudflare or anywhere else. It stays closed until step 3
-   exists.
+1. **Without Access settings, the host is closed.** With `operator_access` unset and
+   `operator_cidrs = []`, the stack creates no route for the operator host, and the ALB answers
+   403 to every request on it (rule 39), from Cloudflare or anywhere else.
 2. **Source ranges do not solve it.** An ALB rule takes five condition values, so `operator_cidrs`
    holds at most three ranges (Terraform refuses more). Cloudflare publishes about twenty ranges,
    and they are shared by every Cloudflare customer, so allowing them would not prove the request
    passed this Access application.
-3. **The origin checks the Access token (follow-up, Control).** Access adds a signed JWT to every
-   request it lets through, in `Cf-Access-Jwt-Assertion`. The Control portal must verify it
-   (signature from the team domain's `/cdn-cgi/access/certs`, issuer, audience equal to the AUD
-   tag, expiry) and refuse the request otherwise. When that ships, the stack gets the team domain
-   and AUD tag as plain variables and the operator rules lose their source-range condition. That is
-   a Control PR and then a stack PR, each reviewed; neither exists yet.
+3. **The origin checks the Access token (munaxa-control#5).** Access adds a signed JWT to every
+   request it lets through, in `Cf-Access-Jwt-Assertion`. The Control portal's middleware and every
+   operator route of the Control API verify it: RS256 from the team domain's
+   `/cdn-cgi/access/certs`, the team domain as issuer, the AUD tag as audience, expiry, and a person
+   (email and subject). Anything else gets 401, and keys that cannot be read give 503. In
+   production both refuse to run without the settings.
+
+The stack takes the team domain and AUD tag as `operator_access` (public identifiers, in the
+environment's tfvars). Set, it passes them to the Control API, the sweep (same task definition)
+and the portal as `OPERATOR_ACCESS_TEAM_DOMAIN` and `OPERATOR_ACCESS_AUDIENCE`, and opens rules 30
+and 31 to any source, because the token check now stands at the origin. Terraform refuses a
+Control image without `operator_access`. The portal's load balancer health check is `/healthz`,
+the one path that answers without a token.
 
 Identity's `/api/auth/*` on the operator host needs no extra check: the same endpoints are public on
 `id.test.munaxa.com`, so a request that goes round Access there gains nothing.
@@ -85,5 +92,5 @@ Access decides who may load the operator host. It does not replace the sign-in b
 1. Accept `operator-test.munaxa.com`, or keep `operator.test.munaxa.com` and buy Advanced
    Certificate Manager.
 2. The list of staff addresses in the Access policy, and the login method.
-3. Approve the Control follow-up that verifies the Access token, and then the stack change that
-   opens the host to it.
+3. Create the Access application, then set `operator_access` in `envs/nonprod.tfvars` in a
+   reviewed PR. Applying it is a separate owner approval.
