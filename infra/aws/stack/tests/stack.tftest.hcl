@@ -87,8 +87,8 @@ run "session_runs_every_service_behind_the_edge" {
   }
 
   assert {
-    condition     = length(aws_ecs_task_definition.identity_bootstrap) == 1 && length(aws_iam_role.identity_bootstrap_execution) == 1
-    error_message = "Identity's first-operator task is registered with its own execution role."
+    condition     = length(aws_ecs_task_definition.identity_bootstrap) == 1 && length(aws_iam_role.identity_bootstrap_execution) == 1 && length(aws_ecs_task_definition.school_bootstrap) == 1
+    error_message = "Identity's first-operator and School's first-owner tasks are registered."
   }
   assert {
     condition     = length(aws_lb.main) == 1 && aws_lb_listener.https[0].ssl_policy == "ELBSecurityPolicy-TLS13-1-2-2021-06"

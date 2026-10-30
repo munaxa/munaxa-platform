@@ -135,7 +135,10 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
 3. Run the db-admin task, then the migrations, in order, with `aws ecs run-task` using the
    `run_task_network` output (one at a time; each must exit 0):
    `db-admin` (with `db_bootstrap_products` set), `identity-migrate`, `control-migrate`,
-   `work-migrate`, `school-migrate`; `identity-bootstrap` after `identity-migrate` (db_admin's
+   `work-migrate`, `school-migrate`; `school-bootstrap` after `school-migrate` (School's seeds
+   and first platform owner; db_admin's network; one-run secret `munaxa-nonprod/school-bootstrap`
+   with `PLATFORM_OWNER_EMAIL` and `PLATFORM_OWNER_PASSWORD`, deleted after the run);
+   `identity-bootstrap` after `identity-migrate` (db_admin's
    network; the owner creates `munaxa-nonprod/identity-bootstrap` with the operator's email and
    password first and deletes it after Identity's steps 1 to 3, which override only the command);
    then Docs: `docs-db-admin` (db-admin's network; its cluster
