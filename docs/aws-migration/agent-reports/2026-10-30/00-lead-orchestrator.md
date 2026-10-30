@@ -34,8 +34,8 @@ Repositories, each checked as `origin/main` with `git fetch` at 18:45 UTC **[V]*
 
 ## 2. Report collection: confirmation
 
-Every specialist agent submitted a report. Each was refreshed in place between 15:20 and 15:21 UTC, and Agent 4 refreshed Docs once more at
-18:43 UTC (file modification times in the shared folder) **[V]**, after the coordinator asked each specialist to
+Every specialist agent submitted a report. Each was refreshed in place between 15:20 and 15:21 UTC, Agent 4 refreshed Docs once more at
+18:43 UTC, Agent 7 at 18:47 UTC and Agent 1 at 18:55 UTC (file modification times in the shared folder) **[V]**, after the coordinator asked each specialist to
 add the required sections and live SHAs. Each file below is a byte-for-byte copy of its source
 (checked with `cmp`) **[V]**.
 
@@ -108,10 +108,12 @@ The lead's own output is this folder and its PR on munaxa-platform (see the PR d
   on `6f0ea79` returned HTTP 500 and one with `expectedHeadSha a53852d` returned 409. The lead did
   not attempt a merge: the PR belongs to Agent 4, and its head on GitHub is not the commit with the
   R-07b pins. **Merging at `6f0ea79` would leave R-07b open.**
-- School first-owner seeding (P7): the coordinator asked Agent 1 for a `school-bootstrap` run-only
+- School first-owner seeding (TD-8): the coordinator asked Agent 1 for a `school-bootstrap` run-only
   task. Agent 1 opened [platform#27](https://github.com/munaxa/munaxa-platform/pull/27) (head `7de8106`, open at 18:50 UTC).
-- Agent 7's final report does not cross-review Agent 1's final report (no P9, P10, P11 in its
-  register). Recorded in DECISIONS-AND-CONFLICTS §4.
+- Agent 7 refreshed its report at 18:47 UTC with a cross-review of Agent 1 (X9, R-17, P10 and P11
+  moved before G2, and a review of platform#27 with no objection). Agent 1 refreshed its report at
+  18:55 UTC, marking P9 and R-17 fixed in code in a follow-up PR; that code was not on GitHub at
+  18:56 UTC, so both stay in progress here.
 - T13 (`OPENAPI_ENABLED=false` on work-api) is still absent on platform `main` **[V]**: the only
   `OPENAPI_ENABLED` in `infra/aws/stack/*.tf` is Docs (`docs.tf:68`). The coordinator sent it to
   Agent 1 as a follow-up; it is in [platform#27](https://github.com/munaxa/munaxa-platform/pull/27), open at 18:50 UTC, so it is recorded as in progress.
@@ -148,22 +150,23 @@ headers, `mxc_` tokens) and found none **[V]**.
 
 The authoritative register is Agent 7 §10. Status at 18:45 UTC:
 
-| Open item                                                                                                  | Severity                                          | Owner                                                                  |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
-| R-02 / B2 / X1: the US$50 target versus the old Docs stack                                                 | Blocker (decision)                                | Tamer                                                                  |
-| R-07b / F-1: Docs publish actions tag-pinned (fix is on docs#167 `a53852d`, not merged)                    | Medium                                            | Agent 4, blocked by GitHub                                             |
-| F-2: Docs release image predates production licensing                                                      | Medium                                            | Tamer at G5, after docs#167                                            |
-| R-06 / I2 / C5 / W5: one Identity token valid for Work and Control                                         | Medium, accepted for Testing                      | Tamer decision before Production; Agent 3 code                         |
-| I3 / C6: no MFA claim from Identity                                                                        | Medium, accepted for Testing                      | Tamer decision before Production; Access policy must require MFA at G6 |
-| P9: deployer's `ec2:*`/`elasticloadbalancing:*` can reach the Docs Production VPC, security groups and ALB | Medium                                            | Tamer decision, Agent 1 code                                           |
-| R-05 / S4: School Firebase off on AWS                                                                      | Medium, optional                                  | Tamer                                                                  |
-| R-15 / S9: School mobile upload without Content-Length                                                     | Medium (Agent 7) / Low (Agent 6), outside Testing | Agent 6                                                                |
-| P10, P11: KMS `GetKeyRotationStatus`, OIDC subject form                                                    | Verify at first plan or workflow run              | Agent 1                                                                |
-| C8: munaxa-control `main` not protected                                                                    | Low                                               | Tamer                                                                  |
-| W3: Work GHCR publish shares the `image/**` tag, no protected environment                                  | Low                                               | Work, when Render retires                                              |
-| W4 / T13: work-api serves OpenAPI (not routed by the ALB)                                                  | Low                                               | Agent 1                                                                |
-| F-3: vendored Docs cluster roles SQL can drift                                                             | Low                                               | Agent 1                                                                |
-| R-13: no Terraform check on an empty operator allow-list                                                   | Info                                              | Agent 1                                                                |
+| Open item                                                                                                                                | Severity                                          | Owner                                                                               |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| R-02 / B2 / X1: the US$50 target versus the old Docs stack                                                                               | Blocker (decision)                                | Tamer                                                                               |
+| R-07b / F-1: Docs publish actions tag-pinned (fix is on docs#167 `a53852d`, not merged)                                                  | Medium                                            | Agent 4, blocked by GitHub                                                          |
+| F-2: Docs release image predates production licensing                                                                                    | Medium                                            | Tamer at G5, after docs#167                                                         |
+| R-06 / I2 / C5 / W5: one Identity token valid for Work and Control                                                                       | Medium, accepted for Testing                      | Tamer decision before Production; Agent 3 code                                      |
+| I3 / C6: no MFA claim from Identity                                                                                                      | Medium, accepted for Testing                      | Tamer decision before Production; Access policy must require MFA at G6              |
+| P9 / X9: deployer's `ec2:*`/`elasticloadbalancing:*` can reach the Docs Production VPC, security groups and ALB (Agent 7: fix before G3) | Medium                                            | Agent 1 reports a code fix (not on GitHub at 18:56 UTC); Tamer accepts the residual |
+| R-17: one deployer role for nonprod, the unreviewed session environment and prod                                                         | Medium                                            | Tamer decision before Production; Agent 1 code                                      |
+| R-05 / S4: School Firebase off on AWS                                                                                                    | Medium, optional                                  | Tamer                                                                               |
+| R-15 / S9: School mobile upload without Content-Length                                                                                   | Medium (Agent 7) / Low (Agent 6), outside Testing | Agent 6                                                                             |
+| P10, P11: KMS `GetKeyRotationStatus`, OIDC subject form                                                                                  | Verify at first plan or workflow run              | Agent 1                                                                             |
+| C8: munaxa-control `main` not protected                                                                                                  | Low                                               | Tamer                                                                               |
+| W3: Work GHCR publish shares the `image/**` tag, no protected environment                                                                | Low                                               | Work, when Render retires                                                           |
+| W4 / T13: work-api serves OpenAPI (not routed by the ALB)                                                                                | Low                                               | Agent 1                                                                             |
+| F-3: vendored Docs cluster roles SQL can drift                                                                                           | Low                                               | Agent 1                                                                             |
+| R-13: no Terraform check on an empty operator allow-list                                                                                 | Info                                              | Agent 1                                                                             |
 
 No critical finding is open. Every High finding raised in this execution is fixed in code.
 
@@ -183,17 +186,17 @@ in the same account, the account is above US$50 before any Testing session.** Re
 
 ## 12. Blockers and owners
 
-| Blocker                                                                                             | Owner                                                                 |
-| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| B2: does US$50 cover Testing only or the whole account (including the old Docs stack)?              | Tamer                                                                 |
-| docs#167 stuck at `6f0ea79` on GitHub                                                               | Tamer (press "Update branch" or check githubstatus.com), then Agent 4 |
-| G2: re-apply `infra/aws/bootstrap` as root in CloudShell; set the GitHub variables and environments | Tamer                                                                 |
-| G4: secret values in each bundle                                                                    | Tamer                                                                 |
-| G5: image publication for all five products                                                         | Tamer                                                                 |
-| G6: Cloudflare ACM validation, DNS-only CNAMEs, Access application with MFA                         | Tamer                                                                 |
-| Protect munaxa-control `main`                                                                       | Tamer                                                                 |
-| Identity operator organisation and Control roles (runbook steps, after first migrate)               | Tamer                                                                 |
-| School: no way to seed the first platform-owner login on AWS                                        | Tamer decision; Agent 1 if a stack task is chosen                     |
+| Blocker                                                                                                                                     | Owner                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| B2: does US$50 cover Testing only or the whole account (including the old Docs stack)?                                                      | Tamer                                                                 |
+| docs#167 stuck at `6f0ea79` on GitHub                                                                                                       | Tamer (press "Update branch" or check githubstatus.com), then Agent 4 |
+| G2: first apply of `infra/aws/bootstrap` (nothing exists yet, per Agent 1) as root in CloudShell; set the GitHub variables and environments | Tamer                                                                 |
+| G4: secret values in each bundle                                                                                                            | Tamer                                                                 |
+| G5: image publication for all five products                                                                                                 | Tamer                                                                 |
+| G6: Cloudflare ACM validation, DNS-only CNAMEs, Access application with MFA                                                                 | Tamer                                                                 |
+| Protect munaxa-control `main`                                                                                                               | Tamer                                                                 |
+| Identity operator organisation and Control roles (runbook steps, after first migrate)                                                       | Tamer                                                                 |
+| School: no way to seed the first platform-owner login on AWS                                                                                | Tamer decision; Agent 1 if a stack task is chosen                     |
 
 G9 (retire Render, Supabase and the old Docs stack) stays **closed**.
 

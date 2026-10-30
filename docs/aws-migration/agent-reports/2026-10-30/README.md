@@ -4,7 +4,7 @@ The complete reports from the multi-agent execution that prepared Munaxa for the
 **Testing** environment (account `229251310592`, region `eu-central-1`), collected in one place so
 they can be reviewed independently and used as the source of truth for the next phase.
 
-- **Execution:** AWS Testing readiness, 30 Oct 2026 (kickoff 10:50 UTC; reports final 15:20 to 15:21 UTC, Docs refreshed again 18:43 UTC;
+- **Execution:** AWS Testing readiness, 30 Oct 2026 (kickoff 10:50 UTC; reports final 15:20 to 15:21 UTC, Docs, review and platform reports refreshed again 18:43 to 18:55 UTC;
   live GitHub state re-checked by the lead at 18:45 UTC).
 - **Scope:** code and Terraform only, in six repositories: munaxa-platform, munaxa-control,
   munaxa-identity, munaxa-docs, munaxa-work, munaxa-school.
@@ -45,17 +45,17 @@ All seven specialist reports were submitted. None is missing.
 
 ## Supporting files (Agent 7 deliverables and the shared contract, unchanged)
 
-| File                                                                      | What                                                                                                                                   |
-| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| [SHARED-CONTRACT.md](supporting/SHARED-CONTRACT.md)                       | The platform–product contract (a copy of munaxa-platform [`infra/aws/CONTRACT.md`](../../../../infra/aws/CONTRACT.md) as of 14:25 UTC) |
-| [AWS-EXECUTION-BACKLOG.md](supporting/AWS-EXECUTION-BACKLOG.md)           | Task ledger T01 to T34                                                                                                                 |
-| [BLOCKERS-AND-OWNER-ACTIONS.md](supporting/BLOCKERS-AND-OWNER-ACTIONS.md) | Blockers B1 to B5 and owner gates                                                                                                      |
-| [ARCHITECTURE-READINESS.md](supporting/ARCHITECTURE-READINESS.md)         | Readiness per component                                                                                                                |
-| [COST-ESTIMATE.md](supporting/COST-ESTIMATE.md)                           | Agent 7 cost model                                                                                                                     |
-| [ENVIRONMENT-VARIABLES.md](supporting/ENVIRONMENT-VARIABLES.md)           | Environment variable names per service                                                                                                 |
-| [DEPLOYMENT-SEQUENCE.md](supporting/DEPLOYMENT-SEQUENCE.md)               | Ordered deployment steps with rollback                                                                                                 |
-| [SECURITY-REVIEW.md](supporting/SECURITY-REVIEW.md)                       | Risk register                                                                                                                          |
-| [TESTING-ACCEPTANCE.md](supporting/TESTING-ACCEPTANCE.md)                 | Acceptance checks for the first session                                                                                                |
+| File                                                                      | What                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [SHARED-CONTRACT.md](supporting/SHARED-CONTRACT.md)                       | The platform–product contract (a copy of munaxa-platform [`infra/aws/CONTRACT.md`](../../../../infra/aws/CONTRACT.md) as of 18:46 UTC; it already includes the `school-bootstrap` rows from the open platform#27, which `main` does not have yet) |
+| [AWS-EXECUTION-BACKLOG.md](supporting/AWS-EXECUTION-BACKLOG.md)           | Task ledger T01 to T34                                                                                                                                                                                                                            |
+| [BLOCKERS-AND-OWNER-ACTIONS.md](supporting/BLOCKERS-AND-OWNER-ACTIONS.md) | Blockers B1 to B5 and owner gates                                                                                                                                                                                                                 |
+| [ARCHITECTURE-READINESS.md](supporting/ARCHITECTURE-READINESS.md)         | Readiness per component                                                                                                                                                                                                                           |
+| [COST-ESTIMATE.md](supporting/COST-ESTIMATE.md)                           | Agent 7 cost model                                                                                                                                                                                                                                |
+| [ENVIRONMENT-VARIABLES.md](supporting/ENVIRONMENT-VARIABLES.md)           | Environment variable names per service                                                                                                                                                                                                            |
+| [DEPLOYMENT-SEQUENCE.md](supporting/DEPLOYMENT-SEQUENCE.md)               | Ordered deployment steps with rollback                                                                                                                                                                                                            |
+| [SECURITY-REVIEW.md](supporting/SECURITY-REVIEW.md)                       | Risk register                                                                                                                                                                                                                                     |
+| [TESTING-ACCEPTANCE.md](supporting/TESTING-ACCEPTANCE.md)                 | Acceptance checks for the first session                                                                                                                                                                                                           |
 
 The ledger and blockers files were last updated at 14:50 UTC and say Agent 1 filed no report. That
 was true at 14:10 UTC; Agent 1's report is file 01. See the lead report §2.

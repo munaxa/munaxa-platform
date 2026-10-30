@@ -1,8 +1,8 @@
 # Cross-repository dependencies: AWS Testing, 30 Oct 2026
 
 The binding interface is munaxa-platform [`infra/aws/CONTRACT.md`](../../../../infra/aws/CONTRACT.md)
-(owner: Agent 1). A change on either side is a PR to the platform first. A copy as of 14:25 UTC is in
-[supporting/SHARED-CONTRACT.md](supporting/SHARED-CONTRACT.md). Every edge below is cited from a
+(owner: Agent 1). A change on either side is a PR to the platform first. The shared-folder copy as of 18:46 UTC is in
+[supporting/SHARED-CONTRACT.md](supporting/SHARED-CONTRACT.md) (it already lists `school-bootstrap` from the open platform#27). Every edge below is cited from a
 specialist report; the lead checked the referenced files on platform `main` `c4a1ad0` where noted
 **[V]**.
 

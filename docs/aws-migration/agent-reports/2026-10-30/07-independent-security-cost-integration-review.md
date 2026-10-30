@@ -164,7 +164,10 @@ Names only, consolidated in `ENVIRONMENT-VARIABLES.md`. No values are recorded a
 | R-11 | Low | Stray root files in Identity | **Closed** [V] identity#3 |
 | R-12 | Low | Stale Control Dockerfile header | **Closed** [V] control#6 |
 | R-13 | Info | No Terraform check on empty operator allow-list | Open, Info; Control refuses at boot |
-| W3 / T13 | Low | Work serves OpenAPI | Open; not routed by the ALB |
+| W3 / T13 | Low | Work serves OpenAPI | Closed by platform#27 once merged |
+| P9 (Agent 1) | Medium | Deployer can change Docs Production VPC, security groups and ALB | **Open**; fix before G3 [R] |
+| R-17 | Medium | One deployer role for nonprod, the unreviewed session environment, and prod | **Open**; fix before G8 [R] |
+| P10 / P11 (Agent 1) | Verify | KMS rotation-status read; OIDC subject format | **Open**; check before G2/G3 |
 
 ### First-pass findings as raised at 10:57 UTC (preserved)
 
@@ -233,6 +236,7 @@ All code blockers raised by Agent 7 are closed.
 | X5 | Database model | Shared stack: one database per product. Docs: a database per tenant with a cluster-wide BYPASSRLS backup role. | Accepted with a fail-closed CONNECT check (R-14) |
 | X6 | Authentication | Work and Control use Identity (ES256). School uses its own HS256 JWT plus Firebase. Docs uses its own auth, MFA and OIDC/SAML. Identity has no OIDC. | Accepted for Testing; SSO is a later phase |
 | X7 | Token audience | Identity issues both audiences in every token. Control mitigates; Work does not need to. | Accepted for Testing (R-06) |
+| X9 | Deployer scope | Agent 1 treats P9 (deployer reach over Docs Production network/ALB) as an owner decision. Agent 7 rates it Medium, to fix before G3, and adds R-17 (one deployer for all environments). | **Open**; Tamer decides, Agent 1 implements |
 | X8 | School deploy workflows | School's GHCR/Render path coexists with ECR. Work's GHCR publish also triggers on the same `image/**` tag without a protected environment (Agent 5 W2). | Open, Low; retire when Render is retired (G9 closed) |
 
 ## 15. Explicitly not executed by Agent 7
@@ -242,6 +246,54 @@ change. No secret created, read or modified. No image built or published. No dep
 migration. No Cloudflare, Render or Supabase change. No retirement of anything (G9 stays closed). No PR
 opened, no commit pushed, no merge performed by Agent 7: all merges listed were by owner agents
 under the standing rule.
+
+## platform#27 review (head `7de8106`, 30 Oct, 18:50 UTC): no objection
+
+- `3a72557`: `OPENAPI_ENABLED=false` on work-api. Closes W3/T13 [V].
+- `7de8106`: `school-bootstrap` run-only task. It mirrors `identity-bootstrap`: a boundary-scoped
+  execution role that pulls only `munaxa-school/migrate` and reads only `school-migrate` plus
+  `munaxa-<env>/school-bootstrap-??????`. Decryption goes through Secrets Manager only, logs go to
+  ops, capabilities are dropped, and it runs on the db-admin network. The owner email and password
+  arrive as ECS `secrets`, not overrides [V].
+- What it runs [V]: `prisma/seed.ts` only upserts the global permission, plan and feature catalogs
+  (no users, no demo data). `scripts/seed-platform-owner.ts` falls back to a built-in development
+  email and password only when the variables are **unset**. Here the task cannot start without
+  the secret, so the fallback cannot apply. The image sets `NODE_ENV=production`.
+- Non-blocking [R]: the platform owner is a cross-tenant School super-user, and the script only
+  checks the password for 8 characters with upper, lower and digit. Use a long generated
+  password. Delete the one-run secret after the run (same caveat as identity-bootstrap: it is
+  injected on every start). Root filesystem writable for the tsx cache is acceptable for a one-off task.
+
+## Cross-review of agent1-platform.md (30 Oct, 18:52 UTC)
+
+Agree with the report overall. Every [V] claim I could check matches: `c4a1ad0`, run
+41073487240 success, and 14 test runs on main. Points to note:
+
+1. **P9 is understated as an owner decision only. I rate it Medium, and it should be closed before G3.**
+   The deployer has `ec2:*`, `elasticloadbalancing:*`, `ecs:*` and `rds:*` in-region. Docs
+   Production RDS, ECS, secrets and S3 are denied by ARN, but its VPC, security groups, ALB and
+   target groups are not. Kickoff boundary: "do not modify the existing Docs stack". Mitigations exist:
+   applies use a reviewed saved plan plus `expected-changes.json`. But one wrong address in the plan
+   could touch Docs Production. [R] Deny `ec2`/`elasticloadbalancing` mutations on resources tagged with
+   the Docs stack's tags, or name-prefix them, before the first apply.
+2. **New R-17 (Medium, before Production):** one deployer role serves every environment. The CI role
+   trusts `aws-nonprod`, `aws-nonprod-session` (no required reviewer, by design) and `aws-prod`, and
+   all assume the same deployer. A workflow on `main` in the unreviewed session environment can
+   therefore obtain credentials that can change Production. That needs only a merged change to a
+   workflow file. [R] Separate deployer roles per environment, or condition the deployer trust on the
+   source environment, before G8.
+3. **P10 and P11 agreed, and both should be checked before G2/G3 rather than discovered there.** P10: the licence key
+   policy delegates a fixed action list to the account, without `kms:GetKeyRotationStatus`, so IAM
+   cannot grant it to the deployer. If the provider reads it, refresh fails. P11: the
+   `repo:munaxa@<id>/<repo>@<id>` subject only exists if the organisation's OIDC subject claim is
+   customised. [R] Check the org and repo OIDC customisation in GitHub settings before G2; it is an
+   owner action, read-only.
+4. **Stale point:** §2 says "no open PRs in munaxa-platform". platform#27 is open now (reviewed above).
+5. **Cost:** Agent 1 gives idle ≈ US$13 and ≈ US$0.30/h for 10 services, about 120 session hours within US$50.
+   I gave ≈ US$11 idle and about 130 hours. The difference is 2 more bundles plus the RDS master secret and buckets.
+   Agent 1's figure is the more complete one. Both agree the account is over US$50 while Docs
+   Production stays (X1).
+6. Wording: §12 says "G2 bootstrap **re-apply**", but §2 says no bootstrap exists. It is a first apply.
 
 ## Appendix: review log (chronological, preserved)
 

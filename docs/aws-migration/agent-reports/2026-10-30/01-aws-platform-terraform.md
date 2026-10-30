@@ -163,7 +163,8 @@ Set by Terraform (plain) and by bundles (secret). Full per-service lists are in 
 | P8 | Medium | Identity bootstrap password passed as a run-task override (R-16). | **Fixed** (#26): one-run secret |
 | P12 | Low | ALB path deny on `/api/v1/admin/*` was case-sensitive while Express is not (C4). | **Fixed** (#26): allow list; clients must use lowercase paths |
 | P13 | Low | No budget backstop (R-09). | **Fixed** (#26) |
-| P9 | Medium | The deployer has `ec2:*`, `elasticloadbalancing:*`, `ecs:*` and `rds:*` on `*`, limited to the region. Docs Production RDS, ECS, secrets and S3 are denied by ARN, but its VPC, security groups and ALB are not. | **Open**, owner decision [R: deny by tag `ManagedBy` of the Docs stack] |
+| P9 | Medium | The deployer has `ec2:*`, `elasticloadbalancing:*`, `ecs:*` and `rds:*` on `*`, limited to the region. Docs Production RDS, ECS, secrets and S3 are denied by ARN, but its VPC, security groups and ALB are not. | **Fixed in code** (follow-up PR, see section 4): deny every action on, and every create of, a resource tagged `Project = MunaxaDocs` (the Docs stack's default tag, **[V]** from its Terraform; live tags not read). Residual **[A]**: an action that supports no resource-tag condition, or an untagged default resource (for example a default NACL), is not covered |
+| R-17 | Medium | One deployer served nonprod, the session and prod, so a Testing run could change Production. | **Fixed in code** (follow-up PR): `munaxa-shared-<env>-ci` and `-deployer` per environment, each denied the other environment by `munaxa-<env>-*` name and `Environment` tag, own state prefix only; workflows check the role names |
 | P10 | Verify | The licence key policy gives the account no `kms:GetKeyRotationStatus`. If the AWS provider reads it for an asymmetric key, refresh fails with AccessDenied. **[A]** | Open, first real plan (G3) |
 | P11 | Verify | The OIDC trusts use the `repo:munaxa@<id>/<repo>@<id>` subject form. If GitHub issues the default `repo:munaxa/<repo>` form, no role can be assumed. **[A]** | Open, first workflow run after G2 |
 | P14 | Info | `IDENTITY_AUTH_AUDIENCE=munaxa-work,munaxa-control` puts both audiences in every token (Identity's open point). | Open, Agent 3 |
@@ -189,23 +190,23 @@ Production always-on was not re-estimated in this pass (#24 estimated about $170
 
 | Blocker | Owner |
 |---|---|
-| G2 bootstrap re-apply as root (now includes the boundary, deployer and budget changes) | Tamer |
+| G2 first bootstrap apply as root (nothing exists yet; includes the boundary, the two deployers and the budget) | Tamer |
 | Account over $50 while Docs Production stays (G9 retirement decision) | Tamer |
 | GitHub variables and environments (`aws-nonprod`, `aws-nonprod-session`, `image-release`) | Tamer |
 | Cloudflare: ACM validation and host CNAMEs; the Access application, then `operator_access` | Tamer |
 | Bundle values and the one-run secrets | Tamer |
 | Image publication per product; Docs needs docs#167 first | Tamer, after each agent's PRs |
-| P9 deployer scope over Docs Production network resources | Tamer (decision), Agent 1 (code) |
 
 ## 13. Recommended next actions [R]
 
-1. Tamer: re-apply `infra/aws/bootstrap` as root in CloudShell (README G2), then set the GitHub
-   variables and environments.
+1. Tamer: apply `infra/aws/bootstrap` for the first time as root in CloudShell (README G2), then
+   set the GitHub variables (nonprod roles as repository variables, prod roles as `aws-prod`
+   environment variables) and environments.
 2. Agent 1: dispatch `aws-terraform.yml` `nonprod`/`plan`, record every address in
    `envs/nonprod.expected-changes.json` by PR, and check P10 and P11 in that run.
 3. Tamer: approve the G3 apply; add the ACM validation CNAMEs.
 4. In parallel, each product: merge its open PRs, then publish images after approval.
-5. Tamer: decide on G9 (Docs Production) and on P9.
+5. Tamer: decide on G9 (Docs Production).
 
 ## 14. Not executed (explicit)
 
