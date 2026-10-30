@@ -132,9 +132,14 @@ resource "aws_db_instance" "main" {
 # | <env>/school-api         | DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,                |
 # |                          | CONTROL_PLANE_TOKEN, RESEND_API_KEY                                 |
 # | <env>/<product>-migrate  | DATABASE_MIGRATION_URL (the owner role)                             |
+# | <env>/docs-api           | docs.tf local.docs_app_keys (only with hosts.docs)                  |
+# | <env>/docs-operator      | EDMS_OWNER/APP/BACKUP_PASSWORD (only with hosts.docs)               |
 
 locals {
-  secret_keys = {
+  secret_keys = merge(local.docs_enabled ? {
+    docs-api      = local.docs_app_keys      # docs.tf; the Docs API and docs-provision
+    docs-operator = local.docs_operator_keys # docs-db-admin only, never the API
+    } : {}, {
     identity         = ["DATABASE_URL", "IDENTITY_SIGNING_PRIVATE_KEY", "IDENTITY_SIGNING_SECRET", "REDIS_URL", "REDIS_PASSWORD"]
     control-api      = ["DATABASE_URL"]
     identity-migrate = ["DATABASE_MIGRATION_URL"]
@@ -143,7 +148,7 @@ locals {
     school-migrate   = ["DATABASE_MIGRATION_URL"]
     work-api         = ["DATABASE_URL", "PII_MATCH_SECRET", "CONTROL_PLANE_TOKEN"]
     school-api       = ["DATABASE_URL", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "CONTROL_PLANE_TOKEN", "RESEND_API_KEY"]
-  }
+  })
 }
 
 resource "aws_secretsmanager_secret" "service" {

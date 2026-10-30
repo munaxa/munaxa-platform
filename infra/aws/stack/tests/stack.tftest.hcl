@@ -237,3 +237,57 @@ run "docs_production_network_is_not_reused" {
   }
   expect_failures = [var.vpc_cidr]
 }
+
+run "docs_runs_in_a_session_with_its_bucket_bundles_and_tasks" {
+  command = plan
+
+  variables {
+    edge_enabled     = true
+    services_enabled = true
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator.test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+      docs        = "docs.test.munaxa.com"
+    }
+    postgres_image   = "public.ecr.aws/docker/library/postgres@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    images = {
+      docs_api       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      docs_web       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      docs_antivirus = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/antivirus@sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  }
+
+  assert {
+    condition     = length(module.docs_api) == 1 && length(module.docs_web) == 1 && length(module.docs_scanner) == 1
+    error_message = "Docs runs its API, web and scanner in a session."
+  }
+  assert {
+    condition     = length(aws_secretsmanager_secret.service) == 10 && contains(keys(aws_secretsmanager_secret.service), "docs-operator")
+    error_message = "Docs gets its app and operator bundles."
+  }
+  assert {
+    condition     = length(aws_s3_bucket.files) == 2 && aws_s3_bucket.files["docs"].bucket == "munaxa-nonprod-docs-files-229251310592"
+    error_message = "Docs gets its own bucket, never a munaxa-docs* name."
+  }
+  assert {
+    condition     = length(aws_ecs_task_definition.docs_db_admin) == 1 && length(aws_ecs_task_definition.docs_provision) == 1
+    error_message = "The Docs database bootstrap and provisioning tasks are registered."
+  }
+  assert {
+    condition     = strcontains(aws_vpc_endpoint.s3.policy, "munaxa-nonprod-docs-files-229251310592") && strcontains(aws_vpc_endpoint.s3.policy, "munaxa-nonprod-school-files-229251310592")
+    error_message = "The S3 gateway endpoint admits both file buckets."
+  }
+}
+
+run "without_a_docs_host_there_is_no_docs" {
+  command = plan
+
+  assert {
+    condition     = length(module.docs_api) == 0 && length(aws_s3_bucket.files) == 1 && length(aws_iam_role.docs_db_admin_execution) == 0
+    error_message = "Docs exists only where hosts.docs is set (not in prod)."
+  }
+}

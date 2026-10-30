@@ -1,6 +1,6 @@
 # The services of the shared environment, in the order they must come up:
 #
-#   Identity ──► Control (API, then portal) ──► Work, School (and Docs, in its own stack)
+#   Identity ──► Control (API, then portal) ──► Work, School, Docs (docs.tf)
 #
 # Identity issues the tokens Work and Control verify; Control is the licence source for Work,
 # School and Docs. Products reach both over HTTPS by their public names, as an on-premises
@@ -10,7 +10,7 @@
 # edge_enabled off (Testing between sessions) the task definitions stay registered and nothing runs.
 
 locals {
-  https = { for k, v in var.hosts : k => "https://${v}" }
+  https = { for k, v in var.hosts : k => "https://${v}" if v != null }
   # A service is defined when its image is set, and running when services are enabled.
   defined  = { for k, v in var.images : k => v != "" }
   running  = var.services_enabled
@@ -46,6 +46,8 @@ locals {
     local.defined.work_admin ? { work-admin = { port = 3001, security_group_id = module.work_admin[0].security_group_id } } : {},
     local.defined.school_api ? { school-api = { port = 4000, security_group_id = module.school_api[0].security_group_id } } : {},
     local.defined.school_admin ? { school-admin = { port = 3000, security_group_id = module.school_admin[0].security_group_id } } : {},
+    local.docs_defined ? { docs-api = { port = 3001, security_group_id = module.docs_api[0].security_group_id } } : {},
+    local.docs_defined ? { docs-web = { port = 3000, security_group_id = module.docs_web[0].security_group_id } } : {},
   )
 
   node_health = { for name, url in {
@@ -117,6 +119,9 @@ module "identity" {
     # Every origin a browser posts to /api/auth/* from: Identity's own, Work's and the operator's.
     CSRF_TRUSTED_ORIGINS = join(",", [local.https.identity, local.https.work, local.https.operator])
     LOG_PRETTY           = "false"
+    # The ALB is the one proxy in front of Identity; without it every client shares the ALB's
+    # address and so one per-IP login limiter (identity#2).
+    TRUST_PROXY_HOPS = "1"
   }
   secret_arn        = aws_secretsmanager_secret.service["identity"].arn
   secret_keys       = local.secret_keys["identity"]
@@ -191,6 +196,13 @@ resource "aws_kms_key" "licence" {
   customer_master_key_spec = "ECC_NIST_P256"
   key_usage                = "SIGN_VERIFY"
   deletion_window_in_days  = 30
+
+  # Every licence Control has issued verifies against this key. Removing the Control image from
+  # tfvars would otherwise schedule it for deletion; now the plan fails instead. Retiring it is a
+  # reviewed change that removes this line first.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Least privilege (ADR-0008): the account administers the key but cannot sign with it; only the
@@ -603,8 +615,30 @@ module "school_api" {
     # Production refuses DATABASE licensing (school#18). Control is the licence source.
     LICENSING_MODE    = "CONTROL_PLANE"
     CONTROL_PLANE_URL = local.https.control_api
+    # File storage (storage.tf). Credentials come from the task role (school#21); no key is set.
+    AWS_S3_BUCKET = local.school_files_bucket.bucket
+    AWS_REGION    = var.region
   }
-  secret_arn        = aws_secretsmanager_secret.service["school-api"].arn
+  secret_arn = aws_secretsmanager_secret.service["school-api"].arn
+
+  # Its own tenants' objects only: School writes every object under tenants/<tenantId>/.
+  task_role_policy_json = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "TenantObjects"
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        Resource = ["${local.school_files_bucket.arn}/tenants/*"]
+      },
+      {
+        Sid      = "BucketListing"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = [local.school_files_bucket.arn]
+      },
+    ]
+  })
   secret_keys       = local.secret_keys["school-api"]
   secret_version_id = lookup(var.secret_version_ids, "school-api", "")
 

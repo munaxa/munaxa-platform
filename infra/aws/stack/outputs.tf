@@ -26,6 +26,11 @@ output "secret_bundles" {
   value       = { for k, v in aws_secretsmanager_secret.service : k => v.name }
 }
 
+output "file_buckets" {
+  description = "Object storage per product (storage.tf)."
+  value       = { for k, b in aws_s3_bucket.files : k => b.bucket }
+}
+
 output "control_licence_key_arn" {
   description = "Read its public half with `aws kms get-public-key` for control_licence_public_key."
   value       = length(aws_kms_key.licence) > 0 ? aws_kms_key.licence[0].arn : null
@@ -42,5 +47,9 @@ output "run_task_network" {
     db_admin_group      = aws_security_group.db_admin.id
     migrate_groups      = merge({ for k, m in module.migrate : k => m.security_group_id }, length(module.control_migrate) > 0 ? { control = module.control_migrate[0].security_group_id } : {})
     db_admin_definition = length(aws_ecs_task_definition.db_admin) > 0 ? aws_ecs_task_definition.db_admin[0].family : null
+    # Docs: docs-db-admin runs with db_admin_group; docs-provision with docs_api_group.
+    docs_db_admin_definition  = length(aws_ecs_task_definition.docs_db_admin) > 0 ? aws_ecs_task_definition.docs_db_admin[0].family : null
+    docs_provision_definition = length(aws_ecs_task_definition.docs_provision) > 0 ? aws_ecs_task_definition.docs_provision[0].family : null
+    docs_api_group            = length(module.docs_api) > 0 ? module.docs_api[0].security_group_id : null
   }
 }

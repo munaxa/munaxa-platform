@@ -1,8 +1,10 @@
 # Munaxa shared AWS hosting
 
-Terraform for the shared AWS stack that hosts **Munaxa Identity, Control, Work and School** in
-`eu-central-1`, per the shared AWS hosting ADR (draft, `/mnt/project-files/aws-next-phase/`).
-Munaxa Docs keeps its own Production stack (`munaxa-docs/infra/terraform`) and is not managed here.
+Terraform for the shared AWS stack that hosts **Munaxa Identity, Control, Work, School and Docs**
+in `eu-central-1`, per the shared AWS hosting ADR (draft, `/mnt/project-files/aws-next-phase/`).
+Docs is recreated here (`stack/docs.tf`, where `hosts.docs` is set: Testing now). The Docs
+Production stack (`munaxa-docs/infra/terraform`) is not managed here and stays until its
+retirement is approved (G9). The interface every product follows is [CONTRACT.md](CONTRACT.md).
 
 **Status: not applied.** Nothing in this directory has created an AWS resource. Every step below
 that creates, changes or deletes anything is an owner approval gate (G1 to G9).
@@ -29,6 +31,7 @@ that creates, changes or deletes anything is an owner approval gate (G1 to G9).
         │  work.*        /api/auth/* ► identity · /api/v1/* ► work-api · /* ► work-admin       │
         │  school.*      /api/v1/* ► school-api · /* ► school-admin                               │
         │  control-api.* /api/v1/admin/* ► 403 · /* ► control-api                              │
+        │  docs.*        /api/v1/preview/stream* ► docs-api (+ Redis) · /* ► docs-web          │
         │  operator.*    from operator_cidrs: /api/auth/* ► identity · /* ► control-portal     │
         │                anyone else ► 403                                                     │
         └──────────────────────────────────────────────────────────────────────────────────────┘
@@ -74,10 +77,16 @@ bundle. Runtime roles are `NOBYPASSRLS`, so each product's RLS policies apply.
 
 1. Check out the reviewed commit in CloudShell. In `bootstrap/backend.tf`, comment out the backend
    block for the first apply.
-2. `terraform init && terraform plan` and read the plan: about 40 resources (the bucket, a key, 11
-   ECR repositories with lifecycle policies, 1 policy, 6 roles and their inline policies). Nothing
-   else. Then `terraform apply`.
+2. `terraform init && terraform plan` and read the plan: about 41 resources (the bucket, a key, 11
+   ECR repositories with lifecycle policies, 1 policy, 6 roles and their inline policies, and the
+   account budget with its alerts to admin@ and alert@munaxa.com). Nothing else. Then
+   `terraform apply`. The Docs ECR repositories are the Docs bootstrap's and are not created here.
 3. Restore the backend block and run `terraform init -migrate-state`.
+
+   A bootstrap that is already applied is updated the same way (plan, read, apply as root). The
+   Docs and storage change needs it before `stack/` can create the buckets: the boundary admits the
+   stack's own `munaxa-<env>-*` buckets and pulls from `munaxa-docs/*`, and the deployer may
+   configure those buckets.
 4. In GitHub, set `AWS_CI_ROLE_ARN` and `AWS_DEPLOYER_ROLE_ARN` on `munaxa-platform`, and
    `AWS_IMAGE_PUBLISHER_ROLE_ARN` on each product repository (the outputs). They are role names,
    not credentials. Create the environments `aws-nonprod` and `aws-prod` (required reviewer: owner,
@@ -126,12 +135,15 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
 3. Run the db-admin task, then the migrations, in order, with `aws ecs run-task` using the
    `run_task_network` output (one at a time; each must exit 0):
    `db-admin` (with `db_bootstrap_products` set), `identity-migrate`, `control-migrate`,
-   `work-migrate`, `school-migrate`. They create clean databases and apply the full migration
-   history; no data is copied from Supabase or Render.
+   `work-migrate`, `school-migrate`, then Docs: `docs-db-admin` (db-admin's network; its cluster
+   roles, `edms_backup` and the tenant database; it stops if `edms_backup` could reach a non-Docs
+   database), then `docs-provision` (docs-api's security group, after the owner creates
+   `munaxa-nonprod/docs-provision/<slug>` and before deleting it). They create clean databases and
+   apply the full migration history; no data is copied from Supabase, Render or Docs Production.
 4. Control: read the licence key's public half (`aws kms get-public-key`, DER to PEM), set
    `control_licence_public_key` and `control_licence_kid` by PR. In the operator portal create the
    deployments for Work, School and Docs, issue one credential each, and write it as
-   `CONTROL_PLANE_TOKEN` in that product's bundle (Docs: `munaxa-docs-eu-prod/app`, docs#165).
+   `CONTROL_PLANE_TOKEN` in that product's bundle (Docs Testing: `munaxa-nonprod/docs-api`).
 5. Smoke: `id.*/api/auth/health/ready`; `control-api.*/health/ready` and
    `/api/v1/licensing/public-keys`; `/api/v1/admin/*` on control-api answers 403; operator host
    answers 403 from outside `operator_cidrs`; sign in on `work.*`; School login; a product's
@@ -155,20 +167,24 @@ migration if it is still live.
 
 See the migration report for the evidence and the price sources. In brief:
 
-- **Testing, idle:** RDS stopped (20 GB gp3, about US$2.70), KMS 3 keys (data, licence, state)
-  US$3, 8 bundles US$3.20, private namespace US$0.50, ECR and logs under US$2: **about US$11 a
-  month**.
-- **Testing, per session hour, every service (one task each):** Fargate 2 vCPU and 4 GB about
-  US$0.11, ALB about US$0.03 with LCUs, 9 public IPv4 (7 tasks, 2 ALB) US$0.045, RDS micro about
-  US$0.02: **about US$0.21 an hour**, so about 170 session-hours a month fit in US$50 with the idle
-  cost.
+- **Testing, idle:** RDS stopped (20 GB gp3, about US$2.70), KMS 2 keys here plus the state key
+  (US$3), 10 bundles plus the RDS master secret (US$4.40), private namespace US$0.50, ECR, logs
+  and empty buckets under US$3: **about US$13 a month**.
+- **Testing, per session hour, every service including Docs (one task each):** Fargate 3 vCPU and
+  9 GB about US$0.19, ALB about US$0.035 with LCUs, 12 public IPv4 (10 tasks, 2 ALB) US$0.06, RDS
+  micro about US$0.02: **about US$0.30 an hour**, so about 120 session-hours a month fit in US$50
+  with the idle cost. Prices are on-demand list prices from memory, not yet checked with the
+  Pricing API.
+- **The account, not just Testing:** Docs Production's idle stack (about US$48 a month) is in the
+  same account, so the account's US$50 budget (bootstrap) is reached before any Testing session
+  until that stack is retired (G9, owner decision).
 - **Production, always on:** about **US$170 a month** with one task per service, about **US$230**
   with two of each API (`prod.tfvars`). Public IPv4 is a quarter of it (US$3.65 per task per
   month). Not within US$50; the production forecast is separate (owner decision of 29 Oct).
-- **Docs' existing idle stack** (separate) is about US$48 a month on its own until retired (G9).
 
 ## Validation
 
-`terraform fmt -check`, `terraform validate` (both roots), `terraform test` (6 plan-only runs with
-a mocked AWS provider), `tflint`, `actionlint` and `shellcheck` pass locally. `db-bootstrap.sh` was
+`terraform fmt -check`, `terraform validate` (both roots) and `terraform test` (13 plan-only runs
+with a mocked AWS provider) pass locally; CI runs them and `shellcheck` on every PR. `tflint` and
+`actionlint` last ran locally on #24. `db-bootstrap.sh` was
 run against PostgreSQL 16. No real plan has run: it needs G2.

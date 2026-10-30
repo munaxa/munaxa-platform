@@ -185,10 +185,21 @@ jobs:
         if: inputs.action == 'apply' && steps.plan.outputs.changes == 'true'
         env:
           ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOYER_ROLE_ARN: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
         run: |
           set -euo pipefail
+          # The CI role may only assume the deployer, which owns the state bucket; the saved plan is
+          # stored with the bucket's default encryption (the state key).
+          creds=$(aws sts assume-role --role-arn "$DEPLOYER_ROLE_ARN" --role-session-name "gha-run-$GITHUB_RUN_ID" --source-identity github-actions --query Credentials --output json)
+          echo "::add-mask::$(jq -r .SecretAccessKey <<<"$creds")"
+          echo "::add-mask::$(jq -r .SessionToken <<<"$creds")"
+          AWS_ACCESS_KEY_ID=$(jq -r .AccessKeyId <<<"$creds")
+          AWS_SECRET_ACCESS_KEY=$(jq -r .SecretAccessKey <<<"$creds")
+          AWS_SESSION_TOKEN=$(jq -r .SessionToken <<<"$creds")
+          export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+          unset creds
           echo "sha256=$(sha256sum tfplan | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          aws s3 cp tfplan "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" --sse aws:kms --only-show-errors
+          aws s3 cp tfplan "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" --only-show-errors
           rm -f tfplan
 
   apply:
@@ -236,8 +247,19 @@ jobs:
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           EXPECTED: ${{ needs.plan.outputs.plan_sha256 }}
+          DEPLOYER_ROLE_ARN: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
         run: |
           set -euo pipefail
+          # The CI role may only assume the deployer, which owns the state bucket; the saved plan is
+          # stored with the bucket's default encryption (the state key).
+          creds=$(aws sts assume-role --role-arn "$DEPLOYER_ROLE_ARN" --role-session-name "gha-run-$GITHUB_RUN_ID" --source-identity github-actions --query Credentials --output json)
+          echo "::add-mask::$(jq -r .SecretAccessKey <<<"$creds")"
+          echo "::add-mask::$(jq -r .SessionToken <<<"$creds")"
+          AWS_ACCESS_KEY_ID=$(jq -r .AccessKeyId <<<"$creds")
+          AWS_SECRET_ACCESS_KEY=$(jq -r .SecretAccessKey <<<"$creds")
+          AWS_SESSION_TOKEN=$(jq -r .SessionToken <<<"$creds")
+          export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+          unset creds
           aws s3 cp "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" tfplan --only-show-errors
           [ "$(sha256sum tfplan | cut -d' ' -f1)" = "$EXPECTED" ] || { echo "::error::the saved plan changed since it was reviewed"; exit 1; }
 

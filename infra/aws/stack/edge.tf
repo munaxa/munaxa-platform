@@ -19,6 +19,7 @@
 # | 40       | identity    | —                                  | Identity                        |
 # | 50-52    | work        | /api/auth/*, /api/v1/*, rest       | Identity, Work API, Work admin  |
 # | 60-61    | school      | /api/v1/*, rest                    | School API, School admin        |
+# | 70-71    | docs        | /api/v1/preview/stream*, rest      | Docs API, Docs web              |
 # | default  | any other   | —                                  | 404                             |
 
 resource "aws_acm_certificate" "main" {
@@ -70,7 +71,7 @@ resource "aws_lb" "main" {
   security_groups            = [aws_security_group.alb.id]
   subnets                    = [for s in aws_subnet.public : s.id]
   drop_invalid_header_fields = true
-  idle_timeout               = 60
+  idle_timeout               = 120 # Docs preview streams (as Docs Production)
   # Production keeps deletion protection; Testing deletes the ALB at every session end.
   enable_deletion_protection = var.environment == "prod"
 }
