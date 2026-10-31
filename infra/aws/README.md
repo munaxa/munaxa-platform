@@ -77,7 +77,7 @@ bundle. Runtime roles are `NOBYPASSRLS`, so each product's RLS policies apply.
 
 1. Check out the reviewed commit in CloudShell. In `bootstrap/backend.tf`, comment out the backend
    block for the first apply.
-2. `terraform init && terraform plan` and read the plan: about 46 resources (the bucket, a key, 11
+2. `terraform init && terraform plan` and read the plan: 49 resources to add (the bucket, a key, 11
    ECR repositories with lifecycle policies, 1 policy, 8 roles and their inline policies (a CI role and a deployer for each of nonprod and prod, and four image publishers), and the
    account budget and a Testing budget on the `Environment = nonprod` tag, both alerting admin@ and alert@munaxa.com). Nothing else. Then
    `terraform apply`. The Docs ECR repositories are the Docs bootstrap's and are not created here.
@@ -87,7 +87,10 @@ bundle. Runtime roles are `NOBYPASSRLS`, so each product's RLS policies apply.
    Docs and storage change needs it before `stack/` can create the buckets: the boundary admits the
    stack's own `munaxa-<env>-*` buckets and pulls from `munaxa-docs/*`, and the deployer may
    configure those buckets.
-4. In GitHub, set `AWS_CI_ROLE_ARN` and `AWS_DEPLOYER_ROLE_ARN` on `munaxa-platform` from the
+4. In GitHub, **first** create the environments below with their protection rules (a job that
+   names an environment that does not exist creates it unprotected, and the session schedule
+   starts as soon as `AWS_CI_ROLE_ARN` is set). Then set `AWS_CI_ROLE_ARN` and
+   `AWS_DEPLOYER_ROLE_ARN` on `munaxa-platform` from the
    `ci_role_arns` and `deployer_role_arns` outputs: the `nonprod` pair as repository variables
    (`aws-session.yml` reads them before its job starts), and the `prod` pair as variables of the
    `aws-prod` environment, which override the repository's for prod jobs. A prod job that finds the
