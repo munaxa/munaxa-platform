@@ -1,6 +1,6 @@
 # Plan-only tests with a mocked AWS provider: no credentials, no AWS call. They check that each
 # environment has its own CI role and deployer (R-17), and that the deployer is refused Docs
-# Production (P9) and the other environment.
+# Production (P9), the other environment and any other project (N-2).
 #
 #   terraform init -backend=false && terraform test
 
@@ -34,6 +34,11 @@ run "one_ci_role_and_one_deployer_per_environment" {
   assert {
     condition     = aws_iam_role.ci["nonprod"].name == "munaxa-shared-ci-nonprod" && aws_iam_role.deployer["prod"].name == "munaxa-shared-deployer-prod"
     error_message = "Role names carry their environment."
+  }
+
+  assert {
+    condition     = length(aws_ecr_repository.image) == 11 && length(aws_ecr_lifecycle_policy.image) == 11 && length(aws_iam_role.publisher) == 4
+    error_message = "Bootstrap creates 11 ECR repositories with lifecycle policies and four image publishers (49 resources in all, README G2)."
   }
 
   assert {
@@ -102,6 +107,38 @@ run "the_deployer_never_reaches_docs_production_or_the_other_environment" {
       for s in data.aws_iam_policy_document.deployer["nonprod"].statement : s.resources if s.sid == "NeverTheOtherEnvironmentByName"
     ]), "arn:aws:s3:::munaxa-shared-tfstate-229251310592/prod/*")
     error_message = "The nonprod deployer is denied prod state by name."
+  }
+}
+
+run "the_deployer_never_reaches_another_project" {
+  command = plan
+
+  assert {
+    condition = alltrue([
+      for env in ["nonprod", "prod"] : length(setsubtract(
+        ["NeverAnotherProjectByTag", "NeverTagForAnotherProject"],
+        [for s in data.aws_iam_policy_document.deployer[env].statement : s.sid if s.effect == "Deny"]
+      )) == 0
+    ])
+    error_message = "N-2: every deployer denies other projects by tag."
+  }
+
+  assert {
+    condition = one(flatten([
+      for s in data.aws_iam_policy_document.deployer["prod"].statement : [
+        for c in s.condition : c.values if c.variable == "aws:ResourceTag/Project" && c.test == "StringNotEquals"
+      ] if s.sid == "NeverAnotherProjectByTag"
+    ])) == "munaxa"
+    error_message = "N-2: anything tagged with a Project other than munaxa is denied."
+  }
+
+  assert {
+    condition = one(flatten([
+      for s in data.aws_iam_policy_document.deployer["nonprod"].statement : [
+        for c in s.condition : c.values if c.variable == "aws:RequestTag/Project" && c.test == "StringNotEquals"
+      ] if s.sid == "NeverTagForAnotherProject"
+    ])) == "munaxa"
+    error_message = "N-2: the deployer may not create or tag a resource for another project."
   }
 }
 

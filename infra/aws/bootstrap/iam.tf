@@ -278,6 +278,35 @@ data "aws_iam_policy_document" "deployer" {
     }
   }
 
+  # Review finding N-2: ec2:*, elasticloadbalancing:*, ecs:*, rds:* and the rest on "*" would also
+  # reach any other workload in this account. Whatever carries a Project tag that is not the shared
+  # stack's own ("munaxa", stack/ and bootstrap/ default_tags) is refused, and the deployer may not
+  # create or tag a resource for another project. A missing tag matches neither statement, so
+  # resources without a Project tag are not covered here (see the phase 3 reports).
+  statement {
+    sid       = "NeverAnotherProjectByTag"
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:ResourceTag/Project"
+      values   = ["munaxa"]
+    }
+  }
+
+  statement {
+    sid       = "NeverTagForAnotherProject"
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:RequestTag/Project"
+      values   = ["munaxa"]
+    }
+  }
+
   # R-17: never the other environment, by its tag (stack/ tags Environment = nonprod | prod) or by
   # the names stack/ gives it (munaxa-<env>-*, munaxa-<env>/*, /munaxa/<env>/).
   statement {
