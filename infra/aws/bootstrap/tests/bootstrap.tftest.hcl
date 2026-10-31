@@ -140,6 +140,17 @@ run "the_deployer_never_reaches_another_project" {
     ])) == "munaxa"
     error_message = "N-2: the deployer may not create or tag a resource for another project."
   }
+
+  assert {
+    condition = alltrue(flatten([
+      for env in ["nonprod", "prod"] : [
+        for s in data.aws_iam_policy_document.deployer[env].statement : anytrue([
+          for c in s.condition : c.test == "Null" && c.values == tolist(["false"]) && c.variable == (s.sid == "NeverAnotherProjectByTag" ? "aws:ResourceTag/Project" : "aws:RequestTag/Project")
+        ]) if contains(["NeverAnotherProjectByTag", "NeverTagForAnotherProject"], s.sid)
+      ]
+    ]))
+    error_message = "N-2: a missing Project tag must not match the deny (StringNotEquals is true on a missing key)."
+  }
 }
 
 run "testing_has_its_own_budget" {
