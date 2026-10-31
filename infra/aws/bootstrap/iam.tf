@@ -281,8 +281,10 @@ data "aws_iam_policy_document" "deployer" {
   # Review finding N-2: ec2:*, elasticloadbalancing:*, ecs:*, rds:* and the rest on "*" would also
   # reach any other workload in this account. Whatever carries a Project tag that is not the shared
   # stack's own ("munaxa", stack/ and bootstrap/ default_tags) is refused, and the deployer may not
-  # create or tag a resource for another project. A missing tag matches neither statement, so
-  # resources without a Project tag are not covered here (see the phase 3 reports).
+  # create or tag a resource for another project. A negated operator is true when its key is
+  # missing, so each statement also requires the key to be present (Null = false): without it,
+  # every untagged request, Describe* included, was denied (G2 verification, 31 Oct). Resources
+  # without a Project tag are therefore not covered here (see the phase 3 and phase 4 reports).
   statement {
     sid       = "NeverAnotherProjectByTag"
     effect    = "Deny"
@@ -292,6 +294,11 @@ data "aws_iam_policy_document" "deployer" {
       test     = "StringNotEquals"
       variable = "aws:ResourceTag/Project"
       values   = ["munaxa"]
+    }
+    condition {
+      test     = "Null"
+      variable = "aws:ResourceTag/Project"
+      values   = ["false"]
     }
   }
 
@@ -304,6 +311,11 @@ data "aws_iam_policy_document" "deployer" {
       test     = "StringNotEquals"
       variable = "aws:RequestTag/Project"
       values   = ["munaxa"]
+    }
+    condition {
+      test     = "Null"
+      variable = "aws:RequestTag/Project"
+      values   = ["false"]
     }
   }
 
