@@ -4,63 +4,112 @@
 #
 # One CI role and one deployer per environment (review finding R-17): a job in a nonprod GitHub
 # environment can only reach the nonprod deployer, which can only read and write nonprod state and
-# is refused anything tagged, or named, for prod; and the other way round.
-
-# --- The workload boundary -----------------------------------------------------------------------
+# is refused anything tagged, or named, for prod; and the other way round. Testing sessions have
+# their own, narrower CI role and deployer (iam_session.tf, finding H-3).
 #
-# Every role stack/ creates (task execution, task, scheduler, db-admin) must carry this boundary;
-# the deployer cannot create a role without it. Whatever a role's own policy says, it can never
-# exceed what is listed here, and never acts outside eu-central-1.
+# B2 / TD-14 (phase 5): the deployers' permissions are a positive allow-list (iam_allow.tf):
+# writes only on resources named for the deployer's environment, or tagged Project = munaxa AND
+# Environment = <env>, or created with those tags. The denies below stay as a second layer.
+
+locals {
+  # The other environment of each deployer, whose resources it must never touch.
+  other_environment = { nonprod = "prod", prod = "nonprod" }
+
+  # The workload boundary of each environment. nonprod keeps the name stack/ already uses, so
+  # Testing needs no stack change; prod gets its own name, which stack/ must use before any prod
+  # apply (until then a prod role cannot be created at all: fail closed).
+  boundary_name = { nonprod = "${local.prefix}-workload-boundary", prod = "${local.prefix}-workload-boundary-prod" }
+  boundary_arn  = { for env, name in local.boundary_name : env => "arn:aws:iam::${var.account_id}:policy/munaxa-shared/${name}" }
+}
+
+# --- The workload boundaries, one per environment (finding H-1) -----------------------------------
+#
+# Every role stack/ creates (task execution, task, scheduler, db-admin) must carry its
+# environment's boundary; the deployer cannot create a role without it, nor a role whose name is
+# not its environment's. Whatever a role's own policy says, it can never exceed what is listed
+# here: its own environment's secrets, keys, buckets, logs and tasks, and never outside
+# eu-central-1. A nonprod role can therefore never read a prod secret, key or bucket.
+
+moved {
+  from = aws_iam_policy.workload_boundary
+  to   = aws_iam_policy.workload_boundary["nonprod"]
+}
 
 resource "aws_iam_policy" "workload_boundary" {
-  name = "${local.prefix}-workload-boundary"
+  for_each = var.deploy_environments
+
+  name = local.boundary_name[each.key]
   path = "/munaxa-shared/"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "EcrSignIn"
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      },
+      {
         Sid      = "EcrPull"
         Effect   = "Allow"
-        Action   = ["ecr:GetAuthorizationToken", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"]
-        Resource = "*"
+        Action   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"]
+        Resource = "arn:aws:ecr:${var.region}:${var.account_id}:repository/munaxa-*"
       },
       {
         Sid      = "Logs"
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = "arn:aws:logs:${var.region}:${var.account_id}:log-group:/munaxa/*"
+        Resource = "arn:aws:logs:${var.region}:${var.account_id}:log-group:/munaxa/${each.key}/*"
       },
       {
-        Sid    = "OwnSecrets"
-        Effect = "Allow"
-        Action = "secretsmanager:GetSecretValue"
-        Resource = [
-          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:munaxa-nonprod/*",
-          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:munaxa-prod/*",
-          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:rds!*",
-        ]
-      },
-      {
-        Sid      = "KmsUse"
+        Sid      = "OwnSecrets"
         Effect   = "Allow"
-        Action   = ["kms:Decrypt", "kms:Sign"]
-        Resource = "arn:aws:kms:${var.region}:${var.account_id}:key/*"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:munaxa-${each.key}/*"
+      },
+      {
+        # The RDS-managed master secret (rds!db-<id>): only the one of this environment's instance,
+        # by the tag RDS puts on it.
+        Sid       = "OwnRdsMasterSecret"
+        Effect    = "Allow"
+        Action    = "secretsmanager:GetSecretValue"
+        Resource  = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:rds!*"
+        Condition = { StringLike = { "aws:ResourceTag/aws:rds:primaryDBInstanceArn" = "arn:aws:rds:${var.region}:${var.account_id}:db:munaxa-${each.key}-*" } }
+      },
+      {
+        # The same secret by the instance tags RDS copies onto it (the Docs Production master
+        # secret carried Environment = Production). Either statement admits only this environment.
+        Sid       = "OwnRdsMasterSecretByTag"
+        Effect    = "Allow"
+        Action    = "secretsmanager:GetSecretValue"
+        Resource  = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:rds!*"
+        Condition = { StringEquals = { "aws:ResourceTag/Project" = "munaxa", "aws:ResourceTag/Environment" = each.key } }
+      },
+      {
+        Sid       = "OwnKeys"
+        Effect    = "Allow"
+        Action    = ["kms:Decrypt", "kms:Sign"]
+        Resource  = "arn:aws:kms:${var.region}:${var.account_id}:key/*"
+        Condition = { StringEquals = { "aws:ResourceTag/Project" = "munaxa", "aws:ResourceTag/Environment" = each.key } }
       },
       {
         # The stack's own file buckets (stack/storage.tf), never Docs Production's munaxa-docs-*.
-        Sid    = "OwnFileBuckets"
-        Effect = "Allow"
-        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:AbortMultipartUpload", "s3:ListBucket"]
-        Resource = [
-          "arn:aws:s3:::munaxa-nonprod-*", "arn:aws:s3:::munaxa-nonprod-*/*",
-          "arn:aws:s3:::munaxa-prod-*", "arn:aws:s3:::munaxa-prod-*/*",
-        ]
+        Sid      = "OwnFileBuckets"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:AbortMultipartUpload", "s3:ListBucket"]
+        Resource = ["arn:aws:s3:::munaxa-${each.key}-*", "arn:aws:s3:::munaxa-${each.key}-*/*"]
       },
       {
         Sid      = "ScheduledTasks"
         Effect   = "Allow"
-        Action   = ["ecs:RunTask", "iam:PassRole"]
-        Resource = "*"
+        Action   = "ecs:RunTask"
+        Resource = "arn:aws:ecs:${var.region}:${var.account_id}:task-definition/munaxa-${each.key}-*:*"
+      },
+      {
+        Sid      = "PassOwnRoles"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = "arn:aws:iam::${var.account_id}:role/munaxa-shared/munaxa-${each.key}-*"
       },
       {
         Sid       = "ThisRegionOnly"
@@ -68,6 +117,13 @@ resource "aws_iam_policy" "workload_boundary" {
         NotAction = ["iam:PassRole"]
         Resource  = "*"
         Condition = { StringNotEquals = { "aws:RequestedRegion" = var.region } }
+      },
+      {
+        Sid       = "NeverTheOtherEnvironment"
+        Effect    = "Deny"
+        Action    = "*"
+        Resource  = "*"
+        Condition = { StringEquals = { "aws:ResourceTag/Environment" = local.other_environment[each.key] } }
       },
       {
         Sid      = "NeverMunaxaDocsProduction"
@@ -88,11 +144,6 @@ resource "aws_iam_policy" "workload_boundary" {
 }
 
 # --- The deployer --------------------------------------------------------------------------------
-
-locals {
-  # The other environment of each deployer, whose resources it must never touch.
-  other_environment = { nonprod = "prod", prod = "nonprod" }
-}
 
 data "aws_iam_policy_document" "deployer_trust" {
   for_each = var.deploy_environments
@@ -121,71 +172,10 @@ resource "aws_iam_role" "deployer" {
   max_session_duration = 3600
 }
 
+# The deployer's inline policy: its own state, and the guardrails, which win over every allow in
+# iam_allow.tf and iam_session.tf (the session deployer carries the same guardrails).
 data "aws_iam_policy_document" "deployer" {
   for_each = var.deploy_environments
-
-  statement {
-    sid = "StackServices"
-    actions = [
-      "ec2:*", "elasticloadbalancing:*", "ecs:*", "rds:*", "logs:*", "acm:*",
-      "servicediscovery:*", "route53:CreateHostedZone", "route53:DeleteHostedZone", "route53:GetHostedZone",
-      "route53:ListHostedZonesByName", "route53:ChangeResourceRecordSets", "route53:ListResourceRecordSets",
-      "route53:GetChange", "route53:ChangeTagsForResource", "route53:ListTagsForResource",
-      "scheduler:*", "cloudwatch:*",
-      "secretsmanager:CreateSecret", "secretsmanager:DeleteSecret", "secretsmanager:DescribeSecret",
-      "secretsmanager:TagResource", "secretsmanager:UntagResource", "secretsmanager:UpdateSecret",
-      "secretsmanager:GetResourcePolicy", "secretsmanager:ListSecrets",
-      "kms:CreateKey", "kms:CreateAlias", "kms:DeleteAlias", "kms:UpdateAlias", "kms:DescribeKey",
-      "kms:GetKeyPolicy", "kms:PutKeyPolicy", "kms:GetKeyRotationStatus", "kms:EnableKeyRotation",
-      "kms:ListAliases", "kms:ListResourceTags", "kms:TagResource", "kms:UntagResource",
-      "kms:ScheduleKeyDeletion", "kms:GetPublicKey", "kms:CreateGrant",
-      "ecr:DescribeRepositories", "ecr:DescribeImages",
-    ]
-    resources = ["*"]
-  }
-
-  statement {
-    sid = "RolesUnderSharedPathWithBoundary"
-    actions = [
-      "iam:CreateRole", "iam:PutRolePermissionsBoundary",
-    ]
-    resources = ["arn:aws:iam::${var.account_id}:role/munaxa-shared/*"]
-    condition {
-      test     = "StringEquals"
-      variable = "iam:PermissionsBoundary"
-      values   = [aws_iam_policy.workload_boundary.arn]
-    }
-  }
-
-  statement {
-    sid = "ManageSharedRoles"
-    actions = [
-      "iam:GetRole", "iam:DeleteRole", "iam:UpdateRole", "iam:TagRole", "iam:UntagRole",
-      "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy", "iam:ListRolePolicies",
-      "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole", "iam:PassRole",
-      "iam:UpdateAssumeRolePolicy",
-    ]
-    resources = ["arn:aws:iam::${var.account_id}:role/munaxa-shared/*"]
-  }
-
-  statement {
-    sid       = "ServiceLinkedRoles"
-    actions   = ["iam:CreateServiceLinkedRole"]
-    resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/*"]
-  }
-
-  # The stack's file buckets (stack/storage.tf): bucket configuration only, no object access.
-  statement {
-    sid = "FileBuckets"
-    actions = [
-      "s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket", "s3:GetBucket*", "s3:PutBucket*",
-      "s3:DeleteBucketPolicy", "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
-      "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration", "s3:GetAccelerateConfiguration",
-      "s3:GetReplicationConfiguration", "s3:GetAnalyticsConfiguration", "s3:GetInventoryConfiguration",
-      "s3:GetMetricsConfiguration", "s3:GetIntelligentTieringConfiguration",
-    ]
-    resources = ["arn:aws:s3:::munaxa-nonprod-*", "arn:aws:s3:::munaxa-prod-*"]
-  }
 
   # Its own environment's state and saved plans only (envs/<env>.backend.hcl, <env>/plans/).
   # Listing stays bucket-wide: the S3 backend lists workspaces at init, and key names hold no secret.
@@ -201,26 +191,13 @@ data "aws_iam_policy_document" "deployer" {
     resources = ["${aws_s3_bucket.state.arn}/${each.key}/*"]
   }
 
-  # RDS creates the master-password secret and encrypts storage with the environment data key on the
-  # deployer's behalf; the deployer never decrypts anything directly.
-  statement {
-    sid       = "DataKeyThroughRdsAndSecretsManager"
-    actions   = ["kms:Decrypt", "kms:GenerateDataKey", "kms:GenerateDataKeyWithoutPlaintext"]
-    resources = ["arn:aws:kms:${var.region}:${var.account_id}:key/*"]
-    condition {
-      test     = "StringEquals"
-      variable = "kms:ViaService"
-      values   = ["rds.${var.region}.amazonaws.com", "secretsmanager.${var.region}.amazonaws.com"]
-    }
-  }
-
   statement {
     sid       = "StateKey"
     actions   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
     resources = [aws_kms_key.state.arn]
   }
 
-  # Guardrails: these win over every allow above.
+  # Guardrails: these win over every allow.
   statement {
     sid         = "ThisRegionOnly"
     effect      = "Deny"
@@ -233,27 +210,58 @@ data "aws_iam_policy_document" "deployer" {
     }
   }
 
+  # Old Docs Production (retired 4 Nov 2026) and the Docs bootstrap it leaves: roles, policies,
+  # the shared GitHub OIDC provider, secrets, databases and their snapshots (the kept final
+  # snapshot munaxa-docs-eu-prod-pg-final), clusters, buckets (state, CloudTrail), key aliases,
+  # the account trail, and the Docs log groups. Also the shared bootstrap's own roles and policies.
   statement {
     sid     = "NeverMunaxaDocsOrBootstrap"
     effect  = "Deny"
     actions = ["*"]
     resources = [
       "arn:aws:iam::${var.account_id}:role/munaxa-docs/*",
+      "arn:aws:iam::${var.account_id}:policy/munaxa-docs/*",
+      "arn:aws:iam::${var.account_id}:oidc-provider/*",
       "arn:aws:iam::${var.account_id}:role/munaxa-shared/bootstrap/*",
       "arn:aws:iam::${var.account_id}:policy/munaxa-shared/*",
       "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:munaxa-docs*",
       "arn:aws:rds:${var.region}:${var.account_id}:db:munaxa-docs*",
+      "arn:aws:rds:${var.region}:${var.account_id}:snapshot:munaxa-docs*",
       "arn:aws:ecs:${var.region}:${var.account_id}:cluster/munaxa-docs*",
+      "arn:aws:kms:${var.region}:${var.account_id}:alias/munaxa-docs*",
+      "arn:aws:logs:${var.region}:${var.account_id}:log-group:*munaxa-docs*",
+      "arn:aws:cloudtrail:*:${var.account_id}:trail/munaxa-docs*",
       "arn:aws:s3:::munaxa-docs*",
     ]
   }
 
-  # Review finding P9: Docs Production's VPC, subnets, security groups, load balancer, listeners,
-  # target groups, database, cluster, keys and logs carry Project = MunaxaDocs (the Docs Terraform's
-  # default_tags), and their ARNs have generated ids that no name pattern above can match. ec2:*
-  # and elasticloadbalancing:* on "*" would otherwise reach them. The shared stack tags its own
-  # resources Project = munaxa and never reads a Docs resource. The deployer may also not create a
-  # resource with that tag, or put it on one.
+  # Finding H-2: the shared state key and bucket. Every deployer only encrypts and decrypts state
+  # objects with the key and reads and writes state objects in the bucket; nothing else, whatever
+  # an allow says (the key carries Project = munaxa and no Environment, so no tag deny covers it).
+  statement {
+    sid    = "ProtectStateKeyAndBucket"
+    effect = "Deny"
+    not_actions = [
+      "kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey",
+      "s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject",
+    ]
+    resources = [aws_kms_key.state.arn, aws_s3_bucket.state.arn, "${aws_s3_bucket.state.arn}/*"]
+  }
+
+  # Finding H-2b: the stack backends name the state key by its alias (kms_key_id =
+  # alias/munaxa-shared-tfstate), so no deployer may create, repoint or delete a shared alias, nor
+  # put any alias on the state key. An alias call is authorized on both the alias and the key.
+  statement {
+    sid       = "NeverSharedAliases"
+    effect    = "Deny"
+    actions   = ["kms:CreateAlias", "kms:UpdateAlias", "kms:DeleteAlias"]
+    resources = ["arn:aws:kms:${var.region}:${var.account_id}:alias/${local.prefix}-*", aws_kms_key.state.arn]
+  }
+
+  # Review finding P9: Docs Production's resources carry Project = MunaxaDocs (the Docs Terraform's
+  # default_tags), and their ARNs have generated ids that no name pattern above can match. The
+  # shared stack tags its own resources Project = munaxa and never reads a Docs resource. The
+  # deployer may also not create a resource with that tag, or put it on one.
   statement {
     sid       = "NeverMunaxaDocsProductionByTag"
     effect    = "Deny"
@@ -278,13 +286,12 @@ data "aws_iam_policy_document" "deployer" {
     }
   }
 
-  # Review finding N-2: ec2:*, elasticloadbalancing:*, ecs:*, rds:* and the rest on "*" would also
-  # reach any other workload in this account. Whatever carries a Project tag that is not the shared
-  # stack's own ("munaxa", stack/ and bootstrap/ default_tags) is refused, and the deployer may not
-  # create or tag a resource for another project. A negated operator is true when its key is
-  # missing, so each statement also requires the key to be present (Null = false): without it,
-  # every untagged request, Describe* included, was denied (G2 verification, 31 Oct). Resources
-  # without a Project tag are therefore not covered here (see the phase 3 and phase 4 reports).
+  # Review finding N-2: whatever carries a Project tag that is not the shared stack's own
+  # ("munaxa", stack/ and bootstrap/ default_tags) is refused, and the deployer may not create or
+  # tag a resource for another project. A negated operator is true when its key is missing, so
+  # each statement also requires the key to be present (Null = false): without it, every untagged
+  # request, Describe* included, was denied (G2 verification, 31 Oct). Untagged resources are kept
+  # out by the allow-list instead (B2 / TD-14, iam_allow.tf).
   statement {
     sid       = "NeverAnotherProjectByTag"
     effect    = "Deny"
@@ -316,6 +323,33 @@ data "aws_iam_policy_document" "deployer" {
       test     = "Null"
       variable = "aws:RequestTag/Project"
       values   = ["false"]
+    }
+  }
+
+  # M-1: every create that takes tags must carry Project = munaxa and Environment = <env>
+  # (StringNotEquals is true when the key is missing, which is the point here). The creates that
+  # take no tags, or whose tags AWS sets (the RDS-managed secret), are not listed.
+  statement {
+    sid       = "CreatesCarryProjectTag"
+    effect    = "Deny"
+    actions   = local.tagged_creates
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:RequestTag/Project"
+      values   = ["munaxa"]
+    }
+  }
+
+  statement {
+    sid       = "CreatesCarryEnvironmentTag"
+    effect    = "Deny"
+    actions   = local.tagged_creates
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:RequestTag/Environment"
+      values   = [each.key]
     }
   }
 
@@ -351,6 +385,7 @@ data "aws_iam_policy_document" "deployer" {
     actions = ["*"]
     resources = [
       "arn:aws:iam::${var.account_id}:role/munaxa-shared/munaxa-${local.other_environment[each.key]}-*",
+      local.boundary_arn[local.other_environment[each.key]],
       "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:munaxa-${local.other_environment[each.key]}/*",
       "arn:aws:s3:::munaxa-${local.other_environment[each.key]}-*",
       "arn:aws:rds:${var.region}:${var.account_id}:db:munaxa-${local.other_environment[each.key]}-*",
@@ -358,6 +393,57 @@ data "aws_iam_policy_document" "deployer" {
       "arn:aws:logs:${var.region}:${var.account_id}:log-group:/munaxa/${local.other_environment[each.key]}/*",
       "${aws_s3_bucket.state.arn}/${local.other_environment[each.key]}/*",
     ]
+  }
+
+  # The account's default VPC (and any other listed VPC): nothing in it is ever changed, which
+  # also keeps its default security group out of the default-group adoption in iam_allow.tf.
+  statement {
+    sid         = "NeverProtectedVpcs"
+    effect      = "Deny"
+    not_actions = ["ec2:Describe*"]
+    resources   = [for id in var.protected_vpc_ids : "arn:aws:ec2:${var.region}:${var.account_id}:vpc/${id}"]
+  }
+
+  statement {
+    sid         = "NeverInProtectedVpcs"
+    effect      = "Deny"
+    not_actions = ["ec2:Describe*"]
+    resources   = ["*"]
+    condition {
+      test     = "ArnEquals"
+      variable = "ec2:Vpc"
+      values   = [for id in var.protected_vpc_ids : "arn:aws:ec2:${var.region}:${var.account_id}:vpc/${id}"]
+    }
+  }
+
+  statement {
+    sid       = "NeverProtectedVpcsInZones"
+    effect    = "Deny"
+    actions   = ["route53:CreateHostedZone", "route53:AssociateVPCWithHostedZone", "route53:DisassociateVPCFromHostedZone"]
+    resources = ["*"]
+    condition {
+      test     = "ForAnyValue:StringEquals"
+      variable = "route53:VPCs"
+      values   = var.protected_vpc_ids
+    }
+  }
+
+  # M-1: account-wide settings, sharing outside the account, and the identity and audit services
+  # are never the deployer's, whatever an allow says.
+  statement {
+    sid    = "NeverAccountSettingsOrSharing"
+    effect = "Deny"
+    actions = [
+      "ec2:*ByDefault", "ec2:*EbsDefaultKmsKeyId", "ec2:ModifyInstanceMetadataDefaults",
+      "ec2:*BlockPublicAccess*", "ec2:*SerialConsole*", "ec2:*VpcPeering*", "ec2:*TransitGateway*",
+      "ec2:*Vpn*", "ec2:*Ipam*", "ec2:ModifySnapshotAttribute", "ec2:ModifyImageAttribute",
+      "rds:ModifyCertificates", "rds:ModifyDBSnapshotAttribute", "rds:ModifyDBClusterSnapshotAttribute",
+      "ecs:PutAccountSetting*", "ecs:DeleteAccountSetting", "logs:PutAccountPolicy", "logs:DeleteAccountPolicy",
+      "secretsmanager:PutResourcePolicy", "s3:PutAccountPublicAccessBlock",
+      "kms:CancelKeyDeletion", "iam:DeleteRolePermissionsBoundary",
+      "cloudtrail:*", "config:*", "guardduty:*", "securityhub:*", "access-analyzer:*", "budgets:*", "ce:*",
+    ]
+    resources = ["*"]
   }
 
   statement {
