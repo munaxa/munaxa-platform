@@ -4,7 +4,12 @@
 #   Dispatch, plan:  a real plan as the shared deployer, reported only.
 #   Dispatch, apply: a plan that must match envs/<env>.expected-changes.json exactly, kept in the
 #                    state bucket; then a second job, behind the environment's approval again,
-#                    applies that saved plan and nothing else.
+#                    applies that saved plan and nothing else, only on the same commit and only
+#                    while the plan is younger than MAX_PLAN_AGE_SECONDS.
+#
+# The repository is public, so job logs are too: the human-readable plan (attribute values) is
+# never printed. The summary lists addresses and actions, and for an update or replacement the
+# names of the attributes that change; Terraform's errors and warnings still reach the log.
 #
 # **Nothing applies on a push or a merge.** An apply is always a dispatch on main, approved in the
 # protected `aws-<env>` environment (required reviewer: the owner), after the plan it will apply has
@@ -46,6 +51,7 @@ env:
   TERRAFORM_VERSION: 1.16.5
   AWS_REGION: eu-central-1
   AWS_ACCOUNT_ID: '229251310592'
+  MAX_PLAN_AGE_SECONDS: '14400' # an approved apply runs a plan at most 4 hours old (as Docs)
 
 jobs:
   static:
@@ -111,6 +117,8 @@ jobs:
     outputs:
       changes: ${{ steps.plan.outputs.changes }}
       plan_sha256: ${{ steps.keep.outputs.sha256 }}
+      plan_commit: ${{ steps.keep.outputs.commit }}
+      planned_at: ${{ steps.keep.outputs.planned_at }}
     defaults:
       run:
         working-directory: infra/aws/stack
@@ -164,7 +172,8 @@ jobs:
           TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
         run: |
           set +e
-          terraform plan -input=false -lock-timeout=5m -detailed-exitcode -var-file="envs/$ENVIRONMENT.tfvars" -out=tfplan
+          # The human-readable plan stays out of the public log; errors and warnings go to stderr.
+          terraform plan -input=false -no-color -lock-timeout=5m -detailed-exitcode -var-file="envs/$ENVIRONMENT.tfvars" -out=tfplan > /dev/null
           code=$?
           set -e
           if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
@@ -181,8 +190,13 @@ jobs:
           terraform show -json tfplan > plan.json
           {
             echo "## stack/$ENVIRONMENT"
+            echo
+            echo "Commit \`$GITHUB_SHA\`."
+            echo
             "$GITHUB_WORKSPACE/scripts/terraform/plan-summary.sh" plan.json
-          } >> "$GITHUB_STEP_SUMMARY"
+            echo
+            "$GITHUB_WORKSPACE/scripts/terraform/plan-changed-attributes.sh" plan.json
+          } | tee -a "$GITHUB_STEP_SUMMARY"
           set +e
           "$GITHUB_WORKSPACE/scripts/terraform/check-plan-intent.sh" "$MODE" plan.json "envs/$ENVIRONMENT.expected-changes.json" > intent.txt
           code=$?
@@ -212,7 +226,11 @@ jobs:
           AWS_SESSION_TOKEN=$(jq -r .SessionToken <<<"$creds")
           export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
           unset creds
-          echo "sha256=$(sha256sum tfplan | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          {
+            echo "sha256=$(sha256sum tfplan | cut -d' ' -f1)"
+            echo "commit=$GITHUB_SHA"
+            echo "planned_at=$(date -u +%s)"
+          } >> "$GITHUB_OUTPUT"
           aws s3 cp tfplan "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" --only-show-errors
           rm -f tfplan
 
@@ -248,6 +266,20 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
 
+      # The saved plan applies only to the commit it was made from, and only while it is fresh: an
+      # approval that comes hours later needs a new plan (the world may have moved, as in Docs).
+      - name: The saved plan is this commit's and fresh
+        env:
+          PLAN_COMMIT: ${{ needs.plan.outputs.plan_commit }}
+          PLANNED_AT: ${{ needs.plan.outputs.planned_at }}
+        run: |
+          set -euo pipefail
+          [ -n "$PLAN_COMMIT" ] && [ "$PLAN_COMMIT" = "$GITHUB_SHA" ] || { echo "::error::the saved plan is for commit '$PLAN_COMMIT', this job runs $GITHUB_SHA"; exit 1; }
+          case "$PLANNED_AT" in '' | *[!0-9]*) echo "::error::the plan job did not record when it planned"; exit 1 ;; esac
+          age=$(( $(date -u +%s) - PLANNED_AT ))
+          [ "$age" -le "$MAX_PLAN_AGE_SECONDS" ] || { echo "::error::the saved plan is ${age}s old (limit ${MAX_PLAN_AGE_SECONDS}s): run a new plan and review it"; exit 1; }
+          echo "Saved plan of commit $PLAN_COMMIT, ${age}s old."
+
       - name: terraform init
         env:
           ENVIRONMENT: ${{ inputs.environment }}
@@ -280,4 +312,4 @@ jobs:
       - name: terraform apply (saved plan)
         env:
           TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
-        run: terraform apply -input=false -lock-timeout=5m tfplan
+        run: terraform apply -input=false -no-color -lock-timeout=5m tfplan
