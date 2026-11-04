@@ -77,6 +77,15 @@ resource "aws_iam_policy" "workload_boundary" {
         Condition = { StringLike = { "aws:ResourceTag/aws:rds:primaryDBInstanceArn" = "arn:aws:rds:${var.region}:${var.account_id}:db:munaxa-${each.key}-*" } }
       },
       {
+        # The same secret by the instance tags RDS copies onto it (the Docs Production master
+        # secret carried Environment = Production). Either statement admits only this environment.
+        Sid       = "OwnRdsMasterSecretByTag"
+        Effect    = "Allow"
+        Action    = "secretsmanager:GetSecretValue"
+        Resource  = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:rds!*"
+        Condition = { StringEquals = { "aws:ResourceTag/Project" = "munaxa", "aws:ResourceTag/Environment" = each.key } }
+      },
+      {
         Sid       = "OwnKeys"
         Effect    = "Allow"
         Action    = ["kms:Decrypt", "kms:Sign"]

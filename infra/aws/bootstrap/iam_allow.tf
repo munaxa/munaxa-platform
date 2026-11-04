@@ -294,10 +294,13 @@ data "aws_iam_policy_document" "deployer_allow" {
     sid       = "RdsMasterSecret"
     actions   = ["secretsmanager:CreateSecret", "secretsmanager:TagResource", "secretsmanager:DescribeSecret", "secretsmanager:DeleteSecret"]
     resources = ["${local.arn.sm}:secret:rds!*"]
+    # RDS makes these calls with the deployer's credentials (a forward access session).
+    # aws:CalledVia lists only a few services and RDS is not one of them, so this uses
+    # aws:ViaAWSService: the deployer can never call these on an rds! secret directly.
     condition {
-      test     = "StringEquals"
-      variable = "aws:CalledVia"
-      values   = ["rds.amazonaws.com"]
+      test     = "Bool"
+      variable = "aws:ViaAWSService"
+      values   = ["true"]
     }
   }
 

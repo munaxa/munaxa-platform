@@ -385,4 +385,71 @@ run "h3_sessions_have_a_narrow_deployer" {
     condition     = length(data.aws_iam_policy_document.deployer_session["nonprod"].source_policy_documents) == 1
     error_message = "H-3: the session deployer carries the nonprod deployer's guardrails as its source document."
   }
+
+  # Review R10: no egress or modify on any group, and never the ALB, database or db-admin group.
+  assert {
+    condition = alltrue(flatten([
+      for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : [
+        for a in s.actions : !contains(["ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupEgress", "ec2:ModifySecurityGroupRules"], a)
+      ] if s.effect != "Deny"
+    ]))
+    error_message = "R10: a session creates or removes task ingress rules only."
+  }
+
+  assert {
+    condition = length([
+      for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
+      if s.sid == "SessionNeverEdgeOrDatabaseGroups" && s.effect == "Deny" && contains(s.actions, "ec2:AuthorizeSecurityGroupIngress")
+      && length(setsubtract(["munaxa-nonprod-alb", "munaxa-nonprod-database", "munaxa-nonprod-db-admin"], flatten([for c in s.condition : c.values if c.variable == "aws:ResourceTag/Name"]))) == 0
+      ]) == 1 && length([
+      for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
+      if s.sid == "SessionNeverGroupTags" && s.effect == "Deny" && contains(s.resources, "arn:aws:ec2:eu-central-1:229251310592:security-group/*")
+    ]) == 1
+    error_message = "R10: the session never adds a rule to the ALB, database or db-admin group, nor retags a group."
+  }
+
+  # Review B-2: a session plan refreshes the whole stack; its extra reads are reads, on nonprod only.
+  assert {
+    condition = alltrue(flatten([
+      for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : concat(
+        [for a in s.actions : can(regex(":(Get|List|Describe)", a))],
+        [for r in s.resources : strcontains(r, "munaxa-nonprod") || r == "arn:aws:kms:eu-central-1:229251310592:key/*"],
+        [s.effect != "Deny"]
+      )
+    ]))
+    error_message = "B-2: the session refresh policy reads only, and only nonprod resources (keys by tag)."
+  }
+
+  assert {
+    condition = length(setsubtract(
+      ["kms:DescribeKey", "kms:GetKeyPolicy", "kms:GetKeyRotationStatus", "kms:ListResourceTags", "secretsmanager:DescribeSecret", "secretsmanager:GetResourcePolicy", "s3:GetBucket*", "s3:GetLifecycleConfiguration", "s3:GetEncryptionConfiguration", "iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies"],
+      flatten([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s.actions])
+    )) == 0 && aws_iam_role_policy_attachment.deployer_session_refresh["nonprod"].role == "munaxa-shared-deployer-nonprod-session"
+    error_message = "B-2: the session deployer can refresh the persistent layer (keys, secrets, bucket, roles)."
+  }
+}
+
+run "b1_rds_master_secret_only_through_rds" {
+  command = plan
+
+  assert {
+    condition = alltrue([
+      for env in ["nonprod", "prod"] : length([
+        for s in data.aws_iam_policy_document.deployer_allow[env].statement : s.sid
+        if s.sid == "RdsMasterSecret" && length(s.condition) == 1 && alltrue([for c in s.condition : c.test == "Bool" && c.variable == "aws:ViaAWSService" && c.values == tolist(["true"])])
+        && s.resources == toset(["arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!*"])
+      ]) == 1
+    ])
+    error_message = "B-1: the RDS master secret is created only by RDS on the deployer's behalf (aws:ViaAWSService, not aws:CalledVia)."
+  }
+
+  assert {
+    condition = alltrue([
+      for env in ["nonprod", "prod"] : alltrue([
+        for s in jsondecode(aws_iam_policy.workload_boundary[env].policy).Statement :
+        jsonencode(s.Condition) == jsonencode({ StringEquals = { "aws:ResourceTag/Environment" = env, "aws:ResourceTag/Project" = "munaxa" } }) if s.Sid == "OwnRdsMasterSecretByTag"
+      ]) && length([for s in jsondecode(aws_iam_policy.workload_boundary[env].policy).Statement : s if s.Sid == "OwnRdsMasterSecretByTag"]) == 1
+    ])
+    error_message = "N-1: the boundary also admits the RDS master secret by its own environment's tags."
+  }
 }
