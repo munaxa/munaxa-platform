@@ -41,6 +41,10 @@ delay) [E].
 The US$50 **Testing** target holds. The **account** passes US$50 while old Docs runs (already accepted
 in phase 2, TD-1). The Docs `munaxa-account-monthly` (US$10) will keep alerting (TD-13).
 
+## 3a. Update, 4 Nov: old Docs retired
+
+Old Docs eu-prod was fully retired by a separate thread (4 Nov 08:21 UTC) [U, reported]. The ≈ US$47.80 a month old Docs column above drops to about 0, apart from the final snapshot storage and the KMS key pending deletion until about 4 Dec [E]. So the account total after G2 is about the bootstrap cost, and the Testing scenarios become the account total. See [OLD-DOCS-RETIREMENT](OLD-DOCS-RETIREMENT.md).
+
 ## 4. Uncertainty
 
 Prices are list prices from memory, not re-checked (no Pricing access) [U]. The old Docs idle figure

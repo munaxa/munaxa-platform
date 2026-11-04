@@ -49,4 +49,4 @@ Exact values: NEXT-EXECUTION-PLAN §2. Evidence until then: every scheduled `aws
 | --- | --- |
 | G2 | **Done on AWS** [V]; GitHub part reported done 4 Nov [U] |
 | G3 to G7 | Closed. G3 needs separate approval and B2/TD-14 |
-| G9 | Closed |
+| G9 (Docs) | **Done by a separate thread** (approved 31 Oct; last run 41797685617, 4 Nov 08:21 UTC; docs#171 to #174) [U, reported]: [OLD-DOCS-RETIREMENT](OLD-DOCS-RETIREMENT.md). G9 for Render and Supabase: closed |
