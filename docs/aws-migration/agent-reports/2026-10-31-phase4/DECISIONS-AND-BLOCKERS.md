@@ -52,5 +52,6 @@ No blocker remains **within G2** on the AWS side.
 1. GitHub environments, then variables (NEXT-EXECUTION-PLAN §2). **Reported done by Tamer, 4 Nov 08:59 UTC** [U until a scheduled run is not skipped].
 2. Keep the AWS connector signed out.
 3. Before G3: Docs VPC tag inventory and TD-14.
-4. Optional: free CloudShell home space (`~/bootstrap`, 790 MB, is Docs' working copy: the owner
+4. Around 4 Dec 2026: delete the final snapshot `munaxa-docs-eu-prod-pg-final` (its KMS key is pending deletion) or cancel the key deletion (OLD-DOCS-RETIREMENT §3).
+5. Optional: free CloudShell home space (`~/bootstrap`, 790 MB, is Docs' working copy: the owner
    decides; nothing in G2 needs it removed).

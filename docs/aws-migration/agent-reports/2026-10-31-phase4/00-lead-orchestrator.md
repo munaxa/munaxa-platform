@@ -48,7 +48,7 @@
   was created. No image was published. No remote database migration ran.
 - **No production change.** The prod CI and deployer roles exist (part of the 49) but nothing can
   assume them until the `aws-prod` environment and its variables exist.
-- **Old Docs Production untouched.** Neither plan nor apply addressed a Docs resource; the Docs
+- **Old Docs Production untouched by G2.** (A separate thread then retired it with Tamer's approval, finishing 4 Nov 08:21 UTC: see [OLD-DOCS-RETIREMENT](OLD-DOCS-RETIREMENT.md), reported, not independently verified.) Neither plan nor apply addressed a Docs resource; the Docs
   budgets, OIDC provider (read only) and Docs state are unchanged; the deployers deny Docs by name
   and by `Project = MunaxaDocs` (simulation 1, explicitDeny). `~/bootstrap` in CloudShell was not
   touched.
@@ -65,4 +65,5 @@
 [SECURITY-VERIFICATION](SECURITY-VERIFICATION.md) ·
 [COST-AND-TRANSITION-ANALYSIS](COST-AND-TRANSITION-ANALYSIS.md) ·
 [NEXT-EXECUTION-PLAN](NEXT-EXECUTION-PLAN.md) ·
-[DECISIONS-AND-BLOCKERS](DECISIONS-AND-BLOCKERS.md)
+[DECISIONS-AND-BLOCKERS](DECISIONS-AND-BLOCKERS.md) ·
+[OLD-DOCS-RETIREMENT](OLD-DOCS-RETIREMENT.md)
