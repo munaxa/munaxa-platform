@@ -1,0 +1,50 @@
+diff --git a/infra/aws/bootstrap/iam.tf b/infra/aws/bootstrap/iam.tf
+index 0d5fb5a..999062f 100644
+--- a/infra/aws/bootstrap/iam.tf
++++ b/infra/aws/bootstrap/iam.tf
+@@ -118,6 +118,18 @@ resource "aws_iam_policy" "workload_boundary" {
+         Resource  = "*"
+         Condition = { StringNotEquals = { "aws:RequestedRegion" = var.region } }
+       },
++      {
++        # Finding R7 (phase 6): a role the deployer creates is never usable from a deployer
++        # session. Both deployers carry sts:SourceIdentity = github-actions (their trust requires
++        # it), and AWS keeps a source identity through every chained role session, so a role
++        # whose trust names the deployer is refused everything. Stack roles are used only by ECS
++        # tasks and EventBridge Scheduler, which set no source identity.
++        Sid       = "NeverFromADeployerSession"
++        Effect    = "Deny"
++        Action    = "*"
++        Resource  = "*"
++        Condition = { Null = { "aws:SourceIdentity" = "false" } }
++      },
+       {
+         Sid       = "NeverTheOtherEnvironment"
+         Effect    = "Deny"
+diff --git a/infra/aws/bootstrap/tests/bootstrap.tftest.hcl b/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
+index 1ab9b51..0d09d83 100644
+--- a/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
++++ b/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
+@@ -504,3 +504,22 @@ run "phase6_residual_narrowing" {
+     error_message = "R13: no deployer requests an exportable certificate or exports one."
+   }
+ }
++
++# Phase 6 (R7): no boundary-bound role is usable from a session that carries a source identity
++# (every deployer session does), so the deployer cannot assume a role it created.
++run "r7_boundary_refuses_chained_deployer_sessions" {
++  command = plan
++
++  assert {
++    condition = length([
++      for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s.Sid
++      if s.Sid == "NeverFromADeployerSession" && s.Effect == "Deny" && s.Action == "*" && s.Resource == "*"
++      && try(s.Condition.Null["aws:SourceIdentity"], "") == "false"
++      ]) == 1 && length([
++      for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s.Sid
++      if s.Sid == "NeverFromADeployerSession" && s.Effect == "Deny" && s.Action == "*" && s.Resource == "*"
++      && try(s.Condition.Null["aws:SourceIdentity"], "") == "false"
++    ]) == 1
++    error_message = "R7: each workload boundary refuses every session that carries a source identity."
++  }
++}

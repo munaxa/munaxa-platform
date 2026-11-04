@@ -1,0 +1,198 @@
+diff --git a/infra/aws/bootstrap/iam.tf b/infra/aws/bootstrap/iam.tf
+index 692763f..2dd1f13 100644
+--- a/infra/aws/bootstrap/iam.tf
++++ b/infra/aws/bootstrap/iam.tf
+@@ -118,6 +118,18 @@ resource "aws_iam_policy" "workload_boundary" {
+         Resource  = "*"
+         Condition = { StringNotEquals = { "aws:RequestedRegion" = var.region } }
+       },
++      {
++        # Finding R7 (phase 6): a role the deployer creates is never usable from a deployer
++        # session. Both deployers carry sts:SourceIdentity = github-actions (their trust requires
++        # it), and AWS keeps a source identity through every chained role session, so a role
++        # whose trust names the deployer is refused everything. Stack roles are used only by ECS
++        # tasks and EventBridge Scheduler, which set no source identity.
++        Sid       = "NeverFromADeployerSession"
++        Effect    = "Deny"
++        Action    = "*"
++        Resource  = "*"
++        Condition = { Null = { "aws:SourceIdentity" = "false" } }
++      },
+       {
+         Sid       = "NeverTheOtherEnvironment"
+         Effect    = "Deny"
+diff --git a/infra/aws/bootstrap/iam_allow.tf b/infra/aws/bootstrap/iam_allow.tf
+index c9d7700..8e91372 100644
+--- a/infra/aws/bootstrap/iam_allow.tf
++++ b/infra/aws/bootstrap/iam_allow.tf
+@@ -384,10 +384,54 @@ data "aws_iam_policy_document" "deployer_allow" {
+     }
+   }
+ 
++  # Only the service-linked roles the stack's services use (ECS, Elastic Load Balancing, RDS);
++  # AWS creates each on first use with the caller's permissions (phase 6 residual R12).
+   statement {
+-    sid       = "ServiceLinkedRoles"
+-    actions   = ["iam:CreateServiceLinkedRole"]
+-    resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/*"]
++    sid     = "ServiceLinkedRoles"
++    actions = ["iam:CreateServiceLinkedRole"]
++    resources = [
++      for service in ["ecs", "elasticloadbalancing", "rds"] :
++      "arn:aws:iam::${var.account_id}:role/aws-service-role/${service}.amazonaws.com/*"
++    ]
++  }
++
++  # ACM can issue exportable public certificates (a charge per certificate, and the private key
++  # leaves ACM). The stack's certificate is never exportable and Terraform never exports one
++  # (phase 6 residual R13). Here, not beside OwnTagged, because every statement of the tag-scoped
++  # policy is a tag-conditioned allow. The session deployer has no ACM allow at all.
++  statement {
++    sid       = "NoExportableCertificates"
++    effect    = "Deny"
++    actions   = ["acm:RequestCertificate"]
++    resources = ["*"]
++    condition {
++      test     = "StringEqualsIgnoreCase"
++      variable = "acm:Export"
++      values   = ["ENABLED"]
++    }
++  }
++
++  statement {
++    sid       = "NeverExportCertificates"
++    effect    = "Deny"
++    actions   = ["acm:ExportCertificate"]
++    resources = ["*"]
++  }
++
++  # OwnNames grants logs:* and rds:* by name, which would include reading log data and database
++  # log files. The deployer only manages configuration: no data reads, no export, no subscription
++  # filter, no ECS Exec (phase 5 review 06 §8.3, R9). Here rather than in the inline guardrails:
++  # the session deployer has no logs or RDS-file allow, and its inline policy is near its limit.
++  statement {
++    sid    = "NoLogOrDatabaseData"
++    effect = "Deny"
++    actions = [
++      "logs:GetLogEvents", "logs:FilterLogEvents", "logs:StartQuery", "logs:GetQueryResults",
++      "logs:StartLiveTail", "logs:GetLogRecord", "logs:Unmask", "logs:CreateExportTask",
++      "logs:PutSubscriptionFilter", "rds:DownloadDBLogFilePortion", "rds:DownloadCompleteDBLogFile",
++      "ecs:ExecuteCommand",
++    ]
++    resources = ["*"]
+   }
+ 
+   # The stack's file buckets (stack/storage.tf): bucket configuration only, no object access.
+diff --git a/infra/aws/bootstrap/iam_session.tf b/infra/aws/bootstrap/iam_session.tf
+index 9cefd5a..9b6f757 100644
+--- a/infra/aws/bootstrap/iam_session.tf
++++ b/infra/aws/bootstrap/iam_session.tf
+@@ -151,9 +151,29 @@ data "aws_iam_policy_document" "deployer_session" {
+   }
+ 
+   # Cloud Map entries: the new service with the tags (its namespace by SessionCloudMapServices).
++  # CreateService is authorized on the namespace and on the new service, so the request tags may
++  # admit only the service: an untagged namespace of another workload never matches (phase 5
++  # review 06 §8.5, R11), as CloudMapServiceWithOwnTags does for the full deployer.
+   statement {
+     sid       = "SessionDiscoveryWithOwnTags"
+-    actions   = ["servicediscovery:CreateService", "servicediscovery:TagResource"]
++    actions   = ["servicediscovery:CreateService"]
++    resources = ["arn:aws:servicediscovery:${var.region}:${var.account_id}:service/*"]
++    condition {
++      test     = "StringEquals"
++      variable = "aws:RequestTag/Project"
++      values   = ["munaxa"]
++    }
++    condition {
++      test     = "StringEquals"
++      variable = "aws:RequestTag/Environment"
++      values   = [each.key]
++    }
++  }
++
++  # Tagging on create (servicediscovery:TagResource has no resource type; residual R3).
++  statement {
++    sid       = "SessionDiscoveryTagOnCreate"
++    actions   = ["servicediscovery:TagResource"]
+     resources = ["*"]
+     condition {
+       test     = "StringEquals"
+diff --git a/infra/aws/bootstrap/tests/bootstrap.tftest.hcl b/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
+index 5690f93..f3d20aa 100644
+--- a/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
++++ b/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
+@@ -472,3 +472,73 @@ run "only_the_nonprod_boundary_admits_the_testing_backstop" {
+     error_message = "Prod has no Testing backstop."
+   }
+ }
++
++# Phase 6 narrowing (R9, R11, R12): no data reads by name, Cloud Map request tags admit only a new
++# service, and service-linked roles only for the stack's services.
++run "phase6_residual_narrowing" {
++  command = plan
++
++  assert {
++    condition = length([
++      for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
++      if s.effect != "Deny" && contains(s.actions, "servicediscovery:CreateService") && contains(s.resources, "*")
++      && length([for c in s.condition : c if startswith(c.variable, "aws:RequestTag/")]) > 0
++    ]) == 0
++    error_message = "R11: request tags never admit a session CreateService on a namespace."
++  }
++
++  assert {
++    condition = length([
++      for s in data.aws_iam_policy_document.deployer_allow["nonprod"].statement : s.sid
++      if s.sid == "NoLogOrDatabaseData" && s.effect == "Deny" && contains(s.resources, "*")
++      && length(setsubtract(["logs:GetLogEvents", "logs:FilterLogEvents", "logs:StartQuery", "logs:CreateExportTask", "logs:PutSubscriptionFilter", "rds:DownloadDBLogFilePortion", "ecs:ExecuteCommand"], s.actions)) == 0
++      ]) == 1 && length([
++      for s in data.aws_iam_policy_document.deployer_allow["prod"].statement : s.sid
++      if s.sid == "NoLogOrDatabaseData" && s.effect == "Deny" && contains(s.resources, "*")
++      && length(setsubtract(["logs:GetLogEvents", "logs:FilterLogEvents", "logs:StartQuery", "logs:CreateExportTask", "logs:PutSubscriptionFilter", "rds:DownloadDBLogFilePortion", "ecs:ExecuteCommand"], s.actions)) == 0
++    ]) == 1
++    error_message = "R9: no deployer reads log data or database log files, exports logs or opens ECS Exec."
++  }
++
++  assert {
++    condition = toset(flatten([
++      for s in concat(data.aws_iam_policy_document.deployer_allow["nonprod"].statement, data.aws_iam_policy_document.deployer_allow["prod"].statement) :
++      s.resources if contains(s.actions, "iam:CreateServiceLinkedRole")
++      ])) == toset([
++      "arn:aws:iam::229251310592:role/aws-service-role/ecs.amazonaws.com/*",
++      "arn:aws:iam::229251310592:role/aws-service-role/elasticloadbalancing.amazonaws.com/*",
++      "arn:aws:iam::229251310592:role/aws-service-role/rds.amazonaws.com/*",
++    ])
++    error_message = "R12: service-linked roles only for ECS, Elastic Load Balancing and RDS."
++  }
++
++  assert {
++    condition = length([
++      for s in data.aws_iam_policy_document.deployer_allow["nonprod"].statement : s.sid
++      if s.effect == "Deny" && (s.sid == "NeverExportCertificates" && contains(s.actions, "acm:ExportCertificate") || s.sid == "NoExportableCertificates" && contains(s.actions, "acm:RequestCertificate"))
++      ]) == 2 && length([
++      for s in data.aws_iam_policy_document.deployer_allow["prod"].statement : s.sid
++      if s.effect == "Deny" && (s.sid == "NeverExportCertificates" && contains(s.actions, "acm:ExportCertificate") || s.sid == "NoExportableCertificates" && contains(s.actions, "acm:RequestCertificate"))
++    ]) == 2
++    error_message = "R13: no deployer requests an exportable certificate or exports one."
++  }
++}
++
++# Phase 6 (R7): no boundary-bound role is usable from a session that carries a source identity
++# (every deployer session does), so the deployer cannot assume a role it created.
++run "r7_boundary_refuses_chained_deployer_sessions" {
++  command = plan
++
++  assert {
++    condition = length([
++      for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s.Sid
++      if s.Sid == "NeverFromADeployerSession" && s.Effect == "Deny" && s.Action == "*" && s.Resource == "*"
++      && try(s.Condition.Null["aws:SourceIdentity"], "") == "false"
++      ]) == 1 && length([
++      for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s.Sid
++      if s.Sid == "NeverFromADeployerSession" && s.Effect == "Deny" && s.Action == "*" && s.Resource == "*"
++      && try(s.Condition.Null["aws:SourceIdentity"], "") == "false"
++    ]) == 1
++    error_message = "R7: each workload boundary refuses every session that carries a source identity."
++  }
++}

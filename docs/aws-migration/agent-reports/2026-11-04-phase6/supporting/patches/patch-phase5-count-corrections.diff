@@ -1,0 +1,90 @@
+diff --git a/docs/aws-migration/agent-reports/2026-11-04-phase5/00-lead-orchestrator.md b/docs/aws-migration/agent-reports/2026-11-04-phase5/00-lead-orchestrator.md
+index 4309260..ce375db 100644
+--- a/docs/aws-migration/agent-reports/2026-11-04-phase5/00-lead-orchestrator.md
++++ b/docs/aws-migration/agent-reports/2026-11-04-phase5/00-lead-orchestrator.md
+@@ -78,7 +78,7 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
+    - platform main approvals.
+ 9. **What exact approval is needed from Tamer next?**
+    - (a) Done: the variable was corrected and the real plan passed.
+-   - (b) Next, as a separate approval: **"Approve the root re-apply of infra/aws/bootstrap at 46dfbd9 in CloudShell"**. The expected change is 19 to add, 4 real in-place, 0 destroy. It comes with setting the session role variables and running the simulation, and with formally accepting residuals R1 to R10.
++   - (b) Next, as a separate approval: **"Approve the root re-apply of infra/aws/bootstrap at 46dfbd9 in CloudShell"**. The expected change is 19 to add, 6 in-place (4 real, 2 deferred trust re-reads with identical content), 0 destroy, 1 moved. It comes with setting the session role variables and running the simulation, and with formally accepting residuals R1 to R10.
+ 10. **Is a separate G3 apply plan safe to prepare?** **Yes, to prepare; not to execute yet.** Agent 6 agrees (`06` §9). The order is in `NEXT-EXECUTION-PLAN.md`: re-apply and simulate, a fresh plan equal to the 64 creates, the declaration PR, the apply, then `down` and G6 within 72 h.
+ 
+ ## 3. What the lead inspected directly
+diff --git a/docs/aws-migration/agent-reports/2026-11-04-phase5/02-SECURITY-B2-TD14.md b/docs/aws-migration/agent-reports/2026-11-04-phase5/02-SECURITY-B2-TD14.md
+index 496b74e..2a13327 100644
+--- a/docs/aws-migration/agent-reports/2026-11-04-phase5/02-SECURITY-B2-TD14.md
++++ b/docs/aws-migration/agent-reports/2026-11-04-phase5/02-SECURITY-B2-TD14.md
+@@ -282,7 +282,7 @@ no effect.
+ 
+ From a credential-free Terraform diff of origin/main's bootstrap, applied with overrides, to the
+ patched bootstrap (`evidence/02/reapply-diff-summary.txt`, harness `harness/diff.tftest.hcl`):
+-**17 to add, 0 to destroy, and in-place changes.**
++**19 to add, 0 to destroy, and in-place changes.** (Corrected in Phase 6 by Agent 4: this section was written before the B-2 fix added two more creates; see 2026-11-04 phase 6 report 03.)
+ 
+ | Change | Addresses |
+ | --- | --- |
+@@ -290,9 +290,9 @@ patched bootstrap (`evidence/02/reapply-diff-summary.txt`, harness `harness/diff
+ | Updated in place | `aws_iam_role_policy.deployer["nonprod"]`, `aws_iam_role_policy.deployer["prod"]` (StackServices and IAM/S3/KMS allows move out; guardrails added) |
+ | Updated in place | `aws_iam_role.ci["nonprod"]` (trust: the `aws-nonprod-session` subject removed; `evidence/02/reapply-diff-ci-nonprod.txt`) |
+ | May show as updated in place | `aws_iam_role.deployer["nonprod"]` and `["prod"]`: their trust document is read again at apply time because `aws_iam_role.ci` changes. Content identical [E] |
+-| Created (17) | `aws_iam_policy.workload_boundary["prod"]`; `aws_iam_policy.deployer_read`; `aws_iam_policy.deployer_allow["nonprod"]` and `["prod"]`; `aws_iam_policy.deployer_allow_tagged["nonprod"]` and `["prod"]`; `aws_iam_role_policy_attachment.deployer_read["nonprod"]` and `["prod"]`; `aws_iam_role_policy_attachment.deployer_allow["nonprod"]` and `["prod"]`; `aws_iam_role_policy_attachment.deployer_allow_tagged["nonprod"]` and `["prod"]`; `aws_iam_role.ci_session["nonprod"]`; `aws_iam_role_policy.ci_session["nonprod"]`; `aws_iam_role.deployer_session["nonprod"]`; `aws_iam_role_policy.deployer_session["nonprod"]`; `aws_iam_role_policy_attachment.deployer_session_read["nonprod"]` |
++| Created (19) | `aws_iam_policy.deployer_session_read["nonprod"]`; `aws_iam_role_policy_attachment.deployer_session_refresh["nonprod"]` (both added by the B-2 fix);  `aws_iam_policy.workload_boundary["prod"]`; `aws_iam_policy.deployer_read`; `aws_iam_policy.deployer_allow["nonprod"]` and `["prod"]`; `aws_iam_policy.deployer_allow_tagged["nonprod"]` and `["prod"]`; `aws_iam_role_policy_attachment.deployer_read["nonprod"]` and `["prod"]`; `aws_iam_role_policy_attachment.deployer_allow["nonprod"]` and `["prod"]`; `aws_iam_role_policy_attachment.deployer_allow_tagged["nonprod"]` and `["prod"]`; `aws_iam_role.ci_session["nonprod"]`; `aws_iam_role_policy.ci_session["nonprod"]`; `aws_iam_role.deployer_session["nonprod"]`; `aws_iam_role_policy.deployer_session["nonprod"]`; `aws_iam_role_policy_attachment.deployer_session_read["nonprod"]` |
+ 
+-So the expected real plan is **17 to add, 4 to change (up to 6), 0 to destroy** [E]. The harness also
++So the expected real plan is **19 to add, 6 to change (4 real, plus the two deployer roles whose trust is read again at apply time), 0 to destroy, 1 moved** [E]. The harness also
+ showed the two budgets as changed; that comes only from overriding budget notifications in the
+ harness. Any destroy, or a change to a budget, ECR repository, KMS key or bucket, means stop.
+ 
+diff --git a/docs/aws-migration/agent-reports/2026-11-04-phase5/06-INDEPENDENT-REVIEW.md b/docs/aws-migration/agent-reports/2026-11-04-phase5/06-INDEPENDENT-REVIEW.md
+index 9e02780..ffec7ee 100644
+--- a/docs/aws-migration/agent-reports/2026-11-04-phase5/06-INDEPENDENT-REVIEW.md
++++ b/docs/aws-migration/agent-reports/2026-11-04-phase5/06-INDEPENDENT-REVIEW.md
+@@ -532,7 +532,7 @@ bucket and key policies. Two additions:
+     only needs SG-referenced rules: `from_alb`, `alb_to_service`.
+   - [O] Required approvals on platform main.
+ 
+-The re-apply plan Agent 2 expects (17 add, 4-6 change, 0 destroy) is consistent with the code [E].
++The re-apply plan Agent 2 expects (17 add, 4-6 change, 0 destroy) is consistent with the code [E]. (Phase 6 correction: 19 add after the B-2 fix; 6 change shown, 4 real.)
+ 
+ ### 8.4 Verdict on B2 / TD-14
+ 
+diff --git a/docs/aws-migration/agent-reports/2026-11-04-phase5/DECISIONS-AND-BLOCKERS.md b/docs/aws-migration/agent-reports/2026-11-04-phase5/DECISIONS-AND-BLOCKERS.md
+index d80f3c2..501d954 100644
+--- a/docs/aws-migration/agent-reports/2026-11-04-phase5/DECISIONS-AND-BLOCKERS.md
++++ b/docs/aws-migration/agent-reports/2026-11-04-phase5/DECISIONS-AND-BLOCKERS.md
+@@ -17,7 +17,7 @@ Date: 4 Nov 2026. Lead orchestrator. Labels: [V] verified, [E] estimated, [R] re
+ | # | Item | Why it blocks | Owner action [O] | Blocks |
+ | --- | --- | --- | --- | --- |
+ | B-1 | ~~Approve the plan job and fix `AWS_DEPLOYER_ROLE_ARN`~~ **Done** | Runs 41820815532 and 41865393534 failed on the variable; the owner fixed it and approved run 41887322394, which passed (64 creates) [V] | None | - |
+-| B-2 | **Root re-apply of the bootstrap with platform#38** | B2 / TD-14, H-1, H-2, H-2b and H-3 are closed only once AWS has the new policies | Separate approval, then in CloudShell as root: `terraform init -reconfigure`, plan (expect 19 add, 4 real in-place changes, 0 destroy; up to 8 changes shown, of which 2 are budget artifacts and 2 are identical trust re-reads), review, apply. Same sitting: set `AWS_CI_ROLE_ARN` and `AWS_DEPLOYER_ROLE_ARN` on the `aws-nonprod-session` environment from the new outputs, then run `b2-owner-simulation.sh` (214 read-only simulations) and expect 0 mismatches | G3 apply |
++| B-2 | **Root re-apply of the bootstrap with platform#38** | B2 / TD-14, H-1, H-2, H-2b and H-3 are closed only once AWS has the new policies | Separate approval, then in CloudShell as root: `terraform init -reconfigure`, plan (expect 19 add, 6 in-place changes, 0 destroy, 1 moved: 4 real changes plus 2 identical deployer trust re-reads; a budget change is not expected in a real plan and means stop), review, apply. Same sitting: set `AWS_CI_ROLE_ARN` and `AWS_DEPLOYER_ROLE_ARN` on the `aws-nonprod-session` environment from the new outputs, then run `b2-owner-simulation.sh` (214 read-only simulations) and expect 0 mismatches | G3 apply |
+ | B-3 | **Accept or close residuals R1 to R10** (B2 report §7, review §8.5) | The allow-list cannot scope a few AWS actions (untagged KMS keys, ACM certificates, Cloud Map, default security groups, Route 53 zones, reads, trust content, own resource policies, CIDR ingress in the session) | Either confirm that eu-central-1 holds no untagged KMS keys, ACM certificates, Cloud Map namespaces or foreign security groups that matter, or formally accept R1 to R10 | G3 apply (formal acceptance) |
+ | B-4 | **A fresh plan after the re-apply** | The passing plan (run 41887322394) ran under the old, broader deployer. It cannot show that the #38 allow-list is enough | Lead dispatches a plan; owner approves it in `aws-nonprod` | G3 apply |
+ | B-5 | **G3 approval PR**: commit the 64-create declaration to `envs/nonprod.expected-changes.json` | The apply enforces the declaration exactly | Owner approves the PR and the apply dispatch | G3 apply |
+diff --git a/docs/aws-migration/agent-reports/2026-11-04-phase5/G3-PLAN-REVIEW.md b/docs/aws-migration/agent-reports/2026-11-04-phase5/G3-PLAN-REVIEW.md
+index 2555a7f..11a5eb7 100644
+--- a/docs/aws-migration/agent-reports/2026-11-04-phase5/G3-PLAN-REVIEW.md
++++ b/docs/aws-migration/agent-reports/2026-11-04-phase5/G3-PLAN-REVIEW.md
+@@ -108,7 +108,7 @@ A Testing session today would add 7 addresses (ALB, 2 listeners, 3 fixed-respons
+ | # | Requirement | Status |
+ | --- | --- | --- |
+ | 1 | Resolve or formally document B2 / TD-14 | **Documented; fixed in code only.** platform#38 (46dfbd9) replaces the tag denies with allow-lists; it takes effect only after a root re-apply. Residuals R1 to R10 need owner acceptance. `02-SECURITY-B2-TD14.md`, `06-INDEPENDENT-REVIEW.md` §8 to §9 |
+-| 2 | Confirm the GitHub OIDC chain | **Confirmed [V]** in run 41887322394: OIDC, CI role, deployer, S3 state and AWS reads all succeeded. The first two runs failed on the wrong variable |
++| 2 | Confirm the GitHub OIDC chain | **Confirmed [V]** in run 41887322394: OIDC, CI role, deployer and S3 state access succeeded. The stack has no AWS data sources and the state was empty, so the plan made no other AWS reads (Phase 6 correction). The first two runs failed on the wrong variable |
+ | 3 | Required code PRs merged and current | [V] platform#37 c688e9e, platform#38 46dfbd9, identity#5 4001ed8, work#28 f812dfe. No open PRs remained in the six repositories at 12:06 UTC |
+ | 4 | Fresh plan from current main | **Done [V]**: run 41887322394 on main 46dfbd9 |
+ | 5 | Capture every planned address and action | **Done [V]**: 64 creates, listed in the job summary and §1a |
+diff --git a/docs/aws-migration/agent-reports/2026-11-04-phase5/NEXT-EXECUTION-PLAN.md b/docs/aws-migration/agent-reports/2026-11-04-phase5/NEXT-EXECUTION-PLAN.md
+index 4f90e2b..1239565 100644
+--- a/docs/aws-migration/agent-reports/2026-11-04-phase5/NEXT-EXECUTION-PLAN.md
++++ b/docs/aws-migration/agent-reports/2026-11-04-phase5/NEXT-EXECUTION-PLAN.md
+@@ -8,7 +8,7 @@ Each step needs the approval noted. Nothing here is authorized by Phase 5.
+ 
+ | Step | What | Who | Approval | Stop condition |
+ | --- | --- | --- | --- | --- |
+-| 6.1 | Root re-applies `infra/aws/bootstrap` at main 46dfbd9 (platform#38) in CloudShell: `terraform init -reconfigure` (new backend `kms_key_id`), `plan`, review, `apply` | Owner (root), Claude prepares the runbook and checks outputs | **Separate approval** (IAM change to AWS) | The plan must be 19 to add and only in-place updates on the 4 expected addresses (nonprod boundary after its `moved`, the two deployer inline policies, `ci["nonprod"]` trust). Up to 8 changes may show: 2 budget artifacts and 2 identical deployer trust re-reads are harmless. Any destroy, replace or other address: stop |
++| 6.1 | Root re-applies `infra/aws/bootstrap` at main 46dfbd9 (platform#38) in CloudShell: `terraform init -reconfigure` (new backend `kms_key_id`), `plan`, review, `apply` | Owner (root), Claude prepares the runbook and checks outputs | **Separate approval** (IAM change to AWS) | The plan must be 19 to add and only in-place updates on the 4 expected addresses (nonprod boundary after its `moved`, the two deployer inline policies, `ci["nonprod"]` trust), plus `aws_iam_role.deployer["nonprod"]` and `["prod"]` shown as updated because their trust document is read at apply time (identical content): 6 to change in total. The budget artifacts came only from the offline harness; a budget change in the real plan means stop. Any destroy, replace or other address: stop |
+ | 6.2 | Same sitting: set `AWS_CI_ROLE_ARN` and `AWS_DEPLOYER_ROLE_ARN` as **environment** variables on `aws-nonprod-session`, using the new session role outputs | Owner (GitHub settings) | Part of 6.1 | Until set, the nightly session run cannot assume a role |
+ | 6.3 | Run `b2-owner-simulation.sh` (214 read-only `simulate-principal-policy` calls, all with `aws:RequestedRegion=eu-central-1`) | Owner (root, read-only) | Part of 6.1 | Any mismatch: stop, fix by PR, re-apply |
+ | 6.4 | Formally accept residuals R1 to R10, or confirm there are no untagged KMS keys, ACM certificates, Cloud Map resources or foreign security groups in eu-central-1 that matter | Owner | Decision | - |

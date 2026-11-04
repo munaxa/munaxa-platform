@@ -1,0 +1,18 @@
+diff --git a/.github/workflows/publish-images.yml b/.github/workflows/publish-images.yml
+index 92caa4e..1f55a3c 100644
+--- a/.github/workflows/publish-images.yml
++++ b/.github/workflows/publish-images.yml
+@@ -15,10 +15,10 @@
+ 
+ name: Publish images
+ 
++# Not on `image/**` tags any more: those are the ECR release tags (publish-images-ecr.yml), which
++# run behind the image-release environment. This GHCR job has no environment and holds
++# PLATFORM_PACKAGES_TOKEN, so it runs only when dispatched by hand, until Render is retired.
+ on:
+-  push:
+-    tags:
+-      - 'image/**'
+   workflow_dispatch:
+     inputs:
+       commit:
