@@ -2,7 +2,7 @@
 
 Date: 4 Nov 2026. Lead orchestrator. Labels: [V] verified, [E] estimated, [R] recommended, [U] unverified, [O] owner action required.
 
-**Result: the real nonprod plan was dispatched and approved but stopped before planning.** The GitHub OIDC to CI role step succeeded. The CI role's call to assume the deployer was refused, because the `AWS_DEPLOYER_ROLE_ARN` variable lacks the role path. No AWS resource was read or written by the plan. The 64-create expected list comes from a credential-free mocked plan and is **not yet confirmed against AWS**.
+**Result: the real nonprod plan was dispatched and approved twice, and both runs stopped before planning** (41820815532 and 41865393534). The GitHub OIDC to CI role step succeeded. The CI role's call to assume the deployer was refused, because the `AWS_DEPLOYER_ROLE_ARN` variable lacks the role path. No AWS resource was read or written by the plan. The 64-create expected list comes from a credential-free mocked plan and is **not yet confirmed against AWS**.
 
 ## 1. The real plan run
 
@@ -18,6 +18,18 @@ Date: 4 Nov 2026. Lead orchestrator. Labels: [V] verified, [E] estimated, [R] re
 | Steps 7 to 9 (plan, summary and intent, keep plan) | skipped |
 | Apply job | skipped (it never runs for `action=plan`) |
 | AWS side effects | None: the S3 backend never initialised, so no lock file and no state object [V from the step order] |
+
+### Second plan run, after the owner was asked to fix the variable
+
+| Item | Value |
+| --- | --- |
+| Run | [41865393534](https://github.com/munaxa/munaxa-platform/actions/runs/41865393534), dispatched 16:15:25 UTC on main `46dfbd9` (#38) |
+| Environment gate | `waiting` from 16:15:27; approved by the owner; job 126698202703 started 18:16:45 |
+| Step 5, OIDC to `munaxa-shared-ci-nonprod` | **success** [V] |
+| Step 6, `terraform init` | **failure**, the same STS AccessDenied (request ID d9533435-f92f-4d25-a7b9-102d2ad8c395). The job log prints `DEPLOYER_ROLE_ARN: arn:aws:iam::229251310592:role/munaxa-shared-deployer-nonprod`, still without the path [V] |
+| Steps 7 to 9, apply job | skipped. No AWS side effects |
+
+The variable the job received at 18:16 was unchanged. Either the repository variable was not saved, or an **environment** variable with the same name in `aws-nonprod` still holds the old value: an environment variable overrides a repository variable of the same name [R: check both]. The fix in step 1 below is unchanged.
 
 ### Root cause [V]
 

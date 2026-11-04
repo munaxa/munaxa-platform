@@ -26,7 +26,7 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
 
 ## 2. Final answers
 
-1. **Is the GitHub OIDC → CI role → deployer chain working?** **Half.** GitHub OIDC to `munaxa-shared-ci-nonprod` works [V] (run 41820815532, job 126543183878, step 5, 12:06:47 UTC). CI role to deployer **fails** [V]: STS AccessDenied, because the repository variable `AWS_DEPLOYER_ROLE_ARN` is `arn:aws:iam::229251310592:role/munaxa-shared-deployer-nonprod` and is missing the path `/munaxa-shared/bootstrap/`. [O] Fix the variable; then the plan is dispatched again.
+1. **Is the GitHub OIDC → CI role → deployer chain working?** **Half.** GitHub OIDC to `munaxa-shared-ci-nonprod` works [V] (run 41820815532, job 126543183878, step 5, 12:06:47 UTC). CI role to deployer **fails** [V]: STS AccessDenied, because the repository variable `AWS_DEPLOYER_ROLE_ARN` is `arn:aws:iam::229251310592:role/munaxa-shared-deployer-nonprod` and is missing the path `/munaxa-shared/bootstrap/`. A second run (41865393534, approved 18:16 UTC) failed the same way: the job still received the ARN without the path [V]. [O] Fix the variable, checking both the repository variable and any `aws-nonprod` environment variable of the same name; then the plan is dispatched again.
 2. **Is B2 / TD-14 resolved?** **In code, yes; in AWS, no.** platform#38 (46dfbd9) replaces the tag denies with positive allow-lists:
    - creates need both request tags;
    - writes are allowed only on own-named or own-tagged resources;
@@ -94,11 +94,11 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
 
 ## 4. Explicit confirmations
 
-- **G3 was NOT applied.** The only AWS-facing operation was one read-only plan dispatch, which stopped at `terraform init`. Steps 7 to 9 and the apply job were skipped [V].
+- **G3 was NOT applied.** The only AWS-facing operations were two read-only plan dispatches, both of which stopped at `terraform init`. Steps 7 to 9 and the apply job were skipped [V].
 - **No new application infrastructure was created**, and no other AWS resource was created or changed. The S3 backend never initialised in the plan job, so not even a lock file was written [V].
 - **No IAM change was applied to AWS.** #38 is code on main only [V].
 - **No images were published.** The product publish workflows run only on `image/*` tags or dispatch, and none ran [V per Agent 1 and 5].
-- **No secrets were written**, **no DNS or Cloudflare or certificate change** was made, **no migrations were run**, and **no Testing session was started** [V: no such workflow was dispatched; one dispatch in total].
+- **No secrets were written**, **no DNS or Cloudflare or certificate change** was made, **no migrations were run**, and **no Testing session was started** [V: no such workflow was dispatched; two plan dispatches in total].
 - **No production change** was made, and **Render and Supabase remain untouched**: no Render or Supabase tool or API was used.
 - **The retained Docs bootstrap, its final snapshot and its pending-deletion key were not touched.**
 - **The AWS root connector was never used.** It was available in the session (AWS MCP) and no call was made. No IAM user or access key was created.
