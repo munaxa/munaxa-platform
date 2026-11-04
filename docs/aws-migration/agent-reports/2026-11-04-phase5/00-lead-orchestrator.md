@@ -26,7 +26,7 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
 
 ## 2. Final answers
 
-1. **Is the GitHub OIDC → CI role → deployer chain working?** **Half.** GitHub OIDC to `munaxa-shared-ci-nonprod` works [V] (run 41820815532, job 126543183878, step 5, 12:06:47 UTC). CI role to deployer **fails** [V]: STS AccessDenied, because the repository variable `AWS_DEPLOYER_ROLE_ARN` is `arn:aws:iam::229251310592:role/munaxa-shared-deployer-nonprod` and is missing the path `/munaxa-shared/bootstrap/`. A second run (41865393534, approved 18:16 UTC) failed the same way: the job still received the ARN without the path [V]. [O] Fix the variable, checking both the repository variable and any `aws-nonprod` environment variable of the same name; then the plan is dispatched again.
+1. **Is the GitHub OIDC → CI role → deployer chain working?** **Yes [V]**, since 18:28 UTC. [Run 41887322394](https://github.com/munaxa/munaxa-platform/actions/runs/41887322394) went through GitHub OIDC, the CI role, the deployer, the S3 state and the AWS reads. The first two runs (41820815532 at 12:06, 41865393534 at 18:16) failed at `terraform init` with STS AccessDenied, because `AWS_DEPLOYER_ROLE_ARN` lacked the path `/munaxa-shared/bootstrap/`. The owner corrected it at about 18:27.
 2. **Is B2 / TD-14 resolved?** **In code, yes; in AWS, no.** platform#38 (46dfbd9) replaces the tag denies with positive allow-lists:
    - creates need both request tags;
    - writes are allowed only on own-named or own-tagged resources;
@@ -36,8 +36,8 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
    - sessions get their own roles (H-3).
 
    Evidence: `terraform test` passes 9/9 with mutation checks. A local evaluator (not an AWS simulation) passes 85/85 matrix cases, 183/183 G3 calls and 107/107 session-refresh calls. Agent 6 blocked the first version (B-1, B-2) and accepted the fix at 0ff0879. It takes effect only after a root re-apply of the bootstrap and the 214-call owner simulation, which this phase did not authorize. The old Docs VPC was destroyed in run 41794933464, so no Docs VPC inventory was needed [V]. Residuals R1 to R10 need owner acceptance [O].
-3. **Is the current Terraform G3 configuration ready?** **The code is ready [V]; G3 is not.** All local gates pass, and the mocked plan is 64 creates with no updates or deletes. The real plan has not run (answer 1), the bootstrap re-apply is pending, and the plan after it must match the declaration.
-4. **What exact resources will G3 create, update or destroy?** From the mocked plan: **64 creates, 0 updates, 0 destroys**, listed by type in `G3-PLAN-REVIEW.md` §2 and by address in `supporting/g3-expected-addresses.txt`. They are:
+3. **Is the current Terraform G3 configuration ready?** **The code and the plan are ready [V]; the apply is not yet.** All local gates pass, and the real plan equals the mocked one: 64 creates, no updates, replacements or deletes. Before the apply: the bootstrap re-apply with #38 and its simulation, then a fresh plan that must still be the same 64 creates.
+4. **What exact resources will G3 create, update or destroy?** From the real plan (run 41887322394), identical to the mocked one: **64 creates, 0 updates, 0 replacements, 0 destroys**, listed by type in `G3-PLAN-REVIEW.md` §2 and by address in `supporting/g3-expected-addresses.txt`. They are:
    - network: VPC, IGW, 5 subnets, 2 route tables, 1 route, 5 associations, S3 gateway endpoint, default SG;
    - database: DB subnet group, parameter group, db.t4g.micro PostgreSQL 16;
    - KMS key and alias;
@@ -48,7 +48,7 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
    - an ECS cluster and its capacity providers;
    - a Cloud Map namespace, an ops log group and an ACM certificate request.
 
-   [U] until the real plan confirms it.
+   [V] confirmed by the real plan; tags [E] (the workflow prints no values).
 5. **Does the architecture meet the US$50 Testing target?** **Yes [E].**
    - The stack costs about US$8.64 to 11.14 a month idle, and the whole account about US$14.34 including both bootstraps and the Docs final snapshot.
    - A session hour costs US$0.29 to 0.34, so about 117 session hours a month fit (range 90 to 134).
@@ -66,7 +66,6 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
 
    Each merge came only after all required checks passed on the final head, with `expectedHeadSha` pinned, using the repository's merge style. No protection was bypassed. This report PR is docs only.
 8. **What remains blocked and why?** See `DECISIONS-AND-BLOCKERS.md` §2:
-   - the deployer variable (B-1 there is the plan approval, now done; the variable is the new stop);
    - the bootstrap re-apply with #38 and its simulation;
    - acceptance of R1 to R10;
    - a fresh plan after the re-apply;
@@ -78,8 +77,8 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
    - product branch and tag protection;
    - platform main approvals.
 9. **What exact approval is needed from Tamer next?**
-   - (a) Now: correct `AWS_DEPLOYER_ROLE_ARN` (and check the prod and publisher ARNs for the same path). The lead then re-runs the read-only plan, and Tamer approves it in `aws-nonprod`.
-   - (b) Then, as a separate approval: **"Approve the root re-apply of infra/aws/bootstrap at 46dfbd9 in CloudShell"**. The expected change is 19 to add, 4 real in-place, 0 destroy. It comes with setting the session role variables and running the simulation, and with formally accepting residuals R1 to R10.
+   - (a) Done: the variable was corrected and the real plan passed.
+   - (b) Next, as a separate approval: **"Approve the root re-apply of infra/aws/bootstrap at 46dfbd9 in CloudShell"**. The expected change is 19 to add, 4 real in-place, 0 destroy. It comes with setting the session role variables and running the simulation, and with formally accepting residuals R1 to R10.
 10. **Is a separate G3 apply plan safe to prepare?** **Yes, to prepare; not to execute yet.** Agent 6 agrees (`06` §9). The order is in `NEXT-EXECUTION-PLAN.md`: re-apply and simulate, a fresh plan equal to the 64 creates, the declaration PR, the apply, then `down` and G6 within 72 h.
 
 ## 3. What the lead inspected directly
@@ -94,11 +93,11 @@ Agent reports 01 to 06 are the agents' own text. Paths such as `phase5/evidence/
 
 ## 4. Explicit confirmations
 
-- **G3 was NOT applied.** The only AWS-facing operations were two read-only plan dispatches, both of which stopped at `terraform init`. Steps 7 to 9 and the apply job were skipped [V].
-- **No new application infrastructure was created**, and no other AWS resource was created or changed. The S3 backend never initialised in the plan job, so not even a lock file was written [V].
+- **G3 was NOT applied.** The only AWS-facing operations were three read-only plan dispatches. Two stopped at `terraform init`; the third planned 64 creates and saved nothing for an apply. The apply job was skipped in all three [V].
+- **No new application infrastructure was created**, and no other AWS resource was created or changed. The only S3 write was the third plan's Terraform lock object, which Terraform removes when the plan ends [E].
 - **No IAM change was applied to AWS.** #38 is code on main only [V].
 - **No images were published.** The product publish workflows run only on `image/*` tags or dispatch, and none ran [V per Agent 1 and 5].
-- **No secrets were written**, **no DNS or Cloudflare or certificate change** was made, **no migrations were run**, and **no Testing session was started** [V: no such workflow was dispatched; two plan dispatches in total].
+- **No secrets were written**, **no DNS or Cloudflare or certificate change** was made, **no migrations were run**, and **no Testing session was started** [V: no such workflow was dispatched; three plan dispatches in total].
 - **No production change** was made, and **Render and Supabase remain untouched**: no Render or Supabase tool or API was used.
 - **The retained Docs bootstrap, its final snapshot and its pending-deletion key were not touched.**
 - **The AWS root connector was never used.** It was available in the session (AWS MCP) and no call was made. No IAM user or access key was created.

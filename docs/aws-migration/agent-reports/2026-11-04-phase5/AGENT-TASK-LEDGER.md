@@ -38,10 +38,13 @@ Date: 4 Nov 2026. Baseline at start (about 10:05 UTC): munaxa-platform `origin/m
 | 12:06 | Lead merged platform#38 (46dfbd9) after all required checks passed on 0ff0879 |
 | 16:15:25 | After the owner's "Continue", lead dispatched the plan again on main 46dfbd9: run 41865393534, `waiting` |
 | 18:16:45 | Owner approved; init failed at 18:16:53 with the same AccessDenied: `DEPLOYER_ROLE_ARN` still lacks the path |
+| 18:27:02 | Owner: "Updated the variable" |
+| 18:27:21 | Lead dispatched the plan a third time on main 46dfbd9: run 41887322394 |
+| 18:28:41 | Owner approved; plan success: 64 to add, 0 change, 0 replace, 0 destroy; equal to the proposed declaration [V] |
 
 ## Duplicate-operation controls
 
-- Only the lead dispatched a workflow (two plan runs: 41820815532 and 41865393534). No agent had dispatch rights.
+- Only the lead dispatched a workflow (three plan runs: 41820815532, 41865393534, 41887322394). No agent had dispatch rights.
 - Only one writer per repository branch at a time: Agent 3 for platform until #37 merged, then the lead and Agent 2 for #38, then the lead for this report PR. Agent 5 for the product repos.
 - The scheduled `aws-session.yml` run and the plan share the concurrency group `aws-terraform-nonprod`. The plan was dispatched at 11:26, well away from the evening schedule.
 - No Terraform state was written by any agent. Every local plan used a local backend with endpoints pointed at 127.0.0.1.
