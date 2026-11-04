@@ -13,7 +13,7 @@
 
 ## 1. Outcome
 
-# **G2 SUCCEEDED (AWS side complete); GitHub owner actions pending**
+# **G2 SUCCEEDED** (AWS verified; GitHub owner actions reported done 4 Nov)
 
 | Item | Result |
 | --- | --- |
@@ -23,7 +23,7 @@
 | Terraform state | In `s3://munaxa-shared-tfstate-229251310592/bootstrap/terraform.tfstate`, versioned, SSE-KMS; plan against it: **No changes** [V]. Local copies removed after that [V] |
 | Verification | Bucket, KMS, trusts, deny statements, 11 ECR repositories, 2 budgets: all as the runbook expects [V]. Simulations: as intended **after** the fix (7/7) [V] |
 | Cost allocation tags | `Environment` and `Project` **Active** (13:43:41 UTC) [V] |
-| GitHub environments and variables | **Pending, owner** [O]: this session cannot create or read them (MASTER §4) |
+| GitHub environments and variables | Reported done by Tamer, 4 Nov 08:59 UTC [U]: this session cannot read them; the next scheduled `aws-session.yml` run (no longer skipped) is the independent check (MASTER §4) |
 | G3 and later | **Not executed** |
 
 ## 2. Stops and deviations (each handled within the brief)

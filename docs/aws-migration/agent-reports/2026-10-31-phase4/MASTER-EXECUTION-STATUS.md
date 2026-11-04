@@ -36,17 +36,17 @@ action required.
 
 | # | Action | Status |
 | --- | --- | --- |
-| 1 | munaxa-platform environments `aws-nonprod`, `aws-prod` (reviewer tam2om, `main` only), `aws-nonprod-session` (`main` only), created **before** any variable | **Pending [O]** (this session's GitHub access cannot create or read environments: the environments API returns 403 through the session proxy) |
-| 2 | munaxa-platform repository variables `AWS_CI_ROLE_ARN`, `AWS_DEPLOYER_ROLE_ARN` (nonprod ARNs); `aws-prod` environment variables (prod ARNs) | **Pending [O]** |
-| 3 | `image-release` environment (reviewer, tags `image/*` only) and `AWS_IMAGE_PUBLISHER_ROLE_ARN` in identity, control, work, school | **Pending [O]** |
+| 1 | munaxa-platform environments `aws-nonprod`, `aws-prod` (reviewer tam2om, `main` only), `aws-nonprod-session` (`main` only), created **before** any variable | **Done, owner-reported [O→U]** (Tamer, 4 Nov 08:59 UTC: "it's done"; not independently readable from this session, the environments/variables APIs return 403) |
+| 2 | munaxa-platform repository variables `AWS_CI_ROLE_ARN`, `AWS_DEPLOYER_ROLE_ARN` (nonprod ARNs); `aws-prod` environment variables (prod ARNs) | **Done, owner-reported [O→U]** (Tamer, 4 Nov 08:59 UTC: "it's done"; not independently readable from this session, the environments/variables APIs return 403) |
+| 3 | `image-release` environment (reviewer, tags `image/*` only) and `AWS_IMAGE_PUBLISHER_ROLE_ARN` in identity, control, work, school | **Done, owner-reported [O→U]** (Tamer, 4 Nov 08:59 UTC: "it's done"; not independently readable from this session, the environments/variables APIs return 403) |
 | 4 | Keep the AWS connector signed out (S-ROOT) | Signed out throughout [V] |
 
-Exact values: NEXT-EXECUTION-PLAN §2.
+Exact values: NEXT-EXECUTION-PLAN §2. Evidence until then: every scheduled `aws-session.yml` run up to [41747107325](https://github.com/munaxa/munaxa-platform/actions/runs/41747107325) (4 Nov 00:28 UTC) was **skipped** (`if: vars.AWS_CI_ROLE_ARN != ''`), so the repository variable was absent then [V]. The first scheduled run that is not skipped confirms it [R].
 
 ## 5. Gates
 
 | Gate | State |
 | --- | --- |
-| G2 | **Done on AWS** [V]; GitHub part pending [O] |
+| G2 | **Done on AWS** [V]; GitHub part reported done 4 Nov [U] |
 | G3 to G7 | Closed. G3 needs separate approval and B2/TD-14 |
 | G9 | Closed |
