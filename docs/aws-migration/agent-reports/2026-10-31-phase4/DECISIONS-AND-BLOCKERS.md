@@ -40,7 +40,7 @@ untouched until acceptance and G9, CanteenHub out of scope.
 
 | # | Blocker | Severity | Gate | Action |
 | --- | --- | --- | --- | --- |
-| B3 | GitHub environments and variables not created | Blocks the first workflow run | Next step | [O] NEXT-EXECUTION-PLAN §2 |
+| B3 | GitHub environments and variables | Reported resolved 4 Nov (owner) | Next step | Confirm via the next scheduled run [U] |
 | B2 | Untagged-resource residual | Medium | **G3** | [O] Docs VPC tag inventory + TD-14 |
 | B1 | No non-root AWS identity; connector is root | High (operational) | Lead's AWS reads | Keep using CloudShell |
 | B4 | Cost not measured since 29 Oct | Low | G3 cost sign-off | Cost Explorer read after 1 Nov |
@@ -49,7 +49,7 @@ No blocker remains **within G2** on the AWS side.
 
 ## 5. Owner actions
 
-1. GitHub environments, then variables (NEXT-EXECUTION-PLAN §2). **Pending.**
+1. GitHub environments, then variables (NEXT-EXECUTION-PLAN §2). **Reported done by Tamer, 4 Nov 08:59 UTC** [U until a scheduled run is not skipped].
 2. Keep the AWS connector signed out.
 3. Before G3: Docs VPC tag inventory and TD-14.
 4. Optional: free CloudShell home space (`~/bootstrap`, 790 MB, is Docs' working copy: the owner
