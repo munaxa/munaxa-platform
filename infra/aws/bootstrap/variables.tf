@@ -47,7 +47,7 @@ variable "deploy_environments" {
   description = "Per stack environment, the GitHub environments of munaxa-platform whose main-branch jobs may run its Terraform (one CI role and one deployer each, R-17)."
   type        = map(list(string))
   default = {
-    nonprod = ["aws-nonprod", "aws-nonprod-session"]
+    nonprod = ["aws-nonprod"]
     prod    = ["aws-prod"]
   }
 
@@ -55,6 +55,25 @@ variable "deploy_environments" {
     condition     = toset(keys(var.deploy_environments)) == toset(["nonprod", "prod"])
     error_message = "deploy_environments has exactly the keys nonprod and prod."
   }
+}
+
+variable "session_environments" {
+  description = "Per stack environment, the GitHub environments of munaxa-platform whose main-branch jobs run Testing sessions (aws-session.yml): their own CI role and a session-only deployer (finding H-3). Never prod."
+  type        = map(list(string))
+  default = {
+    nonprod = ["aws-nonprod-session"]
+  }
+
+  validation {
+    condition     = alltrue([for k in keys(var.session_environments) : k == "nonprod"])
+    error_message = "Only nonprod has Testing sessions."
+  }
+}
+
+variable "protected_vpc_ids" {
+  description = "VPCs no deployer may change: the account's default VPC in eu-central-1 (the id munaxa-docs infra/terraform/bootstrap protects the same way)."
+  type        = list(string)
+  default     = ["vpc-0ed30515ad9631ea6"]
 }
 
 variable "budget_limit_usd" {
