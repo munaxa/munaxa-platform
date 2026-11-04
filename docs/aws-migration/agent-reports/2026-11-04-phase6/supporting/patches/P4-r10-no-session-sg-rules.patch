@@ -1,0 +1,269 @@
+--- a/.github/workflows/aws-session.yml
++++ b/.github/workflows/aws-session.yml
+@@ -200,17 +200,13 @@
+             -var "edge_enabled=$on" -var "services_enabled=$on" -out=tfplan > /dev/null
+           terraform show -json tfplan > plan.json
+           "$GITHUB_WORKSPACE/scripts/terraform/plan-summary.sh" plan.json | tee -a "$GITHUB_STEP_SUMMARY"
+-          # Anything beyond the session's own resource types stops the job before the apply. The only
+-          # security-group rules a session touches are the task groups' ingress from the ALB
+-          # (modules/service from_alb); every other rule, and every egress rule, is persistent (G3).
++          # Anything beyond the session's own resource types stops the job before the apply. Every
++          # security-group rule is persistent (R10), so none may change in a session.
+           unexpected=$(jq -r '[.resource_changes[]
+             | select(.change.actions != ["no-op"] and .change.actions != ["read"])
+-            | select((.type | IN("aws_lb","aws_lb_listener","aws_lb_listener_rule","aws_lb_target_group",
+-                                  "aws_acm_certificate_validation","aws_ecs_service",
+-                                  "aws_service_discovery_service"))
+-                     or (.type == "aws_vpc_security_group_ingress_rule"
+-                         and (.address | test("^module\\.[a-z_]+\\[0\\]\\.aws_vpc_security_group_ingress_rule\\.from_alb\\[0\\]$")))
+-                     | not)
++            | select(.type | IN("aws_lb","aws_lb_listener","aws_lb_listener_rule","aws_lb_target_group",
++                                 "aws_acm_certificate_validation","aws_ecs_service",
++                                 "aws_service_discovery_service") | not)
+             | .address] | join(", ")' plan.json)
+           rm -f plan.json
+           [ -z "$unexpected" ] || { echo "::error::the session plan changes more than the session: $unexpected"; exit 1; }
+--- a/infra/aws/bootstrap/iam_session.tf
++++ b/infra/aws/bootstrap/iam_session.tf
+@@ -2,8 +2,8 @@
+ # environment with no required reviewer (so the 20:00 UTC backstop runs unattended). They get
+ # their own CI role and deployer, which can do only what a session does: plan the whole stack
+ # (reads), write nonprod state, create and delete the ALB, its listeners, rules and target groups,
+-# the ALB and task security-group rules, the ECS services and their Cloud Map entries, and start
+-# and stop the nonprod database. No IAM, KMS, Secrets Manager, S3 configuration, logs, network or
++# the ECS services and their Cloud Map entries, and start and stop the nonprod database. No
++# security-group rule: those are all persistent (R10, phase 6). No IAM, KMS, Secrets Manager, S3 configuration, logs, network or
+ # database change: those stay with the reviewed aws-terraform.yml path (aws-nonprod).
+ #
+ # aws-session.yml needs no change: it reads vars.AWS_CI_ROLE_ARN and vars.AWS_DEPLOYER_ROLE_ARN in
+@@ -109,73 +109,29 @@
+     ]
+   }
+ 
+-  # Review R10: the only security-group rules a session creates and removes are the task groups'
+-  # ingress from the ALB (modules/service from_alb, count = edge_enabled), which name the ALB's group
+-  # as their source. The ALB's own 80/443 rules and every egress rule are persistent (G3), so the
+-  # session gets no egress or modify action. IAM has no condition key for a rule's CIDR or source
+-  # group (Service Authorization Reference: AuthorizeSecurityGroupIngress has ec2:Region only), so a
+-  # CIDR source cannot be denied here; instead the session may never touch the ALB, database or
+-  # db-admin groups, and may tag only rules, never a group (so it cannot retag a group into scope).
+-  statement {
+-    sid       = "SessionIngressOnOwnGroups"
+-    actions   = ["ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress"]
+-    resources = ["${local.arn.ec2}:security-group/*", "${local.arn.ec2}:security-group-rule/*"]
+-    condition {
+-      test     = "StringEquals"
+-      variable = "aws:ResourceTag/Project"
+-      values   = ["munaxa"]
+-    }
+-    condition {
+-      test     = "StringEquals"
+-      variable = "aws:ResourceTag/Environment"
+-      values   = [each.key]
+-    }
+-  }
+-
+-  statement {
+-    sid       = "SessionNeverEdgeOrDatabaseGroups"
+-    effect    = "Deny"
+-    actions   = ["ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress", "ec2:ModifySecurityGroupRules"]
+-    resources = ["${local.arn.ec2}:security-group/*"]
+-    condition {
+-      test     = "StringEquals"
+-      variable = "aws:ResourceTag/Name"
+-      values   = ["munaxa-${each.key}-alb", "munaxa-${each.key}-database", "munaxa-${each.key}-db-admin", "munaxa-${each.key}-default-unused"]
+-    }
++  # Review R10 (closed in phase 6): a session writes no security-group rule at all. The task
++  # groups' ingress from the ALB (modules/service from_alb) is persistent, like the ALB's own rules
++  # and its egress: it names the persistent ALB group, so it admits nothing while the ALB is down.
++  # IAM has no condition key for a rule's CIDR or source group (AuthorizeSecurityGroupIngress has
++  # ec2:Region only), so the only way to keep a session from opening a task (public IPv4) to the
++  # internet is to give it no rule action, and to deny them all explicitly.
++  statement {
++    sid    = "SessionNeverSecurityGroupRules"
++    effect = "Deny"
++    actions = [
++      "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
++      "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
++      "ec2:ModifySecurityGroupRules", "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
++      "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
++    ]
++    resources = ["*"]
+   }
+ 
+   statement {
+     sid       = "SessionNeverGroupTags"
+     effect    = "Deny"
+     actions   = ["ec2:CreateTags", "ec2:DeleteTags"]
+-    resources = ["${local.arn.ec2}:security-group/*"]
+-  }
+-
+-  statement {
+-    sid       = "SessionNewRules"
+-    actions   = ["ec2:AuthorizeSecurityGroupIngress"]
+-    resources = ["${local.arn.ec2}:security-group-rule/*"]
+-    condition {
+-      test     = "StringEquals"
+-      variable = "aws:RequestTag/Project"
+-      values   = ["munaxa"]
+-    }
+-    condition {
+-      test     = "StringEquals"
+-      variable = "aws:RequestTag/Environment"
+-      values   = [each.key]
+-    }
+-  }
+-
+-  statement {
+-    sid       = "SessionRuleTagsOnCreate"
+-    actions   = ["ec2:CreateTags"]
+-    resources = ["${local.arn.ec2}:security-group-rule/*"]
+-    condition {
+-      test     = "StringEquals"
+-      variable = "ec2:CreateAction"
+-      values   = ["AuthorizeSecurityGroupIngress"]
+-    }
++    resources = ["${local.arn.ec2}:security-group/*", "${local.arn.ec2}:security-group-rule/*"]
+   }
+ 
+   statement {
+--- a/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
++++ b/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
+@@ -386,26 +386,26 @@
+     error_message = "H-3: the session deployer carries the nonprod deployer's guardrails as its source document."
+   }
+ 
+-  # Review R10: no egress or modify on any group, and never the ALB, database or db-admin group.
++  # Review R10 (phase 6): no security-group rule action is allowed, and all are denied.
+   assert {
+     condition = alltrue(flatten([
+       for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : [
+-        for a in s.actions : !contains(["ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupEgress", "ec2:ModifySecurityGroupRules"], a)
++        for a in s.actions : !strcontains(a, "SecurityGroup") && a != "ec2:*" && a != "*"
+       ] if s.effect != "Deny"
+     ]))
+-    error_message = "R10: a session creates or removes task ingress rules only."
++    error_message = "R10: a session allows no security-group rule action."
+   }
+ 
+   assert {
+     condition = length([
+       for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
+-      if s.sid == "SessionNeverEdgeOrDatabaseGroups" && s.effect == "Deny" && contains(s.actions, "ec2:AuthorizeSecurityGroupIngress")
+-      && length(setsubtract(["munaxa-nonprod-alb", "munaxa-nonprod-database", "munaxa-nonprod-db-admin"], flatten([for c in s.condition : c.values if c.variable == "aws:ResourceTag/Name"]))) == 0
++      if s.sid == "SessionNeverSecurityGroupRules" && s.effect == "Deny" && contains(s.resources, "*")
++      && length(setsubtract(["ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress", "ec2:ModifySecurityGroupRules"], s.actions)) == 0
+       ]) == 1 && length([
+       for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
+       if s.sid == "SessionNeverGroupTags" && s.effect == "Deny" && contains(s.resources, "arn:aws:ec2:eu-central-1:229251310592:security-group/*")
+     ]) == 1
+-    error_message = "R10: the session never adds a rule to the ALB, database or db-admin group, nor retags a group."
++    error_message = "R10: the session is denied every security-group rule write, and never retags a group."
+   }
+ 
+   # Review B-2: a session plan refreshes the whole stack; its extra reads are reads, on nonprod only.
+--- a/infra/aws/modules/service/main.tf
++++ b/infra/aws/modules/service/main.tf
+@@ -183,8 +183,10 @@
+   referenced_security_group_id = aws_security_group.this.id
+ }
+ 
++# Persistent (phase 6, R10): the rule names the ALB's own group, which is persistent too, so it
++# admits nothing while the ALB is down. A Testing session therefore never writes a rule.
+ resource "aws_vpc_security_group_ingress_rule" "from_alb" {
+-  count = var.routed ? 1 : 0
++  count = var.admit_alb ? 1 : 0
+ 
+   security_group_id            = aws_security_group.this.id
+   description                  = "The shared ALB"
+--- a/infra/aws/modules/service/variables.tf
++++ b/infra/aws/modules/service/variables.tf
+@@ -223,6 +223,12 @@
+ # Booleans decide what is created: the ARNs and IDs above may be unknown until apply, and a count
+ # or for_each cannot depend on an unknown value.
+ 
++variable "admit_alb" {
++  description = "Admit alb_security_group_id on the container port, whether or not the edge is up (a routable service)."
++  type        = bool
++  default     = false
++}
++
+ variable "routed" {
+   description = "Create a target group and listener rules behind listener_arn."
+   type        = bool
+--- a/infra/aws/stack/services.tf
++++ b/infra/aws/stack/services.tf
+@@ -98,6 +98,7 @@
+   vpc_id                     = local.common.vpc_id
+   subnet_ids                 = local.common.subnet_ids
+   alb_security_group_id      = local.common.alb_security_group_id
++  admit_alb                  = true
+   database_security_group_id = local.common.database_security_group_id
+   secrets_kms_key_arn        = local.common.secrets_kms_key_arn
+   log_retention_days         = local.common.log_retention_days
+@@ -297,6 +298,7 @@
+   vpc_id                     = local.common.vpc_id
+   subnet_ids                 = local.common.subnet_ids
+   alb_security_group_id      = local.common.alb_security_group_id
++  admit_alb                  = true
+   database_security_group_id = local.common.database_security_group_id
+   secrets_kms_key_arn        = local.common.secrets_kms_key_arn
+   log_retention_days         = local.common.log_retention_days
+@@ -403,6 +405,7 @@
+   vpc_id                = local.common.vpc_id
+   subnet_ids            = local.common.subnet_ids
+   alb_security_group_id = local.common.alb_security_group_id
++  admit_alb             = true
+   log_retention_days    = local.common.log_retention_days
+ 
+   name                     = "control-portal"
+@@ -512,6 +515,7 @@
+   vpc_id                     = local.common.vpc_id
+   subnet_ids                 = local.common.subnet_ids
+   alb_security_group_id      = local.common.alb_security_group_id
++  admit_alb                  = true
+   database_security_group_id = local.common.database_security_group_id
+   secrets_kms_key_arn        = local.common.secrets_kms_key_arn
+   log_retention_days         = local.common.log_retention_days
+@@ -564,6 +568,7 @@
+   vpc_id                = local.common.vpc_id
+   subnet_ids            = local.common.subnet_ids
+   alb_security_group_id = local.common.alb_security_group_id
++  admit_alb             = true
+   log_retention_days    = local.common.log_retention_days
+ 
+   name                     = "work-admin"
+@@ -603,6 +608,7 @@
+   vpc_id                     = local.common.vpc_id
+   subnet_ids                 = local.common.subnet_ids
+   alb_security_group_id      = local.common.alb_security_group_id
++  admit_alb                  = true
+   database_security_group_id = local.common.database_security_group_id
+   secrets_kms_key_arn        = local.common.secrets_kms_key_arn
+   log_retention_days         = local.common.log_retention_days
+@@ -674,6 +680,7 @@
+   vpc_id                = local.common.vpc_id
+   subnet_ids            = local.common.subnet_ids
+   alb_security_group_id = local.common.alb_security_group_id
++  admit_alb             = true
+   log_retention_days    = local.common.log_retention_days
+ 
+   name                     = "school-admin"
+--- a/infra/aws/stack/docs.tf
++++ b/infra/aws/stack/docs.tf
+@@ -115,6 +115,7 @@
+   vpc_id                     = local.common.vpc_id
+   subnet_ids                 = local.common.subnet_ids
+   alb_security_group_id      = local.common.alb_security_group_id
++  admit_alb                  = true
+   database_security_group_id = local.common.database_security_group_id
+   secrets_kms_key_arn        = local.common.secrets_kms_key_arn
+   log_retention_days         = local.common.log_retention_days
+@@ -188,6 +189,7 @@
+   vpc_id                = local.common.vpc_id
+   subnet_ids            = local.common.subnet_ids
+   alb_security_group_id = local.common.alb_security_group_id
++  admit_alb             = true
+   log_retention_days    = local.common.log_retention_days
+ 
+   name   = "docs-web"

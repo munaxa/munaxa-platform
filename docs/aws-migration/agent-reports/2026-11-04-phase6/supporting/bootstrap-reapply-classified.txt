@@ -1,0 +1,47 @@
+ARTIFACT  aws_budgets_budget.account                                             base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_budgets_budget.testing                                             base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-control/api"]                         base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-control/migrate"]                     base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-control/portal"]                      base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-identity/api"]                        base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-identity/migrate"]                    base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-school/admin"]                        base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-school/api"]                          base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-school/migrate"]                      base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-work/admin"]                          base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-work/api"]                            base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_ecr_repository.image["munaxa-work/migrate"]                        base=[be updated in-place] new=[be updated in-place]
+NEW-ONLY  aws_iam_policy.deployer_allow["nonprod"]                               be created
+NEW-ONLY  aws_iam_policy.deployer_allow["prod"]                                  be created
+NEW-ONLY  aws_iam_policy.deployer_allow_tagged["nonprod"]                        be created
+NEW-ONLY  aws_iam_policy.deployer_allow_tagged["prod"]                           be created
+NEW-ONLY  aws_iam_policy.deployer_read                                           be created
+NEW-ONLY  aws_iam_policy.deployer_session_read["nonprod"]                        be created
+DIFFERENT aws_iam_policy.workload_boundary["nonprod"]                            base=[be updated in-place] new=[be updated in-place]
+NEW-ONLY  aws_iam_policy.workload_boundary["prod"]                               be created
+DIFFERENT aws_iam_role.ci["nonprod"]                                             base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_iam_role.ci["prod"]                                                base=[be updated in-place] new=[be updated in-place]
+NEW-ONLY  aws_iam_role.ci_session["nonprod"]                                     be created
+ARTIFACT  aws_iam_role.deployer["nonprod"]                                       base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_iam_role.deployer["prod"]                                          base=[be updated in-place] new=[be updated in-place]
+NEW-ONLY  aws_iam_role.deployer_session["nonprod"]                               be created
+ARTIFACT  aws_iam_role.publisher["munaxa-control"]                               base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_iam_role.publisher["munaxa-identity"]                              base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_iam_role.publisher["munaxa-school"]                                base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_iam_role.publisher["munaxa-work"]                                  base=[be updated in-place] new=[be updated in-place]
+NEW-ONLY  aws_iam_role_policy.ci_session["nonprod"]                              be created
+ARTIFACT  aws_iam_role_policy.deployer["nonprod"]                                base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_iam_role_policy.deployer["prod"]                                   base=[be updated in-place] new=[be updated in-place]
+NEW-ONLY  aws_iam_role_policy.deployer_session["nonprod"]                        be created
+NEW-ONLY  aws_iam_role_policy_attachment.deployer_allow["nonprod"]               be created
+NEW-ONLY  aws_iam_role_policy_attachment.deployer_allow["prod"]                  be created
+NEW-ONLY  aws_iam_role_policy_attachment.deployer_allow_tagged["nonprod"]        be created
+NEW-ONLY  aws_iam_role_policy_attachment.deployer_allow_tagged["prod"]           be created
+NEW-ONLY  aws_iam_role_policy_attachment.deployer_read["nonprod"]                be created
+NEW-ONLY  aws_iam_role_policy_attachment.deployer_read["prod"]                   be created
+NEW-ONLY  aws_iam_role_policy_attachment.deployer_session_read["nonprod"]        be created
+NEW-ONLY  aws_iam_role_policy_attachment.deployer_session_refresh["nonprod"]     be created
+ARTIFACT  aws_kms_alias.state                                                    base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_kms_key.state                                                      base=[be replaced] new=[be replaced]
+ARTIFACT  aws_s3_bucket.state                                                    base=[be updated in-place] new=[be updated in-place]
+ARTIFACT  aws_s3_bucket_server_side_encryption_configuration.state               base=[be updated in-place] new=[be updated in-place]

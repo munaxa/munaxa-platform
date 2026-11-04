@@ -1,0 +1,226 @@
+diff --git a/infra/aws/stack/backstop.tf b/infra/aws/stack/backstop.tf
+new file mode 100644
+index 0000000..84924ad
+--- /dev/null
++++ b/infra/aws/stack/backstop.tf
+@@ -0,0 +1,118 @@
++# Testing's AWS-side shutdown backstop (phase 6, Agent 5). Nonprod only.
++#
++# aws-session.yml `down` is the normal end of a session, and its schedule is the first backstop.
++# GitHub starts scheduled runs late (3 to 6 hours observed), can drop them under load, disables them
++# in a public repository after 60 days without activity, and queues them behind any nonprod run that
++# waits for an approval. This one runs inside AWS at a fixed time whatever GitHub does:
++#
++#   - rds:StopDBInstance on the nonprod database
++#   - ecs:UpdateService desiredCount 0 on every nonprod service
++#
++# It cannot delete the ALB: DeleteLoadBalancer needs the ALB's ARN, which changes with every
++# session, and a schedule's input is fixed. The ALB (about US$0.037 an hour with its two IPv4
++# addresses) is removed by the next `down`. A call on a stopped database or a missing service fails
++# harmlessly (InvalidDBInstanceState, ServiceNotFoundException); nothing is retried for long.
++#
++# Drift it leaves: a scaled-in service shows desired_count 0 -> n in the next `up` plan (an
++# aws_ecs_service update, which the session plan check allows); `down` deletes the services anyway.
++# Schedules carry no tags (the API has none). Cost: about 11 invocations a day, inside the
++# EventBridge Scheduler free tier of 14 million a month.
++
++locals {
++  backstop_enabled = var.environment == "nonprod" && var.session_backstop_schedule != ""
++  # Every long-running service the stack can create (modules/service var.name, create_service).
++  backstop_services = local.backstop_enabled ? toset([
++    "identity", "control-api", "control-portal", "work-api", "work-admin", "school-api", "school-admin",
++    "docs-api", "docs-web", "docs-scanner",
++  ]) : toset([])
++}
++
++resource "aws_iam_role" "session_backstop" {
++  count = local.backstop_enabled ? 1 : 0
++
++  name                 = "${local.prefix}-session-backstop"
++  path                 = "/munaxa-shared/"
++  permissions_boundary = "arn:aws:iam::${var.account_id}:policy/munaxa-shared/munaxa-shared-workload-boundary"
++  assume_role_policy = jsonencode({
++    Version = "2012-10-17"
++    Statement = [{
++      Effect    = "Allow"
++      Principal = { Service = "scheduler.amazonaws.com" }
++      Action    = "sts:AssumeRole"
++      Condition = { StringEquals = { "aws:SourceAccount" = var.account_id } }
++    }]
++  })
++}
++
++resource "aws_iam_role_policy" "session_backstop" {
++  count = local.backstop_enabled ? 1 : 0
++
++  name = "stop-testing"
++  role = aws_iam_role.session_backstop[0].id
++  policy = jsonencode({
++    Version = "2012-10-17"
++    Statement = [
++      {
++        Sid      = "StopTheDatabase"
++        Effect   = "Allow"
++        Action   = "rds:StopDBInstance"
++        Resource = aws_db_instance.main.arn
++      },
++      {
++        Sid       = "ScaleInTheServices"
++        Effect    = "Allow"
++        Action    = "ecs:UpdateService"
++        Resource  = "arn:aws:ecs:${var.region}:${var.account_id}:service/${aws_ecs_cluster.main.name}/*"
++        Condition = { ArnEquals = { "ecs:cluster" = aws_ecs_cluster.main.arn } }
++      },
++    ]
++  })
++}
++
++resource "aws_scheduler_schedule" "stop_database" {
++  count = local.backstop_enabled ? 1 : 0
++
++  name                         = "${local.prefix}-backstop-database"
++  description                  = "Testing backstop: stop the nonprod database (aws-session.yml down is the normal path)"
++  schedule_expression          = var.session_backstop_schedule
++  schedule_expression_timezone = "UTC"
++
++  flexible_time_window {
++    mode = "OFF"
++  }
++
++  target {
++    arn      = "arn:aws:scheduler:::aws-sdk:rds:stopDBInstance"
++    role_arn = aws_iam_role.session_backstop[0].arn
++    input    = jsonencode({ DbInstanceIdentifier = aws_db_instance.main.identifier })
++
++    retry_policy {
++      maximum_event_age_in_seconds = 3600
++      maximum_retry_attempts       = 3
++    }
++  }
++}
++
++resource "aws_scheduler_schedule" "scale_in" {
++  for_each = local.backstop_services
++
++  name                         = "${local.prefix}-backstop-${each.key}"
++  description                  = "Testing backstop: desired count 0 for ${each.key} (aws-session.yml down is the normal path)"
++  schedule_expression          = var.session_backstop_schedule
++  schedule_expression_timezone = "UTC"
++
++  flexible_time_window {
++    mode = "OFF"
++  }
++
++  target {
++    arn      = "arn:aws:scheduler:::aws-sdk:ecs:updateService"
++    role_arn = aws_iam_role.session_backstop[0].arn
++    input    = jsonencode({ Cluster = aws_ecs_cluster.main.name, Service = each.key, DesiredCount = 0 })
++
++    retry_policy {
++      maximum_event_age_in_seconds = 3600
++      maximum_retry_attempts       = 3
++    }
++  }
++}
+diff --git a/infra/aws/stack/tests/stack.tftest.hcl b/infra/aws/stack/tests/stack.tftest.hcl
+index 512af02..9afa2a4 100644
+--- a/infra/aws/stack/tests/stack.tftest.hcl
++++ b/infra/aws/stack/tests/stack.tftest.hcl
+@@ -317,3 +317,78 @@ run "the_control_api_host_forwards_only_its_public_surface" {
+     error_message = "The Control API host forwards only /api/v1/products/*, /api/v1/licensing/* and /health/*."
+   }
+ }
++
++# Phase 6 (Agent 5): the AWS-side backstop stops Testing without GitHub, and only Testing.
++run "nonprod_has_an_aws_side_backstop" {
++  command = plan
++
++  assert {
++    condition     = length(aws_scheduler_schedule.stop_database) == 1 && length(aws_scheduler_schedule.scale_in) == 10
++    error_message = "Nonprod stops its database and scales in every service from EventBridge Scheduler."
++  }
++  assert {
++    condition     = aws_scheduler_schedule.stop_database[0].target[0].arn == "arn:aws:scheduler:::aws-sdk:rds:stopDBInstance" && jsondecode(aws_scheduler_schedule.stop_database[0].target[0].input).DbInstanceIdentifier == "munaxa-nonprod-pg"
++    error_message = "The database schedule calls rds:StopDBInstance on munaxa-nonprod-pg."
++  }
++  assert {
++    condition = alltrue([for k, s in aws_scheduler_schedule.scale_in :
++      s.target[0].arn == "arn:aws:scheduler:::aws-sdk:ecs:updateService" && jsondecode(s.target[0].input).DesiredCount == 0 && jsondecode(s.target[0].input).Cluster == "munaxa-nonprod"
++    ])
++    error_message = "Every service schedule sets desired count 0 in the nonprod cluster."
++  }
++  assert {
++    condition     = aws_iam_role.session_backstop[0].permissions_boundary == "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary" && aws_scheduler_schedule.stop_database[0].schedule_expression_timezone == "UTC"
++    error_message = "The backstop role carries the nonprod workload boundary; schedules run in UTC."
++  }
++}
++
++# The policy names the database and cluster ARNs; give them values at plan time.
++run "the_backstop_role_can_only_stop_and_scale_in" {
++  command = plan
++
++  override_resource {
++    target          = aws_db_instance.main
++    override_during = plan
++    values = {
++      arn                = "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg"
++      identifier         = "munaxa-nonprod-pg"
++      address            = "munaxa-nonprod-pg.example.eu-central-1.rds.amazonaws.com"
++      port               = 5432
++      master_user_secret = [{ secret_arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-mock", kms_key_id = "mock", secret_status = "active" }]
++    }
++  }
++  override_resource {
++    target          = aws_ecs_cluster.main
++    override_during = plan
++    values          = { arn = "arn:aws:ecs:eu-central-1:229251310592:cluster/munaxa-nonprod" }
++  }
++  override_resource {
++    target          = aws_iam_role.session_backstop[0]
++    override_during = plan
++    values          = { id = "munaxa-nonprod-session-backstop", arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-session-backstop" }
++  }
++
++  assert {
++    condition = alltrue([for s in jsondecode(aws_iam_role_policy.session_backstop[0].policy).Statement :
++      s.Effect == "Allow" && contains(["rds:StopDBInstance", "ecs:UpdateService"], s.Action)
++    ])
++    error_message = "The backstop role can only stop the database and update services."
++  }
++  assert {
++    condition     = jsondecode(aws_iam_role_policy.session_backstop[0].policy).Statement[0].Resource == "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg" && jsondecode(aws_iam_role_policy.session_backstop[0].policy).Statement[1].Resource == "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/*"
++    error_message = "Only the nonprod database and the nonprod cluster's services."
++  }
++}
++
++run "an_empty_schedule_turns_the_backstop_off" {
++  command = plan
++
++  variables {
++    session_backstop_schedule = ""
++  }
++
++  assert {
++    condition     = length(aws_scheduler_schedule.stop_database) == 0 && length(aws_scheduler_schedule.scale_in) == 0 && length(aws_iam_role.session_backstop) == 0
++    error_message = "An empty schedule turns the backstop off."
++  }
++}
+diff --git a/infra/aws/stack/variables.tf b/infra/aws/stack/variables.tf
+index a3327c1..236d0d3 100644
+--- a/infra/aws/stack/variables.tf
++++ b/infra/aws/stack/variables.tf
+@@ -363,3 +363,14 @@ variable "identity_operator_organisation" {
+     name = "Munaxa Group"
+   }
+ }
++
++variable "session_backstop_schedule" {
++  description = "Nonprod only: when EventBridge Scheduler stops the database and scales every service to 0 (backstop.tf), in UTC. Empty turns the backstop off."
++  type        = string
++  default     = "cron(0 21 * * ? *)"
++
++  validation {
++    condition     = var.session_backstop_schedule == "" || can(regex("^(cron|rate)\\(.+\\)$", var.session_backstop_schedule))
++    error_message = "An EventBridge Scheduler cron() or rate() expression, or empty."
++  }
++}

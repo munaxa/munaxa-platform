@@ -1,0 +1,320 @@
+diff --git a/.github/workflows/aws-session.yml b/.github/workflows/aws-session.yml
+index 253595b..2e47cb4 100644
+--- a/.github/workflows/aws-session.yml
++++ b/.github/workflows/aws-session.yml
+@@ -170,9 +170,12 @@ jobs:
+           if [ "$status" = "stopped" ]; then aws rds start-db-instance --db-instance-identifier "$DB_INSTANCE" >/dev/null; fi
+           aws rds wait db-instance-available --db-instance-identifier "$DB_INSTANCE"
+ 
++      # stdout (resource ids, then every output) stays out of the public log; errors go to stderr.
+       - name: Apply the switches
+         if: steps.stack.outputs.exists == 'true'
+-        run: terraform apply -input=false -no-color -lock-timeout=5m tfplan
++        run: |
++          terraform apply -input=false -no-color -lock-timeout=5m tfplan > /dev/null
++          echo "Session $SESSION applied." | tee -a "$GITHUB_STEP_SUMMARY"
+ 
+       # Runs on `down` even when the plan or apply above failed: a failed backstop must not leave
+       # the database running all night. It needs only the deployer credentials from above.
+diff --git a/.github/workflows/aws-terraform.yml b/.github/workflows/aws-terraform.yml
+index 56be6a5..c5574d5 100644
+--- a/.github/workflows/aws-terraform.yml
++++ b/.github/workflows/aws-terraform.yml
+@@ -21,12 +21,10 @@
+ name: AWS Terraform
+ 
+ on:
++  # No path filter: "Format, validate, mocked plan tests" is meant to be a required check, and a
++  # required check that a path filter never starts stays pending forever (see ci.yml).
+   pull_request:
+     branches: [main]
+-    paths:
+-      - 'infra/aws/**'
+-      - 'scripts/terraform/**'
+-      - '.github/workflows/aws-terraform.yml'
+   workflow_dispatch:
+     inputs:
+       environment:
+@@ -309,7 +307,13 @@ jobs:
+           aws s3 cp "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" tfplan --only-show-errors
+           [ "$(sha256sum tfplan | cut -d' ' -f1)" = "$EXPECTED" ] || { echo "::error::the saved plan changed since it was reviewed"; exit 1; }
+ 
++      # The apply's own output lists every created resource id (ARNs, VPC, subnet and security group
++      # ids) and then every output (database endpoint, subnets, bundle names, the licence key ARN).
++      # The repository is public, so stdout stays out of the log, as for the plan; errors still go
++      # to stderr. Outputs are read with `terraform output` in CloudShell.
+       - name: terraform apply (saved plan)
+         env:
+           TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
+-        run: terraform apply -input=false -no-color -lock-timeout=5m tfplan
++        run: |
++          terraform apply -input=false -no-color -lock-timeout=5m tfplan > /dev/null
++          echo "Applied the saved plan of commit $GITHUB_SHA." | tee -a "$GITHUB_STEP_SUMMARY"
+diff --git a/infra/aws/CONTRACT.md b/infra/aws/CONTRACT.md
+index 7a17cc3..e5a2820 100644
+--- a/infra/aws/CONTRACT.md
++++ b/infra/aws/CONTRACT.md
+@@ -120,7 +120,10 @@ Plain (non-secret) configuration is set in Terraform `environment` and is listed
+ ## 6. Databases
+ 
+ One PostgreSQL 16 instance per environment (`munaxa-<env>-pg`, private, `rds.force_ssl=1`). URLs
+-use `?sslmode=require`. Per product: its own database, an owner role (migrations) and a runtime
++use `?sslmode=require`, with the instance endpoint DNS name as host (never an IP address):
++node-postgres treats `require` as `verify-full`, so Identity and Work vendor AWS's eu-central-1 RDS
++bundle (`deploy/aws/rds-ca-eu-central-1.crt`, `NODE_EXTRA_CA_CERTS`). Prisma and psql encrypt but
++do not verify the server certificate. Per product: its own database, an owner role (migrations) and a runtime
+ role (`NOBYPASSRLS`, `CONNECT` revoked from `PUBLIC`), created by `db-admin` from the bundle URLs:
+ 
+ | Product  | Database   | Owner            | Runtime          |
+diff --git a/infra/aws/README.md b/infra/aws/README.md
+index 3de2ce5..0aa2ec0 100644
+--- a/infra/aws/README.md
++++ b/infra/aws/README.md
+@@ -116,7 +116,10 @@ write one JSON secret version with the keys listed in `stack/data.tf`.
+ - **Database URLs:** generate two passwords per product (`openssl rand -hex 32`; hex only, as
+   `db-bootstrap.sh` requires). Runtime URL in `<env>/<product>` (`DATABASE_URL`), owner URL in
+   `<env>/<product>-migrate` (`DATABASE_MIGRATION_URL`), both
+-  `postgresql://<role>:<password>@<database_endpoint>:5432/<database>?sslmode=require`. Role names:
++  `postgresql://<role>:<password>@<database_endpoint>:5432/<database>?sslmode=require`. The host
++  must be the `database_endpoint` DNS name exactly, never an IP address or another alias:
++  node-postgres (Work's API, Work's and Identity's bootstrap scripts) reads `require` as
++  `verify-full` and checks the certificate's host name. Role names:
+   `identity_owner`/`identity_app`, `control_owner`/`control_app`, `work_owner`/`work_app`,
+   `school_owner`/`munaxa_app` (the names each product's migrations grant to).
+ - **Identity:** `IDENTITY_SIGNING_PRIVATE_KEY` (`pnpm keys:generate` in munaxa-identity; keep the
+@@ -124,6 +127,11 @@ write one JSON secret version with the keys listed in `stack/data.tf`.
+   in Testing), `IDENTITY_SIGNING_SECRET`, `REDIS_PASSWORD` and `REDIS_URL`
+   (`redis://:<password>@127.0.0.1:6379`). Its public half goes into `identity_public_keys`.
+ - **Work:** `PII_MATCH_SECRET` (not the development default), `CONTROL_PLANE_TOKEN` (G7 step 4).
++- **`CONTROL_PLANE_TOKEN` before the first start:** ECS refuses to start a task whose bundle lacks a
++  key it injects, and Work and School refuse a token under 20 characters, Docs under 32. Until G7
++  step 4 issues the real `mxc_` credentials, write a placeholder of at least 32 random characters
++  (`openssl rand -hex 16`) or keep those services at `desired_counts = 0`. Licence checks fail
++  with the placeholder, which is the expected state until step 4.
+ - **School:** `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (different), `CONTROL_PLANE_TOKEN`,
+   `RESEND_API_KEY` (sending access only).
+ - Then pin each bundle with `secret_version_ids` in a PR.
+@@ -137,6 +145,16 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
+ 
+ ### G7. A Testing session
+ 
++0. First session only, before step 1 (Control refuses to start without these, and Terraform
++   refuses a session that runs `control-api` above zero tasks until they are set):
++   a. Merge the image digests with `services_enabled = false` and apply (G3 workflow). This creates
++      the Control licence key (`control_licence_key_arn`) without starting any task.
++   b. In CloudShell read its public half (`aws kms get-public-key`, DER to PEM) and set
++      `control_licence_public_key` and `control_licence_kid` by PR, with `identity_signing_kid` and
++      `identity_public_keys` (G4), `operator_access` (cloudflare-access.md) and `valkey_image`.
++   c. `control_operator_organisation_id` and `control_operator_subjects` come from Identity's
++      steps 1 to 3 (step 3 below), so the first session runs `control-api` and `control-portal`
++      at `desired_counts` 0 until they are set by PR; then dispatch `up` again.
+ 1. Dispatch `aws-session.yml` → `up`. The ALB, listeners and services come up; the database starts.
+ 2. Add CNAMEs in Cloudflare from each host to `alb_dns_name` (DNS only), first session only.
+ 3. Run the db-admin task, then the migrations, in order, with `aws ecs run-task` using the
+@@ -152,14 +170,16 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
+    its log before going on);
+    `identity-bootstrap` after `identity-migrate` (db_admin's
+    network; the owner creates `munaxa-nonprod/identity-bootstrap` with the operator's email and
+-   password first and deletes it after Identity's steps 1 to 3, which override only the command);
++   password first and deletes it after Identity's steps 1 to 3, which override only the command;
++   before deleting it, run the task once more per Work organisation with the command
++   `node scripts/seed-work-roles.mjs --organisation <slug>` (the task injects that secret on every
++   run), or Work members get 403; then restart `identity`, which caches role definitions);
+    then Docs: `docs-db-admin` (db-admin's network; its cluster
+    roles, `edms_backup` and the tenant database; it stops if `edms_backup` could reach a non-Docs
+    database), then `docs-provision` (docs-api's security group, after the owner creates
+    `munaxa-nonprod/docs-provision/<slug>` and before deleting it). They create clean databases and
+    apply the full migration history; no data is copied from Supabase, Render or Docs Production.
+-4. Control: read the licence key's public half (`aws kms get-public-key`, DER to PEM), set
+-   `control_licence_public_key` and `control_licence_kid` by PR. In the operator portal create the
++4. Control (the licence key's public half is already set, step 0). In the operator portal create the
+    deployments for Work, School and Docs, issue one credential each, and write it as
+    `CONTROL_PLANE_TOKEN` in that product's bundle (Docs Testing: `munaxa-nonprod/docs-api`).
+ 5. Smoke: `id.*/api/auth/health/ready`; `control-api.*/health/ready` and
+diff --git a/infra/aws/stack/tests/stack.tftest.hcl b/infra/aws/stack/tests/stack.tftest.hcl
+index 512af02..cb6cac0 100644
+--- a/infra/aws/stack/tests/stack.tftest.hcl
++++ b/infra/aws/stack/tests/stack.tftest.hcl
+@@ -38,6 +38,16 @@ variables {
+     school      = "school.test.munaxa.com"
+   }
+   certificate_domains = ["*.test.munaxa.com"]
++
++  # What a session that runs Identity, Work and Control needs (variables.tf validations). Public
++  # test values: the keys are syntactically PEM only, never used to verify anything here.
++  valkey_image                     = "public.ecr.aws/valkey/valkey@sha256:5555555555555555555555555555555555555555555555555555555555555555"
++  identity_signing_kid             = "identity-test-2026-11"
++  identity_public_keys             = "[{\"kid\":\"identity-test-2026-11\",\"publicKey\":\"-----BEGIN PUBLIC KEY-----\\ntest\\n-----END PUBLIC KEY-----\"}]"
++  control_licence_kid              = "control-test-2026-11"
++  control_licence_public_key       = "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----"
++  control_operator_organisation_id = "00000000-0000-0000-0000-000000000001"
++  control_operator_subjects        = ["00000000-0000-0000-0000-000000000002"]
+ }
+ 
+ run "idle_testing_has_no_edge_and_no_services" {
+@@ -317,3 +327,90 @@ run "the_control_api_host_forwards_only_its_public_surface" {
+     error_message = "The Control API host forwards only /api/v1/products/*, /api/v1/licensing/* and /health/*."
+   }
+ }
++
++run "identity_without_its_valkey_sidecar_is_refused_in_a_session" {
++  command = plan
++  variables {
++    services_enabled = true
++    valkey_image     = ""
++    images = {
++      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
++    }
++  }
++  expect_failures = [var.valkey_image]
++}
++
++run "identity_signing_kid_must_be_a_published_key" {
++  command = plan
++  variables {
++    services_enabled     = true
++    identity_signing_kid = "identity-other"
++    images = {
++      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
++    }
++  }
++  expect_failures = [var.identity_signing_kid]
++}
++
++run "control_in_a_session_needs_its_licence_key_and_operators" {
++  command = plan
++  variables {
++    services_enabled           = true
++    operator_access            = { team_domain = "https://munaxa-test.cloudflareaccess.com", audience = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
++    control_licence_public_key = ""
++    images = {
++      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
++    }
++  }
++  expect_failures = [var.control_licence_public_key]
++}
++
++run "control_images_with_services_off_create_the_licence_key_first" {
++  command = plan
++  variables {
++    services_enabled           = false
++    operator_access            = { team_domain = "https://munaxa-test.cloudflareaccess.com", audience = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
++    control_licence_public_key = ""
++    control_licence_kid        = ""
++    images = {
++      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
++    }
++  }
++  assert {
++    condition     = length(aws_kms_key.licence) == 1 && length(module.control_api) == 1
++    error_message = "Step one of the Control bring-up: the licence key exists before any Control task runs."
++  }
++}
++
++run "work_in_a_session_needs_identity_public_keys" {
++  command = plan
++  variables {
++    services_enabled     = true
++    identity_public_keys = "[]"
++    images = {
++      work_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/api@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
++    }
++  }
++  expect_failures = [var.identity_public_keys]
++}
++
++run "the_first_session_runs_control_at_zero_until_the_operator_ids_exist" {
++  command = plan
++  variables {
++    services_enabled                 = true
++    operator_access                  = { team_domain = "https://munaxa-test.cloudflareaccess.com", audience = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
++    control_operator_organisation_id = ""
++    control_operator_subjects        = []
++    desired_counts = {
++      identity   = 1, control-api = 0, control-portal = 0, work-api = 1, work-admin = 1
++      school-api = 1, school-admin = 1, docs-api = 1, docs-web = 1, docs-scanner = 1
++    }
++    images = {
++      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
++    }
++  }
++  assert {
++    condition     = length(module.control_api) == 1
++    error_message = "control-api is defined and can run at zero tasks while the operator ids are pending."
++  }
++}
+diff --git a/infra/aws/stack/variables.tf b/infra/aws/stack/variables.tf
+index a3327c1..f9eb80d 100644
+--- a/infra/aws/stack/variables.tf
++++ b/infra/aws/stack/variables.tf
+@@ -188,8 +188,16 @@ variable "valkey_image" {
+   default     = ""
+ 
+   validation {
+-    condition     = var.valkey_image == "" || can(regex("^public\\.ecr\\.aws/docker/library/valkey@sha256:[0-9a-f]{64}$", var.valkey_image))
+-    error_message = "valkey_image is public.ecr.aws/docker/library/valkey@sha256:<64 hex>."
++    # Valkey is not a Docker Official Image (Docker Hub has valkey/valkey, no library/valkey), so
++    # ECR Public's docker/library mirror has no valkey repository; Valkey publishes public.ecr.aws/valkey/valkey.
++    condition     = var.valkey_image == "" || can(regex("^public\\.ecr\\.aws/(docker/library/valkey|valkey/valkey)@sha256:[0-9a-f]{64}$", var.valkey_image))
++    error_message = "valkey_image is public.ecr.aws/valkey/valkey@sha256:<64 hex> (or the docker/library path)."
++  }
++
++  # Identity's REDIS_URL points at 127.0.0.1:6379: without the sidecar nothing listens there.
++  validation {
++    condition     = var.valkey_image != "" || var.images.identity_api == "" || !var.services_enabled
++    error_message = "Identity runs only with its Valkey sidecar: set valkey_image before a session with images.identity_api."
+   }
+ }
+ 
+@@ -240,6 +248,16 @@ variable "identity_signing_kid" {
+   description = "IDENTITY_SIGNING_KID: the key id Identity signs with; products' PLATFORM_AUTH_PUBLIC_KEYS must contain it."
+   type        = string
+   default     = ""
++
++  # Identity refuses to start with a key id shorter than 3 characters, and Work and Control verify
++  # only key ids listed in identity_public_keys.
++  validation {
++    condition = var.images.identity_api == "" || !var.services_enabled || (
++      length(var.identity_signing_kid) >= 3 &&
++      contains([for k in try(jsondecode(var.identity_public_keys), []) : try(k.kid, "")], var.identity_signing_kid)
++    )
++    error_message = "A session with Identity needs identity_signing_kid (3+ characters) listed in identity_public_keys."
++  }
+ }
+ 
+ variable "identity_public_keys" {
+@@ -251,6 +269,12 @@ variable "identity_public_keys" {
+     condition     = can(jsondecode(var.identity_public_keys)) && !strcontains(var.identity_public_keys, "PRIVATE KEY")
+     error_message = "identity_public_keys is a JSON array of public keys. A private key is refused."
+   }
++
++  # Work refuses to start unless PLATFORM_AUTH_PUBLIC_KEYS holds at least one key.
++  validation {
++    condition     = var.images.work_api == "" || !var.services_enabled || length(try(jsondecode(var.identity_public_keys), [])) > 0
++    error_message = "A session with work_api needs identity_public_keys (Work's PLATFORM_AUTH_PUBLIC_KEYS)."
++  }
+ }
+ 
+ variable "control_operator_organisation_id" {
+@@ -280,6 +304,21 @@ variable "control_licence_public_key" {
+     condition     = !strcontains(var.control_licence_public_key, "PRIVATE KEY")
+     error_message = "control_licence_public_key holds a private key. Only the public half belongs here."
+   }
++
++  # control-api refuses to start without a licence key, its kid, the operator organisation, a
++  # subject allow-list (while MFA is off) and Identity's public keys. Step one is a services-off
++  # apply with the Control images set, which creates the KMS key whose public half goes here; the
++  # first session runs control-api at desired count 0 until Identity has issued the operator ids.
++  validation {
++    condition = var.images.control_api == "" || !var.services_enabled || lookup(var.desired_counts, "control-api", 1) == 0 || (
++      strcontains(var.control_licence_public_key, "BEGIN PUBLIC KEY") &&
++      var.control_licence_kid != "" &&
++      var.control_operator_organisation_id != "" &&
++      length(var.control_operator_subjects) > 0 &&
++      length(try(jsondecode(var.identity_public_keys), [])) > 0
++    )
++    error_message = "A session with control_api needs control_licence_public_key, control_licence_kid, control_operator_organisation_id, control_operator_subjects and identity_public_keys (README G7, two-step Control bring-up)."
++  }
+ }
+ 
+ variable "postgres_image" {

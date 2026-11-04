@@ -1,0 +1,33 @@
+diff --git a/.github/workflows/publish-images.yml b/.github/workflows/publish-images.yml
+index 17314a3..d2880af 100644
+--- a/.github/workflows/publish-images.yml
++++ b/.github/workflows/publish-images.yml
+@@ -10,10 +10,10 @@
+ 
+ name: Publish image
+ 
++# Not on `image/**` tags any more: those are the ECR release tags (publish-images-ecr.yml), which
++# run behind the image-release environment. This GHCR job has no environment and holds
++# PLATFORM_PACKAGES_TOKEN, so it runs only when dispatched by hand, until Render is retired.
+ on:
+-  push:
+-    tags:
+-      - 'image/**'
+   workflow_dispatch:
+     inputs:
+       commit:
+diff --git a/docs/runbooks/aws.md b/docs/runbooks/aws.md
+index 0176a8a..8c3de1d 100644
+--- a/docs/runbooks/aws.md
++++ b/docs/runbooks/aws.md
+@@ -124,7 +124,9 @@ it); the application role cannot create organisations or system roles.
+   token, so a token issued for a Work sign-in is also accepted by Control's audience check. One
+   audience per client would be tighter; it is a code change in Identity, left for review.
+ - **MFA.** `mfaSatisfied` is always false today, so Control runs with `OPERATOR_REQUIRE_MFA=false`.
+-  The operator host is limited to `operator_cidrs` at the load balancer until MFA exists.
++  The operator host sits behind Cloudflare Access with an MFA Require rule (munaxa-platform
++  `infra/aws/cloudflare-access.md`), Control verifies the Access token, and
++  `OPERATOR_SUBJECT_ALLOWLIST` is mandatory until MFA exists. `operator_cidrs` is empty.
+ 
+ ## Checked locally (PostgreSQL 16, Docker)
+ 

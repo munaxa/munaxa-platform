@@ -1,0 +1,9 @@
+run_id	run_number	event	cron_due_utc	created_at_utc	lag	conclusion	head_sha
+41144903826	1	schedule	2026-10-30T20:00Z	2026-10-30T23:30:47Z	3h30m47s	skipped	329a8b9
+41251490157	2	schedule	2026-10-31T20:00Z	2026-10-31T23:11:42Z	3h11m42s	skipped	9acc541
+41362021669	3	schedule	2026-11-01T20:00Z	2026-11-01T23:25:18Z	3h25m18s	skipped	9acc541
+41563819348	4	schedule	2026-11-02T20:00Z	2026-11-03T02:04:35Z	6h04m35s	skipped	9acc541
+41747107325	5	schedule	2026-11-03T20:00Z	2026-11-04T00:28:44Z	4h28m44s	skipped	9acc541
+# Source: mcp__github__actions_list list_workflow_runs aws-session.yml (total_count 5), read 2026-11-04 20:05 UTC.
+# Job 126302780051 of run 41747107325: conclusion skipped (job-level if). No workflow_dispatch run exists.
+# The 2026-11-04 20:00 UTC cron had not produced a run at 20:05 UTC (expected 23:00 to 02:00 UTC by the observed lag).
