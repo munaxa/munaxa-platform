@@ -369,6 +369,7 @@ data "aws_iam_policy_document" "deployer_allow" {
       "iam:GetRole", "iam:DeleteRole", "iam:UpdateRole", "iam:TagRole", "iam:UntagRole",
       "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy", "iam:ListRolePolicies",
       "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole", "iam:UpdateAssumeRolePolicy",
+      "iam:ListRoleTags",
     ]
     resources = ["arn:aws:iam::${var.account_id}:role/munaxa-shared/munaxa-${each.key}-*"]
   }
@@ -384,10 +385,54 @@ data "aws_iam_policy_document" "deployer_allow" {
     }
   }
 
+  # Only the service-linked roles the stack's services use (ECS, Elastic Load Balancing, RDS);
+  # AWS creates each on first use with the caller's permissions (phase 6 residual R12).
   statement {
-    sid       = "ServiceLinkedRoles"
-    actions   = ["iam:CreateServiceLinkedRole"]
-    resources = ["arn:aws:iam::${var.account_id}:role/aws-service-role/*"]
+    sid     = "ServiceLinkedRoles"
+    actions = ["iam:CreateServiceLinkedRole"]
+    resources = [
+      for service in ["ecs", "elasticloadbalancing", "rds"] :
+      "arn:aws:iam::${var.account_id}:role/aws-service-role/${service}.amazonaws.com/*"
+    ]
+  }
+
+  # ACM can issue exportable public certificates (a charge per certificate, and the private key
+  # leaves ACM). The stack's certificate is never exportable and Terraform never exports one
+  # (phase 6 residual R13). Here, not beside OwnTagged, because every statement of the tag-scoped
+  # policy is a tag-conditioned allow. The session deployer has no ACM allow at all.
+  statement {
+    sid       = "NoExportableCertificates"
+    effect    = "Deny"
+    actions   = ["acm:RequestCertificate"]
+    resources = ["*"]
+    condition {
+      test     = "StringEqualsIgnoreCase"
+      variable = "acm:Export"
+      values   = ["ENABLED"]
+    }
+  }
+
+  statement {
+    sid       = "NeverExportCertificates"
+    effect    = "Deny"
+    actions   = ["acm:ExportCertificate"]
+    resources = ["*"]
+  }
+
+  # OwnNames grants logs:* and rds:* by name, which would include reading log data and database
+  # log files. The deployer only manages configuration: no data reads, no export, no subscription
+  # filter, no ECS Exec (phase 5 review 06 §8.3, R9). Here rather than in the inline guardrails:
+  # the session deployer has no logs or RDS-file allow, and its inline policy is near its limit.
+  statement {
+    sid    = "NoLogOrDatabaseData"
+    effect = "Deny"
+    actions = [
+      "logs:GetLogEvents", "logs:FilterLogEvents", "logs:StartQuery", "logs:GetQueryResults",
+      "logs:StartLiveTail", "logs:GetLogRecord", "logs:Unmask", "logs:CreateExportTask",
+      "logs:PutSubscriptionFilter", "rds:DownloadDBLogFilePortion", "rds:DownloadCompleteDBLogFile",
+      "ecs:ExecuteCommand",
+    ]
+    resources = ["*"]
   }
 
   # The stack's file buckets (stack/storage.tf): bucket configuration only, no object access.

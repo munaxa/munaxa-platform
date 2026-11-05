@@ -9,7 +9,8 @@
 #
 # The repository is public, so job logs are too: the human-readable plan (attribute values) is
 # never printed. The summary lists addresses and actions, and for an update or replacement the
-# names of the attributes that change; Terraform's errors and warnings still reach the log.
+# names of the attributes that change; Terraform's errors still reach the log (stderr), and of its
+# warnings (stdout, with the plan) the headings only.
 #
 # **Nothing applies on a push or a merge.** An apply is always a dispatch on main, approved in the
 # protected `aws-<env>` environment (required reviewer: the owner), after the plan it will apply has
@@ -21,12 +22,10 @@
 name: AWS Terraform
 
 on:
+  # No path filter: "Format, validate, mocked plan tests" is meant to be a required check, and a
+  # required check that a path filter never starts stays pending forever (see ci.yml).
   pull_request:
     branches: [main]
-    paths:
-      - 'infra/aws/**'
-      - 'scripts/terraform/**'
-      - '.github/workflows/aws-terraform.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -172,10 +171,13 @@ jobs:
           TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
         run: |
           set +e
-          # The human-readable plan stays out of the public log; errors and warnings go to stderr.
-          terraform plan -input=false -no-color -lock-timeout=5m -detailed-exitcode -var-file="envs/$ENVIRONMENT.tfvars" -out=tfplan > /dev/null
+          # The human-readable plan stays out of the public log; errors go to stderr. Warnings go to
+          # stdout with the plan, so only their headings are printed.
+          terraform plan -input=false -no-color -lock-timeout=5m -detailed-exitcode -var-file="envs/$ENVIRONMENT.tfvars" -out=tfplan > plan.stdout
           code=$?
           set -e
+          grep -E '^Warning: ' plan.stdout | sort -u | sed 's/^/::warning::/' || true
+          rm -f plan.stdout
           if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then exit "$code"; fi
           echo "changes=$([ "$code" -eq 2 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
@@ -309,7 +311,16 @@ jobs:
           aws s3 cp "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" tfplan --only-show-errors
           [ "$(sha256sum tfplan | cut -d' ' -f1)" = "$EXPECTED" ] || { echo "::error::the saved plan changed since it was reviewed"; exit 1; }
 
+      # The apply's own output lists every created resource id (ARNs, VPC, subnet and security group
+      # ids) and then every output (database endpoint, subnets, bundle names, the licence key ARN).
+      # The repository is public, so stdout stays out of the log, as for the plan; errors still go
+      # to stderr. Outputs are read with `terraform output` in CloudShell.
       - name: terraform apply (saved plan)
         env:
           TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
-        run: terraform apply -input=false -no-color -lock-timeout=5m tfplan
+        run: |
+          set -euo pipefail
+          terraform apply -input=false -no-color -lock-timeout=5m tfplan > apply.stdout
+          grep -E '^Warning: ' apply.stdout | sort -u | sed 's/^/::warning::/' || true
+          rm -f apply.stdout
+          echo "Applied the saved plan of commit $GITHUB_SHA." | tee -a "$GITHUB_STEP_SUMMARY"

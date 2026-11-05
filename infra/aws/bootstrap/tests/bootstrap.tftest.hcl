@@ -386,26 +386,35 @@ run "h3_sessions_have_a_narrow_deployer" {
     error_message = "H-3: the session deployer carries the nonprod deployer's guardrails as its source document."
   }
 
-  # Review R10: no egress or modify on any group, and never the ALB, database or db-admin group.
+  # Review R10 (phase 6): no security-group rule action is allowed, and all are denied.
   assert {
     condition = alltrue(flatten([
       for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : [
-        for a in s.actions : !contains(["ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupEgress", "ec2:ModifySecurityGroupRules"], a)
+        for a in s.actions : !strcontains(a, "SecurityGroup") && a != "ec2:*" && a != "*"
       ] if s.effect != "Deny"
     ]))
-    error_message = "R10: a session creates or removes task ingress rules only."
+    error_message = "R10: a session allows no security-group rule action."
   }
 
   assert {
     condition = length([
       for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
-      if s.sid == "SessionNeverEdgeOrDatabaseGroups" && s.effect == "Deny" && contains(s.actions, "ec2:AuthorizeSecurityGroupIngress")
-      && length(setsubtract(["munaxa-nonprod-alb", "munaxa-nonprod-database", "munaxa-nonprod-db-admin"], flatten([for c in s.condition : c.values if c.variable == "aws:ResourceTag/Name"]))) == 0
+      if s.sid == "SessionNeverSecurityGroupRules" && s.effect == "Deny" && contains(s.resources, "*")
+      && length(setsubtract(["ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress", "ec2:ModifySecurityGroupRules"], s.actions)) == 0
       ]) == 1 && length([
       for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
       if s.sid == "SessionNeverGroupTags" && s.effect == "Deny" && contains(s.resources, "arn:aws:ec2:eu-central-1:229251310592:security-group/*")
     ]) == 1
-    error_message = "R10: the session never adds a rule to the ALB, database or db-admin group, nor retags a group."
+    error_message = "R10: the session is denied every security-group rule write, and never retags a group."
+  }
+
+  assert {
+    condition = length([
+      for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
+      if s.sid == "SessionNeverNetworkPlacement" && s.effect == "Deny" && contains(s.resources, "*")
+      && length(setsubtract(["elasticloadbalancing:SetSecurityGroups", "elasticloadbalancing:SetSubnets", "ec2:ModifyNetworkInterfaceAttribute", "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup"], s.actions)) == 0
+    ]) == 1
+    error_message = "P4: the session never moves an ALB, a service or an interface to another group or subnet."
   }
 
   # Review B-2: a session plan refreshes the whole stack; its extra reads are reads, on nonprod only.
@@ -451,5 +460,94 @@ run "b1_rds_master_secret_only_through_rds" {
       ]) && length([for s in jsondecode(aws_iam_policy.workload_boundary[env].policy).Statement : s if s.Sid == "OwnRdsMasterSecretByTag"]) == 1
     ])
     error_message = "N-1: the boundary also admits the RDS master secret by its own environment's tags."
+  }
+}
+
+# Phase 6 (Agent 5): the nonprod boundary admits the AWS-side Testing backstop (stack/backstop.tf);
+# prod's does not.
+run "only_the_nonprod_boundary_admits_the_testing_backstop" {
+  command = plan
+
+  assert {
+    condition = length([
+      for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s
+      if s.Sid == "TestingBackstop" && s.Effect == "Allow" && length(setsubtract(s.Action, ["rds:StopDBInstance", "ecs:UpdateService"])) == 0
+    ]) == 1
+    error_message = "The nonprod boundary allows the backstop's stop and scale-in, and nothing more in that statement."
+  }
+
+  assert {
+    condition     = length([for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s if s.Sid == "TestingBackstop"]) == 0
+    error_message = "Prod has no Testing backstop."
+  }
+}
+
+# Phase 6 narrowing (R9, R11, R12): no data reads by name, Cloud Map request tags admit only a new
+# service, and service-linked roles only for the stack's services.
+run "phase6_residual_narrowing" {
+  command = plan
+
+  assert {
+    condition = length([
+      for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
+      if s.effect != "Deny" && contains(s.actions, "servicediscovery:CreateService") && contains(s.resources, "*")
+      && length([for c in s.condition : c if startswith(c.variable, "aws:RequestTag/")]) > 0
+    ]) == 0
+    error_message = "R11: request tags never admit a session CreateService on a namespace."
+  }
+
+  assert {
+    condition = length([
+      for s in data.aws_iam_policy_document.deployer_allow["nonprod"].statement : s.sid
+      if s.sid == "NoLogOrDatabaseData" && s.effect == "Deny" && contains(s.resources, "*")
+      && length(setsubtract(["logs:GetLogEvents", "logs:FilterLogEvents", "logs:StartQuery", "logs:CreateExportTask", "logs:PutSubscriptionFilter", "rds:DownloadDBLogFilePortion", "ecs:ExecuteCommand"], s.actions)) == 0
+      ]) == 1 && length([
+      for s in data.aws_iam_policy_document.deployer_allow["prod"].statement : s.sid
+      if s.sid == "NoLogOrDatabaseData" && s.effect == "Deny" && contains(s.resources, "*")
+      && length(setsubtract(["logs:GetLogEvents", "logs:FilterLogEvents", "logs:StartQuery", "logs:CreateExportTask", "logs:PutSubscriptionFilter", "rds:DownloadDBLogFilePortion", "ecs:ExecuteCommand"], s.actions)) == 0
+    ]) == 1
+    error_message = "R9: no deployer reads log data or database log files, exports logs or opens ECS Exec."
+  }
+
+  assert {
+    condition = toset(flatten([
+      for s in concat(data.aws_iam_policy_document.deployer_allow["nonprod"].statement, data.aws_iam_policy_document.deployer_allow["prod"].statement) :
+      s.resources if contains(s.actions, "iam:CreateServiceLinkedRole")
+      ])) == toset([
+      "arn:aws:iam::229251310592:role/aws-service-role/ecs.amazonaws.com/*",
+      "arn:aws:iam::229251310592:role/aws-service-role/elasticloadbalancing.amazonaws.com/*",
+      "arn:aws:iam::229251310592:role/aws-service-role/rds.amazonaws.com/*",
+    ])
+    error_message = "R12: service-linked roles only for ECS, Elastic Load Balancing and RDS."
+  }
+
+  assert {
+    condition = length([
+      for s in data.aws_iam_policy_document.deployer_allow["nonprod"].statement : s.sid
+      if s.effect == "Deny" && (s.sid == "NeverExportCertificates" && contains(s.actions, "acm:ExportCertificate") || s.sid == "NoExportableCertificates" && contains(s.actions, "acm:RequestCertificate"))
+      ]) == 2 && length([
+      for s in data.aws_iam_policy_document.deployer_allow["prod"].statement : s.sid
+      if s.effect == "Deny" && (s.sid == "NeverExportCertificates" && contains(s.actions, "acm:ExportCertificate") || s.sid == "NoExportableCertificates" && contains(s.actions, "acm:RequestCertificate"))
+    ]) == 2
+    error_message = "R13: no deployer requests an exportable certificate or exports one."
+  }
+}
+
+# Phase 6 (R7): no boundary-bound role is usable from a session that carries a source identity
+# (every deployer session does), so the deployer cannot assume a role it created.
+run "r7_boundary_refuses_chained_deployer_sessions" {
+  command = plan
+
+  assert {
+    condition = length([
+      for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s.Sid
+      if s.Sid == "NeverFromADeployerSession" && s.Effect == "Deny" && s.Action == "*" && s.Resource == "*"
+      && try(s.Condition.Null["aws:SourceIdentity"], "") == "false"
+      ]) == 1 && length([
+      for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s.Sid
+      if s.Sid == "NeverFromADeployerSession" && s.Effect == "Deny" && s.Action == "*" && s.Resource == "*"
+      && try(s.Condition.Null["aws:SourceIdentity"], "") == "false"
+    ]) == 1
+    error_message = "R7: each workload boundary refuses every session that carries a source identity."
   }
 }

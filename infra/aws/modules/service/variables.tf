@@ -223,6 +223,12 @@ variable "tags" {
 # Booleans decide what is created: the ARNs and IDs above may be unknown until apply, and a count
 # or for_each cannot depend on an unknown value.
 
+variable "admit_alb" {
+  description = "Admit alb_security_group_id on the container port, whether or not the edge is up (a routable service)."
+  type        = bool
+  default     = false
+}
+
 variable "routed" {
   description = "Create a target group and listener rules behind listener_arn."
   type        = bool
