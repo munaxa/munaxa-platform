@@ -17,6 +17,7 @@
 | OD-8 | Root used temporarily for AWS operations; **no IAM users, access keys or Identity Center** |
 | OD-9 | **B2: ROOT CAUSE UNRESOLVED — ACCEPTED FOR TESTING ONLY.** No IAM policy change authorized. **Does not apply to Production** |
 | OD-10 | **Not yet decided:** D-B, accept the second bootstrap re-apply as PARTIALLY VERIFIED (testing-readiness `04` §2; the lead's recommendation there was to accept for Testing). The G3 approval must include it; without it the verdict is NOT READY — BLOCKERS REMAIN |
+| OD-10 (update, 5 Nov 2026 21:16 UTC) | **D-B ACCEPTED by the owner** (project thread message, 21:16:18 UTC) for the **non-production Testing environment only**. The second bootstrap re-apply **remains PARTIALLY VERIFIED** with every limitation in `2026-11-05-evidence-recovery/` (plan text and post-apply plan output unrecoverable; publisher roles and trust policies not read); the acceptance is **not** evidence of a fully verified Terraform apply and recovers no missing evidence. The session-role pre-check (C-3) stays **mandatory**; any AccessDenied or unexpected pre-check result is a **hard stop**. No IAM change is authorized. **Production requires a separate review and decision.** Recorded in `2026-11-05-g3-declaration/` |
 
 ## 2. B2 record
 
