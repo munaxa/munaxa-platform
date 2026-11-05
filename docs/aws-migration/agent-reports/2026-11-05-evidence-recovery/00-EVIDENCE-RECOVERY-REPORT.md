@@ -1,12 +1,15 @@
 # Second bootstrap re-apply (5 Nov 2026): evidence recovery investigation
 
-- **Date:** 5 Nov 2026. First draft 13:41 UTC; revised after independent review.
+- **Date:** 5 Nov 2026. First draft 13:41 UTC; revised after independent review; §9 added at 16:20 UTC; final corrections at about 17:15 UTC (revision history at the end).
 - **Author:** the lead.
 - **Independent reviewer:** separate reviewer, `01-INDEPENDENT-REVIEW.md` next to this file. Verdict **AGREE WITH CHANGES**; all 14 findings applied (§5).
 
-**Scope.** Read-only. The lead made no AWS call and used no credentials. Nothing was run in Terraform, nothing was pushed or merged, and no setting was changed. CanteenHub, Render and Supabase were not inspected or touched.
+**Scope.** Read-only throughout.
+- **§1 to §8 (to 13:41 UTC):** the lead made no AWS call and used no credentials.
+- **§9 (16:11 to 16:20 UTC):** on the owner's explicit approval, the lead performed **read-only** AWS operations only, through the AWS connector (listed in §9). Nothing was created, changed or deleted.
+- **Throughout:** nothing was run in Terraform, and no IAM, policy, state, infrastructure or GitHub setting was changed. CanteenHub, Render and Supabase were not inspected or touched.
 
-**Where this report lives.** First kept as a project file only, per the owner's no-commit instruction. The owner then asked (13:59 UTC) for it to be committed. It is copied here unchanged apart from this paragraph and the reviewer file name (`01-INDEPENDENT-REVIEW.md`).
+**Where this report lives.** First kept as a project file only, per the owner's no-commit instruction. The owner then asked (13:59 UTC) for it to be committed. It was first copied here unchanged apart from this paragraph and the reviewer file name (`01-INDEPENDENT-REVIEW.md`). Later revisions are listed in the revision history at the end.
 
 **Evidence labels:**
 
@@ -22,7 +25,26 @@
 
 ## 1. Executive verdict
 
-> **Update, 16:20 UTC: superseded in part by §9.** The owner-approved read-only reads verified the apply's effect (exactly 5 policy writes, no address added or removed, serial 3 → 4), the attachment sets on the 6 roles read, and all 14 policy documents read. The 4 publisher roles and the role trust policies were not read. The overall verdict is now **PARTIALLY VERIFIED**: the plan text and the post-apply plan output remain unrecoverable. B2 is unchanged. The text below is the pre-read assessment, kept as written.
+### Final verdict (supersedes the pre-read assessment below)
+
+**Second bootstrap re-apply at `6b8997a`: PARTIALLY VERIFIED.** This rests on the read-only AWS evidence in §9.
+
+| Item | Status |
+| --- | --- |
+| Apply effect (0 added, 5 changed, 0 destroyed) | **VERIFIED, effect only.** The original Terraform `Apply complete!` output is not recovered, and that Terraform made the writes is inference [E] |
+| State serial and lineage | **VERIFIED** (serial 3 → 4, same lineage) |
+| Managed instance counts | **VERIFIED** (68 before and after, none added or removed) |
+| Attachments | **VERIFIED for the 6 roles read.** The 4 publisher roles and the role trust policies were not read |
+| Policy documents | **VERIFIED for the 14 documents read**, by a non-cryptographic comparison (§9 O-3) |
+| Terraform plan text | **UNRECOVERABLE FROM CURRENT SOURCES** |
+| Post-apply plan result | **UNRECOVERABLE FROM CURRENT SOURCES** |
+
+**Process finding.** The runbook's pre-apply plan-review gate (the owner pastes the plan to the lead before applying) was apparently skipped (§9).
+
+**B2: `ROOT CAUSE UNRESOLVED — REMAINS BLOCKED`, unchanged.** Neither a simulator-side nor a harness-side explanation is confirmed (§9).
+
+### Pre-read assessment (13:41 UTC, kept as written; superseded by the final verdict above)
+
 
 **Second bootstrap re-apply at `6b8997a`: NOT VERIFIED.** The plan, the apply result, the post-apply plan, the state serials and the resource counts are **UNRECOVERABLE FROM CURRENT SOURCES** (`/tmp/p7` is gone, and no copy exists in GitHub, in the repository or in the project chat). What *is* evidenced, indirectly but by original AWS output:
 
@@ -57,7 +79,7 @@ All repository paths are in `munaxa/munaxa-platform`. Times are UTC.
 | E11 | Project chat 09:30 to 10:15 | searched by the coordinator at the lead's request | - | - | negative search result | not independently re-checked | Nothing beyond E1 and E2 was posted there | - |
 | E12 | `~/p6` in CloudShell | owner | - | first re-apply, about 05:15 | **excluded** | - | It is from the `46dfbd9` re-apply | **Not** evidence for this one |
 
-**Time window [E].** `6b8997a` was merged at 08:51. PR #44, carrying the runbook, was open from 08:54 and merged at 09:33. Runbook line 119 (step 9, the simulation) downloads the script from main, so only the *simulation* must be after 09:33. The apply lies between 08:51 and the start of the simulation; the result was posted at 10:10. O-1 and O-2 would pin the time.
+**Time window [E].** `6b8997a` was merged at 08:51. PR #44, carrying the runbook, was open from 08:54 and merged at 09:33. Runbook line 119 (step 9, the simulation) downloads the script from main, so only the *simulation* must be after 09:33. The apply lies between 08:51 and the start of the simulation; the result was posted at 10:10. O-1 and O-2 would pin the time. (They since have: the apply wrote state at 09:55:30, §9.)
 
 **Stale, contradictory or duplicate evidence:**
 - **The brief's "19 additions"** is Phase 6, as explained in §1.
@@ -68,6 +90,8 @@ All repository paths are in `munaxa/munaxa-platform`. Times are UTC.
 - **No duplicates.** E9 repeats E1 to E4; it is not new evidence.
 
 ## 3. Re-apply verification matrix
+
+> **Superseded by §9 (updated matrix) and the §1 final verdict.** This is the pre-read matrix as of 13:41 UTC, kept as written. Its NOT VERIFIED verdicts for claims 2, 4, 5 and overall no longer stand.
 
 | # | Claim | Expected (runbook `phase7/08`) | Evidence | Verdict |
 | --- | --- | --- | --- | --- |
@@ -123,6 +147,8 @@ The 10-call follow-up test, `next-diagnostic/supporting/b2-followup-diagnostic.s
 
 ## 6. Missing evidence: is it recoverable?
 
+> **As of 13:41 UTC.** The items marked recoverable here have since been recovered by the read-only reads in §9. The plan text and the post-apply plan result remain unrecoverable.
+
 | Missing item | Recoverable? | How |
 | --- | --- | --- |
 | Plan text and `plan.json` | **No**: the saved plan existed only in `/tmp/p7` | - |
@@ -132,9 +158,11 @@ The 10-call follow-up test, `next-diagnostic/supporting/b2-followup-diagnostic.s
 | Full policy documents and version dates | **Yes** | §7 O-3 |
 | Session trust path still works after the apply | **Yes, passively, no AWS call by us**: the next scheduled `aws-session.yml` run (crons 19:00 to 03:00 UTC) must assume both session roles without AccessDenied (runbook `phase7/08` line 132). Its log is GitHub evidence. Covers that path only | GitHub read after it runs |
 
-## 7. Proposed read-only AWS operations (for separate owner approval; not run)
+## 7. Proposed read-only AWS operations (as proposed at 13:41 UTC; since performed, see §9)
 
-All are read-only, account `229251310592`, run by the owner in CloudShell. They create, modify and delete nothing. **Each needs the owner's explicit approval.** None has been run.
+**Status: done.** The owner approved these at 13:59 UTC and asked for them to be run through the AWS connector instead of CloudShell. The lead performed them, read-only, at 16:11 to 16:20 UTC. The results are in §9. The text below is kept as originally proposed, as a record, except that the original line saying each operation still needed approval and none had been run was removed, because it is no longer true.
+
+All are read-only, account `229251310592`. As proposed, the owner would run them in CloudShell. They create, modify and delete nothing.
 
 **O-1. State history: serials, lineage, counts, and the lock timeline.**
 
@@ -185,18 +213,18 @@ aws iam get-role-policy --role-name munaxa-shared-deployer-nonprod-session --pol
 
 ## 8. Final recommendation and explicit blockers
 
+This section reflects the §9 evidence. It replaces the 13:41 UTC version, which recommended approving O-1 and O-2. Those reads have since been performed.
+
 **Recommendation.**
-1. Approve O-2 first: one free read-only API, and the strongest independent record of what changed.
-2. Then approve O-1, for serials, lineage, counts and the lock timeline.
-3. O-3 is optional, for claim 6b.
-4. Approve the B2 follow-up test separately.
-5. With no approval needed, the lead reads tonight's scheduled `aws-session.yml` run log once it exists.
+1. **Accept the second re-apply as PARTIALLY VERIFIED** on the §9 evidence. The plan text and the post-apply plan result cannot be recovered. Whether the verified effect is enough, or whether a separately approved new no-change `terraform plan` is wanted, is the owner's decision. Nothing is proposed here.
+2. **Decide on the B2 follow-up test** (`next-diagnostic/supporting/b2-followup-diagnostic.sh`, 10 read-only simulator calls). It needs its own approval.
+3. **The lead reads tonight's scheduled `aws-session.yml` run log.** No approval is needed. It covers the session trust path only.
+4. **Keep the pre-apply plan-review gate** for every future bootstrap apply: the owner pastes the plan to the lead before applying. The §9 process finding shows it was apparently skipped this time.
 
-Even with O-1 and O-2 clean, the plan text and the post-apply plan result stay unrecoverable. The owner would then decide whether the corroborated evidence is enough, or whether a separately approved new no-change plan is needed.
-
-**Blockers:**
-- **The second re-apply is NOT VERIFIED.** Claims 1 to 3 are unrecoverable from current sources, and claims 4 and 5 are not verified.
-- **B2 is unresolved.**
+**Blockers (unchanged or added; none removed):**
+- **The second re-apply is PARTIALLY VERIFIED, not VERIFIED.** The Terraform plan text and the post-apply plan result are unrecoverable from current sources. Attachments are verified for the 6 roles read only; the publisher roles and role trust policies were not read.
+- **B2 is unresolved** (`ROOT CAUSE UNRESOLVED — REMAINS BLOCKED`). Neither the simulator-side nor the harness-side explanation is confirmed, and the follow-up test is unrun.
+- **The session trust-path check is pending** (the next scheduled `aws-session.yml` run).
 - **Not authorized and not claimed:**
   - G3 (last plan 64/0/0 at `decd1dc`, before `6b8997a`);
   - the backstop apply;
@@ -225,7 +253,9 @@ Nothing was created, changed or deleted. The connector logs each script as `aws-
 | 05:14 to 08:45 (between the two re-applies) | none | none (CloudShell events only) |
 | 10:15 to 16:12 | `ConsoleLogin` and `SubscribeToURP` by root at 16:08 (most likely the owner's console sign-in [E]), and the connector's own calls | none apart from CloudShell |
 
-No `DeletePolicyVersion`, attach, detach, create, delete, trust, boundary or tag call happened in any window. CloudTrail does not record S3 state writes (those are data events) [V-aws]. The events' `userAgent` was not read, so that Terraform made these writes is inference [E]. Not queried: 05:13:03 to 05:14, and anything after 16:12.
+No `DeletePolicyVersion`, attach, detach, create, delete, trust, boundary or tag call happened in any window. CloudTrail does not record S3 state writes (those are data events) [V-aws]. The events' `userAgent` was not read, so that Terraform made these writes is inference [E].
+
+**Coverage.** The investigator's own operations were read-only. CloudTrail was queried only for the three windows above, so the evidence says nothing about events outside them. Not queried: before 05:14 (including 05:13:03 to 05:14) and after 16:12. The lead's own calls after 16:12 are known to be read-only from the script content (the `api_calls` list of each connector run), not from CloudTrail. `LookupEvents` covers management events only; data events such as S3 object writes are not covered.
 
 ### O-1: state object history
 
@@ -266,7 +296,11 @@ No other configuration attribute changed. In particular, `aws_iam_role_policy.de
 
 ### O-3: live documents and attachments
 
-**All 14 documents read equal the `6b8997a` render** (the `744c67c` render; the bootstrap tree is identical), compared key-order-insensitively. The comparison used the canonical JSON length (exact) and a 61-bit polynomial checksum. That checksum matched at the double precision the connector returns (about 15.9 digits); the reviewer re-checked 5 of the 14 independently. It is not cryptographic, and the sandbox blocks `hashlib`, so SHA-256 could not be used.
+**All 14 documents read equal the `6b8997a` render** (the `744c67c` render; the bootstrap tree is identical), compared key-order-insensitively. How the comparison worked:
+- **Exact canonical JSON length:** each document was serialised with sorted keys and no whitespace, and its length matched the render's exactly.
+- **A 61-bit polynomial checksum:** the connector returned it as a JSON float. That keeps about **53 bits of effective precision**. In the first comparison the lead used a relative tolerance of 1e-15. At about 17:20 UTC the lead re-ran it offline with exact double-precision equality, and all 14 matched.
+- **Non-cryptographic:** this is not a cryptographic hash. The sandbox blocks `hashlib`, so SHA-256 could not be used.
+- **Independent recheck: 5 of the 14 documents, not all 14.** The independent reviewer re-checked `allow_nonprod`, `allow_prod`, `boundary_nonprod`, `boundary_prod` and `session_inline_nonprod`. The other 9 rest on the lead's comparison only.
 
 The 14 documents:
 - the managed policies `-allow` ×2, `-allow-tagged` ×2, `-read`, `-session-read` and the boundaries ×2;
@@ -297,9 +331,24 @@ The 14 documents:
 | - | **Overall** | **PARTIALLY VERIFIED** | Every material effect is verified. The plan text and the post-apply plan output remain unrecoverable |
 
 **What this does not change.**
-- **B2 stays `ROOT CAUSE UNRESOLVED — REMAINS BLOCKED`.** The live `-allow` documents equal the render, whose `NoLogOrDatabaseData` denies `logs:GetLogEvents` on `*` with no condition. CloudTrail shows no write from 10:15 to 16:12, so these are the documents the diagnostic ran against. The cause is therefore not a live-versus-render policy difference. That supports, but does not confirm, a simulator-side or harness-side explanation. The B2 follow-up test is still unrun and needs its own approval.
-- **G3, the backstop, Testing and every other blocker in §8 are unchanged.**
+- **B2 stays `ROOT CAUSE UNRESOLVED — REMAINS BLOCKED`.** The live `-allow` documents equal the render, whose `NoLogOrDatabaseData` denies `logs:GetLogEvents` on `*` with no condition. CloudTrail shows no write from 10:15 to 16:12, so these are the documents the diagnostic ran against. The cause is therefore not a live-versus-render policy difference. It does not confirm any explanation, and two kinds remain open:
+  - **Simulator-side:** the IAM policy simulator itself does not report the Deny for this request. For example, it may not report a lone managed-policy Deny, or it may treat `/aws/` group names or GetLogEvents specially.
+  - **Harness-side:** the way the diagnostic script built the request or read the result. This covers the resource ARN form, the context entries, the caller ARN, and the parsing of `MatchedStatements`.
+
+  The B2 follow-up test (still unrun, and needing its own approval) separates the three simulator-side cases. Its repeat cases C9 and C10 (B2 and B4 again) show only whether the result reproduces. They do not rule out a harness-side cause, because the follow-up uses the same harness. No harness-side cause has been identified.
+- **G3, the backstop, Testing and every other blocker in §8 still apply.**
 
 ### Independent review of §9
 
 Separate reviewer, `02-INDEPENDENT-REVIEW-ADDENDUM.md`, unmodified. **AGREE WITH CHANGES**: PARTIALLY VERIFIED overall is right, claims 4 and 5 are justified as VERIFIED, and no finding reverses a verdict. R1 to R10 are applied above: scope wording for 6a and 6b, the effect-only qualifier and the userAgent inference for claim 2, inference labels for the lock mapping, the skipped stage 1 gate, the refresh explanation and the missing offline check, the B2 wording, checksum precision, the query gaps and the implicit `kms:Decrypt`. The `aws-session.yml` trust-path check is still pending.
+
+## Revision history
+
+| When (UTC) | Change | Commit |
+| --- | --- | --- |
+| 13:41 | First draft, §1 to §8; project file only | - |
+| about 14:00 | Independent review (`01`) applied; committed | branch `ab80b23`, squashed into `d548533` (#47) |
+| 16:20 | §9 added: results of the approved read-only reads; addendum review (`02`) applied | branch `52095ae` and `0e456b3`, squashed into `d548533` (#47) |
+| about 17:15 | Final corrections. Final verdict table in §1, with the pre-read text kept and labelled; §7 marked as performed; §8 rewritten for the §9 evidence; CloudTrail coverage and checksum-precision wording; B2 simulator-side and harness-side distinction. The final review is in `03-FINAL-REVIEW.md` (unmodified): AGREE WITH CHANGES. All its findings were applied in the next commit: F1 §3 superseded label; F2 the line 12 wording; F3 SHA and qualifiers in the index; F4 the §2 and §6 notes; F5 an exact re-check of all 14 (F5's tolerance point); F6 the basis for calls after 16:12; F7 the §7 removal noted; F8 the branch commits | report commit `6b9eaff`, plus the review fixes in the next commit on the branch; merged as PR #48, merge SHA recorded in the index |
+
+The original evidence in §2 to §7 and §9 is unchanged, apart from the wording corrections listed above.
