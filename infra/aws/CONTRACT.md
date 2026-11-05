@@ -4,7 +4,10 @@ The interface between the shared stack (`munaxa-platform/infra/aws`) and the pro
 it: Identity, Control, Work, School and Docs. A product follows this contract; the stack provides
 exactly this. A change to either side is a PR here first. Owner: the platform (Agent 1).
 
-Status: 30 Oct 2026. Nothing in it is applied. Account `229251310592`, region `eu-central-1` only.
+Status (5 Nov 2026): the shared bootstrap is applied (G2 on 31 Oct, re-applied twice on 5 Nov); the
+shared stack and every product item in this contract are **not applied** (G3 not authorized; no product
+image published to the shared ECR). Account `229251310592`, region `eu-central-1` only. Evidence:
+`docs/aws-migration/agent-reports/`.
 
 ## 1. Environments and names
 
