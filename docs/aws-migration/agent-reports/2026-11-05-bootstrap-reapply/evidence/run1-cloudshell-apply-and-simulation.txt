@@ -1,0 +1,558 @@
+bootstrap $ # 7. Apply the saved plan only (never a fresh "terraform apply")
+bootstrap $ terraform apply -input=false "$HOME/p6/bootstrap.tfplan"
+aws_iam_role.ci["nonprod"]: Modifying... [id=munaxa-shared-ci-nonprod]
+aws_iam_policy.deployer_session_read["nonprod"]: Creating...
+aws_iam_policy.deployer_read: Creating...
+aws_iam_policy.deployer_allow_tagged["nonprod"]: Creating...
+aws_iam_role.ci_session["nonprod"]: Creating...
+aws_iam_policy.deployer_allow_tagged["prod"]: Creating...
+aws_iam_policy.deployer_allow["prod"]: Creating...
+aws_iam_policy.workload_boundary["prod"]: Creating...
+aws_iam_policy.deployer_allow["nonprod"]: Creating...
+aws_iam_policy.workload_boundary["nonprod"]: Modifying... [id=arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary]
+aws_iam_policy.workload_boundary["prod"]: Creation complete after 1s [id=arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary-prod]
+aws_iam_policy.deployer_session_read["nonprod"]: Creation complete after 1s [id=arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session-read]
+aws_iam_policy.deployer_allow["nonprod"]: Creation complete after 1s [id=arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-allow]
+aws_iam_policy.deployer_allow_tagged["nonprod"]: Creation complete after 1s [id=arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-allow-tagged]
+aws_iam_policy.deployer_allow_tagged["prod"]: Creation complete after 1s [id=arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-prod-allow-tagged]
+aws_iam_policy.deployer_read: Creation complete after 1s [id=arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-read]
+aws_iam_policy.deployer_allow["prod"]: Creation complete after 1s [id=arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-prod-allow]
+aws_iam_policy.workload_boundary["nonprod"]: Modifications complete after 1s [id=arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary]
+aws_iam_role.ci_session["nonprod"]: Creation complete after 1s [id=munaxa-shared-ci-nonprod-session]
+data.aws_iam_policy_document.deployer_session_trust["nonprod"]: Reading...
+data.aws_iam_policy_document.deployer_session_trust["nonprod"]: Read complete after 0s [id=4014861480]
+aws_iam_role.deployer_session["nonprod"]: Creating...
+aws_iam_role.ci["nonprod"]: Modifications complete after 1s [id=munaxa-shared-ci-nonprod]
+data.aws_iam_policy_document.deployer_trust["prod"]: Reading...
+data.aws_iam_policy_document.deployer_trust["nonprod"]: Reading...
+data.aws_iam_policy_document.deployer_trust["prod"]: Read complete after 0s [id=243453303]
+data.aws_iam_policy_document.deployer_trust["nonprod"]: Read complete after 0s [id=713682143]
+aws_iam_role_policy_attachment.deployer_allow_tagged["prod"]: Creating...
+aws_iam_role_policy_attachment.deployer_read["prod"]: Creating...
+aws_iam_role_policy_attachment.deployer_allow["nonprod"]: Creating...
+aws_iam_role_policy_attachment.deployer_allow_tagged["nonprod"]: Creating...
+aws_iam_role_policy_attachment.deployer_read["nonprod"]: Creating...
+aws_iam_role_policy.deployer["nonprod"]: Modifying... [id=munaxa-shared-deployer-nonprod:deployer]
+aws_iam_role_policy_attachment.deployer_allow["prod"]: Creating...
+aws_iam_role_policy.deployer["prod"]: Modifying... [id=munaxa-shared-deployer-prod:deployer]
+aws_iam_role_policy_attachment.deployer_allow_tagged["prod"]: Creation complete after 0s [id=munaxa-shared-deployer-prod/arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-prod-allow-tagged]
+aws_iam_role_policy_attachment.deployer_read["prod"]: Creation complete after 0s [id=munaxa-shared-deployer-prod/arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-read]
+aws_iam_role_policy_attachment.deployer_allow["nonprod"]: Creation complete after 0s [id=munaxa-shared-deployer-nonprod/arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-allow]
+aws_iam_role_policy_attachment.deployer_allow_tagged["nonprod"]: Creation complete after 0s [id=munaxa-shared-deployer-nonprod/arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-allow-tagged]
+aws_iam_role_policy_attachment.deployer_read["nonprod"]: Creation complete after 0s [id=munaxa-shared-deployer-nonprod/arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-read]
+aws_iam_role_policy.deployer["nonprod"]: Modifications complete after 0s [id=munaxa-shared-deployer-nonprod:deployer]
+aws_iam_role_policy_attachment.deployer_allow["prod"]: Creation complete after 0s [id=munaxa-shared-deployer-prod/arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-prod-allow]
+aws_iam_role_policy.deployer["prod"]: Modifications complete after 0s [id=munaxa-shared-deployer-prod:deployer]
+aws_iam_role.deployer_session["nonprod"]: Creation complete after 9s [id=munaxa-shared-deployer-nonprod-session]
+aws_iam_role_policy.ci_session["nonprod"]: Creating...
+aws_iam_role_policy_attachment.deployer_session_read["nonprod"]: Creating...
+aws_iam_role_policy_attachment.deployer_session_refresh["nonprod"]: Creating...
+aws_iam_role_policy.deployer_session["nonprod"]: Creating...
+aws_iam_role_policy_attachment.deployer_session_read["nonprod"]: Creation complete after 0s [id=munaxa-shared-deployer-nonprod-session/arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-read]
+aws_iam_role_policy_attachment.deployer_session_refresh["nonprod"]: Creation complete after 0s [id=munaxa-shared-deployer-nonprod-session/arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session-read]
+aws_iam_role_policy.ci_session["nonprod"]: Creation complete after 0s [id=munaxa-shared-ci-nonprod-session:assume-own-session-deployer-only]
+aws_iam_role_policy.deployer_session["nonprod"]: Creation complete after 0s [id=munaxa-shared-deployer-nonprod-session:session-deployer]
+
+Apply complete! Resources: 19 added, 4 changed, 0 destroyed.
+
+Outputs:
+
+ci_role_arns = {
+  "nonprod" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod"
+  "prod" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-prod"
+}
+deployer_role_arns = {
+  "nonprod" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod"
+  "prod" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod"
+}
+ecr_repositories = {
+  "munaxa-control/api" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api"
+  "munaxa-control/migrate" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/migrate"
+  "munaxa-control/portal" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal"
+  "munaxa-identity/api" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api"
+  "munaxa-identity/migrate" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate"
+  "munaxa-school/admin" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/admin"
+  "munaxa-school/api" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/api"
+  "munaxa-school/migrate" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/migrate"
+  "munaxa-work/admin" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/admin"
+  "munaxa-work/api" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/api"
+  "munaxa-work/migrate" = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/migrate"
+}
+image_publisher_role_arns = {
+  "munaxa-control" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-control-image-publisher"
+  "munaxa-identity" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-identity-image-publisher"
+  "munaxa-school" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-school-image-publisher"
+  "munaxa-work" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-work-image-publisher"
+}
+session_ci_role_arns = {
+  "nonprod" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod-session"
+}
+session_deployer_role_arns = {
+  "nonprod" = "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session"
+}
+state_bucket = "munaxa-shared-tfstate-229251310592"
+workload_boundary_arn = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary"
+workload_boundary_arns = {
+  "nonprod" = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary"
+  "prod" = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary-prod"
+}
+bootstrap $ #   expect: Apply complete! Resources: 19 added, 6 changed, 0 destroyed.
+bootstrap $ #   For a few seconds the inline policies are already narrow while the attachments are created:
+bootstrap $ #   deployers fail closed in that window (no job should be running).
+bootstrap $ 
+bootstrap $ # 8. Post-apply checks
+bootstrap $ terraform plan -input=false -detailed-exitcode -no-color > ~/p6/post-apply-plan.txt; echo "exit $?"   # must print exit 0 (lead fix for review BL-2: exit code of terraform itself, not of tail)
+exit 0
+bootstrap $ tail -3 ~/p6/post-apply-plan.txt                                                               # No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+bootstrap $ terraform state pull > ~/p6/bootstrap-after.tfstate
+bootstrap $ terraform output -json | jq '{session_ci_role_arns,session_deployer_role_arns,workload_boundary_arns,deployer_role_arns,ci_role_arns}' | tee ~/p6/outputs.json
+{
+  "session_ci_role_arns": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "nonprod": "string"
+      }
+    ],
+    "value": {
+      "nonprod": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod-session"
+    }
+  },
+  "session_deployer_role_arns": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "nonprod": "string"
+      }
+    ],
+    "value": {
+      "nonprod": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session"
+    }
+  },
+  "workload_boundary_arns": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "nonprod": "string",
+        "prod": "string"
+      }
+    ],
+    "value": {
+      "nonprod": "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary",
+      "prod": "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary-prod"
+    }
+  },
+  "deployer_role_arns": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "nonprod": "string",
+        "prod": "string"
+      }
+    ],
+    "value": {
+      "nonprod": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+      "prod": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod"
+    }
+  },
+  "ci_role_arns": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "nonprod": "string",
+        "prod": "string"
+      }
+    ],
+    "value": {
+      "nonprod": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod",
+      "prod": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-prod"
+    }
+  }
+}
+bootstrap $ #   session_ci_role_arns.nonprod       = arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod-session
+bootstrap $ #   session_deployer_role_arns.nonprod = arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session
+bootstrap $ #   workload_boundary_arns = nonprod .../policy/munaxa-shared/munaxa-shared-workload-boundary, prod ...-workload-boundary-prod
+bootstrap $ #   deployer_role_arns / ci_role_arns unchanged from G2
+bootstrap $ aws s3api head-object --bucket munaxa-shared-tfstate-229251310592 --key bootstrap/terraform.tfstate \
+>   --query '{sse:ServerSideEncryption,key:SSEKMSKeyId}'
+{
+    "sse": "aws:kms",
+    "key": "arn:aws:kms:eu-central-1:229251310592:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5"
+}
+bootstrap $ #   sse = aws:kms, key = arn:aws:kms:eu-central-1:229251310592:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5
+bootstrap $ aws iam get-role --role-name munaxa-shared-ci-nonprod --query 'Role.AssumeRolePolicyDocument.Statement[0].Condition.StringEquals' --output json
+{
+    "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+    "token.actions.githubusercontent.com:ref": "refs/heads/main",
+    "token.actions.githubusercontent.com:sub": "repo:munaxa@311481412/munaxa-platform@1318353961:environment:aws-nonprod"
+}
+bootstrap $ for r in munaxa-shared-deployer-nonprod munaxa-shared-deployer-prod munaxa-shared-deployer-nonprod-session; do
+>   echo "$r"; aws iam list-attached-role-policies --role-name "$r" --query 'AttachedPolicies[].PolicyName' --output text
+>   aws iam list-role-policies --role-name "$r" --query PolicyNames --output text; done
+munaxa-shared-deployer-nonprod
+munaxa-shared-deployer-read     munaxa-shared-deployer-nonprod-allow-tagged     munaxa-shared-deployer-nonprod-allow
+deployer
+munaxa-shared-deployer-prod
+munaxa-shared-deployer-read     munaxa-shared-deployer-prod-allow       munaxa-shared-deployer-prod-allow-tagged
+deployer
+munaxa-shared-deployer-nonprod-session
+munaxa-shared-deployer-read     munaxa-shared-deployer-nonprod-session-read
+session-deployer
+bootstrap $ #   deployer-nonprod/prod: 3 attached (deployer-read, -<env>-allow, -<env>-allow-tagged) + inline "deployer"
+bootstrap $ #   session: 2 attached (deployer-read, -nonprod-session-read) + inline "session-deployer"
+bootstrap $ 
+bootstrap $ # 9. Owner simulation (read only): Agent 3's fixed script, 332 calls, exits non-zero on any mismatch
+bootstrap $ #    (the Phase 5 script used the mocked state key ARN in 4 cases and always exited 0)
+bootstrap $ #    Lead fix for review BL-3: the script is not in the pinned clone. Fetch it from the Phase 6 report
+bootstrap $ #    folder on main and check its sha256 before running it; STOP if the check does not print OK.
+bootstrap $ curl -fsSLo ~/p6/b2-owner-simulation.sh \
+>   https://raw.githubusercontent.com/munaxa/munaxa-platform/main/docs/aws-migration/agent-reports/2026-11-04-phase6/supporting/b2-owner-simulation.sh
+bootstrap $ echo "b62dbbef15b9418a5f82615346b97997b45c653afad1b917c6a2fbfc22c61002  $HOME/p6/b2-owner-simulation.sh" | sha256sum -c - \
+>   && bash ~/p6/b2-owner-simulation.sh ~/p6/simulation.out; echo "exit $?"    # hash must print OK (otherwise the script does not run); must be exit 0, 0 mismatches
+/home/cloudshell-user/p6/b2-owner-simulation.sh: OK
+caller: arn:aws:iam::229251310592:root
+state key: arn:aws:kms:eu-central-1:229251310592:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5
+PASS D01.1 allowed  Delete own SG (munaxa/nonprod) [ec2:DeleteSecurityGroup on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-own]
+PASS D02.1 explicitDeny  Delete SG tagged Project=other [ec2:DeleteSecurityGroup on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-x]
+PASS D03.1 implicitDeny  Delete UNTAGGED SG (the B2 gap) [ec2:DeleteSecurityGroup on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-u]
+PASS D04.1 explicitDeny  Delete SG tagged Environment=prod [ec2:DeleteSecurityGroup on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-p]
+PASS D05.1 implicitDeny  Open ingress on UNTAGGED SG, new rule tagged munaxa/nonprod [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-u]
+PASS D05.2 allowed  Open ingress on UNTAGGED SG, new rule tagged munaxa/nonprod [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*]
+PASS D06.1 allowed  Open ingress on own SG, new rule tagged [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-own]
+PASS D06.2 allowed  Open ingress on own SG, new rule tagged [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*]
+PASS D07.1 implicitDeny  Create subnet in UNTAGGED VPC with own tags [ec2:CreateSubnet on arn:aws:ec2:eu-central-1:229251310592:vpc/vpc-u]
+PASS D07.2 allowed  Create subnet in UNTAGGED VPC with own tags [ec2:CreateSubnet on arn:aws:ec2:eu-central-1:229251310592:subnet/*]
+PASS D08.1 allowed  Create subnet in own VPC with own tags [ec2:CreateSubnet on arn:aws:ec2:eu-central-1:229251310592:vpc/vpc-own]
+PASS D08.2 allowed  Create subnet in own VPC with own tags [ec2:CreateSubnet on arn:aws:ec2:eu-central-1:229251310592:subnet/*]
+PASS D09.1 allowed  CreateVpc with own tags [ec2:CreateVpc on arn:aws:ec2:eu-central-1:229251310592:vpc/*]
+PASS D10.1 allowed  Tag-on-create of that VPC [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:vpc/*]
+PASS D11.1 explicitDeny  CreateVpc WITHOUT tags [ec2:CreateVpc on arn:aws:ec2:eu-central-1:229251310592:vpc/*]
+PASS D12.1 implicitDeny  Claim UNTAGGED subnet: CreateTags Project=munaxa (no create) [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:subnet/subnet-u]
+FAIL D13.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulatePrincipalPolicy operation: 1 validation error detected: Value 'arn' at 'contextEntries.7.member.contextKeyType' failed to satisfy constraint: Member must satisfy enum value set: [binary, ipList, booleanList, ip, boolean, num  Adopt new VPC's untagged default SG (stack name tag) [residual] [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-def]
+FAIL D14.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulatePrincipalPolicy operation: 1 validation error detected: Value 'arn' at 'contextEntries.7.member.contextKeyType' failed to satisfy constraint: Member must satisfy enum value set: [binary, ipList, booleanList, ip, boolean, num  Adopt default SG of the account default VPC [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-defvpc]
+PASS D15.1 explicitDeny  Modify the account default VPC [ec2:ModifyVpcAttribute on arn:aws:ec2:eu-central-1:229251310592:vpc/vpc-0ed30515ad9631ea6]
+PASS D16.1 implicitDeny  Delete UNTAGGED load balancer of another workload [elasticloadbalancing:DeleteLoadBalancer on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/other-lb/abc]
+PASS D17.1 allowed  Create own ALB with tags [elasticloadbalancing:CreateLoadBalancer on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/abc]
+PASS D18.1 explicitDeny  Create own ALB WITHOUT tags [elasticloadbalancing:CreateLoadBalancer on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/abc]
+PASS D19.1 explicitDeny  Delete Docs final snapshot (worst case: untagged) [rds:DeleteDBSnapshot on arn:aws:rds:eu-central-1:229251310592:snapshot:munaxa-docs-eu-prod-pg-final]
+PASS D20.1 explicitDeny  Share own snapshot (ModifyDBSnapshotAttribute) [rds:ModifyDBSnapshotAttribute on arn:aws:rds:eu-central-1:229251310592:snapshot:munaxa-nonprod-pg-final]
+PASS D21.1 implicitDeny  Schedule deletion of UNTAGGED foreign KMS key [kms:ScheduleKeyDeletion on arn:aws:kms:eu-central-1:229251310592:key/foreign]
+PASS D22.1 explicitDeny  Schedule deletion of the shared STATE key (H-2) [kms:ScheduleKeyDeletion on the state key]
+PASS D23.1 explicitDeny  PutKeyPolicy on the STATE key (H-2) [kms:PutKeyPolicy on the state key]
+PASS D24.1 explicitDeny  Old Docs data key (pending deletion, MunaxaDocs) [kms:CancelKeyDeletion on arn:aws:kms:eu-central-1:229251310592:key/docs]
+PASS D25.1 allowed  PutKeyPolicy on own data key [kms:PutKeyPolicy on arn:aws:kms:eu-central-1:229251310592:key/own]
+PASS D26.1 allowed  CreateKey with own tags [kms:CreateKey on *]
+PASS D27.1 explicitDeny  CreateKey WITHOUT tags [kms:CreateKey on *]
+PASS D28.1 allowed  Claim UNTAGGED foreign KMS key by TagResource [residual] [kms:TagResource on arn:aws:kms:eu-central-1:229251310592:key/foreign]
+PASS D29.1 implicitDeny  Delete UNTAGGED foreign log group [logs:DeleteLogGroup on arn:aws:logs:eu-central-1:229251310592:log-group:/aws/other]
+PASS D30.1 implicitDeny  Read foreign log events [logs:GetLogEvents on arn:aws:logs:eu-central-1:229251310592:log-group:/aws/other:log-stream:x]
+PASS D31.1 implicitDeny  CreateRole munaxa-shared/evil with nonprod boundary (H-1) [iam:CreateRole on arn:aws:iam::229251310592:role/munaxa-shared/evil]
+PASS D32.1 allowed  CreateRole munaxa-nonprod-x with nonprod boundary [iam:CreateRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-x]
+PASS D33.1 implicitDeny  CreateRole munaxa-nonprod-x with PROD boundary [iam:CreateRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-x]
+PASS D34.1 implicitDeny  UpdateAssumeRolePolicy on a non-env role munaxa-shared/evil [iam:UpdateAssumeRolePolicy on arn:aws:iam::229251310592:role/munaxa-shared/evil]
+PASS D35.1 allowed  CreateSecret munaxa-nonprod/x with tags [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/x-AbCdEf]
+PASS D36.1 explicitDeny  CreateSecret munaxa-prod/x [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-prod/x-AbCdEf]
+PASS D37.1 explicitDeny  PutBucketPolicy on the state bucket (H-2) [s3:PutBucketPolicy on arn:aws:s3:::munaxa-shared-tfstate-229251310592]
+PASS D38.1 allowed  Write nonprod state [s3:PutObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/nonprod/stack.tfstate]
+PASS D39.1 explicitDeny  Write prod state [s3:PutObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/prod/stack.tfstate]
+PASS D40.1 allowed  DescribeVpcs (plan read) [ec2:DescribeVpcs on *]
+PASS D41.1 explicitDeny  DescribeVpcs in us-east-1 [ec2:DescribeVpcs on *]
+PASS D42.1 explicitDeny  Account setting: EBS encryption by default off [ec2:DisableEbsEncryptionByDefault on *]
+PASS D43.1 explicitDeny  Account setting: ECS PutAccountSettingDefault [ecs:PutAccountSettingDefault on *]
+PASS D44.1 allowed  Route 53 record in nonprod.munaxa.internal [route53:ChangeResourceRecordSets on arn:aws:route53:::hostedzone/Z1]
+PASS D45.1 implicitDeny  Route 53 record in another zone [route53:ChangeResourceRecordSets on arn:aws:route53:::hostedzone/Z2]
+PASS D46.1 allowed  DeleteHostedZone, any zone [residual] [route53:DeleteHostedZone on arn:aws:route53:::hostedzone/Z2]
+PASS D47.1 implicitDeny  DeleteNamespace UNTAGGED foreign Cloud Map [servicediscovery:DeleteNamespace on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-u]
+PASS D48.1 implicitDeny  DeleteCertificate UNTAGGED foreign [acm:DeleteCertificate on arn:aws:acm:eu-central-1:229251310592:certificate/u]
+PASS D49.1 allowed  Stop own database [rds:StopDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg]
+PASS D50.1 allowed  Create own DB (db, og default, pg, subgrp) with tags [rds:CreateDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg]
+PASS D50.2 allowed  Create own DB (db, og default, pg, subgrp) with tags [rds:CreateDBInstance on arn:aws:rds:eu-central-1:229251310592:og:default:postgres-16]
+PASS D50.3 allowed  Create own DB (db, og default, pg, subgrp) with tags [rds:CreateDBInstance on arn:aws:rds:eu-central-1:229251310592:pg:munaxa-nonprod-pg16]
+PASS D50.4 allowed  Create own DB (db, og default, pg, subgrp) with tags [rds:CreateDBInstance on arn:aws:rds:eu-central-1:229251310592:subgrp:munaxa-nonprod]
+PASS D51.1 allowed  Register own task definition with tags [ecs:RegisterTaskDefinition on arn:aws:ecs:eu-central-1:229251310592:task-definition/munaxa-nonprod-identity:1]
+PASS D52.1 implicitDeny  Delete UNTAGGED foreign ECS service [ecs:DeleteService on arn:aws:ecs:eu-central-1:229251310592:service/other/x]
+PASS D53.1 allowed  Cloud Map CreatePrivateDnsNamespace with tags [servicediscovery:CreatePrivateDnsNamespace on *]
+PASS D54.1 allowed  Cloud Map service in own namespace with tags [servicediscovery:CreateService on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-own]
+PASS D54.2 allowed  Cloud Map service in own namespace with tags [servicediscovery:CreateService on arn:aws:servicediscovery:eu-central-1:229251310592:service/*]
+PASS D55.1 implicitDeny  Cloud Map service in UNTAGGED foreign namespace [servicediscovery:CreateService on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-u]
+PASS D55.2 allowed  Cloud Map service in UNTAGGED foreign namespace [servicediscovery:CreateService on arn:aws:servicediscovery:eu-central-1:229251310592:service/*]
+PASS D56.1 allowed  PassRole own role to ECS tasks [iam:PassRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS D57.1 explicitDeny  Touch bootstrap role [iam:UpdateAssumeRolePolicy on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod]
+PASS D58.1 explicitDeny  Associate the account default VPC with a hosted zone [route53:AssociateVPCWithHostedZone on arn:aws:route53:::hostedzone/Z2]
+PASS D59.1 allowed  Associate own VPC with Cloud Map zone [residual: any zone] [route53:AssociateVPCWithHostedZone on arn:aws:route53:::hostedzone/Z1]
+PASS P01.1 explicitDeny  Prod deployer deletes a nonprod-tagged SG [ec2:DeleteSecurityGroup on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-own]
+PASS P02.1 implicitDeny  Prod deployer deletes an UNTAGGED SG [ec2:DeleteSecurityGroup on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-u]
+PASS S01.1 allowed  Session: stop own DB [rds:StopDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg]
+PASS S02.1 allowed  Session: create own ALB with tags [elasticloadbalancing:CreateLoadBalancer on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/abc]
+PASS S03.1 allowed  Session: update own ECS service [ecs:UpdateService on arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/identity]
+PASS S04.1 implicitDeny  Session: egress rule on own SG (R10: persistent, not a session write) [ec2:AuthorizeSecurityGroupEgress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-alb]
+PASS S04.2 implicitDeny  Session: egress rule on own SG (R10: persistent, not a session write) [ec2:AuthorizeSecurityGroupEgress on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*]
+PASS S05.1 allowed  Session: Cloud Map service in own namespace [servicediscovery:CreateService on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-own]
+PASS S05.2 allowed  Session: Cloud Map service in own namespace [servicediscovery:CreateService on arn:aws:servicediscovery:eu-central-1:229251310592:service/*]
+PASS S06.1 allowed  Session: write nonprod state [s3:PutObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/nonprod/stack.tfstate]
+PASS S07.1 implicitDeny  Session: CreateRole (any) [iam:CreateRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-x]
+PASS S08.1 implicitDeny  Session: PutKeyPolicy own key [kms:PutKeyPolicy on arn:aws:kms:eu-central-1:229251310592:key/own]
+PASS S09.1 implicitDeny  Session: register task definition (a deploy) [ecs:RegisterTaskDefinition on arn:aws:ecs:eu-central-1:229251310592:task-definition/munaxa-nonprod-identity:2]
+PASS S10.1 implicitDeny  Session: delete own DB [rds:DeleteDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg]
+PASS S11.1 implicitDeny  Session: delete own VPC [ec2:DeleteVpc on arn:aws:ec2:eu-central-1:229251310592:vpc/vpc-own]
+PASS S12.1 implicitDeny  Session: CreateSecret [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/x-AbCdEf]
+PASS S13.1 explicitDeny  Session: write prod state [s3:PutObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/prod/stack.tfstate]
+FAIL B01.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: nonprod role reads munaxa-prod secret (H-1) [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-prod/identity-AbCdEf]
+FAIL B02.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: nonprod role reads munaxa-nonprod secret [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf]
+FAIL B03.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: decrypt with a prod-tagged key [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/p]
+FAIL B04.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: decrypt with a nonprod-tagged key [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/n]
+FAIL B05.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: decrypt with an UNTAGGED key [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/u]
+FAIL B06.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: read a munaxa-prod bucket [s3:GetObject on arn:aws:s3:::munaxa-prod-school-files-229251310592/x]
+FAIL B07.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: own RDS master secret (tag by RDS) [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-abc-XyZ]
+FAIL B08.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: prod RDS master secret [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-def-XyZ]
+FAIL B07b.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: own RDS master secret (instance tags, N-1) [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-abc-XyZ]
+FAIL B08b.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: prod RDS master secret (instance tags, N-1) [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-def-XyZ]
+FAIL B08c.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: Docs RDS master secret (N-1) [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-acc-XyZ]
+PASS SR001.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeVpcs on *]
+PASS SR002.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeVpcAttribute on *]
+PASS SR003.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeInternetGateways on *]
+PASS SR004.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeSubnets on *]
+PASS SR005.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeRouteTables on *]
+PASS SR006.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeVpcEndpoints on *]
+PASS SR007.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribePrefixLists on *]
+PASS SR008.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeSecurityGroups on *]
+PASS SR009.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeSecurityGroupRules on *]
+PASS SR010.1 allowed  Session refresh: network (vpc, igw, subnet, route*, endpoint, *security_group*) [ec2:DescribeNetworkInterfaces on *]
+PASS SR011.1 allowed  Session refresh: aws_acm_certificate(_validation) [acm:DescribeCertificate on arn:aws:acm:eu-central-1:229251310592:certificate/c-1]
+PASS SR012.1 allowed  Session refresh: aws_acm_certificate(_validation) [acm:ListTagsForCertificate on arn:aws:acm:eu-central-1:229251310592:certificate/c-1]
+PASS SR013.1 allowed  Session refresh: aws_cloudwatch_log_group [logs:DescribeLogGroups on *]
+PASS SR014.1 allowed  Session refresh: aws_cloudwatch_log_group [logs:ListTagsForResource on *]
+PASS SR015.1 allowed  Session refresh: aws_db_* [rds:DescribeDBInstances on *]
+PASS SR016.1 allowed  Session refresh: aws_db_* [rds:DescribeDBParameterGroups on *]
+PASS SR017.1 allowed  Session refresh: aws_db_* [rds:DescribeDBParameters on *]
+PASS SR018.1 allowed  Session refresh: aws_db_* [rds:DescribeDBSubnetGroups on *]
+PASS SR019.1 allowed  Session refresh: aws_db_* [rds:ListTagsForResource on *]
+PASS SR020.1 allowed  Session refresh: aws_ecs_* [ecs:DescribeClusters on *]
+PASS SR021.1 allowed  Session refresh: aws_ecs_* [ecs:DescribeServices on *]
+PASS SR022.1 allowed  Session refresh: aws_ecs_* [ecs:DescribeTaskDefinition on *]
+PASS SR023.1 allowed  Session refresh: aws_ecs_* [ecs:ListTagsForResource on *]
+PASS SR024.1 allowed  Session refresh: aws_ecs_* [ecs:DescribeCapacityProviders on *]
+PASS SR025.1 allowed  Session refresh: aws_iam_role(_policy) [iam:GetRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS SR026.1 allowed  Session refresh: aws_iam_role(_policy) [iam:ListRolePolicies on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS SR027.1 allowed  Session refresh: aws_iam_role(_policy) [iam:ListAttachedRolePolicies on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS SR028.1 allowed  Session refresh: aws_iam_role(_policy) [iam:GetRolePolicy on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS SR029.1 allowed  Session refresh: aws_iam_role(_policy) [iam:ListRoleTags on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS SR030.1 allowed  Session refresh: aws_kms_alias [kms:ListAliases on *]
+PASS SR031.1 allowed  Session refresh: aws_kms_key(_policy) [kms:DescribeKey on arn:aws:kms:eu-central-1:229251310592:key/k-1]
+PASS SR032.1 allowed  Session refresh: aws_kms_key(_policy) [kms:GetKeyPolicy on arn:aws:kms:eu-central-1:229251310592:key/k-1]
+PASS SR033.1 allowed  Session refresh: aws_kms_key(_policy) [kms:GetKeyRotationStatus on arn:aws:kms:eu-central-1:229251310592:key/k-1]
+PASS SR034.1 allowed  Session refresh: aws_kms_key(_policy) [kms:ListResourceTags on arn:aws:kms:eu-central-1:229251310592:key/k-1]
+PASS SR035.1 allowed  Session refresh: aws_lb* [elasticloadbalancing:DescribeLoadBalancers on *]
+PASS SR036.1 allowed  Session refresh: aws_lb* [elasticloadbalancing:DescribeLoadBalancerAttributes on *]
+PASS SR037.1 allowed  Session refresh: aws_lb* [elasticloadbalancing:DescribeListeners on *]
+PASS SR038.1 allowed  Session refresh: aws_lb* [elasticloadbalancing:DescribeListenerAttributes on *]
+PASS SR039.1 allowed  Session refresh: aws_lb* [elasticloadbalancing:DescribeRules on *]
+PASS SR040.1 allowed  Session refresh: aws_lb* [elasticloadbalancing:DescribeTargetGroups on *]
+PASS SR041.1 allowed  Session refresh: aws_lb* [elasticloadbalancing:DescribeTargetGroupAttributes on *]
+PASS SR042.1 allowed  Session refresh: aws_lb* [elasticloadbalancing:DescribeTags on *]
+PASS SR043.1 allowed  Session refresh: aws_s3_bucket* [s3:ListBucket on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR044.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketPolicy on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR045.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketAcl on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR046.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketCORS on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR047.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketWebsite on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR048.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketVersioning on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR049.1 allowed  Session refresh: aws_s3_bucket* [s3:GetAccelerateConfiguration on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR050.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketRequestPayment on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR051.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketLogging on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR052.1 allowed  Session refresh: aws_s3_bucket* [s3:GetLifecycleConfiguration on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR053.1 allowed  Session refresh: aws_s3_bucket* [s3:GetReplicationConfiguration on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR054.1 allowed  Session refresh: aws_s3_bucket* [s3:GetEncryptionConfiguration on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR055.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketObjectLockConfiguration on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR056.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketTagging on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR057.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketOwnershipControls on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR058.1 allowed  Session refresh: aws_s3_bucket* [s3:GetBucketPublicAccessBlock on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR059.1 allowed  Session refresh: aws_scheduler_schedule [scheduler:GetSchedule on arn:aws:scheduler:eu-central-1:229251310592:schedule/default/munaxa-nonprod-control-sweep]
+PASS SR060.1 allowed  Session refresh: aws_secretsmanager_secret [secretsmanager:DescribeSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf]
+PASS SR061.1 allowed  Session refresh: aws_secretsmanager_secret [secretsmanager:GetResourcePolicy on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf]
+PASS SR062.1 allowed  Session refresh: aws_service_discovery_* [servicediscovery:GetNamespace on *]
+PASS SR063.1 allowed  Session refresh: aws_service_discovery_* [servicediscovery:GetService on *]
+PASS SR064.1 allowed  Session refresh: aws_service_discovery_* [servicediscovery:ListTagsForResource on *]
+PASS SR065.1 allowed  Session refresh: aws_service_discovery_* [servicediscovery:GetOperation on *]
+PASS SR066.1 allowed  Session refresh: aws_service_discovery_private_dns_namespace [route53:GetHostedZone on arn:aws:route53:::hostedzone/Z1]
+PASS SR067.1 allowed  Session refresh: image check [ecr:DescribeImages on arn:aws:ecr:eu-central-1:229251310592:repository/munaxa-identity]
+PASS SR068.1 allowed  Session refresh: image check [ecr:DescribeRepositories on arn:aws:ecr:eu-central-1:229251310592:repository/munaxa-identity]
+PASS SR069.1 allowed  Session refresh: backend [s3:GetObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/nonprod/stack.tfstate]
+PASS SR070.1 allowed  Session refresh: backend [s3:PutObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/nonprod/stack.tfstate]
+PASS SR071.1 allowed  Session refresh: backend [s3:DeleteObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/nonprod/stack.tfstate]
+PASS SR072.1 allowed  Session refresh: backend [s3:ListBucket on arn:aws:s3:::munaxa-shared-tfstate-229251310592]
+PASS SR073.1 allowed  Session refresh: backend [kms:Decrypt on the state key]
+PASS SR074.1 allowed  Session refresh: backend [kms:GenerateDataKey on the state key]
+PASS SR075.1 allowed  Session up/down: aws_lb [elasticloadbalancing:CreateLoadBalancer on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/1]
+PASS SR076.1 allowed  Session up/down: aws_lb [elasticloadbalancing:AddTags on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/1]
+PASS SR077.1 allowed  Session up/down: aws_lb [elasticloadbalancing:DeleteLoadBalancer on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/1]
+PASS SR078.1 allowed  Session up/down: aws_lb_listener [elasticloadbalancing:CreateListener on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/1]
+PASS SR079.1 allowed  Session up/down: aws_lb_listener_rule [elasticloadbalancing:CreateRule on arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener/app/munaxa-nonprod/1/2]
+PASS SR080.1 allowed  Session up/down: aws_lb_listener_rule [elasticloadbalancing:DeleteRule on arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener-rule/app/munaxa-nonprod/1/2/3]
+PASS SR081.1 allowed  Session up/down: modules/service from_alb [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-task]
+PASS SR081.2 allowed  Session up/down: modules/service from_alb [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*]
+PASS SR082.1 allowed  Session up/down: modules/service from_alb [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*]
+PASS SR083.1 allowed  Session up/down: modules/service from_alb [ec2:RevokeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-task]
+FAIL SR083.2 expected=allowed actual=implicitDeny  Session up/down: modules/service from_alb [ec2:RevokeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/sgr-1]
+PASS SR084.1 allowed  Session up/down: aws_ecs_service [ecs:CreateService on arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/identity]
+PASS SR085.1 allowed  Session up/down: aws_ecs_service [ecs:UpdateService on arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/identity]
+PASS SR086.1 allowed  Session up/down: aws_ecs_service [ecs:DeleteService on arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/identity]
+PASS SR087.1 allowed  Session up/down: aws_ecs_service [iam:PassRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS SR088.1 allowed  Session up/down: aws_service_discovery_service [servicediscovery:CreateService on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-1]
+PASS SR088.2 allowed  Session up/down: aws_service_discovery_service [servicediscovery:CreateService on arn:aws:servicediscovery:eu-central-1:229251310592:service/*]
+PASS SR089.1 allowed  Session up/down: aws_service_discovery_service [servicediscovery:DeleteService on arn:aws:servicediscovery:eu-central-1:229251310592:service/srv-1]
+PASS SR090.1 allowed  Session up/down: database start/stop [rds:StartDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg]
+PASS SR091.1 allowed  Session up/down: database start/stop [rds:StopDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg]
+PASS SR092.1 explicitDeny  Session refused: CIDR rule on the ALB group [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-alb]
+PASS SR092.2 allowed  Session refused: CIDR rule on the ALB group [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*]
+PASS SR093.1 explicitDeny  Session refused: rule on the database group [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-db]
+PASS SR093.2 allowed  Session refused: rule on the database group [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*]
+PASS SR094.1 implicitDeny  Session refused: egress rule [ec2:AuthorizeSecurityGroupEgress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-task]
+PASS SR094.2 implicitDeny  Session refused: egress rule [ec2:AuthorizeSecurityGroupEgress on arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*]
+PASS SR095.1 implicitDeny  Session refused: modify an existing rule [ec2:ModifySecurityGroupRules on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-task]
+PASS SR096.1 explicitDeny  Session refused: retag a group [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-alb]
+PASS SR097.1 implicitDeny  Session refused: bucket policy [s3:PutBucketPolicy on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS SR098.1 implicitDeny  Session refused: key policy [kms:PutKeyPolicy on arn:aws:kms:eu-central-1:229251310592:key/k-1]
+PASS SR099.1 explicitDeny  Session refused: secret value [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf]
+PASS SR100.1 implicitDeny  Session refused: role change [iam:PutRolePolicy on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS SR101.1 explicitDeny  Session refused: prod role read [iam:GetRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-prod-identity-execution]
+PASS SR102.1 explicitDeny  Session refused: prod key read [kms:GetKeyPolicy on arn:aws:kms:eu-central-1:229251310592:key/k-p]
+PASS SR103.1 explicitDeny  Session refused: prod bucket read [s3:GetBucketPolicy on arn:aws:s3:::munaxa-prod-school-files-229251310592]
+PASS SR104.1 explicitDeny  Session refused: Docs bucket read [s3:GetBucketPolicy on arn:aws:s3:::munaxa-docs-files]
+PASS SR105.1 explicitDeny  Session refused: boundary policy (not read by any stack resource) [iam:GetPolicy on arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary]
+PASS SR106.1 explicitDeny  Session refused: boundary policy (not read by any stack resource) [iam:GetPolicyVersion on arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary]
+PASS SR107.1 explicitDeny  Session refused: state key alias [kms:UpdateAlias on arn:aws:kms:eu-central-1:229251310592:alias/munaxa-shared-tfstate]
+PASS SR107.2 implicitDeny  Session refused: state key alias [kms:UpdateAlias on arn:aws:kms:eu-central-1:229251310592:key/k-1]
+PASS RB1n1.1 allowed  B-1: RDS creates the master secret on the deployer behalf [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-1-AbCdEf]
+PASS RB1n2.1 implicitDeny  B-1: RDS creates the master secret - the deployer directly [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-1-AbCdEf]
+PASS RB1p1.1 allowed  B-1: RDS creates the master secret on the deployer behalf [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-1-AbCdEf]
+PASS RB1p2.1 implicitDeny  B-1: RDS creates the master secret - the deployer directly [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-1-AbCdEf]
+PASS N01.1 explicitDeny  State key even if tagged Environment=nonprod: schedule deletion [kms:ScheduleKeyDeletion on the state key]
+PASS N02.1 explicitDeny  State key even if tagged Environment=nonprod: key policy [kms:PutKeyPolicy on the state key]
+PASS N03.1 explicitDeny  State key even if tagged Environment=nonprod: grant [kms:CreateGrant on the state key]
+PASS N04.1 allowed  Own alias pointed at the STATE key (alias line) [kms:CreateAlias on arn:aws:kms:eu-central-1:229251310592:alias/munaxa-nonprod-data]
+PASS N04.2 explicitDeny  Own alias pointed at the STATE key (key line) [kms:CreateAlias on the state key]
+PASS N05.1 explicitDeny  Delete the state key alias [kms:DeleteAlias on arn:aws:kms:eu-central-1:229251310592:alias/munaxa-shared-tfstate]
+PASS N06.1 explicitDeny  Repoint the state key alias (deployer) [kms:UpdateAlias on arn:aws:kms:eu-central-1:229251310592:alias/munaxa-shared-tfstate]
+PASS N07.1 explicitDeny  Prod deployer schedules deletion of the state key [kms:ScheduleKeyDeletion on the state key]
+PASS N08.1 allowed  Nonprod deployer decrypts state [kms:Decrypt on the state key]
+PASS N09.1 allowed  Prod deployer encrypts state [kms:GenerateDataKey on the state key]
+PASS N10.1 explicitDeny  Delete the state bucket [s3:DeleteBucket on arn:aws:s3:::munaxa-shared-tfstate-229251310592]
+PASS N11.1 explicitDeny  Change state bucket encryption [s3:PutEncryptionConfiguration on arn:aws:s3:::munaxa-shared-tfstate-229251310592]
+PASS N12.1 implicitDeny  Read the bootstrap state [s3:GetObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/bootstrap/terraform.tfstate]
+PASS N13.1 explicitDeny  Session deletes prod state [s3:DeleteObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/prod/stack.tfstate]
+PASS N14.1 explicitDeny  Session schedules deletion of the state key [kms:ScheduleKeyDeletion on the state key]
+PASS N20.1 explicitDeny  Nonprod creates a prod-named role with the prod boundary [iam:CreateRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-prod-x]
+PASS N21.1 explicitDeny  Nonprod passes a prod role [iam:PassRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-prod-identity-execution]
+PASS N22.1 explicitDeny  Nonprod deletes the prod database (untagged worst case) [rds:DeleteDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-prod-pg]
+PASS N23.1 implicitDeny  Nonprod updates an untagged prod ECS service (no name deny on services) [ecs:UpdateService on arn:aws:ecs:eu-central-1:229251310592:service/munaxa-prod/identity]
+PASS N24.1 explicitDeny  Nonprod deletes the prod cluster [ecs:DeleteCluster on arn:aws:ecs:eu-central-1:229251310592:cluster/munaxa-prod]
+PASS N25.1 explicitDeny  Nonprod deletes a prod log group [logs:DeleteLogGroup on arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/prod/identity:*]
+PASS N26.1 implicitDeny  Nonprod role given the prod boundary [iam:PutRolePermissionsBoundary on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-x]
+PASS N27.1 explicitDeny  Nonprod widens its own boundary [iam:CreatePolicyVersion on arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary]
+PASS N28.1 explicitDeny  Remove a boundary from an own role [iam:DeleteRolePermissionsBoundary on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-x]
+PASS N29.1 implicitDeny  Attach AdministratorAccess to an own role [iam:AttachRolePolicy on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-x]
+PASS N30.1 explicitDeny  Nonprod deployer assumes the prod deployer [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod]
+PASS N31.1 explicitDeny  Session deployer assumes the nonprod deployer [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod]
+PASS N32.1 explicitDeny  Prod writes nonprod state [s3:PutObject on arn:aws:s3:::munaxa-shared-tfstate-229251310592/nonprod/stack.tfstate]
+PASS N33.1 explicitDeny  Prod creates a nonprod secret [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/x-AbCdEf]
+PASS N34.1 explicitDeny  Prod creates a nonprod role [iam:CreateRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-x]
+PASS N35.1 allowed  Prod creates its own role with its own boundary [iam:CreateRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-prod-x]
+PASS N36.1 allowed  Prod creates a key with its own tags [kms:CreateKey on *]
+PASS N37.1 explicitDeny  Prod creates a VPC tagged nonprod [ec2:CreateVpc on arn:aws:ec2:eu-central-1:229251310592:vpc/*]
+PASS N38.1 explicitDeny  Prod reads a nonprod role [iam:GetRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution]
+PASS N40.1 explicitDeny  Nonprod reads a prod secret value [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-prod/identity-AbCdEf]
+PASS N41.1 explicitDeny  Nonprod describes a prod secret [secretsmanager:DescribeSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-prod/identity-AbCdEf]
+PASS N42.1 explicitDeny  Session describes a prod secret [secretsmanager:DescribeSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-prod/identity-AbCdEf]
+PASS N43.1 explicitDeny  Deployer reads the RDS master secret value [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-1-AbCdEf]
+PASS N44.1 explicitDeny  Share an own secret by resource policy [secretsmanager:PutResourcePolicy on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/x-AbCdEf]
+PASS N45.1 explicitDeny  Batch read of secret values [secretsmanager:BatchGetSecretValue on *]
+PASS N46.1 explicitDeny  Docs secret value [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-docs/database-AbCdEf]
+PASS N47.1 explicitDeny  Prod deployer reads its own secret value (never a deployer) [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-prod/identity-AbCdEf]
+PASS N48.1 allowed  RDS deletes the master secret on the deployer behalf [secretsmanager:DeleteSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-1-AbCdEf]
+PASS N48.2 implicitDeny  Deployer deletes an rds! secret directly [secretsmanager:DeleteSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-1-AbCdEf]
+PASS N49.1 implicitDeny  Session: RDS master secret create (session never creates a database) [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-1-AbCdEf]
+PASS N50.1 explicitDeny  Nonprod reads a prod object [s3:GetObject on arn:aws:s3:::munaxa-prod-school-files-229251310592/x]
+PASS N51.1 explicitDeny  Nonprod puts a policy on a prod bucket [s3:PutBucketPolicy on arn:aws:s3:::munaxa-prod-school-files-229251310592]
+PASS N52.1 implicitDeny  Deployer reads an object of its own bucket (no data reads) [s3:GetObject on arn:aws:s3:::munaxa-nonprod-school-files-229251310592/x]
+PASS N53.1 explicitDeny  Session reads a prod object [s3:GetObject on arn:aws:s3:::munaxa-prod-school-files-229251310592/x]
+PASS N54.1 explicitDeny  Docs bucket policy [s3:PutBucketPolicy on arn:aws:s3:::munaxa-docs-files]
+PASS N55.1 allowed  Own bucket policy [residual R8] [s3:PutBucketPolicy on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS N56.1 explicitDeny  Prod reads a nonprod bucket configuration [s3:GetBucketPolicy on arn:aws:s3:::munaxa-nonprod-school-files-229251310592]
+PASS N60.1 explicitDeny  Claim an untagged key as prod [kms:TagResource on arn:aws:kms:eu-central-1:229251310592:key/foreign]
+PASS N61.1 explicitDeny  Tag an untagged key for another project [kms:TagResource on arn:aws:kms:eu-central-1:229251310592:key/foreign]
+PASS N62.1 implicitDeny  Grant on an untagged key [kms:CreateGrant on arn:aws:kms:eu-central-1:229251310592:key/foreign]
+PASS N63.1 implicitDeny  Decrypt with an untagged key [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/foreign]
+PASS N64.1 allowed  After a claim: schedule deletion of the now-tagged key [residual R1 chain] [kms:ScheduleKeyDeletion on arn:aws:kms:eu-central-1:229251310592:key/claimed]
+PASS N65.1 allowed  Claim an untagged certificate [residual R2] [acm:AddTagsToCertificate on arn:aws:acm:eu-central-1:229251310592:certificate/u]
+PASS N66.1 explicitDeny  Claim an untagged certificate as prod [acm:AddTagsToCertificate on arn:aws:acm:eu-central-1:229251310592:certificate/u]
+PASS N67.1 allowed  Delete an own certificate [acm:DeleteCertificate on arn:aws:acm:eu-central-1:229251310592:certificate/own]
+PASS N68.1 explicitDeny  Request a certificate without tags [acm:RequestCertificate on *]
+PASS N69.1 explicitDeny  Delete a prod certificate [acm:DeleteCertificate on arn:aws:acm:eu-central-1:229251310592:certificate/p]
+FAIL N70.1 expected=allowed actual=implicitDeny  Claim an untagged namespace [residual R3] [servicediscovery:TagResource on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-u]
+FAIL N71.1 expected=explicitDeny actual=implicitDeny  Claim an untagged namespace as prod [servicediscovery:TagResource on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-u]
+PASS N72.1 implicitDeny  Delete an untagged Cloud Map service [servicediscovery:DeleteService on arn:aws:servicediscovery:eu-central-1:229251310592:service/srv-u]
+PASS N73.1 implicitDeny  Session deletes an own namespace [servicediscovery:DeleteNamespace on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-own]
+FAIL N74.1 expected=explicitDeny actual=implicitDeny  Session claims a namespace as prod [servicediscovery:TagResource on arn:aws:servicediscovery:eu-central-1:229251310592:namespace/ns-u]
+FAIL N75.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulatePrincipalPolicy operation: 1 validation error detected: Value 'arn' at 'contextEntries.6.member.contextKeyType' failed to satisfy constraint: Member must satisfy enum value set: [binary, ipList, booleanList, ip, boolean, num  Adopt an untagged group with another Name [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-def]
+PASS N76.1 explicitDeny  Adopt a group tagged by another project [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-x]
+PASS N77.1 explicitDeny  Adopt a prod group [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-p]
+FAIL N78.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulatePrincipalPolicy operation: 1 validation error detected: Value 'arn' at 'contextEntries.6.member.contextKeyType' failed to satisfy constraint: Member must satisfy enum value set: [binary, ipList, booleanList, ip, boolean, num  Session adopts a default group [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-def]
+PASS N79.1 implicitDeny  Empty another workload untagged group [ec2:RevokeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-u]
+FAIL N79b.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulatePrincipalPolicy operation: 1 validation error detected: Value 'arn' at 'contextEntries.6.member.contextKeyType' failed to satisfy constraint: Member must satisfy enum value set: [binary, ipList, booleanList, ip, boolean, num  Prod adopts its new VPC default group [residual R4] [ec2:CreateTags on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-def]
+PASS N80.1 explicitDeny  Session rule on the db-admin group [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-dba]
+PASS N81.1 explicitDeny  Session rule on a prod group [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-p]
+PASS N82.1 implicitDeny  Session rule on an untagged group [ec2:AuthorizeSecurityGroupIngress on arn:aws:ec2:eu-central-1:229251310592:security-group/sg-u]
+PASS N83.1 implicitDeny  Session deletes another load balancer [elasticloadbalancing:DeleteLoadBalancer on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/other-lb/abc]
+PASS N84.1 implicitDeny  Session deletes an untagged prod service [ecs:DeleteService on arn:aws:ecs:eu-central-1:229251310592:service/munaxa-prod/identity]
+PASS N85.1 explicitDeny  Session stops the prod database [rds:StopDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-prod-pg]
+PASS N86.1 implicitDeny  Session starts another nonprod database [rds:StartDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-other]
+PASS N87.1 implicitDeny  Session passes a role to Scheduler [iam:PassRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-scheduler]
+PASS N88.1 implicitDeny  Session runs a task [ecs:RunTask on arn:aws:ecs:eu-central-1:229251310592:task-definition/munaxa-nonprod-identity:1]
+PASS N89.1 implicitDeny  Session deletes an own log group [logs:DeleteLogGroup on arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/identity:*]
+PASS N90.1 explicitDeny  Session read in us-east-1 [ec2:DescribeVpcs on *]
+PASS N91.1 explicitDeny  Session ALB without tags [elasticloadbalancing:CreateLoadBalancer on arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/abc]
+PASS N92.1 explicitDeny  Session creates an IAM user [iam:CreateUser on arn:aws:iam::229251310592:user/x]
+PASS N93.1 implicitDeny  Session updates a foreign service [ecs:UpdateService on arn:aws:ecs:eu-central-1:229251310592:service/other/x]
+PASS N94.1 explicitDeny  Deployer creates an access key [iam:CreateAccessKey on arn:aws:iam::229251310592:user/x]
+PASS N95.1 explicitDeny  CreateKey with own tags in us-east-1 [kms:CreateKey on *]
+PASS N96.1 explicitDeny  CreateSecret in eu-west-1 [secretsmanager:CreateSecret on arn:aws:secretsmanager:eu-west-1:229251310592:secret:munaxa-nonprod/x-AbCdEf]
+PASS N97.1 explicitDeny  Restore from the kept Docs final snapshot [rds:RestoreDBInstanceFromDBSnapshot on arn:aws:rds:eu-central-1:229251310592:snapshot:munaxa-docs-eu-prod-pg-final]
+PASS N98.1 explicitDeny  Share an EBS snapshot [ec2:ModifySnapshotAttribute on arn:aws:ec2:eu-central-1::snapshot/snap-1]
+PASS N100.1 allowed  Own data key through RDS [kms:GenerateDataKey on arn:aws:kms:eu-central-1:229251310592:key/own]
+PASS N101.1 implicitDeny  Own data key directly (no ViaService) [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/own]
+PASS N102.1 explicitDeny  Prod data key through RDS [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/p]
+PASS N103.1 allowed  Prod data key through Secrets Manager [kms:GenerateDataKey on arn:aws:kms:eu-central-1:229251310592:key/p]
+PASS N104.1 implicitDeny  Own data key through another service (S3) [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/own]
+PASS C01.1 allowed  Nonprod CI role assumes the nonprod deployer [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod]
+PASS C02.1 implicitDeny  Nonprod CI role assumes the prod deployer [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod]
+PASS C03.1 implicitDeny  Nonprod CI role assumes the session deployer [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session]
+PASS C04.1 allowed  Session CI role assumes the session deployer [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session]
+PASS C05.1 implicitDeny  Session CI role assumes the full nonprod deployer (H-3) [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod]
+PASS C06.1 allowed  Prod CI role assumes the prod deployer [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod]
+PASS C07.1 implicitDeny  Prod CI role assumes the nonprod deployer [sts:AssumeRole on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod]
+PASS C08.1 allowed  Session CI role sets the source identity on its deployer [sts:SetSourceIdentity on arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session]
+FAIL B09.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: own secret from us-east-1 [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf]
+FAIL B10.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: Docs secret [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-docs/database-AbCdEf]
+FAIL B11.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: Docs object [s3:GetObject on arn:aws:s3:::munaxa-docs-files/x]
+FAIL B12.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: pass a prod role [iam:PassRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-prod-x]
+FAIL B13.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: push to a Docs repository [ecr:PutImage on arn:aws:ecr:eu-central-1:229251310592:repository/munaxa-docs/api]
+FAIL B14.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Boundary: own object [s3:GetObject on arn:aws:s3:::munaxa-nonprod-school-files-229251310592/x]
+FAIL BP01.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Prod boundary: nonprod secret [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf]
+FAIL BP02.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Prod boundary: own secret [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-prod/identity-AbCdEf]
+FAIL BP03.1 expected=explicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Prod boundary: nonprod-tagged key [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/n]
+FAIL BP04.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Prod boundary: nonprod object [s3:GetObject on arn:aws:s3:::munaxa-nonprod-school-files-229251310592/x]
+FAIL BP05.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Prod boundary: nonprod RDS master secret [secretsmanager:GetSecretValue on arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-abc-XyZ]
+FAIL BP06.1 expected=allowed actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Prod boundary: own key [kms:Decrypt on arn:aws:kms:eu-central-1:229251310592:key/p]
+FAIL BP07.1 expected=implicitDeny actual=ERROR(rc=254): aws: [ERROR]: An error occurred (ValidationError) when calling the SimulateCustomPolicy operation: 1 validation error detected: Value at 'policyInputList' failed to satisfy constraint: Member must have length less than or equal to 2000  Prod boundary: pass a nonprod role [iam:PassRole on arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-x]
+simulation: 299 as expected, 33 not (0 is required; report every FAIL line). Results: /home/cloudshell-user/p6/simulation.out
+RESULT total=332 expected_match=299 unexpected_mismatch=33 expected_total=332 complete=yes results=/home/cloudshell-user/p6/simulation.out
+exit 1
+bootstrap $
