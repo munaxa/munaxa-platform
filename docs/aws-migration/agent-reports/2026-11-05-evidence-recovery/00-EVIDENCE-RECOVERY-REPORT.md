@@ -1,6 +1,6 @@
 # Second bootstrap re-apply (5 Nov 2026): evidence recovery investigation
 
-- **Date:** 5 Nov 2026. First draft 13:41 UTC; revised after independent review; §9 added at 16:20 UTC; final corrections at about 17:15 UTC (merged as PR #48, `016f3f5`); closing corrections at about 19:30 UTC (revision history at the end).
+- **Date:** 5 Nov 2026. First draft 13:41 UTC; revised after independent review; §9 added at 16:20 UTC; final corrections at about 17:15 UTC (merged as PR #48, `016f3f5`); closing corrections at about 18:40 UTC (revision history at the end).
 - **Author:** the lead.
 - **Independent reviewer:** separate reviewer, `01-INDEPENDENT-REVIEW.md` next to this file. Verdict **AGREE WITH CHANGES**; all 14 findings applied (§5).
 
@@ -162,7 +162,7 @@ The 10-call follow-up test, `next-diagnostic/supporting/b2-followup-diagnostic.s
 
 ## 7. Proposed read-only AWS operations (as proposed at 13:41 UTC; since performed, see §9)
 
-**Status: done.** The owner approved these at 13:59 UTC and asked for them to be run through the AWS connector instead of CloudShell. The lead performed them, read-only, at 16:11 to 16:20 UTC. The results are in §9. The text below is kept as originally proposed, as a record, except the approval sentence: the original line "Each needs the owner's explicit approval. None has been run." was removed, and the status line above replaces it, because it is no longer true.
+**Status: done.** The owner approved these at 13:59 UTC and asked for them to be run through the AWS connector instead of CloudShell. The lead performed them, read-only, at 16:11 to 16:20 UTC. The results are in §9. The text below is kept as originally proposed, as a record, except the approval sentence: the original line "Each needs the owner's explicit approval. None has been run." was removed, and the status line above replaces it, because it is no longer true. Two other edits were made to the original §7: the heading gained "(as proposed at 13:41 UTC; since performed, see §9)", and "run by the owner in CloudShell" became "As proposed, the owner would run them in CloudShell".
 
 All are read-only, account `229251310592`. As proposed, the owner would run them in CloudShell. They create, modify and delete nothing.
 
@@ -257,7 +257,7 @@ Nothing was created, changed or deleted. The connector logs each script as `aws-
 
 No `DeletePolicyVersion`, attach, detach, create, delete, trust, boundary or tag call happened in any window. CloudTrail does not record S3 state writes (those are data events) [V-aws]. The events' `userAgent` was not read, so that Terraform made these writes is inference [E].
 
-**Coverage.** CloudTrail was queried only for the three windows above, so the evidence says nothing about events outside them. Not queried: before 05:14 (including 05:13:03 to 05:14) and after 16:12. **Post-16:12 limitation:** the lead's own connector calls from 16:12 to 16:20 fall outside every queried window, so that they were read-only rests on the script content and the connector's tool log (the `api_calls` list of each run), not on CloudTrail. No CloudTrail evidence exists for any account activity after 16:12. `LookupEvents` covers management events only; data events such as S3 object writes are not covered.
+**Coverage.** CloudTrail was queried only for the three windows above, so the evidence says nothing about events outside them. Not queried: before 05:14 (including 05:13:03 to 05:14) and after 16:12. **Post-16:12 limitation:** the lead's own connector calls from 16:12 to 16:20 fall outside every queried window, so that they were read-only rests on the script content and the connector's tool log (the `api_calls` list of each run), not on CloudTrail. This report holds no CloudTrail evidence for any account activity after 16:12. `LookupEvents` covers management events only; data events such as S3 object writes are not covered.
 
 ### O-1: state object history
 
@@ -354,6 +354,6 @@ Separate reviewer, `02-INDEPENDENT-REVIEW-ADDENDUM.md`, unmodified. **AGREE WITH
 | about 14:00 | Independent review (`01`) applied; committed | branch `ab80b23`, squashed into `d548533` (#47) |
 | 16:20 | §9 added: results of the approved read-only reads; addendum review (`02`) applied | branch `52095ae` and `0e456b3`, squashed into `d548533` (#47) |
 | about 17:15 | Final corrections. Final verdict table in §1, with the pre-read text kept and labelled; §7 marked as performed; §8 rewritten for the §9 evidence; CloudTrail coverage and checksum-precision wording; B2 simulator-side and harness-side distinction. The final review `03-FINAL-REVIEW.md` (of `6b9eaff`; unmodified): AGREE WITH CHANGES, findings F1 to F8 | branch commit `6b9eaff` (report), then `e172389` (adds `03`, first pass at F1 to F8, including the F5 claim withdrawn below); squash-merged as PR #48, merge commit **`016f3f5`** (`016f3f51a8771d988fb7e2f5d22da4cab5562d45`, 17:27:27 UTC) |
-| about 19:30 | Closing corrections for `03` F1 to F8: §2, §3 and §6 headed as historical; line 12 provenance; F5 restated (exact double equality for 5 documents only, 9 within 1e-15 relative tolerance; the unretained 'all 14 exact' claim withdrawn); post-16:12 CloudTrail limitation; §7 approval-sentence wording; this table's commit references; index entry with merge SHA and qualifiers. Fresh independent review in `04-CLOSING-REVIEW.md` | this PR (see the index for its merge SHA) |
+| about 18:40 | Closing corrections for `03` F1 to F8: §2, §3 and §6 headed as historical; line 12 provenance; F5 restated (exact double equality for 5 documents only, 9 within 1e-15 relative tolerance; the unretained 'all 14 exact' claim withdrawn); post-16:12 CloudTrail limitation; §7 approval-sentence wording; this table's commit references; index entry with merge SHA and qualifiers. Fresh independent review in `04-CLOSING-REVIEW.md` (unmodified): AGREE WITH CHANGES, findings G1 to G4, applied in the next commit (G1 time corrected to 18:40; G2 this cell; G3 the Coverage wording; G4 the §7 exceptions) | branch commit `13de527` and the G1 to G4 commit after it, PR #49; the merge SHA is recorded in the index of the next report folder after the merge |
 
 The original evidence in §2 to §7 and §9 is unchanged, apart from the wording corrections listed above.
