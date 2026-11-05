@@ -1,0 +1,5 @@
+aws_iam_policy.deployer_allow["nonprod"] update
+aws_iam_policy.deployer_allow["prod"] update
+aws_iam_policy.workload_boundary["nonprod"] update
+aws_iam_policy.workload_boundary["prod"] update
+aws_iam_role_policy.deployer_session["nonprod"] update

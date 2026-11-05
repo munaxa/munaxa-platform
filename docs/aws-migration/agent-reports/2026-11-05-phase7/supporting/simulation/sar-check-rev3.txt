@@ -1,0 +1,489 @@
+# SAR check of rev3 cases (local copy of servicereference.us-east-1.amazonaws.com JSON)
+id	action_in_SAR	resource_types_matched	context_keys
+D01.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+D02.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok
+D03.1	yes	security-group	aws:RequestedRegion=ok
+D04.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+D05.1	yes	security-group	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D05.2	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D06.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D06.2	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D07.1	yes	vpc	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D07.2	yes	subnet	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D08.1	yes	vpc	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D08.2	yes	subnet	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D09.1	yes	vpc	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D10.1	yes	vpc	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok;ec2:CreateAction=ok
+D11.1	yes	vpc	aws:RequestedRegion=ok
+D12.1	yes	subnet	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D13.1	yes	security-group	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:RequestTag/Name=ok;aws:TagKeys=ok;ec2:Vpc=ok
+D14.1	yes	security-group	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:RequestTag/Name=ok;aws:TagKeys=ok;ec2:Vpc=ok
+D15.1	yes	vpc	aws:RequestedRegion=ok
+D16.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok
+D17.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D18.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok
+D19.1	yes	snapshot	aws:RequestedRegion=ok
+D20.1	yes	snapshot	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+D21.1	yes	key	aws:RequestedRegion=ok
+D22.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Stack=ok
+D23.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Stack=ok
+D24.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+D25.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+D26.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D27.1	yes	none(request on *)	aws:RequestedRegion=ok
+D28.1	yes	key	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D29.1	yes	log-group	aws:RequestedRegion=ok
+D30.1	yes	log-stream	aws:RequestedRegion=ok
+D31.1	yes	role	aws:RequestedRegion=ok;iam:PermissionsBoundary=ok
+D32.1	yes	role	aws:RequestedRegion=ok;iam:PermissionsBoundary=ok
+D33.1	yes	role	aws:RequestedRegion=ok;iam:PermissionsBoundary=ok
+D34.1	yes	role	aws:RequestedRegion=ok
+D35.1	yes	Secret	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D36.1	yes	Secret	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+D37.1	yes	bucket	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Stack=ok
+D38.1	yes	object	aws:RequestedRegion=ok
+D39.1	yes	object	aws:RequestedRegion=ok
+D40.1	yes	none(request on *)	aws:RequestedRegion=ok
+D41.1	yes	none(request on *)	aws:RequestedRegion=ok
+D42.1	yes	none(request on *)	aws:RequestedRegion=ok
+D43.1	yes	none(request on *)	aws:RequestedRegion=ok
+D44.1	yes	hostedzone	aws:RequestedRegion=ok;route53:ChangeResourceRecordSetsNormalizedRecordNames=ok
+D45.1	yes	hostedzone	aws:RequestedRegion=ok;route53:ChangeResourceRecordSetsNormalizedRecordNames=ok
+D46.1	yes	hostedzone	aws:RequestedRegion=ok
+D47.1	yes	namespace	aws:RequestedRegion=ok
+D48.1	yes	certificate	aws:RequestedRegion=ok
+D49.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+D50.1	yes	db	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D50.2	yes	og	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D50.3	yes	pg	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D50.4	yes	subgrp	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D51.1	yes	task-definition	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D52.1	yes	service	aws:RequestedRegion=ok
+D53.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D54.1	yes	namespace	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D54.2	yes	service	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D55.1	yes	namespace	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D55.2	yes	service	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+D56.1	yes	role	aws:RequestedRegion=ok;iam:PassedToService=ok
+D57.1	yes	role	aws:RequestedRegion=ok
+D58.1	yes	hostedzone	aws:RequestedRegion=ok;route53:VPCs=ok
+D59.1	yes	hostedzone	aws:RequestedRegion=ok;route53:VPCs=ok
+P01.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+P02.1	yes	security-group	aws:RequestedRegion=ok
+S01.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+S02.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+S03.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+S04.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+S04.2	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+S05.1	yes	namespace	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+S05.2	yes	service	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+S06.1	yes	object	aws:RequestedRegion=ok
+S07.1	yes	role	aws:RequestedRegion=ok;iam:PermissionsBoundary=ok
+S08.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+S09.1	yes	task-definition	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+S10.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+S11.1	yes	vpc	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+S12.1	yes	Secret	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+S13.1	yes	object	aws:RequestedRegion=ok
+B01.1	yes	Secret	aws:RequestedRegion=ok
+B02.1	yes	Secret	aws:RequestedRegion=ok
+B03.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+B04.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Stack=ok
+B05.1	yes	key	aws:RequestedRegion=ok
+B06.1	yes	object	aws:RequestedRegion=ok
+B07.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/aws:rds:primaryDBInstanceArn=ok
+B08.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/aws:rds:primaryDBInstanceArn=ok
+B07b.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+B08b.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+B08c.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR001.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR002.1	yes	*	aws:RequestedRegion=ok
+SR003.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR004.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR005.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR006.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR007.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR008.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR009.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR010.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR011.1	yes	certificate	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR012.1	yes	certificate	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR013.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR014.1	yes	*	aws:RequestedRegion=ok
+SR015.1	yes	*	aws:RequestedRegion=ok
+SR016.1	yes	*	aws:RequestedRegion=ok
+SR017.1	yes	*	aws:RequestedRegion=ok
+SR018.1	yes	*	aws:RequestedRegion=ok
+SR019.1	yes	*	aws:RequestedRegion=ok
+SR020.1	yes	*	aws:RequestedRegion=ok
+SR021.1	yes	*	aws:RequestedRegion=ok
+SR022.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR023.1	yes	*	aws:RequestedRegion=ok
+SR024.1	yes	*	aws:RequestedRegion=ok
+SR025.1	yes	role	aws:RequestedRegion=ok
+SR026.1	yes	role	aws:RequestedRegion=ok
+SR027.1	yes	role	aws:RequestedRegion=ok
+SR028.1	yes	role	aws:RequestedRegion=ok
+SR029.1	yes	role	aws:RequestedRegion=ok
+SR030.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR031.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR032.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR033.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR034.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR035.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR036.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR037.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR038.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR039.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR040.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR041.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR042.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR043.1	yes	bucket	aws:RequestedRegion=ok
+SR044.1	yes	bucket	aws:RequestedRegion=ok
+SR045.1	yes	bucket	aws:RequestedRegion=ok
+SR046.1	yes	bucket	aws:RequestedRegion=ok
+SR047.1	yes	bucket	aws:RequestedRegion=ok
+SR048.1	yes	bucket	aws:RequestedRegion=ok
+SR049.1	yes	bucket	aws:RequestedRegion=ok
+SR050.1	yes	bucket	aws:RequestedRegion=ok
+SR051.1	yes	bucket	aws:RequestedRegion=ok
+SR052.1	yes	bucket	aws:RequestedRegion=ok
+SR053.1	yes	bucket	aws:RequestedRegion=ok
+SR054.1	yes	bucket	aws:RequestedRegion=ok
+SR055.1	yes	bucket	aws:RequestedRegion=ok
+SR056.1	yes	bucket	aws:RequestedRegion=ok
+SR057.1	yes	bucket	aws:RequestedRegion=ok
+SR058.1	yes	bucket	aws:RequestedRegion=ok
+SR059.1	yes	schedule	aws:RequestedRegion=ok
+SR060.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR061.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR062.1	yes	*	aws:RequestedRegion=ok
+SR063.1	yes	*	aws:RequestedRegion=ok
+SR064.1	yes	none(request on *)	aws:RequestedRegion=ok
+SR065.1	yes	*	aws:RequestedRegion=ok
+SR066.1	yes	hostedzone	aws:RequestedRegion=ok
+SR067.1	yes	repository	aws:RequestedRegion=ok
+SR068.1	yes	repository	aws:RequestedRegion=ok
+SR069.1	yes	object	aws:RequestedRegion=ok
+SR070.1	yes	object	aws:RequestedRegion=ok
+SR071.1	yes	object	aws:RequestedRegion=ok
+SR072.1	yes	bucket	aws:RequestedRegion=ok
+SR073.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok
+SR074.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok
+SR075.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR076.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR077.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR078.1	yes	loadbalancer/app/	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR079.1	yes	listener/app	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR080.1	yes	listener-rule/app	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR081.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR081.2	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR082.1	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok;ec2:CreateAction=ok
+SR083.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SR083.2	yes	NOT-APPLICABLE(type mismatch)	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR084.1	yes	service	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR085.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR086.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR087.1	yes	role	aws:RequestedRegion=ok;iam:PassedToService=ok
+SR088.1	yes	namespace	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR088.2	yes	service	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR089.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR090.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR091.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR092.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR092.2	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR093.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR093.2	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR094.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR094.2	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SR095.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SR096.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok;aws:RequestTag/Name=ok;aws:TagKeys=ok
+SR097.1	yes	bucket	aws:RequestedRegion=ok
+SR098.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR099.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR100.1	yes	role	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR101.1	yes	role	aws:RequestedRegion=ok
+SR102.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SR103.1	yes	bucket	aws:RequestedRegion=ok
+SR104.1	yes	bucket	aws:RequestedRegion=ok
+SR105.1	yes	policy	aws:RequestedRegion=ok
+SR106.1	yes	policy	aws:RequestedRegion=ok
+SR107.1	yes	alias	aws:RequestedRegion=ok
+SR107.2	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+RB1n1.1	yes	Secret	aws:RequestedRegion=ok;aws:ViaAWSService=ok
+RB1n2.1	yes	Secret	aws:RequestedRegion=ok;aws:ViaAWSService=ok
+RB1p1.1	yes	Secret	aws:RequestedRegion=ok;aws:ViaAWSService=ok
+RB1p2.1	yes	Secret	aws:RequestedRegion=ok;aws:ViaAWSService=ok
+N01.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N02.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N03.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N04.1	yes	alias	aws:RequestedRegion=ok
+N04.2	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok
+N05.1	yes	alias	aws:RequestedRegion=ok
+N06.1	yes	alias	aws:RequestedRegion=ok
+N07.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok
+N08.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok
+N09.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok
+N10.1	yes	bucket	aws:RequestedRegion=ok
+N11.1	yes	bucket	aws:RequestedRegion=ok
+N12.1	yes	object	aws:RequestedRegion=ok
+N13.1	yes	object	aws:RequestedRegion=ok
+N14.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N20.1	yes	role	aws:RequestedRegion=ok;iam:PermissionsBoundary=ok
+N21.1	yes	role	aws:RequestedRegion=ok;iam:PassedToService=ok
+N22.1	yes	db	aws:RequestedRegion=ok
+N23.1	yes	service	aws:RequestedRegion=ok
+N24.1	yes	cluster	aws:RequestedRegion=ok
+N25.1	yes	log-group	aws:RequestedRegion=ok
+N26.1	yes	role	aws:RequestedRegion=ok;iam:PermissionsBoundary=ok
+N27.1	yes	policy	aws:RequestedRegion=ok
+N28.1	yes	role	aws:RequestedRegion=ok
+N29.1	yes	role	aws:RequestedRegion=ok;iam:PolicyARN=ok
+N30.1	yes	role	aws:RequestedRegion=ok
+N31.1	yes	role	aws:RequestedRegion=ok
+N32.1	yes	object	aws:RequestedRegion=ok
+N33.1	yes	Secret	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N34.1	yes	role	aws:RequestedRegion=ok;iam:PermissionsBoundary=ok
+N35.1	yes	role	aws:RequestedRegion=ok;iam:PermissionsBoundary=ok
+N36.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N37.1	yes	vpc	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N38.1	yes	role	aws:RequestedRegion=ok
+N40.1	yes	Secret	aws:RequestedRegion=ok
+N41.1	yes	Secret	aws:RequestedRegion=ok
+N42.1	yes	Secret	aws:RequestedRegion=ok
+N43.1	yes	Secret	aws:RequestedRegion=ok;aws:ViaAWSService=ok
+N44.1	yes	Secret	aws:RequestedRegion=ok
+N45.1	yes	none(request on *)	aws:RequestedRegion=ok
+N46.1	yes	Secret	aws:RequestedRegion=ok
+N47.1	yes	Secret	aws:RequestedRegion=ok
+N48.1	yes	Secret	aws:RequestedRegion=ok;aws:ViaAWSService=ok
+N48.2	yes	Secret	aws:RequestedRegion=ok;aws:ViaAWSService=ok
+N49.1	yes	Secret	aws:RequestedRegion=ok;aws:ViaAWSService=ok
+N50.1	yes	object	aws:RequestedRegion=ok
+N51.1	yes	bucket	aws:RequestedRegion=ok
+N52.1	yes	object	aws:RequestedRegion=ok
+N53.1	yes	object	aws:RequestedRegion=ok
+N54.1	yes	bucket	aws:RequestedRegion=ok
+N55.1	yes	bucket	aws:RequestedRegion=ok
+N56.1	yes	bucket	aws:RequestedRegion=ok
+N60.1	yes	key	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N61.1	yes	key	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N62.1	yes	key	aws:RequestedRegion=ok
+N63.1	yes	key	aws:RequestedRegion=ok
+N64.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N65.1	yes	certificate	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N66.1	yes	certificate	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N67.1	yes	certificate	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N68.1	yes	none(request on *)	aws:RequestedRegion=ok
+N69.1	yes	certificate	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N70.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N71.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N72.1	yes	service	aws:RequestedRegion=ok
+N73.1	yes	namespace	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N74.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N75.1	yes	security-group	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Name=ok;aws:TagKeys=ok;ec2:Vpc=ok
+N76.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Name=ok;aws:TagKeys=ok
+N77.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Name=ok;aws:TagKeys=ok
+N78.1	yes	security-group	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Name=ok;aws:TagKeys=ok;ec2:Vpc=ok
+N79.1	yes	security-group	aws:RequestedRegion=ok
+N79b.1	yes	security-group	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Name=ok;aws:TagKeys=ok;ec2:Vpc=ok
+N80.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+N81.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N82.1	yes	security-group	aws:RequestedRegion=ok
+N83.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok
+N84.1	yes	service	aws:RequestedRegion=ok
+N85.1	yes	db	aws:RequestedRegion=ok
+N86.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N87.1	yes	role	aws:RequestedRegion=ok;iam:PassedToService=ok
+N88.1	yes	task-definition	aws:RequestedRegion=ok
+N89.1	yes	log-group	aws:RequestedRegion=ok
+N90.1	yes	none(request on *)	aws:RequestedRegion=ok
+N91.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok
+N92.1	yes	user	aws:RequestedRegion=ok
+N93.1	yes	service	aws:RequestedRegion=ok
+N94.1	yes	user	aws:RequestedRegion=ok
+N95.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N96.1	yes	Secret	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+N97.1	yes	snapshot	aws:RequestedRegion=ok
+N98.1	yes	snapshot	aws:RequestedRegion=ok
+N100.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;kms:ViaService=ok
+N101.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+N102.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;kms:ViaService=ok
+N103.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;kms:ViaService=ok
+N104.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;kms:ViaService=ok
+C01.1	yes	role	aws:RequestedRegion=ok
+C02.1	yes	role	aws:RequestedRegion=ok
+C03.1	yes	role	aws:RequestedRegion=ok
+C04.1	yes	role	aws:RequestedRegion=ok
+C05.1	yes	role	aws:RequestedRegion=ok
+C06.1	yes	role	aws:RequestedRegion=ok
+C07.1	yes	role	aws:RequestedRegion=ok
+C08.1	yes	role	aws:RequestedRegion=ok
+B09.1	yes	Secret	aws:RequestedRegion=ok
+B10.1	yes	Secret	aws:RequestedRegion=ok
+B11.1	yes	object	aws:RequestedRegion=ok
+B12.1	yes	role	aws:RequestedRegion=ok
+B13.1	yes	repository	aws:RequestedRegion=ok
+B14.1	yes	object	aws:RequestedRegion=ok
+BP01.1	yes	Secret	aws:RequestedRegion=ok
+BP02.1	yes	Secret	aws:RequestedRegion=ok
+BP03.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+BP04.1	yes	object	aws:RequestedRegion=ok
+BP05.1	yes	Secret	aws:RequestedRegion=ok;aws:ResourceTag/aws:rds:primaryDBInstanceArn=ok
+BP06.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+BP07.1	yes	role	aws:RequestedRegion=ok
+LD01.1	yes	log-stream	aws:RequestedRegion=ok
+LD02.1	yes	log-group	aws:RequestedRegion=ok
+LD03.1	yes	log-group	aws:RequestedRegion=ok
+LD04.1	yes	log-group	aws:RequestedRegion=ok
+LD05.1	yes	log-group	aws:RequestedRegion=ok
+LD06.1	yes	log-group	aws:RequestedRegion=ok
+LD07.1	yes	log-group	aws:RequestedRegion=ok
+LD08.1	yes	log-group	aws:RequestedRegion=ok
+LD09.1	yes	log-group	aws:RequestedRegion=ok
+LD10.1	yes	db	aws:RequestedRegion=ok
+LD11.1	yes	db	aws:RequestedRegion=ok
+LD12.1	yes	cluster	aws:RequestedRegion=ok
+LD13.1	yes	task	aws:RequestedRegion=ok
+LD20.1	yes	log-group	aws:RequestedRegion=ok
+LD21.1	yes	db	aws:RequestedRegion=ok
+LD22.1	yes	service	aws:RequestedRegion=ok
+LD30.1	yes	log-stream	aws:RequestedRegion=ok
+LD31.1	yes	cluster	aws:RequestedRegion=ok
+LD32.1	yes	db	aws:RequestedRegion=ok
+LD33.1	yes	log-group	aws:RequestedRegion=ok
+LD40.1	yes	log-stream	aws:RequestedRegion=ok
+LD41.1	yes	cluster	aws:RequestedRegion=ok
+LD50.1	yes	log-stream	aws:RequestedRegion=ok
+SL01.1	yes	role	aws:RequestedRegion=ok;iam:AWSServiceName=ok
+SL02.1	yes	role	aws:RequestedRegion=ok;iam:AWSServiceName=ok
+SL03.1	yes	role	aws:RequestedRegion=ok;iam:AWSServiceName=ok
+SL04.1	yes	role	aws:RequestedRegion=ok;iam:AWSServiceName=ok
+SL05.1	yes	role	aws:RequestedRegion=ok;iam:AWSServiceName=ok
+SL06.1	yes	role	aws:RequestedRegion=ok;iam:AWSServiceName=ok
+SL07.1	yes	role	aws:RequestedRegion=ok;iam:AWSServiceName=ok
+SL08.1	yes	role	aws:RequestedRegion=ok;iam:AWSServiceName=ok
+AC01.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok;acm:Export=ok
+AC02.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+AC03.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok;acm:Export=ok
+AC04.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok;acm:Export=ok
+AC05.1	yes	certificate	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+AC06.1	yes	certificate	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+AC07.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok;acm:Export=ok
+AC08.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+AC09.1	yes	certificate	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+AC10.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+AC11.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SD01.1	yes	service	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SD02.1	yes	namespace	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SD03.1	yes	namespace	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SD04.1	yes	namespace	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SD05.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SD06.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SD07.1	yes	namespace	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SI01.1	yes	Secret	aws:RequestedRegion=ok;aws:SourceIdentity=ok
+SI02.1	yes	Secret	aws:RequestedRegion=ok
+SI03.1	yes	object	aws:RequestedRegion=ok;aws:SourceIdentity=ok
+SI04.1	yes	role	aws:RequestedRegion=ok;aws:SourceIdentity=ok
+SI05.1	yes	role	aws:RequestedRegion=ok
+SI06.1	yes	none(request on *)	aws:RequestedRegion=ok;aws:SourceIdentity=ok
+SI07.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:SourceIdentity=ok
+SI10.1	yes	Secret	aws:RequestedRegion=ok;aws:SourceIdentity=ok
+SI11.1	yes	Secret	aws:RequestedRegion=ok
+SI12.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:SourceIdentity=ok
+SI13.1	yes	key	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SI14.1	yes	task-definition	aws:RequestedRegion=ok;aws:SourceIdentity=ok
+SI20.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:SourceIdentity=ok
+SI21.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:SourceIdentity=ok
+SI22.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:SourceIdentity=ok
+TB01.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB02.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB03.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB04.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB05.1	yes	db	aws:RequestedRegion=ok
+TB06.1	yes	db	aws:RequestedRegion=ok
+TB07.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB08.1	yes	service	aws:RequestedRegion=ok
+TB09.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB10.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB11.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB12.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB13.1	yes	service	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+TB14.1	yes	db	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:SourceIdentity=ok
+SG01.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG02.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG03.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG04.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG05.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG06.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG07.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG08.1	yes	security-group-rule	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SG09.1	yes	security-group-rule	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SG10.1	yes	security-group-rule	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SG11.1	yes	security-group-rule	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok;ec2:CreateAction=ok
+SG12.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SG20.1	yes	none(request on *)	aws:RequestedRegion=ok
+SG21.1	yes	loadbalancer,loadbalancer/app/	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+SG30.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG31.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG32.1	yes	security-group-rule	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+SG33.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+SG34.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+BK01.1	yes	role	aws:RequestedRegion=ok
+BK02.1	yes	role	aws:RequestedRegion=ok
+BK03.1	yes	role	aws:RequestedRegion=ok
+BK04.1	yes	role	aws:RequestedRegion=ok
+BK05.1	yes	role	aws:RequestedRegion=ok
+BK06.1	yes	schedule	aws:RequestedRegion=ok
+BK07.1	yes	schedule	aws:RequestedRegion=ok
+BK08.1	yes	none(request on *)	aws:RequestedRegion=ok
+BK09.1	yes	schedule	aws:RequestedRegion=ok
+BK10.1	yes	schedule	aws:RequestedRegion=ok
+BK11.1	yes	role	aws:RequestedRegion=ok
+BK12.1	yes	role	aws:RequestedRegion=ok
+BK20.1	yes	role	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok;iam:PermissionsBoundary=ok
+BK21.1	yes	role	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:RequestTag/Stack=ok;aws:TagKeys=ok
+BK22.1	yes	role	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+BK23.1	yes	role	aws:RequestedRegion=ok
+BK24.1	yes	role	aws:RequestedRegion=ok
+BK25.1	yes	role	aws:RequestedRegion=ok
+BK26.1	yes	role	aws:RequestedRegion=ok
+BK27.1	yes	role	aws:RequestedRegion=ok
+BK28.1	yes	role	aws:RequestedRegion=ok;iam:PassedToService=ok
+BK29.1	yes	role	aws:RequestedRegion=ok;iam:PassedToService=ok
+BK30.1	yes	schedule	aws:RequestedRegion=ok
+BK31.1	yes	schedule	aws:RequestedRegion=ok
+BK32.1	yes	schedule	aws:RequestedRegion=ok
+BK33.1	yes	schedule	aws:RequestedRegion=ok
+BK34.1	yes	schedule	aws:RequestedRegion=ok
+BK35.1	yes	schedule	aws:RequestedRegion=ok
+BK36.1	yes	schedule	aws:RequestedRegion=ok
+BK37.1	yes	role	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok;iam:PermissionsBoundary=ok
+NP01.1	yes	loadbalancer/app/	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+NP02.1	yes	loadbalancer/app/	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+NP03.1	yes	loadbalancer/app/	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+NP04.1	yes	network-interface	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+NP05.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+NP06.1	yes	security-group	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+NP07.1	yes	vpc	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+NP08.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+NP10.1	yes	loadbalancer/app/	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+NP11.1	yes	loadbalancer/app/	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+NP12.1	yes	loadbalancer/app/	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+NP13.1	yes	network-interface	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok
+NP14.1	yes	security-group	aws:RequestedRegion=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+NP15.1	yes	vpc	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:RequestTag/Project=ok;aws:RequestTag/Environment=ok;aws:TagKeys=ok
+NP16.1	yes	security-group	aws:RequestedRegion=ok;aws:ResourceTag/Project=ok;aws:ResourceTag/Environment=ok;aws:ResourceTag/Name=ok
+RT01.1	yes	role	aws:RequestedRegion=ok
+RT02.1	yes	role	aws:RequestedRegion=ok
+RT03.1	yes	role	aws:RequestedRegion=ok
+RT04.1	yes	role	aws:RequestedRegion=ok
+RT05.1	yes	role	aws:RequestedRegion=ok
+RT06.1	yes	role	aws:RequestedRegion=ok
+RT07.1	yes	role	aws:RequestedRegion=ok
+
+# Rendered policies at e78aa92: action patterns and condition keys
+
+# Informational (0)
+
+# Problems (0)
