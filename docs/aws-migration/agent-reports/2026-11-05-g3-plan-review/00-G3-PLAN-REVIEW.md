@@ -81,6 +81,8 @@ No Critical or High finding in the 64 resources (`01` §4).
 | **Missing** [U] | Real plan at the apply commit and whether the current deployer may create the 64; whether `Environment` is an active cost allocation tag; raw B2 follow-up output; cost split by usage type; snapshot size; CAA records; session trust path after the second re-apply |
 | **Owner decisions** | OD-1 to OD-9 (`04` §1); **D-B still to decide** (OD-10) |
 
+**Update, 5 Nov 2026 21:16 UTC:** the owner accepted D-B for non-production Testing only (`04` OD-10 update; `2026-11-05-g3-declaration/`). The re-apply stays PARTIALLY VERIFIED, and the C-3 pre-check stays a hard stop. Text above is kept as written at review time.
+
 ## Independent review
 
 `05-INDEPENDENT-REVIEW.md` (separate reviewer, unmodified): **AGREE WITH CHANGES**, agrees with the verdict on the condition that the owner's approval also covers D-B. 13 findings (6 Medium, 6 Low, 1 Info), none Critical or High. All applied before commit: R-1 (B2 row 1 not ruled out), R-2 (D-B as OD-10, C-3 a hard stop), R-3 (cost attribution labelled an inference), R-4 (old Docs retained automated backups), R-5 (current deployer never exercised), R-6 (timestamps corrected), R-7 (50-minute job timeout), R-8 to R-12 (wording, cost allocation tag, CanteenHub grep wording), R-13 (the reviewer read run 41977870108's job log directly: 64 `create` rows, byte-identical addresses). After the review, Prettier reformatted whitespace in the draft declaration (the repository's format check): its sha256 changed from `d7ca102a…b56b904` (as cited in `05`) to `7653ee6a…dacbe9f`; it still validates with 64 `create` entries.
