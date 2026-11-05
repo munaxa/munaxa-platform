@@ -183,8 +183,10 @@ resource "aws_vpc_security_group_ingress_rule" "database_from_service" {
   referenced_security_group_id = aws_security_group.this.id
 }
 
+# Persistent (phase 6, R10): the rule names the ALB's own group, which is persistent too, so it
+# admits nothing while the ALB is down. A Testing session therefore never writes a rule.
 resource "aws_vpc_security_group_ingress_rule" "from_alb" {
-  count = var.routed ? 1 : 0
+  count = var.admit_alb ? 1 : 0
 
   security_group_id            = aws_security_group.this.id
   description                  = "The shared ALB"

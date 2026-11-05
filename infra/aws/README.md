@@ -116,7 +116,10 @@ write one JSON secret version with the keys listed in `stack/data.tf`.
 - **Database URLs:** generate two passwords per product (`openssl rand -hex 32`; hex only, as
   `db-bootstrap.sh` requires). Runtime URL in `<env>/<product>` (`DATABASE_URL`), owner URL in
   `<env>/<product>-migrate` (`DATABASE_MIGRATION_URL`), both
-  `postgresql://<role>:<password>@<database_endpoint>:5432/<database>?sslmode=require`. Role names:
+  `postgresql://<role>:<password>@<database_endpoint>:5432/<database>?sslmode=require`. The host
+  must be the `database_endpoint` DNS name exactly, never an IP address or another alias:
+  node-postgres (Work's API, Work's and Identity's bootstrap scripts) reads `require` as
+  `verify-full` and checks the certificate's host name. Role names:
   `identity_owner`/`identity_app`, `control_owner`/`control_app`, `work_owner`/`work_app`,
   `school_owner`/`munaxa_app` (the names each product's migrations grant to).
 - **Identity:** `IDENTITY_SIGNING_PRIVATE_KEY` (`pnpm keys:generate` in munaxa-identity; keep the
@@ -124,6 +127,11 @@ write one JSON secret version with the keys listed in `stack/data.tf`.
   in Testing), `IDENTITY_SIGNING_SECRET`, `REDIS_PASSWORD` and `REDIS_URL`
   (`redis://:<password>@127.0.0.1:6379`). Its public half goes into `identity_public_keys`.
 - **Work:** `PII_MATCH_SECRET` (not the development default), `CONTROL_PLANE_TOKEN` (G7 step 4).
+- **`CONTROL_PLANE_TOKEN` before the first start:** ECS refuses to start a task whose bundle lacks a
+  key it injects, and Work and School refuse a token under 20 characters, Docs under 32. Until G7
+  step 4 issues the real `mxc_` credentials, write a placeholder of at least 32 random characters
+  (`openssl rand -hex 16`) or keep those services at `desired_counts = 0`. Licence checks fail
+  with the placeholder, which is the expected state until step 4.
 - **School:** `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (different), `CONTROL_PLANE_TOKEN`,
   `RESEND_API_KEY` (sending access only).
 - Then pin each bundle with `secret_version_ids` in a PR.
@@ -137,6 +145,16 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
 
 ### G7. A Testing session
 
+0. First session only, before step 1 (Control refuses to start without these, and Terraform
+   refuses a session that runs `control-api` above zero tasks until they are set):
+   a. Merge the image digests with `services_enabled = false` and apply (G3 workflow). This creates
+      the Control licence key (`control_licence_key_arn`) without starting any task.
+   b. In CloudShell read its public half (`aws kms get-public-key`, DER to PEM) and set
+      `control_licence_public_key` and `control_licence_kid` by PR, with `identity_signing_kid` and
+      `identity_public_keys` (G4), `operator_access` (cloudflare-access.md) and `valkey_image`.
+   c. `control_operator_organisation_id` and `control_operator_subjects` come from Identity's
+      steps 1 to 3 (step 3 below), so the first session runs `control-api` and `control-portal`
+      at `desired_counts` 0 until they are set by PR; then dispatch `up` again.
 1. Dispatch `aws-session.yml` → `up`. The ALB, listeners and services come up; the database starts.
 2. Add CNAMEs in Cloudflare from each host to `alb_dns_name` (DNS only), first session only.
 3. Run the db-admin task, then the migrations, in order, with `aws ecs run-task` using the
@@ -152,14 +170,16 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
    its log before going on);
    `identity-bootstrap` after `identity-migrate` (db_admin's
    network; the owner creates `munaxa-nonprod/identity-bootstrap` with the operator's email and
-   password first and deletes it after Identity's steps 1 to 3, which override only the command);
+   password first and deletes it after Identity's steps 1 to 3, which override only the command;
+   before deleting it, run the task once more per Work organisation with the command
+   `node scripts/seed-work-roles.mjs --organisation <slug>` (the task injects that secret on every
+   run), or Work members get 403; then restart `identity`, which caches role definitions);
    then Docs: `docs-db-admin` (db-admin's network; its cluster
    roles, `edms_backup` and the tenant database; it stops if `edms_backup` could reach a non-Docs
    database), then `docs-provision` (docs-api's security group, after the owner creates
    `munaxa-nonprod/docs-provision/<slug>` and before deleting it). They create clean databases and
    apply the full migration history; no data is copied from Supabase, Render or Docs Production.
-4. Control: read the licence key's public half (`aws kms get-public-key`, DER to PEM), set
-   `control_licence_public_key` and `control_licence_kid` by PR. In the operator portal create the
+4. Control (the licence key's public half is already set, step 0). In the operator portal create the
    deployments for Work, School and Docs, issue one credential each, and write it as
    `CONTROL_PLANE_TOKEN` in that product's bundle (Docs Testing: `munaxa-nonprod/docs-api`).
 5. Smoke: `id.*/api/auth/health/ready`; `control-api.*/health/ready` and

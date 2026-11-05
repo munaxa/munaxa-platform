@@ -188,8 +188,16 @@ variable "valkey_image" {
   default     = ""
 
   validation {
-    condition     = var.valkey_image == "" || can(regex("^public\\.ecr\\.aws/docker/library/valkey@sha256:[0-9a-f]{64}$", var.valkey_image))
-    error_message = "valkey_image is public.ecr.aws/docker/library/valkey@sha256:<64 hex>."
+    # Valkey is not a Docker Official Image (Docker Hub has valkey/valkey, no library/valkey), so
+    # ECR Public's docker/library mirror has no valkey repository; Valkey publishes public.ecr.aws/valkey/valkey.
+    condition     = var.valkey_image == "" || can(regex("^public\\.ecr\\.aws/(docker/library/valkey|valkey/valkey)@sha256:[0-9a-f]{64}$", var.valkey_image))
+    error_message = "valkey_image is public.ecr.aws/valkey/valkey@sha256:<64 hex> (or the docker/library path)."
+  }
+
+  # Identity's REDIS_URL points at 127.0.0.1:6379: without the sidecar nothing listens there.
+  validation {
+    condition     = var.valkey_image != "" || var.images.identity_api == "" || !var.services_enabled
+    error_message = "Identity runs only with its Valkey sidecar: set valkey_image before a session with images.identity_api."
   }
 }
 
@@ -240,6 +248,16 @@ variable "identity_signing_kid" {
   description = "IDENTITY_SIGNING_KID: the key id Identity signs with; products' PLATFORM_AUTH_PUBLIC_KEYS must contain it."
   type        = string
   default     = ""
+
+  # Identity refuses to start with a key id shorter than 3 characters, and Work and Control verify
+  # only key ids listed in identity_public_keys.
+  validation {
+    condition = var.images.identity_api == "" || !var.services_enabled || (
+      length(var.identity_signing_kid) >= 3 &&
+      contains([for k in try(jsondecode(var.identity_public_keys), []) : try(k.kid, "")], var.identity_signing_kid)
+    )
+    error_message = "A session with Identity needs identity_signing_kid (3+ characters) listed in identity_public_keys."
+  }
 }
 
 variable "identity_public_keys" {
@@ -250,6 +268,12 @@ variable "identity_public_keys" {
   validation {
     condition     = can(jsondecode(var.identity_public_keys)) && !strcontains(var.identity_public_keys, "PRIVATE KEY")
     error_message = "identity_public_keys is a JSON array of public keys. A private key is refused."
+  }
+
+  # Work refuses to start unless PLATFORM_AUTH_PUBLIC_KEYS holds at least one key.
+  validation {
+    condition     = var.images.work_api == "" || !var.services_enabled || length(try(jsondecode(var.identity_public_keys), [])) > 0
+    error_message = "A session with work_api needs identity_public_keys (Work's PLATFORM_AUTH_PUBLIC_KEYS)."
   }
 }
 
@@ -279,6 +303,21 @@ variable "control_licence_public_key" {
   validation {
     condition     = !strcontains(var.control_licence_public_key, "PRIVATE KEY")
     error_message = "control_licence_public_key holds a private key. Only the public half belongs here."
+  }
+
+  # control-api refuses to start without a licence key, its kid, the operator organisation, a
+  # subject allow-list (while MFA is off) and Identity's public keys. Step one is a services-off
+  # apply with the Control images set, which creates the KMS key whose public half goes here; the
+  # first session runs control-api at desired count 0 until Identity has issued the operator ids.
+  validation {
+    condition = var.images.control_api == "" || !var.services_enabled || lookup(var.desired_counts, "control-api", 1) == 0 || (
+      strcontains(var.control_licence_public_key, "BEGIN PUBLIC KEY") &&
+      var.control_licence_kid != "" &&
+      var.control_operator_organisation_id != "" &&
+      length(var.control_operator_subjects) > 0 &&
+      length(try(jsondecode(var.identity_public_keys), [])) > 0
+    )
+    error_message = "A session with control_api needs control_licence_public_key, control_licence_kid, control_operator_organisation_id, control_operator_subjects and identity_public_keys (README G7, two-step Control bring-up)."
   }
 }
 
@@ -361,5 +400,19 @@ variable "identity_operator_organisation" {
   default = {
     slug = "munaxa-group"
     name = "Munaxa Group"
+  }
+}
+
+variable "session_backstop_schedule" {
+  description = "Nonprod only: when EventBridge Scheduler stops the database and scales every service to 0 (backstop.tf), in UTC. Empty turns the backstop off."
+  type        = string
+  # Off by default (owner decision D-4 = B, phase 7): G3 keeps its 64 creates, and the backstop is a
+  # separate, separately approved apply right after G3 that sets "cron(0 21 * * ? *)" in
+  # envs/nonprod.tfvars. The first Testing session waits for it.
+  default = ""
+
+  validation {
+    condition     = var.session_backstop_schedule == "" || can(regex("^(cron|rate)\\(.+\\)$", var.session_backstop_schedule))
+    error_message = "An EventBridge Scheduler cron() or rate() expression, or empty."
   }
 }

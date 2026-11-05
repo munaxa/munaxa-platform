@@ -115,6 +115,7 @@ module "docs_api" {
   vpc_id                     = local.common.vpc_id
   subnet_ids                 = local.common.subnet_ids
   alb_security_group_id      = local.common.alb_security_group_id
+  admit_alb                  = true
   database_security_group_id = local.common.database_security_group_id
   secrets_kms_key_arn        = local.common.secrets_kms_key_arn
   log_retention_days         = local.common.log_retention_days
@@ -188,6 +189,7 @@ module "docs_web" {
   vpc_id                = local.common.vpc_id
   subnet_ids            = local.common.subnet_ids
   alb_security_group_id = local.common.alb_security_group_id
+  admit_alb             = true
   log_retention_days    = local.common.log_retention_days
 
   name   = "docs-web"

@@ -21,12 +21,10 @@
 name: AWS Terraform
 
 on:
+  # No path filter: "Format, validate, mocked plan tests" is meant to be a required check, and a
+  # required check that a path filter never starts stays pending forever (see ci.yml).
   pull_request:
     branches: [main]
-    paths:
-      - 'infra/aws/**'
-      - 'scripts/terraform/**'
-      - '.github/workflows/aws-terraform.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -309,7 +307,13 @@ jobs:
           aws s3 cp "s3://munaxa-shared-tfstate-$AWS_ACCOUNT_ID/$ENVIRONMENT/plans/$GITHUB_RUN_ID.tfplan" tfplan --only-show-errors
           [ "$(sha256sum tfplan | cut -d' ' -f1)" = "$EXPECTED" ] || { echo "::error::the saved plan changed since it was reviewed"; exit 1; }
 
+      # The apply's own output lists every created resource id (ARNs, VPC, subnet and security group
+      # ids) and then every output (database endpoint, subnets, bundle names, the licence key ARN).
+      # The repository is public, so stdout stays out of the log, as for the plan; errors still go
+      # to stderr. Outputs are read with `terraform output` in CloudShell.
       - name: terraform apply (saved plan)
         env:
           TF_VAR_deployer_role_arn: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
-        run: terraform apply -input=false -no-color -lock-timeout=5m tfplan
+        run: |
+          terraform apply -input=false -no-color -lock-timeout=5m tfplan > /dev/null
+          echo "Applied the saved plan of commit $GITHUB_SHA." | tee -a "$GITHUB_STEP_SUMMARY"

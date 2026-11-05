@@ -2,8 +2,8 @@
 # environment with no required reviewer (so the 20:00 UTC backstop runs unattended). They get
 # their own CI role and deployer, which can do only what a session does: plan the whole stack
 # (reads), write nonprod state, create and delete the ALB, its listeners, rules and target groups,
-# the ALB and task security-group rules, the ECS services and their Cloud Map entries, and start
-# and stop the nonprod database. No IAM, KMS, Secrets Manager, S3 configuration, logs, network or
+# the ECS services and their Cloud Map entries, and start and stop the nonprod database. No
+# security-group rule: those are all persistent (R10, phase 6). No IAM, KMS, Secrets Manager, S3 configuration, logs, network or
 # database change: those stay with the reviewed aws-terraform.yml path (aws-nonprod).
 #
 # aws-session.yml needs no change: it reads vars.AWS_CI_ROLE_ARN and vars.AWS_DEPLOYER_ROLE_ARN in
@@ -109,73 +109,29 @@ data "aws_iam_policy_document" "deployer_session" {
     ]
   }
 
-  # Review R10: the only security-group rules a session creates and removes are the task groups'
-  # ingress from the ALB (modules/service from_alb, count = edge_enabled), which name the ALB's group
-  # as their source. The ALB's own 80/443 rules and every egress rule are persistent (G3), so the
-  # session gets no egress or modify action. IAM has no condition key for a rule's CIDR or source
-  # group (Service Authorization Reference: AuthorizeSecurityGroupIngress has ec2:Region only), so a
-  # CIDR source cannot be denied here; instead the session may never touch the ALB, database or
-  # db-admin groups, and may tag only rules, never a group (so it cannot retag a group into scope).
+  # Review R10 (closed in phase 6): a session writes no security-group rule at all. The task
+  # groups' ingress from the ALB (modules/service from_alb) is persistent, like the ALB's own rules
+  # and its egress: it names the persistent ALB group, so it admits nothing while the ALB is down.
+  # IAM has no condition key for a rule's CIDR or source group (AuthorizeSecurityGroupIngress has
+  # ec2:Region only), so the only way to keep a session from opening a task (public IPv4) to the
+  # internet is to give it no rule action, and to deny them all explicitly.
   statement {
-    sid       = "SessionIngressOnOwnGroups"
-    actions   = ["ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress"]
-    resources = ["${local.arn.ec2}:security-group/*", "${local.arn.ec2}:security-group-rule/*"]
-    condition {
-      test     = "StringEquals"
-      variable = "aws:ResourceTag/Project"
-      values   = ["munaxa"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "aws:ResourceTag/Environment"
-      values   = [each.key]
-    }
-  }
-
-  statement {
-    sid       = "SessionNeverEdgeOrDatabaseGroups"
-    effect    = "Deny"
-    actions   = ["ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress", "ec2:ModifySecurityGroupRules"]
-    resources = ["${local.arn.ec2}:security-group/*"]
-    condition {
-      test     = "StringEquals"
-      variable = "aws:ResourceTag/Name"
-      values   = ["munaxa-${each.key}-alb", "munaxa-${each.key}-database", "munaxa-${each.key}-db-admin", "munaxa-${each.key}-default-unused"]
-    }
+    sid    = "SessionNeverSecurityGroupRules"
+    effect = "Deny"
+    actions = [
+      "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
+      "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress",
+      "ec2:ModifySecurityGroupRules", "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+      "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+    ]
+    resources = ["*"]
   }
 
   statement {
     sid       = "SessionNeverGroupTags"
     effect    = "Deny"
     actions   = ["ec2:CreateTags", "ec2:DeleteTags"]
-    resources = ["${local.arn.ec2}:security-group/*"]
-  }
-
-  statement {
-    sid       = "SessionNewRules"
-    actions   = ["ec2:AuthorizeSecurityGroupIngress"]
-    resources = ["${local.arn.ec2}:security-group-rule/*"]
-    condition {
-      test     = "StringEquals"
-      variable = "aws:RequestTag/Project"
-      values   = ["munaxa"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "aws:RequestTag/Environment"
-      values   = [each.key]
-    }
-  }
-
-  statement {
-    sid       = "SessionRuleTagsOnCreate"
-    actions   = ["ec2:CreateTags"]
-    resources = ["${local.arn.ec2}:security-group-rule/*"]
-    condition {
-      test     = "StringEquals"
-      variable = "ec2:CreateAction"
-      values   = ["AuthorizeSecurityGroupIngress"]
-    }
+    resources = ["${local.arn.ec2}:security-group/*", "${local.arn.ec2}:security-group-rule/*"]
   }
 
   statement {
@@ -195,9 +151,29 @@ data "aws_iam_policy_document" "deployer_session" {
   }
 
   # Cloud Map entries: the new service with the tags (its namespace by SessionCloudMapServices).
+  # CreateService is authorized on the namespace and on the new service, so the request tags may
+  # admit only the service: an untagged namespace of another workload never matches (phase 5
+  # review 06 §8.5, R11), as CloudMapServiceWithOwnTags does for the full deployer.
   statement {
     sid       = "SessionDiscoveryWithOwnTags"
-    actions   = ["servicediscovery:CreateService", "servicediscovery:TagResource"]
+    actions   = ["servicediscovery:CreateService"]
+    resources = ["arn:aws:servicediscovery:${var.region}:${var.account_id}:service/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Project"
+      values   = ["munaxa"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Environment"
+      values   = [each.key]
+    }
+  }
+
+  # Tagging on create (servicediscovery:TagResource has no resource type; residual R3).
+  statement {
+    sid       = "SessionDiscoveryTagOnCreate"
+    actions   = ["servicediscovery:TagResource"]
     resources = ["*"]
     condition {
       test     = "StringEquals"

@@ -38,6 +38,16 @@ variables {
     school      = "school.test.munaxa.com"
   }
   certificate_domains = ["*.test.munaxa.com"]
+
+  # What a session that runs Identity, Work and Control needs (variables.tf validations). Public
+  # test values: the keys are syntactically PEM only, never used to verify anything here.
+  valkey_image                     = "public.ecr.aws/valkey/valkey@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  identity_signing_kid             = "identity-test-2026-11"
+  identity_public_keys             = "[{\"kid\":\"identity-test-2026-11\",\"publicKey\":\"-----BEGIN PUBLIC KEY-----\\ntest\\n-----END PUBLIC KEY-----\"}]"
+  control_licence_kid              = "control-test-2026-11"
+  control_licence_public_key       = "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----"
+  control_operator_organisation_id = "00000000-0000-0000-0000-000000000001"
+  control_operator_subjects        = ["00000000-0000-0000-0000-000000000002"]
 }
 
 run "idle_testing_has_no_edge_and_no_services" {
@@ -315,5 +325,190 @@ run "the_control_api_host_forwards_only_its_public_surface" {
   assert {
     condition     = length(module.control_api[0].listener_rule_paths["20"]) == 3 && !contains(module.control_api[0].listener_rule_paths["20"], "/*")
     error_message = "The Control API host forwards only /api/v1/products/*, /api/v1/licensing/* and /health/*."
+  }
+}
+
+# Phase 6 (Agent 5): the AWS-side backstop stops Testing without GitHub, and only Testing.
+run "nonprod_has_an_aws_side_backstop" {
+  command = plan
+
+  variables {
+    session_backstop_schedule = "cron(0 21 * * ? *)"
+  }
+
+  assert {
+    condition     = length(aws_scheduler_schedule.stop_database) == 1 && length(aws_scheduler_schedule.scale_in) == 10
+    error_message = "Nonprod stops its database and scales in every service from EventBridge Scheduler."
+  }
+  assert {
+    condition     = aws_scheduler_schedule.stop_database[0].target[0].arn == "arn:aws:scheduler:::aws-sdk:rds:stopDBInstance" && jsondecode(aws_scheduler_schedule.stop_database[0].target[0].input).DbInstanceIdentifier == "munaxa-nonprod-pg"
+    error_message = "The database schedule calls rds:StopDBInstance on munaxa-nonprod-pg."
+  }
+  assert {
+    condition = alltrue([for k, s in aws_scheduler_schedule.scale_in :
+      s.target[0].arn == "arn:aws:scheduler:::aws-sdk:ecs:updateService" && jsondecode(s.target[0].input).DesiredCount == 0 && jsondecode(s.target[0].input).Cluster == "munaxa-nonprod"
+    ])
+    error_message = "Every service schedule sets desired count 0 in the nonprod cluster."
+  }
+  assert {
+    condition     = aws_iam_role.session_backstop[0].permissions_boundary == "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary" && aws_scheduler_schedule.stop_database[0].schedule_expression_timezone == "UTC"
+    error_message = "The backstop role carries the nonprod workload boundary; schedules run in UTC."
+  }
+}
+
+# The policy names the database and cluster ARNs; give them values at plan time.
+run "the_backstop_role_can_only_stop_and_scale_in" {
+  command = plan
+
+  variables {
+    session_backstop_schedule = "cron(0 21 * * ? *)"
+  }
+
+  override_resource {
+    target          = aws_db_instance.main
+    override_during = plan
+    values = {
+      arn                = "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg"
+      identifier         = "munaxa-nonprod-pg"
+      address            = "munaxa-nonprod-pg.example.eu-central-1.rds.amazonaws.com"
+      port               = 5432
+      master_user_secret = [{ secret_arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-mock", kms_key_id = "mock", secret_status = "active" }]
+    }
+  }
+  override_resource {
+    target          = aws_ecs_cluster.main
+    override_during = plan
+    values          = { arn = "arn:aws:ecs:eu-central-1:229251310592:cluster/munaxa-nonprod" }
+  }
+  override_resource {
+    target          = aws_iam_role.session_backstop[0]
+    override_during = plan
+    values          = { id = "munaxa-nonprod-session-backstop", arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-session-backstop" }
+  }
+
+  assert {
+    condition = alltrue([for s in jsondecode(aws_iam_role_policy.session_backstop[0].policy).Statement :
+      s.Effect == "Allow" && contains(["rds:StopDBInstance", "ecs:UpdateService"], s.Action)
+    ])
+    error_message = "The backstop role can only stop the database and update services."
+  }
+  assert {
+    condition     = jsondecode(aws_iam_role_policy.session_backstop[0].policy).Statement[0].Resource == "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg" && jsondecode(aws_iam_role_policy.session_backstop[0].policy).Statement[1].Resource == "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/*"
+    error_message = "Only the nonprod database and the nonprod cluster's services."
+  }
+}
+
+# D-4 = B (phase 7): the backstop is off unless the separate post-G3 apply sets the schedule.
+run "an_empty_schedule_turns_the_backstop_off" {
+  command = plan
+
+  variables {
+    session_backstop_schedule = ""
+  }
+
+  assert {
+    condition     = length(aws_scheduler_schedule.stop_database) == 0 && length(aws_scheduler_schedule.scale_in) == 0 && length(aws_iam_role.session_backstop) == 0
+    error_message = "An empty schedule turns the backstop off."
+  }
+}
+
+run "identity_without_its_valkey_sidecar_is_refused_in_a_session" {
+  command = plan
+  variables {
+    services_enabled = true
+    valkey_image     = ""
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+  expect_failures = [var.valkey_image]
+}
+
+run "identity_signing_kid_must_be_a_published_key" {
+  command = plan
+  variables {
+    services_enabled     = true
+    identity_signing_kid = "identity-other"
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+  expect_failures = [var.identity_signing_kid]
+}
+
+run "control_in_a_session_needs_its_licence_key_and_operators" {
+  command = plan
+  variables {
+    services_enabled           = true
+    operator_access            = { team_domain = "https://munaxa-test.cloudflareaccess.com", audience = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+    control_licence_public_key = ""
+    images = {
+      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+  expect_failures = [var.control_licence_public_key]
+}
+
+run "control_images_with_services_off_create_the_licence_key_first" {
+  command = plan
+  variables {
+    services_enabled           = false
+    operator_access            = { team_domain = "https://munaxa-test.cloudflareaccess.com", audience = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+    control_licence_public_key = ""
+    control_licence_kid        = ""
+    images = {
+      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+  assert {
+    condition     = length(aws_kms_key.licence) == 1 && length(module.control_api) == 1
+    error_message = "Step one of the Control bring-up: the licence key exists before any Control task runs."
+  }
+}
+
+run "work_in_a_session_needs_identity_public_keys" {
+  command = plan
+  variables {
+    services_enabled     = true
+    identity_public_keys = "[]"
+    images = {
+      work_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/api@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  }
+  expect_failures = [var.identity_public_keys]
+}
+
+run "the_first_session_runs_control_at_zero_until_the_operator_ids_exist" {
+  command = plan
+  variables {
+    services_enabled                 = true
+    operator_access                  = { team_domain = "https://munaxa-test.cloudflareaccess.com", audience = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+    control_operator_organisation_id = ""
+    control_operator_subjects        = []
+    desired_counts = {
+      identity   = 1, control-api = 0, control-portal = 0, work-api = 1, work-admin = 1
+      school-api = 1, school-admin = 1, docs-api = 1, docs-web = 1, docs-scanner = 1
+    }
+    images = {
+      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+  assert {
+    condition     = length(module.control_api) == 1
+    error_message = "control-api is defined and can run at zero tasks while the operator ids are pending."
+  }
+}
+
+run "prod_never_gets_the_backstop" {
+  command = plan
+
+  variables {
+    environment               = "prod"
+    session_backstop_schedule = "cron(0 21 * * ? *)"
+  }
+
+  assert {
+    condition     = length(aws_scheduler_schedule.stop_database) == 0 && length(aws_scheduler_schedule.scale_in) == 0 && length(aws_iam_role.session_backstop) == 0
+    error_message = "Production never gets the Testing backstop, whatever the schedule says."
   }
 }

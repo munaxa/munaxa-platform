@@ -42,7 +42,7 @@ resource "aws_iam_policy" "workload_boundary" {
   path = "/munaxa-shared/"
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Sid      = "EcrSignIn"
         Effect   = "Allow"
@@ -119,6 +119,18 @@ resource "aws_iam_policy" "workload_boundary" {
         Condition = { StringNotEquals = { "aws:RequestedRegion" = var.region } }
       },
       {
+        # Finding R7 (phase 6): a role the deployer creates is never usable from a deployer
+        # session. Both deployers carry sts:SourceIdentity = github-actions (their trust requires
+        # it), and AWS keeps a source identity through every chained role session, so a role
+        # whose trust names the deployer is refused everything. Stack roles are used only by ECS
+        # tasks and EventBridge Scheduler, which set no source identity.
+        Sid       = "NeverFromADeployerSession"
+        Effect    = "Deny"
+        Action    = "*"
+        Resource  = "*"
+        Condition = { Null = { "aws:SourceIdentity" = "false" } }
+      },
+      {
         Sid       = "NeverTheOtherEnvironment"
         Effect    = "Deny"
         Action    = "*"
@@ -139,7 +151,19 @@ resource "aws_iam_policy" "workload_boundary" {
         NotAction = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"]
         Resource  = "arn:aws:ecr:*:*:repository/munaxa-docs/*"
       },
-    ]
+      ], each.key == "nonprod" ? [
+      # Testing's AWS-side shutdown backstop (stack/backstop.tf, phase 6): the scheduler role stops
+      # the nonprod database and scales nonprod services in, nothing else.
+      {
+        Sid    = "TestingBackstop"
+        Effect = "Allow"
+        Action = ["rds:StopDBInstance", "ecs:UpdateService"]
+        Resource = [
+          "arn:aws:rds:${var.region}:${var.account_id}:db:munaxa-${each.key}-*",
+          "arn:aws:ecs:${var.region}:${var.account_id}:service/munaxa-${each.key}/*",
+        ]
+      },
+    ] : [])
   })
 }
 
