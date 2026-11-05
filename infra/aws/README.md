@@ -6,8 +6,11 @@ Docs is recreated here (`stack/docs.tf`, where `hosts.docs` is set: Testing now)
 Production stack (`munaxa-docs/infra/terraform`) is not managed here and stays until its
 retirement is approved (G9). The interface every product follows is [CONTRACT.md](CONTRACT.md).
 
-**Status: not applied.** Nothing in this directory has created an AWS resource. Every step below
-that creates, changes or deletes anything is an owner approval gate (G1 to G9).
+**Status (5 Nov 2026):** `bootstrap/` is applied (G2 on 31 Oct; re-applied on 5 Nov at `46dfbd9` and
+at `6b8997a`, the second re-apply PARTIALLY VERIFIED). `stack/` has **never been applied**: G3 is not
+authorized, and no Testing or Production workload resource is evidenced. No product image is in the
+shared ECR repositories. Evidence: `docs/aws-migration/agent-reports/` (index `README.md`). Every step
+below that creates, changes or deletes anything is an owner approval gate (G1 to G9).
 
 ## Layout
 
@@ -143,18 +146,33 @@ on `main`, in the `image-release` environment, and pushes to `munaxa-<product>/<
 the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `postgres_image` from
 `public.ecr.aws` by digest.
 
+### G6. DNS
+
+Within 72 hours of G3, add the `certificate_validation_records` output to Cloudflare as DNS only
+records. On the first session, add a CNAME from each host to `alb_dns_name` (DNS only), and the
+operator host as the one proxied record behind Cloudflare Access.
+
 ### G7. A Testing session
 
 0. First session only, before step 1 (Control refuses to start without these, and Terraform
    refuses a session that runs `control-api` above zero tasks until they are set):
-   a. Merge the image digests with `services_enabled = false` and apply (G3 workflow). This creates
-      the Control licence key (`control_licence_key_arn`) without starting any task.
+   a. Merge the image digests with `services_enabled = false`, **together with** `operator_access`
+      (cloudflare-access.md; Terraform refuses any Control image without it), `valkey_image`,
+      `identity_signing_kid` and `identity_public_keys` (G4), and `desired_counts` 0 for
+      `control-api` and `control-portal`, and apply (G3 workflow). This creates the Control licence
+      key (`control_licence_key_arn`) without starting any task.
    b. In CloudShell read its public half (`aws kms get-public-key`, DER to PEM) and set
-      `control_licence_public_key` and `control_licence_kid` by PR, with `identity_signing_kid` and
-      `identity_public_keys` (G4), `operator_access` (cloudflare-access.md) and `valkey_image`.
+      `control_licence_public_key` and `control_licence_kid` by PR.
    c. `control_operator_organisation_id` and `control_operator_subjects` come from Identity's
       steps 1 to 3 (step 3 below), so the first session runs `control-api` and `control-portal`
-      at `desired_counts` 0 until they are set by PR; then dispatch `up` again.
+      at `desired_counts` 0 until they are set by PR.
+
+   **Every configuration PR needs its own apply with services off.** Image digests,
+   `secret_version_ids`, `identity_*`, `control_licence_*` and `control_operator_*` all change an
+   `aws_ecs_task_definition`, and the session workflow refuses any change outside the load
+   balancer, certificate validation, ECS services and service discovery. So each such PR is merged,
+   then applied through `aws-terraform.yml` (`plan`, read, `apply`) with an updated
+   `envs/nonprod.expected-changes.json`, while the session is down; only then dispatch `up`.
 1. Dispatch `aws-session.yml` → `up`. The ALB, listeners and services come up; the database starts.
 2. Add CNAMEs in Cloudflare from each host to `alb_dns_name` (DNS only), first session only.
 3. Run the db-admin task, then the migrations, in order, with `aws ecs run-task` using the
@@ -173,7 +191,12 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
    password first and deletes it after Identity's steps 1 to 3, which override only the command;
    before deleting it, run the task once more per Work organisation with the command
    `node scripts/seed-work-roles.mjs --organisation <slug>` (the task injects that secret on every
-   run), or Work members get 403; then restart `identity`, which caches role definitions);
+   run), or Work members get 403; give each Work user a `work:*` role with
+   `node scripts/bootstrap-account.mjs --role <role>` (seeding defines roles, it assigns none);
+   then restart `identity`, which caches role definitions); Work's first tenant: a `work-migrate`
+   command override running `bootstrap-tenant.mjs --platform-user-id <sub>`, and the tenant id
+   linked in Control as the customer's `tenantRef` with a subscription (munaxa-work
+   `deploy/aws/README.md`, "The first tenant on a fresh database");
    then Docs: `docs-db-admin` (db-admin's network; its cluster
    roles, `edms_backup` and the tenant database; it stops if `edms_backup` could reach a non-Docs
    database), then `docs-provision` (docs-api's security group, after the owner creates
@@ -183,10 +206,15 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
    deployments for Work, School and Docs, issue one credential each, and write it as
    `CONTROL_PLANE_TOKEN` in that product's bundle (Docs Testing: `munaxa-nonprod/docs-api`).
 5. Smoke: `id.*/api/auth/health/ready`; `control-api.*/health/ready` and
-   `/api/v1/licensing/public-keys`; `/api/v1/admin/*` on control-api answers 403; operator host
-   answers 403 from outside `operator_cidrs`; sign in on `work.*`; School login; a product's
+   `/api/v1/licensing/public-keys`; `/api/v1/admin/*` on control-api answers 403; the operator
+   host shows the Cloudflare Access login without a valid Access session (with `operator_access`
+   set, Access decides, not `operator_cidrs`); sign in on `work.*`; School login; a product's
    entitlement request with its credential; logs show no `Entitlements could not be confirmed`.
-6. Dispatch `aws-session.yml` → `down`. The 20:00 UTC schedule does it anyway.
+6. Dispatch `aws-session.yml` → `down`. Do not rely on the schedule: the crons are 19:17 and
+   01:47 UTC, but from 30 Oct to 5 Nov GitHub started only one scheduled run a night, up to about
+   5.5 hours late. The AWS backstop at 21:00 UTC is the reliable shutdown once it is enabled; finish
+   sessions before 19:00 UTC.
+
 
 ### Rollback
 
@@ -207,15 +235,17 @@ See the migration report for the evidence and the price sources. In brief:
 
 - **Testing, idle:** RDS stopped (20 GB gp3, about US$2.70), KMS 2 keys here plus the state key
   (US$3), 10 bundles plus the RDS master secret (US$4.40), private namespace US$0.50, ECR, logs
-  and empty buckets under US$3: **about US$13 a month**.
+  and empty buckets under US$1: **about US$11 to 12 a month** (re-checked 5 Nov 2026, below).
 - **Testing, per session hour, every service including Docs (one task each):** Fargate 3 vCPU and
   9 GB about US$0.19, ALB about US$0.035 with LCUs, 12 public IPv4 (10 tasks, 2 ALB) US$0.06, RDS
-  micro about US$0.02: **about US$0.30 an hour**, so about 120 session-hours a month fit in US$50
-  with the idle cost. Prices are on-demand list prices from memory, not yet checked with the
-  Pricing API.
-- **The account, not just Testing:** Docs Production's idle stack (about US$48 a month) is in the
-  same account, so the account's US$50 budget (bootstrap) is reached before any Testing session
-  until that stack is retired (G9, owner decision).
+  micro about US$0.02: **about US$0.30 an hour**, so about 130 session-hours a month fit in US$50
+  with the idle cost. Re-checked on 5 Nov 2026 against the AWS Price List files for eu-central-1
+  (Fargate US$0.04656 per vCPU-hour and US$0.00511 per GB-hour, ALB US$0.027 an hour, RDS
+  `db.t4g.micro` US$0.019 an hour, gp3 US$0.137 per GB-month, secrets US$0.40, keys US$1,
+  public IPv4 US$0.005 an hour); details in
+  `docs/aws-migration/agent-reports/2026-11-05-testing-readiness/03` §10. The earlier figures were from memory.
+- **The account, not just Testing:** Docs Production's idle stack was retired on 4 Nov 2026 (G9 for
+  Docs; only its bootstrap and a final snapshot remain). Before that retirement, its idle stack (about US$48 a month) meant the account's US$50 budget (bootstrap) was reached before any Testing session.
 - **Production, always on:** about **US$170 a month** with one task per service, about **US$230**
   with two of each API (`prod.tfvars`). Public IPv4 is a quarter of it (US$3.65 per task per
   month). Not within US$50; the production forecast is separate (owner decision of 29 Oct).
@@ -225,4 +255,5 @@ See the migration report for the evidence and the price sources. In brief:
 `terraform fmt -check`, `terraform validate` (both roots) and `terraform test` (14 plan-only runs
 with a mocked AWS provider) pass locally; CI runs them and `shellcheck` on every PR. `tflint` and
 `actionlint` last ran locally on #24. `db-bootstrap.sh` was
-run against PostgreSQL 16. No real plan has run: it needs G2.
+run against PostgreSQL 16. Real nonprod plans ran on 4 and 5 Nov (runs 41887322394 and
+41977870108: 64 creates each); none was applied.
