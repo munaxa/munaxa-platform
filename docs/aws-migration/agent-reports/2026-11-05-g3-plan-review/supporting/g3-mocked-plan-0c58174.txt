@@ -1,0 +1,1234 @@
+# Mocked G3 plan (terraform test -verbose, mock_provider, -var-file=envs/nonprod.tfvars) at munaxa-platform 0c58174.
+# NOT an AWS plan: no credentials, no AWS call. IAM policy documents rendered by data sources are the mock's fixed placeholder; ARNs/ids are 'known after apply'.
+# Terraform 1.16.5 (sha256 2bc2fcff...b5e4), hashicorp/aws 6.67.0 linux_amd64 (sha256 4ce94853...7f63), 5 Nov 2026 about 20:02 UTC.
+tests/g3.tftest.hcl... in progress
+  run "g3"... pass
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_acm_certificate.main will be created
+  + resource "aws_acm_certificate" "main" {
+      + arn                       = (known after apply)
+      + domain_name               = "*.test.munaxa.com"
+      + domain_validation_options = (known after apply)
+      + id                        = (known after apply)
+      + key_algorithm             = (known after apply)
+      + not_after                 = (known after apply)
+      + not_before                = (known after apply)
+      + pending_renewal           = (known after apply)
+      + private_key_wo            = (write-only attribute)
+      + region                    = (known after apply)
+      + renewal_eligibility       = (known after apply)
+      + renewal_summary           = (known after apply)
+      + status                    = (known after apply)
+      + subject_alternative_names = [
+          + "operator-test.munaxa.com",
+        ]
+      + tags_all                  = (known after apply)
+      + type                      = (known after apply)
+      + validation_emails         = (known after apply)
+      + validation_method         = "DNS"
+    }
+
+  # aws_cloudwatch_log_group.ops will be created
+  + resource "aws_cloudwatch_log_group" "ops" {
+      + arn                         = (known after apply)
+      + deletion_protection_enabled = (known after apply)
+      + id                          = (known after apply)
+      + log_group_class             = (known after apply)
+      + name                        = "/munaxa/nonprod/ops"
+      + name_prefix                 = (known after apply)
+      + region                      = (known after apply)
+      + retention_in_days           = 14
+      + tags_all                    = (known after apply)
+    }
+
+  # aws_db_instance.main will be created
+  + resource "aws_db_instance" "main" {
+      + address                               = (known after apply)
+      + allocated_storage                     = 20
+      + apply_immediately                     = false
+      + arn                                   = (known after apply)
+      + auto_minor_version_upgrade            = true
+      + availability_zone                     = (known after apply)
+      + backup_retention_period               = 7
+      + backup_target                         = (known after apply)
+      + backup_window                         = "01:00-02:00"
+      + ca_cert_identifier                    = (known after apply)
+      + character_set_name                    = (known after apply)
+      + copy_tags_to_snapshot                 = true
+      + database_insights_mode                = (known after apply)
+      + db_name                               = "postgres"
+      + db_subnet_group_name                  = "munaxa-nonprod"
+      + deletion_protection                   = true
+      + domain_fqdn                           = (known after apply)
+      + endpoint                              = (known after apply)
+      + engine                                = "postgres"
+      + engine_lifecycle_support              = (known after apply)
+      + engine_version                        = "16"
+      + engine_version_actual                 = (known after apply)
+      + final_snapshot_identifier             = "munaxa-nonprod-pg-final"
+      + hosted_zone_id                        = (known after apply)
+      + id                                    = (known after apply)
+      + identifier                            = "munaxa-nonprod-pg"
+      + identifier_prefix                     = (known after apply)
+      + instance_class                        = "db.t4g.micro"
+      + iops                                  = (known after apply)
+      + kms_key_id                            = (known after apply)
+      + latest_restorable_time                = (known after apply)
+      + license_model                         = (known after apply)
+      + listener_endpoint                     = (known after apply)
+      + maintenance_window                    = "sun:02:30-sun:03:30"
+      + manage_master_user_password           = true
+      + master_user_secret                    = (known after apply)
+      + master_user_secret_kms_key_id         = (known after apply)
+      + monitoring_role_arn                   = (known after apply)
+      + multi_az                              = false
+      + nchar_character_set_name              = (known after apply)
+      + network_type                          = (known after apply)
+      + option_group_name                     = (known after apply)
+      + parameter_group_name                  = "munaxa-nonprod-pg16"
+      + password_wo                           = (write-only attribute)
+      + performance_insights_enabled          = false
+      + performance_insights_kms_key_id       = (known after apply)
+      + performance_insights_retention_period = (known after apply)
+      + port                                  = (known after apply)
+      + publicly_accessible                   = false
+      + region                                = (known after apply)
+      + replica_mode                          = (known after apply)
+      + replicas                              = (known after apply)
+      + resource_id                           = (known after apply)
+      + skip_final_snapshot                   = false
+      + snapshot_identifier                   = (known after apply)
+      + status                                = (known after apply)
+      + storage_encrypted                     = true
+      + storage_throughput                    = (known after apply)
+      + storage_type                          = "gp3"
+      + tags_all                              = (known after apply)
+      + timezone                              = (known after apply)
+      + upgrade_rollout_order                 = (known after apply)
+      + username                              = "munaxa_admin"
+      + vpc_security_group_ids                = [
+          + (known after apply),
+        ]
+    }
+
+  # aws_db_parameter_group.main will be created
+  + resource "aws_db_parameter_group" "main" {
+      + arn         = (known after apply)
+      + family      = "postgres16"
+      + id          = (known after apply)
+      + name        = "munaxa-nonprod-pg16"
+      + name_prefix = (known after apply)
+      + region      = (known after apply)
+      + tags_all    = (known after apply)
+
+      + parameter {
+          + name  = "log_min_duration_statement"
+          + value = "1000"
+        }
+      + parameter {
+          + name  = "rds.force_ssl"
+          + value = "1"
+        }
+    }
+
+  # aws_db_subnet_group.main will be created
+  + resource "aws_db_subnet_group" "main" {
+      + arn                     = (known after apply)
+      + id                      = (known after apply)
+      + name                    = "munaxa-nonprod"
+      + name_prefix             = (known after apply)
+      + region                  = (known after apply)
+      + subnet_ids              = [
+          + (known after apply),
+          + (known after apply),
+          + (known after apply),
+        ]
+      + supported_network_types = (known after apply)
+      + tags_all                = (known after apply)
+      + vpc_id                  = (known after apply)
+    }
+
+  # aws_default_security_group.default will be created
+  + resource "aws_default_security_group" "default" {
+      + arn         = (known after apply)
+      + description = (known after apply)
+      + egress      = (known after apply)
+      + id          = (known after apply)
+      + ingress     = (known after apply)
+      + name        = (known after apply)
+      + name_prefix = (known after apply)
+      + owner_id    = (known after apply)
+      + region      = (known after apply)
+      + tags        = {
+          + "Name" = "munaxa-nonprod-default-unused"
+        }
+      + tags_all    = (known after apply)
+      + vpc_id      = (known after apply)
+    }
+
+  # aws_ecs_cluster.main will be created
+  + resource "aws_ecs_cluster" "main" {
+      + arn      = (known after apply)
+      + id       = (known after apply)
+      + name     = "munaxa-nonprod"
+      + region   = (known after apply)
+      + tags_all = (known after apply)
+
+      + setting {
+          + name  = "containerInsights"
+          + value = "disabled"
+        }
+    }
+
+  # aws_ecs_cluster_capacity_providers.main will be created
+  + resource "aws_ecs_cluster_capacity_providers" "main" {
+      + capacity_providers = [
+          + "FARGATE",
+          + "FARGATE_SPOT",
+        ]
+      + cluster_name       = "munaxa-nonprod"
+      + id                 = (known after apply)
+      + region             = (known after apply)
+
+      + default_capacity_provider_strategy {
+          + capacity_provider = "FARGATE"
+          + weight            = 1
+        }
+    }
+
+  # aws_iam_role.db_admin_execution will be created
+  + resource "aws_iam_role" "db_admin_execution" {
+      + arn                  = (known after apply)
+      + assume_role_policy   = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRole"
+                      + Condition = {
+                          + StringEquals = {
+                              + "aws:SourceAccount" = "229251310592"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "ecs-tasks.amazonaws.com"
+                        }
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + create_date          = (known after apply)
+      + id                   = (known after apply)
+      + managed_policy_arns  = (known after apply)
+      + name                 = "munaxa-nonprod-db-admin-execution"
+      + name_prefix          = (known after apply)
+      + path                 = "/munaxa-shared/"
+      + permissions_boundary = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary"
+      + tags_all             = (known after apply)
+      + unique_id            = (known after apply)
+    }
+
+  # aws_iam_role.docs_db_admin_execution[0] will be created
+  + resource "aws_iam_role" "docs_db_admin_execution" {
+      + arn                  = (known after apply)
+      + assume_role_policy   = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRole"
+                      + Condition = {
+                          + StringEquals = {
+                              + "aws:SourceAccount" = "229251310592"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "ecs-tasks.amazonaws.com"
+                        }
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + create_date          = (known after apply)
+      + id                   = (known after apply)
+      + managed_policy_arns  = (known after apply)
+      + name                 = "munaxa-nonprod-docs-db-admin-execution"
+      + name_prefix          = (known after apply)
+      + path                 = "/munaxa-shared/"
+      + permissions_boundary = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary"
+      + tags_all             = (known after apply)
+      + unique_id            = (known after apply)
+    }
+
+  # aws_iam_role_policy.db_admin_execution will be created
+  + resource "aws_iam_role_policy" "db_admin_execution" {
+      + id          = (known after apply)
+      + name        = "execution"
+      + name_prefix = (known after apply)
+      + policy      = (known after apply)
+      + role        = (known after apply)
+    }
+
+  # aws_iam_role_policy.docs_db_admin_execution[0] will be created
+  + resource "aws_iam_role_policy" "docs_db_admin_execution" {
+      + id          = (known after apply)
+      + name        = "execution"
+      + name_prefix = (known after apply)
+      + policy      = (known after apply)
+      + role        = (known after apply)
+    }
+
+  # aws_internet_gateway.main will be created
+  + resource "aws_internet_gateway" "main" {
+      + arn      = (known after apply)
+      + id       = (known after apply)
+      + owner_id = (known after apply)
+      + region   = (known after apply)
+      + tags     = {
+          + "Name" = "munaxa-nonprod-igw"
+        }
+      + tags_all = (known after apply)
+      + vpc_id   = (known after apply)
+    }
+
+  # aws_kms_alias.data will be created
+  + resource "aws_kms_alias" "data" {
+      + arn            = (known after apply)
+      + id             = (known after apply)
+      + name           = "alias/munaxa-nonprod-data"
+      + name_prefix    = (known after apply)
+      + region         = (known after apply)
+      + target_key_arn = (known after apply)
+      + target_key_id  = (known after apply)
+    }
+
+  # aws_kms_key.data will be created
+  + resource "aws_kms_key" "data" {
+      + arn                     = (known after apply)
+      + deletion_window_in_days = 30
+      + description             = "munaxa-nonprod data at rest: RDS, Secrets Manager bundles, logs"
+      + enable_key_rotation     = true
+      + id                      = (known after apply)
+      + key_id                  = (known after apply)
+      + multi_region            = (known after apply)
+      + policy                  = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "kms:*"
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + AWS = "arn:aws:iam::229251310592:root"
+                        }
+                      + Resource  = "*"
+                      + Sid       = "AccountAdministration"
+                    },
+                  + {
+                      + Action    = [
+                          + "kms:Encrypt",
+                          + "kms:Decrypt",
+                          + "kms:ReEncrypt*",
+                          + "kms:GenerateDataKey*",
+                          + "kms:Describe*",
+                        ]
+                      + Condition = {
+                          + ArnLike = {
+                              + "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/*"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "logs.eu-central-1.amazonaws.com"
+                        }
+                      + Resource  = "*"
+                      + Sid       = "CloudWatchLogs"
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + region                  = (known after apply)
+      + rotation_period_in_days = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_route.public_internet will be created
+  + resource "aws_route" "public_internet" {
+      + destination_cidr_block = "0.0.0.0/0"
+      + gateway_id             = (known after apply)
+      + id                     = (known after apply)
+      + instance_id            = (known after apply)
+      + instance_owner_id      = (known after apply)
+      + network_interface_id   = (known after apply)
+      + origin                 = (known after apply)
+      + region                 = (known after apply)
+      + route_table_id         = (known after apply)
+      + state                  = (known after apply)
+    }
+
+  # aws_route_table.db will be created
+  + resource "aws_route_table" "db" {
+      + arn              = (known after apply)
+      + id               = (known after apply)
+      + owner_id         = (known after apply)
+      + propagating_vgws = (known after apply)
+      + region           = (known after apply)
+      + route            = (known after apply)
+      + tags             = {
+          + "Name" = "munaxa-nonprod-rt-db"
+        }
+      + tags_all         = (known after apply)
+      + vpc_id           = (known after apply)
+    }
+
+  # aws_route_table.public will be created
+  + resource "aws_route_table" "public" {
+      + arn              = (known after apply)
+      + id               = (known after apply)
+      + owner_id         = (known after apply)
+      + propagating_vgws = (known after apply)
+      + region           = (known after apply)
+      + route            = (known after apply)
+      + tags             = {
+          + "Name" = "munaxa-nonprod-rt-public"
+        }
+      + tags_all         = (known after apply)
+      + vpc_id           = (known after apply)
+    }
+
+  # aws_route_table_association.db["a"] will be created
+  + resource "aws_route_table_association" "db" {
+      + id             = (known after apply)
+      + region         = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_route_table_association.db["b"] will be created
+  + resource "aws_route_table_association" "db" {
+      + id             = (known after apply)
+      + region         = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_route_table_association.db["c"] will be created
+  + resource "aws_route_table_association" "db" {
+      + id             = (known after apply)
+      + region         = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_route_table_association.public["a"] will be created
+  + resource "aws_route_table_association" "public" {
+      + id             = (known after apply)
+      + region         = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_route_table_association.public["b"] will be created
+  + resource "aws_route_table_association" "public" {
+      + id             = (known after apply)
+      + region         = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_s3_bucket.files["docs"] will be created
+  + resource "aws_s3_bucket" "files" {
+      + acceleration_status         = (known after apply)
+      + acl                         = (known after apply)
+      + arn                         = (known after apply)
+      + bucket                      = "munaxa-nonprod-docs-files-229251310592"
+      + bucket_domain_name          = (known after apply)
+      + bucket_namespace            = (known after apply)
+      + bucket_prefix               = (known after apply)
+      + bucket_region               = (known after apply)
+      + bucket_regional_domain_name = (known after apply)
+      + hosted_zone_id              = (known after apply)
+      + id                          = (known after apply)
+      + object_lock_enabled         = (known after apply)
+      + policy                      = (known after apply)
+      + region                      = (known after apply)
+      + request_payer               = (known after apply)
+      + tags_all                    = (known after apply)
+      + website_domain              = (known after apply)
+      + website_endpoint            = (known after apply)
+    }
+
+  # aws_s3_bucket.files["school"] will be created
+  + resource "aws_s3_bucket" "files" {
+      + acceleration_status         = (known after apply)
+      + acl                         = (known after apply)
+      + arn                         = (known after apply)
+      + bucket                      = "munaxa-nonprod-school-files-229251310592"
+      + bucket_domain_name          = (known after apply)
+      + bucket_namespace            = (known after apply)
+      + bucket_prefix               = (known after apply)
+      + bucket_region               = (known after apply)
+      + bucket_regional_domain_name = (known after apply)
+      + hosted_zone_id              = (known after apply)
+      + id                          = (known after apply)
+      + object_lock_enabled         = (known after apply)
+      + policy                      = (known after apply)
+      + region                      = (known after apply)
+      + request_payer               = (known after apply)
+      + tags_all                    = (known after apply)
+      + website_domain              = (known after apply)
+      + website_endpoint            = (known after apply)
+    }
+
+  # aws_s3_bucket_cors_configuration.files["docs"] will be created
+  + resource "aws_s3_bucket_cors_configuration" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = (known after apply)
+
+      + cors_rule {
+          + allowed_headers = [
+              + "content-type",
+              + "x-amz-checksum-sha256",
+            ]
+          + allowed_methods = [
+              + "GET",
+              + "PUT",
+            ]
+          + allowed_origins = [
+              + "https://docs.test.munaxa.com",
+            ]
+          + expose_headers  = [
+              + "ETag",
+            ]
+          + max_age_seconds = 3000
+        }
+    }
+
+  # aws_s3_bucket_cors_configuration.files["school"] will be created
+  + resource "aws_s3_bucket_cors_configuration" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = (known after apply)
+
+      + cors_rule {
+          + allowed_headers = [
+              + "content-length",
+              + "content-type",
+            ]
+          + allowed_methods = [
+              + "GET",
+              + "PUT",
+            ]
+          + allowed_origins = [
+              + "https://school.test.munaxa.com",
+            ]
+          + expose_headers  = []
+          + max_age_seconds = 3000
+        }
+    }
+
+  # aws_s3_bucket_lifecycle_configuration.files["docs"] will be created
+  + resource "aws_s3_bucket_lifecycle_configuration" "files" {
+      + bucket                                 = (known after apply)
+      + expected_bucket_owner                  = (known after apply)
+      + id                                     = (known after apply)
+      + region                                 = (known after apply)
+      + transition_default_minimum_object_size = (known after apply)
+
+      + rule {
+          + id     = "incomplete-uploads"
+          + prefix = (known after apply)
+          + status = "Enabled"
+
+          + abort_incomplete_multipart_upload {
+              + days_after_initiation = 1
+            }
+
+          + filter {
+              + object_size_greater_than = (known after apply)
+              + object_size_less_than    = (known after apply)
+              + prefix                   = (known after apply)
+            }
+        }
+      + rule {
+          + id     = "noncurrent-versions"
+          + prefix = (known after apply)
+          + status = "Enabled"
+
+          + filter {
+              + object_size_greater_than = (known after apply)
+              + object_size_less_than    = (known after apply)
+              + prefix                   = (known after apply)
+            }
+
+          + noncurrent_version_expiration {
+              + newer_noncurrent_versions = 3
+              + noncurrent_days           = 30
+            }
+        }
+    }
+
+  # aws_s3_bucket_lifecycle_configuration.files["school"] will be created
+  + resource "aws_s3_bucket_lifecycle_configuration" "files" {
+      + bucket                                 = (known after apply)
+      + expected_bucket_owner                  = (known after apply)
+      + id                                     = (known after apply)
+      + region                                 = (known after apply)
+      + transition_default_minimum_object_size = (known after apply)
+
+      + rule {
+          + id     = "incomplete-uploads"
+          + prefix = (known after apply)
+          + status = "Enabled"
+
+          + abort_incomplete_multipart_upload {
+              + days_after_initiation = 1
+            }
+
+          + filter {
+              + object_size_greater_than = (known after apply)
+              + object_size_less_than    = (known after apply)
+              + prefix                   = (known after apply)
+            }
+        }
+    }
+
+  # aws_s3_bucket_ownership_controls.files["docs"] will be created
+  + resource "aws_s3_bucket_ownership_controls" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = (known after apply)
+
+      + rule {
+          + object_ownership = "BucketOwnerEnforced"
+        }
+    }
+
+  # aws_s3_bucket_ownership_controls.files["school"] will be created
+  + resource "aws_s3_bucket_ownership_controls" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = (known after apply)
+
+      + rule {
+          + object_ownership = "BucketOwnerEnforced"
+        }
+    }
+
+  # aws_s3_bucket_policy.files["docs"] will be created
+  + resource "aws_s3_bucket_policy" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + policy = (known after apply)
+      + region = (known after apply)
+    }
+
+  # aws_s3_bucket_policy.files["school"] will be created
+  + resource "aws_s3_bucket_policy" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + policy = (known after apply)
+      + region = (known after apply)
+    }
+
+  # aws_s3_bucket_public_access_block.files["docs"] will be created
+  + resource "aws_s3_bucket_public_access_block" "files" {
+      + block_public_acls       = true
+      + block_public_policy     = true
+      + bucket                  = (known after apply)
+      + id                      = (known after apply)
+      + ignore_public_acls      = true
+      + region                  = (known after apply)
+      + restrict_public_buckets = true
+    }
+
+  # aws_s3_bucket_public_access_block.files["school"] will be created
+  + resource "aws_s3_bucket_public_access_block" "files" {
+      + block_public_acls       = true
+      + block_public_policy     = true
+      + bucket                  = (known after apply)
+      + id                      = (known after apply)
+      + ignore_public_acls      = true
+      + region                  = (known after apply)
+      + restrict_public_buckets = true
+    }
+
+  # aws_s3_bucket_server_side_encryption_configuration.files["docs"] will be created
+  + resource "aws_s3_bucket_server_side_encryption_configuration" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = (known after apply)
+
+      + rule {
+          + blocked_encryption_types = (known after apply)
+          + bucket_key_enabled       = (known after apply)
+
+          + apply_server_side_encryption_by_default {
+              + kms_master_key_id = (known after apply)
+              + sse_algorithm     = "AES256"
+            }
+        }
+    }
+
+  # aws_s3_bucket_server_side_encryption_configuration.files["school"] will be created
+  + resource "aws_s3_bucket_server_side_encryption_configuration" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = (known after apply)
+
+      + rule {
+          + blocked_encryption_types = (known after apply)
+          + bucket_key_enabled       = (known after apply)
+
+          + apply_server_side_encryption_by_default {
+              + kms_master_key_id = (known after apply)
+              + sse_algorithm     = "AES256"
+            }
+        }
+    }
+
+  # aws_s3_bucket_versioning.files["docs"] will be created
+  + resource "aws_s3_bucket_versioning" "files" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = (known after apply)
+
+      + versioning_configuration {
+          + mfa_delete = (known after apply)
+          + status     = "Enabled"
+        }
+    }
+
+  # aws_secretsmanager_secret.service["control-api"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "control-api bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/control-api"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["control-migrate"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "control-migrate bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/control-migrate"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["docs-api"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "docs-api bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/docs-api"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["docs-operator"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "docs-operator bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/docs-operator"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["identity"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "identity bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/identity"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["identity-migrate"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "identity-migrate bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/identity-migrate"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["school-api"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "school-api bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/school-api"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["school-migrate"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "school-migrate bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/school-migrate"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["work-api"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "work-api bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/work-api"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_secretsmanager_secret.service["work-migrate"] will be created
+  + resource "aws_secretsmanager_secret" "service" {
+      + arn                     = (known after apply)
+      + description             = "work-migrate bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+      + id                      = (known after apply)
+      + kms_key_id              = (known after apply)
+      + name                    = "munaxa-nonprod/work-migrate"
+      + name_prefix             = (known after apply)
+      + policy                  = (known after apply)
+      + recovery_window_in_days = 30
+      + region                  = (known after apply)
+      + tags_all                = (known after apply)
+    }
+
+  # aws_security_group.alb will be created
+  + resource "aws_security_group" "alb" {
+      + arn         = (known after apply)
+      + description = "The shared ALB: 80 and 443 from the internet; to tasks on their ports only"
+      + egress      = (known after apply)
+      + id          = (known after apply)
+      + ingress     = (known after apply)
+      + name        = "munaxa-nonprod-alb"
+      + name_prefix = (known after apply)
+      + owner_id    = (known after apply)
+      + region      = (known after apply)
+      + tags        = {
+          + "Name" = "munaxa-nonprod-alb"
+        }
+      + tags_all    = (known after apply)
+      + vpc_id      = (known after apply)
+    }
+
+  # aws_security_group.database will be created
+  + resource "aws_security_group" "database" {
+      + arn         = (known after apply)
+      + description = "Shared PostgreSQL: admits each service's tasks and the db-admin task on 5432, nothing else"
+      + egress      = (known after apply)
+      + id          = (known after apply)
+      + ingress     = (known after apply)
+      + name        = "munaxa-nonprod-database"
+      + name_prefix = (known after apply)
+      + owner_id    = (known after apply)
+      + region      = (known after apply)
+      + tags        = {
+          + "Name" = "munaxa-nonprod-database"
+        }
+      + tags_all    = (known after apply)
+      + vpc_id      = (known after apply)
+    }
+
+  # aws_security_group.db_admin will be created
+  + resource "aws_security_group" "db_admin" {
+      + arn         = (known after apply)
+      + description = "The db-admin task: 5432 to the database, 443 to AWS APIs, no inbound"
+      + egress      = (known after apply)
+      + id          = (known after apply)
+      + ingress     = (known after apply)
+      + name        = "munaxa-nonprod-db-admin"
+      + name_prefix = (known after apply)
+      + owner_id    = (known after apply)
+      + region      = (known after apply)
+      + tags        = {
+          + "Name" = "munaxa-nonprod-db-admin"
+        }
+      + tags_all    = (known after apply)
+      + vpc_id      = (known after apply)
+    }
+
+  # aws_service_discovery_private_dns_namespace.main will be created
+  + resource "aws_service_discovery_private_dns_namespace" "main" {
+      + arn         = (known after apply)
+      + description = "Munaxa nonprod private service names"
+      + hosted_zone = (known after apply)
+      + id          = (known after apply)
+      + name        = "nonprod.munaxa.internal"
+      + region      = (known after apply)
+      + tags_all    = (known after apply)
+      + vpc         = (known after apply)
+    }
+
+  # aws_subnet.db["a"] will be created
+  + resource "aws_subnet" "db" {
+      + arn                                 = (known after apply)
+      + availability_zone                   = "eu-central-1a"
+      + availability_zone_id                = (known after apply)
+      + cidr_block                          = "10.130.64.0/24"
+      + id                                  = (known after apply)
+      + ipv6_cidr_block                     = (known after apply)
+      + ipv6_cidr_block_association_id      = (known after apply)
+      + map_public_ip_on_launch             = false
+      + owner_id                            = (known after apply)
+      + private_dns_hostname_type_on_launch = (known after apply)
+      + region                              = (known after apply)
+      + tags                                = {
+          + "Name" = "munaxa-nonprod-db-a"
+          + "Tier" = "db"
+        }
+      + tags_all                            = (known after apply)
+      + vpc_id                              = (known after apply)
+    }
+
+  # aws_subnet.db["b"] will be created
+  + resource "aws_subnet" "db" {
+      + arn                                 = (known after apply)
+      + availability_zone                   = "eu-central-1b"
+      + availability_zone_id                = (known after apply)
+      + cidr_block                          = "10.130.65.0/24"
+      + id                                  = (known after apply)
+      + ipv6_cidr_block                     = (known after apply)
+      + ipv6_cidr_block_association_id      = (known after apply)
+      + map_public_ip_on_launch             = false
+      + owner_id                            = (known after apply)
+      + private_dns_hostname_type_on_launch = (known after apply)
+      + region                              = (known after apply)
+      + tags                                = {
+          + "Name" = "munaxa-nonprod-db-b"
+          + "Tier" = "db"
+        }
+      + tags_all                            = (known after apply)
+      + vpc_id                              = (known after apply)
+    }
+
+  # aws_subnet.db["c"] will be created
+  + resource "aws_subnet" "db" {
+      + arn                                 = (known after apply)
+      + availability_zone                   = "eu-central-1c"
+      + availability_zone_id                = (known after apply)
+      + cidr_block                          = "10.130.66.0/24"
+      + id                                  = (known after apply)
+      + ipv6_cidr_block                     = (known after apply)
+      + ipv6_cidr_block_association_id      = (known after apply)
+      + map_public_ip_on_launch             = false
+      + owner_id                            = (known after apply)
+      + private_dns_hostname_type_on_launch = (known after apply)
+      + region                              = (known after apply)
+      + tags                                = {
+          + "Name" = "munaxa-nonprod-db-c"
+          + "Tier" = "db"
+        }
+      + tags_all                            = (known after apply)
+      + vpc_id                              = (known after apply)
+    }
+
+  # aws_subnet.public["a"] will be created
+  + resource "aws_subnet" "public" {
+      + arn                                 = (known after apply)
+      + availability_zone                   = "eu-central-1a"
+      + availability_zone_id                = (known after apply)
+      + cidr_block                          = "10.130.0.0/24"
+      + id                                  = (known after apply)
+      + ipv6_cidr_block                     = (known after apply)
+      + ipv6_cidr_block_association_id      = (known after apply)
+      + map_public_ip_on_launch             = false
+      + owner_id                            = (known after apply)
+      + private_dns_hostname_type_on_launch = (known after apply)
+      + region                              = (known after apply)
+      + tags                                = {
+          + "Name" = "munaxa-nonprod-public-a"
+          + "Tier" = "public"
+        }
+      + tags_all                            = (known after apply)
+      + vpc_id                              = (known after apply)
+    }
+
+  # aws_subnet.public["b"] will be created
+  + resource "aws_subnet" "public" {
+      + arn                                 = (known after apply)
+      + availability_zone                   = "eu-central-1b"
+      + availability_zone_id                = (known after apply)
+      + cidr_block                          = "10.130.1.0/24"
+      + id                                  = (known after apply)
+      + ipv6_cidr_block                     = (known after apply)
+      + ipv6_cidr_block_association_id      = (known after apply)
+      + map_public_ip_on_launch             = false
+      + owner_id                            = (known after apply)
+      + private_dns_hostname_type_on_launch = (known after apply)
+      + region                              = (known after apply)
+      + tags                                = {
+          + "Name" = "munaxa-nonprod-public-b"
+          + "Tier" = "public"
+        }
+      + tags_all                            = (known after apply)
+      + vpc_id                              = (known after apply)
+    }
+
+  # aws_vpc.main will be created
+  + resource "aws_vpc" "main" {
+      + arn                                  = (known after apply)
+      + cidr_block                           = "10.130.0.0/16"
+      + default_network_acl_id               = (known after apply)
+      + default_route_table_id               = (known after apply)
+      + default_security_group_id            = (known after apply)
+      + dhcp_options_id                      = (known after apply)
+      + enable_dns_hostnames                 = true
+      + enable_dns_support                   = true
+      + enable_network_address_usage_metrics = (known after apply)
+      + id                                   = (known after apply)
+      + ipv6_association_id                  = (known after apply)
+      + ipv6_cidr_block                      = (known after apply)
+      + ipv6_cidr_block_network_border_group = (known after apply)
+      + main_route_table_id                  = (known after apply)
+      + owner_id                             = (known after apply)
+      + region                               = (known after apply)
+      + tags                                 = {
+          + "Name" = "munaxa-nonprod"
+        }
+      + tags_all                             = (known after apply)
+    }
+
+  # aws_vpc_endpoint.s3 will be created
+  + resource "aws_vpc_endpoint" "s3" {
+      + arn                   = (known after apply)
+      + cidr_blocks           = (known after apply)
+      + dns_entry             = (known after apply)
+      + id                    = (known after apply)
+      + ip_address_type       = (known after apply)
+      + network_interface_ids = (known after apply)
+      + owner_id              = (known after apply)
+      + policy                = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = [
+                          + "s3:GetObject",
+                        ]
+                      + Effect    = "Allow"
+                      + Principal = "*"
+                      + Resource  = [
+                          + "arn:aws:s3:::prod-eu-central-1-starport-layer-bucket/*",
+                        ]
+                      + Sid       = "EcrImageLayers"
+                    },
+                  + {
+                      + Action    = [
+                          + "s3:GetObject",
+                          + "s3:PutObject",
+                          + "s3:DeleteObject",
+                          + "s3:AbortMultipartUpload",
+                          + "s3:ListBucket",
+                        ]
+                      + Effect    = "Allow"
+                      + Principal = "*"
+                      + Resource  = [
+                          + "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592",
+                          + "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592/*",
+                          + "arn:aws:s3:::munaxa-nonprod-school-files-229251310592",
+                          + "arn:aws:s3:::munaxa-nonprod-school-files-229251310592/*",
+                        ]
+                      + Sid       = "OwnFileBuckets"
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + prefix_list_id        = (known after apply)
+      + private_dns_enabled   = (known after apply)
+      + region                = (known after apply)
+      + requester_managed     = (known after apply)
+      + route_table_ids       = [
+          + (known after apply),
+        ]
+      + security_group_ids    = (known after apply)
+      + service_name          = "com.amazonaws.eu-central-1.s3"
+      + service_region        = (known after apply)
+      + state                 = (known after apply)
+      + subnet_ids            = (known after apply)
+      + tags                  = {
+          + "Name" = "munaxa-nonprod-s3"
+        }
+      + tags_all              = (known after apply)
+      + vpc_endpoint_type     = "Gateway"
+      + vpc_id                = (known after apply)
+    }
+
+  # aws_vpc_security_group_egress_rule.db_admin_database will be created
+  + resource "aws_vpc_security_group_egress_rule" "db_admin_database" {
+      + arn                          = (known after apply)
+      + description                  = "PostgreSQL"
+      + from_port                    = 5432
+      + id                           = (known after apply)
+      + ip_protocol                  = "tcp"
+      + referenced_security_group_id = (known after apply)
+      + region                       = (known after apply)
+      + security_group_id            = (known after apply)
+      + security_group_rule_id       = (known after apply)
+      + tags_all                     = (known after apply)
+      + to_port                      = 5432
+    }
+
+  # aws_vpc_security_group_egress_rule.db_admin_https will be created
+  + resource "aws_vpc_security_group_egress_rule" "db_admin_https" {
+      + arn                    = (known after apply)
+      + cidr_ipv4              = "0.0.0.0/0"
+      + description            = "HTTPS: ECR Public, Secrets Manager, logs"
+      + from_port              = 443
+      + id                     = (known after apply)
+      + ip_protocol            = "tcp"
+      + region                 = (known after apply)
+      + security_group_id      = (known after apply)
+      + security_group_rule_id = (known after apply)
+      + tags_all               = (known after apply)
+      + to_port                = 443
+    }
+
+  # aws_vpc_security_group_ingress_rule.alb["443"] will be created
+  + resource "aws_vpc_security_group_ingress_rule" "alb" {
+      + arn                    = (known after apply)
+      + cidr_ipv4              = "0.0.0.0/0"
+      + description            = "HTTPS from the internet"
+      + from_port              = 443
+      + id                     = (known after apply)
+      + ip_protocol            = "tcp"
+      + region                 = (known after apply)
+      + security_group_id      = (known after apply)
+      + security_group_rule_id = (known after apply)
+      + tags_all               = (known after apply)
+      + to_port                = 443
+    }
+
+  # aws_vpc_security_group_ingress_rule.alb["80"] will be created
+  + resource "aws_vpc_security_group_ingress_rule" "alb" {
+      + arn                    = (known after apply)
+      + cidr_ipv4              = "0.0.0.0/0"
+      + description            = "HTTP (redirected) from the internet"
+      + from_port              = 80
+      + id                     = (known after apply)
+      + ip_protocol            = "tcp"
+      + region                 = (known after apply)
+      + security_group_id      = (known after apply)
+      + security_group_rule_id = (known after apply)
+      + tags_all               = (known after apply)
+      + to_port                = 80
+    }
+
+  # aws_vpc_security_group_ingress_rule.database_from_db_admin will be created
+  + resource "aws_vpc_security_group_ingress_rule" "database_from_db_admin" {
+      + arn                          = (known after apply)
+      + description                  = "PostgreSQL from the db-admin task"
+      + from_port                    = 5432
+      + id                           = (known after apply)
+      + ip_protocol                  = "tcp"
+      + referenced_security_group_id = (known after apply)
+      + region                       = (known after apply)
+      + security_group_id            = (known after apply)
+      + security_group_rule_id       = (known after apply)
+      + tags_all                     = (known after apply)
+      + to_port                      = 5432
+    }
+
+Plan: 64 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + certificate_validation_records = (known after apply)
+  + cluster_name                   = "munaxa-nonprod"
+  + database_endpoint              = (known after apply)
+  + file_buckets                   = {
+      + docs   = "munaxa-nonprod-docs-files-229251310592"
+      + school = "munaxa-nonprod-school-files-229251310592"
+    }
+  + hosts                          = {
+      + control_api = "control-api.test.munaxa.com"
+      + docs        = "docs.test.munaxa.com"
+      + identity    = "id.test.munaxa.com"
+      + operator    = "operator-test.munaxa.com"
+      + school      = "school.test.munaxa.com"
+      + work        = "work.test.munaxa.com"
+    }
+  + run_task_network               = {
+      + db_admin_definition           = null
+      + db_admin_group                = (known after apply)
+      + docs_api_group                = null
+      + docs_db_admin_definition      = null
+      + docs_provision_definition     = null
+      + identity_bootstrap_definition = null
+      + migrate_groups                = {}
+      + school_bootstrap_definition   = null
+      + subnets                       = [
+          + (known after apply),
+          + (known after apply),
+        ]
+    }
+  + secret_bundles                 = {
+      + control-api      = "munaxa-nonprod/control-api"
+      + control-migrate  = "munaxa-nonprod/control-migrate"
+      + docs-api         = "munaxa-nonprod/docs-api"
+      + docs-operator    = "munaxa-nonprod/docs-operator"
+      + identity         = "munaxa-nonprod/identity"
+      + identity-migrate = "munaxa-nonprod/identity-migrate"
+      + school-api       = "munaxa-nonprod/school-api"
+      + school-migrate   = "munaxa-nonprod/school-migrate"
+      + work-api         = "munaxa-nonprod/work-api"
+      + work-migrate     = "munaxa-nonprod/work-migrate"
+    }
+
+tests/g3.tftest.hcl... tearing down
+tests/g3.tftest.hcl... pass
+
+Success! 1 passed, 0 failed.
