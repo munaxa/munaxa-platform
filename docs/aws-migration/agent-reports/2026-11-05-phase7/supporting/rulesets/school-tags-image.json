@@ -11,10 +11,7 @@
   ],
   "conditions": {
     "ref_name": {
-      "include": [
-        "refs/tags/image/*",
-        "refs/tags/image/**/*"
-      ],
+      "include": ["refs/tags/image/*", "refs/tags/image/**/*"],
       "exclude": []
     }
   },

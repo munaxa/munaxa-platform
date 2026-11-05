@@ -4,81 +4,55 @@
   "changes": [
     {
       "address": "aws_iam_role.session_backstop[0]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_iam_role_policy.session_backstop[0]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"control-api\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"control-portal\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"docs-api\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"docs-scanner\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"docs-web\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"identity\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"school-admin\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"school-api\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"work-admin\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.scale_in[\"work-api\"]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     },
     {
       "address": "aws_scheduler_schedule.stop_database[0]",
-      "actions": [
-        "create"
-      ]
+      "actions": ["create"]
     }
   ]
 }
