@@ -1,0 +1,45 @@
+{
+    "EvaluationResults": [
+        {
+            "EvalActionName": "logs:GetLogEvents",
+            "EvalResourceName": "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/identity",
+            "EvalDecision": "explicitDeny",
+            "MatchedStatements": [
+                {
+                    "SourcePolicyId": "PolicyInputList.1",
+                    "SourcePolicyType": "IAM Policy",
+                    "StartPosition": {
+                        "Line": 1,
+                        "Column": 120
+                    },
+                    "EndPosition": {
+                        "Line": 1,
+                        "Column": 201
+                    }
+                }
+            ],
+            "MissingContextValues": [],
+            "EvalDecisionDetails": {},
+            "ResourceSpecificResults": [
+                {
+                    "EvalResourceName": "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/identity",
+                    "EvalResourceDecision": "explicitDeny",
+                    "MatchedStatements": [
+                        {
+                            "SourcePolicyId": "PolicyInputList.1",
+                            "SourcePolicyType": "IAM Policy",
+                            "StartPosition": {
+                                "Line": 1,
+                                "Column": 120
+                            },
+                            "EndPosition": {
+                                "Line": 1,
+                                "Column": 201
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

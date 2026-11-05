@@ -1,0 +1,18 @@
+{
+    "EvaluationResults": [
+        {
+            "EvalActionName": "logs:GetLogEvents",
+            "EvalResourceName": "arn:aws:logs:eu-central-1:229251310592:log-group:/aws/other",
+            "EvalDecision": "implicitDeny",
+            "MatchedStatements": [],
+            "MissingContextValues": [],
+            "EvalDecisionDetails": {},
+            "ResourceSpecificResults": [
+                {
+                    "EvalResourceName": "arn:aws:logs:eu-central-1:229251310592:log-group:/aws/other",
+                    "EvalResourceDecision": "implicitDeny"
+                }
+            ]
+        }
+    ]
+}

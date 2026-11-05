@@ -10,3 +10,5 @@ landing
 munaxalanding.bak
 *.md
 storybook-static/
+# Owner-provided AWS output, kept byte for byte (sha256 in SHA256SUMS)
+docs/aws-migration/agent-reports/**/diagnostic-*-results/
