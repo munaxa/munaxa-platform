@@ -1,0 +1,41 @@
+# Mock runs of rev3 (744c67c) with a fake aws on PATH (mock/fake_aws.py; no AWS). [L]
+== always-allowed exit=1
+RESULT total=481 expected_match=215 unexpected_mismatch=266 api_errors=0 harness_errors=0 expected_total=481 complete=yes results=always-allowed.tsv
+== api-error-every-call exit=1
+RESULT total=481 expected_match=0 unexpected_mismatch=481 api_errors=481 harness_errors=0 expected_total=481 complete=yes results=api-error-every-call.tsv
+== harness-error-variant exit=1
+RESULT total=481 expected_match=480 unexpected_mismatch=1 api_errors=0 harness_errors=1 expected_total=481 complete=yes results=harness-error-variant.tsv
+== local-744c67c-again exit=0
+RESULT total=481 expected_match=481 unexpected_mismatch=0 api_errors=0 harness_errors=0 expected_total=481 complete=yes results=local-744c67c-again.tsv
+== local-744c67c exit=0
+RESULT total=481 expected_match=481 unexpected_mismatch=0 api_errors=0 harness_errors=0 expected_total=481 complete=yes results=local-744c67c.tsv
+== malformed-requestcertificate exit=1
+RESULT total=481 expected_match=472 unexpected_mismatch=9 api_errors=9 harness_errors=0 expected_total=481 complete=yes results=malformed-requestcertificate.tsv
+== preflight-on-46dfbd9 exit=2
+RESULT total=0 expected_match=0 unexpected_mismatch=0 api_errors=0 harness_errors=0 expected_total=481 preflight=failed results=none
+== preflight-on-58b80f4 exit=2
+RESULT total=0 expected_match=0 unexpected_mismatch=0 api_errors=0 harness_errors=0 expected_total=481 preflight=failed results=none
+== preflight-on-e78aa92 exit=2
+RESULT total=0 expected_match=0 unexpected_mismatch=0 api_errors=0 harness_errors=0 expected_total=481 preflight=failed results=none
+== rev2-on-744c67c exit=1
+RESULT total=332 expected_match=319 unexpected_mismatch=13 expected_total=332 complete=yes results=rev2-on-744c67c.tsv
+== stop-on-mismatch exit=1
+RESULT total=2 expected_match=1 unexpected_mismatch=1 api_errors=0 harness_errors=0 expected_total=481 complete=no results=stop-on-mismatch.tsv
+two local runs: stdout identical apart from the results path (DETERMINISTIC)
+two local runs: results TSV identical
+FAIL ids, rev2 on 744c67c policies: D30.1 S04.1 S04.2 SR081.1 SR081.2 SR082.1 SR083.1 SR092.2 SR093.2 SR094.1 SR094.2 SR095.1 N82.1
+preflight on 46dfbd9: PRECONDITION FAILED: boundary-nonprod is not the #43 version (no NeverFromADeployerSession: is the second re-apply done?)
+preflight on e78aa92: PRECONDITION FAILED: munaxa-shared-deployer-nonprod-allow has no iam:ListRoleTags (744c67c not applied)
+preflight on 58b80f4: PRECONDITION FAILED: munaxa-shared-deployer-nonprod-allow has no iam:ListRoleTags (744c67c not applied)
+AWS operations invoked in local-744c67c:
+      4 iam get-policy
+      4 iam get-policy-version
+      1 iam get-role-policy
+      3 iam list-attached-role-policies
+      4 iam list-role-policies
+     50 iam simulate-custom-policy
+    431 iam simulate-principal-policy
+      1 kms describe-key
+      1 sts get-caller-identity
+boundary-nonprod.json: 16 statements in 3 documents of 1463/1342/271 characters
+boundary-prod.json: 15 statements in 2 documents of 1448/1333 characters

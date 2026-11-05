@@ -1,0 +1,58 @@
+{
+  "root": "stack-nonprod",
+  "intent": "Testing's AWS-side shutdown backstop (owner decision D-4 = B, phase 7): session_backstop_schedule = cron(0 21 * * ? *) in envs/nonprod.tfvars. 13 creates: the scheduler role, its inline policy, the database stop schedule and 10 scale-in schedules. Nothing else changes.",
+  "changes": [
+    {
+      "address": "aws_iam_role.session_backstop[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role_policy.session_backstop[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"control-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"control-portal\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"docs-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"docs-scanner\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"docs-web\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"identity\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"school-admin\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"school-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"work-admin\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"work-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.stop_database[0]",
+      "actions": ["create"]
+    }
+  ]
+}
