@@ -408,6 +408,15 @@ run "h3_sessions_have_a_narrow_deployer" {
     error_message = "R10: the session is denied every security-group rule write, and never retags a group."
   }
 
+  assert {
+    condition = length([
+      for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s.sid
+      if s.sid == "SessionNeverNetworkPlacement" && s.effect == "Deny" && contains(s.resources, "*")
+      && length(setsubtract(["elasticloadbalancing:SetSecurityGroups", "elasticloadbalancing:SetSubnets", "ec2:ModifyNetworkInterfaceAttribute", "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup"], s.actions)) == 0
+    ]) == 1
+    error_message = "P4: the session never moves an ALB, a service or an interface to another group or subnet."
+  }
+
   # Review B-2: a session plan refreshes the whole stack; its extra reads are reads, on nonprod only.
   assert {
     condition = alltrue(flatten([

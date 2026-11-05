@@ -3,7 +3,8 @@
 #
 #   stopped, stopping     nothing to do (green)
 #   available             stop requested (green)
-#   a passing state       wait (starting after the seven-day auto-restart, backing-up, modifying, ...)
+#   a passing state       wait (creating during the G3 apply, starting after the seven-day auto-restart,
+#                         backing-up, modifying, ...)
 #                         and stop once available; still not available after STOP_WAIT_SECONDS: red
 #   not found             green notice (before the first apply)
 #   anything else         red, so a failed backstop is visible in the run list
@@ -41,11 +42,14 @@ while :; do
       exit 0
       ;;
     available)
-      aws rds stop-db-instance --db-instance-identifier "$db" >/dev/null
+      if ! err=$(aws rds stop-db-instance --db-instance-identifier "$db" 2>&1 >/dev/null); then
+        echo "::error::database $db: the stop request failed: $err"
+        exit 1
+      fi
       echo "database $db: was available, stop requested"
       exit 0
       ;;
-    starting | backing-up | modifying | maintenance | rebooting | renaming | upgrading | storage-optimization | \
+    creating | starting | backing-up | modifying | maintenance | rebooting | renaming | upgrading | storage-optimization | \
       configuring-enhanced-monitoring | configuring-iam-database-auth | configuring-log-exports | resetting-master-credentials)
       if [ "$SECONDS" -ge "$deadline" ]; then
         echo "::error::database $db still $status after ${wait_seconds}s: not stopped (the AWS-side backstop retries at its own time)"
@@ -53,7 +57,10 @@ while :; do
       fi
       echo "database $db: $status, waiting"
       sleep "$poll_seconds"
-      status=$(describe)
+      if ! status=$(describe 2>&1); then
+        echo "::error::cannot read the state of $db while waiting: $status"
+        exit 1
+      fi
       ;;
     *)
       echo "::error::database $db is $status: not stopped"

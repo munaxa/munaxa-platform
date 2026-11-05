@@ -127,6 +127,21 @@ data "aws_iam_policy_document" "deployer_session" {
     resources = ["*"]
   }
 
+  # P4: nor may a session move an ALB, a service or an interface into another group or subnet,
+  # or create or delete a group. EC2 has no allow here at all; these denies keep it so, and the
+  # ELB ones narrow elasticloadbalancing:*. ECS has no resource for the groups a service names: aws-session.yml
+  # checks every service's and the ALB's placement in the plan.
+  statement {
+    sid    = "SessionNeverNetworkPlacement"
+    effect = "Deny"
+    actions = [
+      "elasticloadbalancing:SetSecurityGroups", "elasticloadbalancing:SetSubnets",
+      "elasticloadbalancing:SetIpAddressType", "ec2:ModifyNetworkInterfaceAttribute",
+      "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup",
+    ]
+    resources = ["*"]
+  }
+
   statement {
     sid       = "SessionNeverGroupTags"
     effect    = "Deny"

@@ -21,9 +21,10 @@
 # verify the roles). Any other answer than "exists" or "not found" fails the job.
 #
 # The session changes only the two switches: the plan must contain nothing but the ALB, listeners,
-# listener rules, target groups, ALB egress rules, ECS services and service-discovery entries, or
-# the job stops before applying. The plan's attribute values are not printed (public logs): the
-# summary lists addresses and actions only, and Terraform's errors still reach the log.
+# listener rules, target groups, ECS services and service-discovery entries (no security-group
+# rule: R10), each ALB and service in its own group and public subnets (P4), or the job stops
+# before applying. The plan's attribute values are not printed (public logs): the summary lists
+# addresses and actions only; Terraform's errors reach the log, and of its warnings the headings.
 
 name: AWS Testing session
 
@@ -142,6 +143,8 @@ jobs:
           set -euo pipefail
           creds=$(aws sts assume-role --role-arn "$DEPLOYER_ROLE_ARN" --role-session-name "gha-run-$GITHUB_RUN_ID" --source-identity github-actions --query Credentials --output json)
           {
+            # The key id too: it goes to GITHUB_ENV, whose values each later step header lists.
+            echo "::add-mask::$(jq -r .AccessKeyId <<<"$creds")"
             echo "::add-mask::$(jq -r .SecretAccessKey <<<"$creds")"
             echo "::add-mask::$(jq -r .SessionToken <<<"$creds")"
           }
@@ -195,9 +198,12 @@ jobs:
         run: |
           set -euo pipefail
           on=$([ "$SESSION" = up ] && echo true || echo false)
-          # The human-readable plan (attribute values) stays out of the public log; errors go to stderr.
+          # The human-readable plan (attribute values) stays out of the public log; errors go to
+          # stderr. Warnings go to stdout with the plan, so only their headings are printed.
           terraform plan -input=false -no-color -lock-timeout=5m -var-file=envs/nonprod.tfvars \
-            -var "edge_enabled=$on" -var "services_enabled=$on" -out=tfplan > /dev/null
+            -var "edge_enabled=$on" -var "services_enabled=$on" -out=tfplan > plan.stdout
+          grep -E '^Warning: ' plan.stdout | sort -u | sed 's/^/::warning::/' || true
+          rm -f plan.stdout
           terraform show -json tfplan > plan.json
           "$GITHUB_WORKSPACE/scripts/terraform/plan-summary.sh" plan.json | tee -a "$GITHUB_STEP_SUMMARY"
           # Anything beyond the session's own resource types stops the job before the apply. Every
@@ -208,8 +214,13 @@ jobs:
                                  "aws_acm_certificate_validation","aws_ecs_service",
                                  "aws_service_discovery_service") | not)
             | .address] | join(", ")' plan.json)
+          # P4: the allowed types must also keep their network placement. IAM cannot pin which
+          # groups and subnets an ALB or a service names (elasticloadbalancing:* and
+          # ecs:UpdateService take any group of the VPC), so the plan is checked here.
+          misplaced=$(jq -r -f "$GITHUB_WORKSPACE/scripts/terraform/session-network-placement.jq" plan.json)
           rm -f plan.json
           [ -z "$unexpected" ] || { echo "::error::the session plan changes more than the session: $unexpected"; exit 1; }
+          [ -z "$misplaced" ] || { echo "::error::the session plan changes network placement: $misplaced"; exit 1; }
 
       # After the plan check, so a refused `up` never starts the database.
       - name: Start the database
@@ -225,16 +236,20 @@ jobs:
       - name: Apply the switches
         if: steps.stack.outputs.exists == 'true'
         run: |
-          terraform apply -input=false -no-color -lock-timeout=5m tfplan > /dev/null
+          set -euo pipefail
+          terraform apply -input=false -no-color -lock-timeout=5m tfplan > apply.stdout
+          grep -E '^Warning: ' apply.stdout | sort -u | sed 's/^/::warning::/' || true
+          rm -f apply.stdout
           echo "Session $SESSION applied." | tee -a "$GITHUB_STEP_SUMMARY"
 
       # Runs on `down` even when the plan or apply above failed (the database job has normally
-      # stopped it already; this catches one the switches started), and on a failed `up`, so a
-      # session that never came up does not keep the database running until the evening.
+      # stopped it already; this catches one the switches started), and on an `up` that failed or
+      # was cancelled (timeout-minutes cancels the job, and failure() is false then), so a session
+      # that never came up does not keep the database running until the evening.
       - name: Stop the database
         if: >-
           always() && steps.deployer.outcome == 'success' && steps.stack.outputs.exists == 'true'
-          && (env.SESSION == 'down' || (env.SESSION == 'up' && failure()))
+          && (env.SESSION == 'down' || (env.SESSION == 'up' && !success()))
         working-directory: .
         run: |
           set -euo pipefail
