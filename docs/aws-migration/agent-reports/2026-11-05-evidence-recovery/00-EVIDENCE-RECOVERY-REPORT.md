@@ -22,6 +22,8 @@
 
 ## 1. Executive verdict
 
+> **Update, 16:20 UTC: superseded in part by §9.** The owner-approved read-only reads verified the apply's effect (exactly 5 policy changes, 0 added, 0 destroyed, serial 3 → 4), the exact attachments and all 14 policy documents. The overall verdict is now **PARTIALLY VERIFIED**: the plan text and the post-apply plan output remain unrecoverable. B2 is unchanged. The text below is the pre-read assessment, kept as written.
+
 **Second bootstrap re-apply at `6b8997a`: NOT VERIFIED.** The plan, the apply result, the post-apply plan, the state serials and the resource counts are **UNRECOVERABLE FROM CURRENT SOURCES** (`/tmp/p7` is gone, and no copy exists in GitHub, in the repository or in the project chat). What *is* evidenced, indirectly but by original AWS output:
 
 - the named attachments were present at about 10:10 UTC (presence and names only);
@@ -201,3 +203,94 @@ Even with O-1 and O-2 clean, the plan text and the post-apply plan result stay u
   - a Testing deployment;
   - image publication;
   - any secret, migration, DNS, Cloudflare or production change.
+
+## 9. Addendum: results of the approved read-only reads (5 Nov 2026, 16:11 to 16:20 UTC)
+
+**Approval.** At 13:59 UTC the owner approved the reads ("Approved"). At 14:00 UTC he told the lead to run them through the root-signed AWS connector ("Use root connector"). The connector's sign-in was renewed at 16:10 UTC.
+
+**Calls made.** Read-only calls only, through the AWS MCP connector (identity: account `229251310592`, root):
+- `sts:GetCallerIdentity`;
+- `cloudtrail:LookupEvents`;
+- `s3:ListObjectVersions` and `s3:GetObject`, on two state versions;
+- `iam:GetPolicy`, `ListPolicyVersions`, `GetPolicyVersion`, `GetRolePolicy`, `ListAttachedRolePolicies` and `ListRolePolicies`.
+
+Nothing was created, changed or deleted. The connector logs each script as `aws-mcp CallReadWriteTool`; that is the tool's name, not a write. Only Sids, names, counts, timestamps and checksums left the sandbox. No state attribute value was printed except `attachment_count`, empty `tags` and policy ARNs. Labels: [V-aws] means AWS output read by the lead.
+
+### O-2: CloudTrail write events (`ReadOnly=false`)
+
+| Window (UTC) | us-east-1 (IAM) | eu-central-1 |
+| --- | --- | --- |
+| 08:45 to 10:15 | Exactly 5 writes, all at **09:55:28** by root: `CreatePolicyVersion` on `-deployer-nonprod-allow`, `-deployer-prod-allow`, `munaxa-shared-workload-boundary` and `-boundary-prod`; `PutRolePolicy` `session-deployer` on `munaxa-shared-deployer-nonprod-session` | CloudShell session events only (`CreateSession`, `PutCredentials`, `SendHeartBeat`, from 09:44). No other write |
+| 05:14 to 08:45 (between the two re-applies) | none | none (CloudShell events only) |
+| 10:15 to 16:12 | `ConsoleLogin` and `SubscribeToURP` by root at 16:08 (the owner's console sign-in), and the connector's own calls | none apart from CloudShell |
+
+No `DeletePolicyVersion`, attach, detach, create, delete, trust, boundary or tag call happened in any window. CloudTrail does not record S3 state writes (those are data events) [V-aws].
+
+### O-1: state object history
+
+**State versions:**
+
+| Version (LastModified) | serial | lineage | managed instances | data instances |
+| --- | --- | --- | --- | --- |
+| `7IqoN…` (05:13:03, first re-apply) | 3 | `069c8480-…-04c808be2861` | 68 | 20 |
+| `uGUXh…` (**09:55:30**, latest) | **4** | same | **68** | 20 |
+
+Between serial 3 and 4, no managed address was added or removed.
+
+**Changes to the `policy` attribute.** The `policy` attribute changed on exactly the five expected resources:
+- `deployer_allow[nonprod|prod]`;
+- `workload_boundary[nonprod|prod]`;
+- `aws_iam_role_policy.deployer_session[nonprod]`.
+
+**Other attribute differences.** These are the values that are read back from AWS at refresh [E: refresh-only]:
+- `attachment_count` went 0 → 1 or 3 on six policies;
+- `tags` went from null to `{}` on several resources;
+- the roles' computed `managed_policy_arns` and `inline_policy` were refilled.
+
+No other configuration attribute changed. In particular, `aws_iam_role_policy.deployer` is unchanged, and CloudTrail shows no `PutRolePolicy` on the deployer roles [V-aws].
+
+**Lock-file timeline on 5 Nov** (`.tflock` versions and delete markers). Each pair is one locking Terraform operation:
+
+| Lock held (UTC) | Operation [E, from the runbook order] |
+| --- | --- |
+| 09:52:44 to 09:52:54 | plan (runbook step 6) |
+| 09:55:23 to 09:55:30 | apply; the state is written at 09:55:30 (step 7) |
+| 09:56:33 to 09:56:42 | post-apply plan, no state write (step 8) |
+
+The three operations happened in the runbook's order. The lock files do not show their results.
+
+### O-3: live documents and attachments
+
+**All 14 live documents equal the `6b8997a` render** (the `744c67c` render; the bootstrap tree is identical), compared key-order-insensitively. The comparison used the canonical JSON length (exact) and a 61-bit polynomial checksum. That checksum matched to the 17 significant digits the connector returns; the sandbox blocks `hashlib`, so SHA-256 could not be used.
+
+The 14 documents:
+- the managed policies `-allow` ×2, `-allow-tagged` ×2, `-read`, `-session-read` and the boundaries ×2;
+- the inline policies `deployer` ×2, `session-deployer`, `assume-own-deployer-only` ×2 and `assume-own-session-deployer-only` [V-aws + L].
+
+**Policy versions:**
+- The four changed managed policies have a new default version created at 09:55:28. That is `v2` for each `-allow` and for the prod boundary, and `v3` for the nonprod boundary.
+- The unchanged policies have a single version from 05:12:52 (the first re-apply).
+
+**Attachments are exactly the expected sets** (not only present):
+- the deployers: `-allow`, `-allow-tagged` and `-read`, plus inline `deployer`;
+- the session deployer: `-session-read` and `-read`, plus inline `session-deployer`;
+- the CI roles: inline policy only.
+
+**Key order.** `GetPolicyVersion` returns every managed document with `Statement` before `Version`, and `GetRolePolicy` returns every inline document with `Version` first [V-aws]. This is direct support for the §2 key-order candidate for the 23-character offset. It still does not prove that the simulator counts columns in this text.
+
+### Updated matrix
+
+| # | Claim | Verdict now | Basis |
+| --- | --- | --- | --- |
+| 1 | Exact plan | **Plan text UNRECOVERABLE**; the plan's effect is verified by 2 and 5 | lock at 09:52 shows a plan ran |
+| 2 | Apply result 0 added, 5 changed, 0 destroyed | **VERIFIED** (effect; the `Apply complete!` line itself is lost) | O-2: exactly 5 writes, on the 5 expected resources; O-1: 68 → 68 instances, `policy` changed on the same 5 |
+| 3 | Post-apply no-change plan | **Result UNRECOVERABLE**; that it ran is evidenced | lock at 09:56:33 to 09:56:42, and no state write |
+| 4 | Serial and lineage | **VERIFIED** | 3 → 4, same lineage |
+| 5 | Resource counts | **VERIFIED** | 68 managed before and after, none added or removed |
+| 6a | Attachments | **VERIFIED** (exact sets, 6 roles) | O-3 |
+| 6b | Policy contents | **VERIFIED** (all 14 documents equal the render) | O-3 |
+| - | **Overall** | **PARTIALLY VERIFIED** | Every material effect is verified. The plan text and the post-apply plan output remain unrecoverable |
+
+**What this does not change.**
+- **B2 stays `ROOT CAUSE UNRESOLVED — REMAINS BLOCKED`.** The live `-allow` documents equal the render, so the cause is not a policy-content difference. That supports, but does not confirm, a simulator-side explanation. The B2 follow-up test is still unrun and needs its own approval.
+- **G3, the backstop, Testing and every other blocker in §8 are unchanged.**
