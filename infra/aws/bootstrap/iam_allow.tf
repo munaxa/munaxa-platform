@@ -369,6 +369,7 @@ data "aws_iam_policy_document" "deployer_allow" {
       "iam:GetRole", "iam:DeleteRole", "iam:UpdateRole", "iam:TagRole", "iam:UntagRole",
       "iam:PutRolePolicy", "iam:GetRolePolicy", "iam:DeleteRolePolicy", "iam:ListRolePolicies",
       "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole", "iam:UpdateAssumeRolePolicy",
+      "iam:ListRoleTags",
     ]
     resources = ["arn:aws:iam::${var.account_id}:role/munaxa-shared/munaxa-${each.key}-*"]
   }
