@@ -1,6 +1,6 @@
 # Second bootstrap re-apply (5 Nov 2026): evidence recovery investigation
 
-- **Date:** 5 Nov 2026. First draft 13:41 UTC; revised after independent review; §9 added at 16:20 UTC; final corrections at about 17:15 UTC (revision history at the end).
+- **Date:** 5 Nov 2026. First draft 13:41 UTC; revised after independent review; §9 added at 16:20 UTC; final corrections at about 17:15 UTC (merged as PR #48, `016f3f5`); closing corrections at about 19:30 UTC (revision history at the end).
 - **Author:** the lead.
 - **Independent reviewer:** separate reviewer, `01-INDEPENDENT-REVIEW.md` next to this file. Verdict **AGREE WITH CHANGES**; all 14 findings applied (§5).
 
@@ -9,7 +9,7 @@
 - **§9 (16:11 to 16:20 UTC):** on the owner's explicit approval, the lead performed **read-only** AWS operations only, through the AWS connector (listed in §9). Nothing was created, changed or deleted.
 - **Throughout:** nothing was run in Terraform, and no IAM, policy, state, infrastructure or GitHub setting was changed. CanteenHub, Render and Supabase were not inspected or touched.
 
-**Where this report lives.** First kept as a project file only, per the owner's no-commit instruction. The owner then asked (13:59 UTC) for it to be committed. It was first copied here unchanged apart from this paragraph and the reviewer file name (`01-INDEPENDENT-REVIEW.md`). Later revisions are listed in the revision history at the end.
+**Where this report lives.** First kept as a project file only, per the owner's no-commit instruction. The owner then asked (13:59 UTC) for it to be committed. It was copied here unchanged apart from this paragraph and the reviewer file name (`01-INDEPENDENT-REVIEW.md`), and has since been revised: §9, the final corrections and the closing corrections were added after that copy (see the revision history at the end).
 
 **Evidence labels:**
 
@@ -35,7 +35,7 @@
 | State serial and lineage | **VERIFIED** (serial 3 → 4, same lineage) |
 | Managed instance counts | **VERIFIED** (68 before and after, none added or removed) |
 | Attachments | **VERIFIED for the 6 roles read.** The 4 publisher roles and the role trust policies were not read |
-| Policy documents | **VERIFIED for the 14 documents read**, by a non-cryptographic comparison (§9 O-3) |
+| Policy documents | **VERIFIED for the 14 documents read**, by exact canonical JSON length plus a non-cryptographic checksum: exact double equality independently established for 5, the other 9 within a 1e-15 relative tolerance (§9 O-3) |
 | Terraform plan text | **UNRECOVERABLE FROM CURRENT SOURCES** |
 | Post-apply plan result | **UNRECOVERABLE FROM CURRENT SOURCES** |
 
@@ -62,6 +62,8 @@ This shows an end state, not the act. It does not show that the `6b8997a` plan, 
 
 ## 2. Evidence inventory
 
+> **Historical (as of 13:41 UTC), kept as written.** Forward-looking statements in this section (what O-1, O-2 and O-3 "would" or "can" settle) predate the reads; their results are in §9.
+
 All repository paths are in `munaxa/munaxa-platform`. Times are UTC.
 
 | # | Item | Source and location | ID | Time | Kind | Integrity check | Proves | Does not prove |
@@ -79,7 +81,7 @@ All repository paths are in `munaxa/munaxa-platform`. Times are UTC.
 | E11 | Project chat 09:30 to 10:15 | searched by the coordinator at the lead's request | - | - | negative search result | not independently re-checked | Nothing beyond E1 and E2 was posted there | - |
 | E12 | `~/p6` in CloudShell | owner | - | first re-apply, about 05:15 | **excluded** | - | It is from the `46dfbd9` re-apply | **Not** evidence for this one |
 
-**Time window [E].** `6b8997a` was merged at 08:51. PR #44, carrying the runbook, was open from 08:54 and merged at 09:33. Runbook line 119 (step 9, the simulation) downloads the script from main, so only the *simulation* must be after 09:33. The apply lies between 08:51 and the start of the simulation; the result was posted at 10:10. O-1 and O-2 would pin the time. (They since have: the apply wrote state at 09:55:30, §9.)
+**Time window [E].** `6b8997a` was merged at 08:51. PR #44, carrying the runbook, was open from 08:54 and merged at 09:33. Runbook line 119 (step 9, the simulation) downloads the script from main, so only the *simulation* must be after 09:33. The apply lies between 08:51 and the start of the simulation; the result was posted at 10:10. O-1 and O-2 would pin the time. *(Historical, as of 13:41 UTC. They since have: the apply wrote state at 09:55:30, §9.)*
 
 **Stale, contradictory or duplicate evidence:**
 - **The brief's "19 additions"** is Phase 6, as explained in §1.
@@ -89,9 +91,9 @@ All repository paths are in `munaxa/munaxa-platform`. Times are UTC.
   - **What O-3 can settle.** Content equality. It may not settle the offset cause, because `GetPolicyVersion` text may not be the text the simulator counts columns in.
 - **No duplicates.** E9 repeats E1 to E4; it is not new evidence.
 
-## 3. Re-apply verification matrix
+## 3. Re-apply verification matrix (historical, pre-read, 13:41 UTC; superseded by §9)
 
-> **Superseded by §9 (updated matrix) and the §1 final verdict.** This is the pre-read matrix as of 13:41 UTC, kept as written. Its NOT VERIFIED verdicts for claims 2, 4, 5 and overall no longer stand.
+> **HISTORICAL. Superseded by §9 (Updated matrix) and the §1 final verdict.** This is the pre-read matrix of 13:41 UTC, kept as written. Its NOT VERIFIED verdicts for claims 2, 4, 5 and overall no longer stand. The current overall verdict is **PARTIALLY VERIFIED**.
 
 | # | Claim | Expected (runbook `phase7/08`) | Evidence | Verdict |
 | --- | --- | --- | --- | --- |
@@ -145,9 +147,9 @@ The 10-call follow-up test, `next-diagnostic/supporting/b2-followup-diagnostic.s
 | F13: next scheduled `aws-session.yml` run is a free post-apply check | Low | Added to §6 and §8 |
 | F14: provenance details (ids, E11 label, Phase 6 label, header time) | Low | Applied; message ids kept shortened, the full messages are in this thread |
 
-## 6. Missing evidence: is it recoverable?
+## 6. Missing evidence: is it recoverable? (historical, pre-read assessment, 13:41 UTC)
 
-> **As of 13:41 UTC.** The items marked recoverable here have since been recovered by the read-only reads in §9. The plan text and the post-apply plan result remain unrecoverable.
+> **Historical pre-read assessment, as of 13:41 UTC.** The items marked recoverable here have since been recovered by the read-only reads in §9. The plan text and the post-apply plan result remain unrecoverable.
 
 | Missing item | Recoverable? | How |
 | --- | --- | --- |
@@ -160,7 +162,7 @@ The 10-call follow-up test, `next-diagnostic/supporting/b2-followup-diagnostic.s
 
 ## 7. Proposed read-only AWS operations (as proposed at 13:41 UTC; since performed, see §9)
 
-**Status: done.** The owner approved these at 13:59 UTC and asked for them to be run through the AWS connector instead of CloudShell. The lead performed them, read-only, at 16:11 to 16:20 UTC. The results are in §9. The text below is kept as originally proposed, as a record, except that the original line saying each operation still needed approval and none had been run was removed, because it is no longer true.
+**Status: done.** The owner approved these at 13:59 UTC and asked for them to be run through the AWS connector instead of CloudShell. The lead performed them, read-only, at 16:11 to 16:20 UTC. The results are in §9. The text below is kept as originally proposed, as a record, except the approval sentence: the original line "Each needs the owner's explicit approval. None has been run." was removed, and the status line above replaces it, because it is no longer true.
 
 All are read-only, account `229251310592`. As proposed, the owner would run them in CloudShell. They create, modify and delete nothing.
 
@@ -255,7 +257,7 @@ Nothing was created, changed or deleted. The connector logs each script as `aws-
 
 No `DeletePolicyVersion`, attach, detach, create, delete, trust, boundary or tag call happened in any window. CloudTrail does not record S3 state writes (those are data events) [V-aws]. The events' `userAgent` was not read, so that Terraform made these writes is inference [E].
 
-**Coverage.** The investigator's own operations were read-only. CloudTrail was queried only for the three windows above, so the evidence says nothing about events outside them. Not queried: before 05:14 (including 05:13:03 to 05:14) and after 16:12. The lead's own calls after 16:12 are known to be read-only from the script content (the `api_calls` list of each connector run), not from CloudTrail. `LookupEvents` covers management events only; data events such as S3 object writes are not covered.
+**Coverage.** CloudTrail was queried only for the three windows above, so the evidence says nothing about events outside them. Not queried: before 05:14 (including 05:13:03 to 05:14) and after 16:12. **Post-16:12 limitation:** the lead's own connector calls from 16:12 to 16:20 fall outside every queried window, so that they were read-only rests on the script content and the connector's tool log (the `api_calls` list of each run), not on CloudTrail. No CloudTrail evidence exists for any account activity after 16:12. `LookupEvents` covers management events only; data events such as S3 object writes are not covered.
 
 ### O-1: state object history
 
@@ -298,9 +300,11 @@ No other configuration attribute changed. In particular, `aws_iam_role_policy.de
 
 **All 14 documents read equal the `6b8997a` render** (the `744c67c` render; the bootstrap tree is identical), compared key-order-insensitively. How the comparison worked:
 - **Exact canonical JSON length:** each document was serialised with sorted keys and no whitespace, and its length matched the render's exactly.
-- **A 61-bit polynomial checksum:** the connector returned it as a JSON float. That keeps about **53 bits of effective precision**. In the first comparison the lead used a relative tolerance of 1e-15. At about 17:20 UTC the lead re-ran it offline with exact double-precision equality, and all 14 matched.
+- **A 61-bit polynomial checksum:** the connector returned it as a JSON float (IEEE double), which keeps about **53 bits of effective precision**. The lead's comparison used a relative tolerance of 1e-15 (about ±1,100 absolute), which is slightly looser than double precision.
+- **Exact double equality: 5 documents only.** The independent reviewer (`02`, R7) re-ran the comparison and established that the live value equals the local checksum *as a double* for `allow_nonprod`, `allow_prod`, `boundary_nonprod`, `boundary_prod` and `session_inline_nonprod`. **The other 9 matched within the 1e-15 relative tolerance only.**
+- **Correction of an earlier claim.** The PR #48 text said the lead re-ran all 14 offline with exact double equality "at about 17:20 UTC". That cannot be reproduced from retained evidence: the 9 live values were not retained in the repository or the project files, and the sentence was committed at 17:13:47 UTC (`e172389`), before the stated time. The claim is withdrawn. Exact double equality for all 14 is **not** claimed.
 - **Non-cryptographic:** this is not a cryptographic hash. The sandbox blocks `hashlib`, so SHA-256 could not be used.
-- **Independent recheck: 5 of the 14 documents, not all 14.** The independent reviewer re-checked `allow_nonprod`, `allow_prod`, `boundary_nonprod`, `boundary_prod` and `session_inline_nonprod`. The other 9 rest on the lead's comparison only.
+- **Independent recheck: 5 of the 14 documents, not all 14.** The other 9 rest on the lead's tolerance comparison only.
 
 The 14 documents:
 - the managed policies `-allow` ×2, `-allow-tagged` ×2, `-read`, `-session-read` and the boundaries ×2;
@@ -327,7 +331,7 @@ The 14 documents:
 | 4 | Serial and lineage | **VERIFIED** | 3 → 4, same lineage |
 | 5 | Resource counts | **VERIFIED** | 68 managed before and after, none added or removed |
 | 6a | Attachments | **VERIFIED for the 6 roles read** (exact sets); publisher roles not read | O-3 |
-| 6b | Policy contents | **VERIFIED for the 14 documents read** (non-cryptographic checksum) | O-3 |
+| 6b | Policy contents | **VERIFIED for the 14 documents read** (exact canonical length for all 14; non-cryptographic checksum, exact as a double for 5, within 1e-15 relative tolerance for 9) | O-3 |
 | - | **Overall** | **PARTIALLY VERIFIED** | Every material effect is verified. The plan text and the post-apply plan output remain unrecoverable |
 
 **What this does not change.**
@@ -349,6 +353,7 @@ Separate reviewer, `02-INDEPENDENT-REVIEW-ADDENDUM.md`, unmodified. **AGREE WITH
 | 13:41 | First draft, §1 to §8; project file only | - |
 | about 14:00 | Independent review (`01`) applied; committed | branch `ab80b23`, squashed into `d548533` (#47) |
 | 16:20 | §9 added: results of the approved read-only reads; addendum review (`02`) applied | branch `52095ae` and `0e456b3`, squashed into `d548533` (#47) |
-| about 17:15 | Final corrections. Final verdict table in §1, with the pre-read text kept and labelled; §7 marked as performed; §8 rewritten for the §9 evidence; CloudTrail coverage and checksum-precision wording; B2 simulator-side and harness-side distinction. The final review is in `03-FINAL-REVIEW.md` (unmodified): AGREE WITH CHANGES. All its findings were applied in the next commit: F1 §3 superseded label; F2 the line 12 wording; F3 SHA and qualifiers in the index; F4 the §2 and §6 notes; F5 an exact re-check of all 14 (F5's tolerance point); F6 the basis for calls after 16:12; F7 the §7 removal noted; F8 the branch commits | report commit `6b9eaff`, plus the review fixes in the next commit on the branch; merged as PR #48, merge SHA recorded in the index |
+| about 17:15 | Final corrections. Final verdict table in §1, with the pre-read text kept and labelled; §7 marked as performed; §8 rewritten for the §9 evidence; CloudTrail coverage and checksum-precision wording; B2 simulator-side and harness-side distinction. The final review `03-FINAL-REVIEW.md` (of `6b9eaff`; unmodified): AGREE WITH CHANGES, findings F1 to F8 | branch commit `6b9eaff` (report), then `e172389` (adds `03`, first pass at F1 to F8, including the F5 claim withdrawn below); squash-merged as PR #48, merge commit **`016f3f5`** (`016f3f51a8771d988fb7e2f5d22da4cab5562d45`, 17:27:27 UTC) |
+| about 19:30 | Closing corrections for `03` F1 to F8: §2, §3 and §6 headed as historical; line 12 provenance; F5 restated (exact double equality for 5 documents only, 9 within 1e-15 relative tolerance; the unretained 'all 14 exact' claim withdrawn); post-16:12 CloudTrail limitation; §7 approval-sentence wording; this table's commit references; index entry with merge SHA and qualifiers. Fresh independent review in `04-CLOSING-REVIEW.md` | this PR (see the index for its merge SHA) |
 
 The original evidence in §2 to §7 and §9 is unchanged, apart from the wording corrections listed above.
