@@ -54,6 +54,10 @@ locals {
   }
   ec2_create_actions = flatten([for c in values(local.ec2_creates) : c.actions])
 
+  # The EC2 types a create is also authorized on as a parent, where EC2 puts no request tags in
+  # the context (iam.tf CreatesCarry*, G3 recovery).
+  ec2_create_parents = [for t in ["vpc", "subnet", "security-group", "route-table"] : "${local.arn.ec2}:${t}/*"]
+
   arn = {
     ec2  = "arn:aws:ec2:${var.region}:${var.account_id}"
     elb  = "arn:aws:elasticloadbalancing:${var.region}:${var.account_id}"

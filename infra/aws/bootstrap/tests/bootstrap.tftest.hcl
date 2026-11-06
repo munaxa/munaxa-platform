@@ -254,6 +254,25 @@ run "b2_writes_are_an_allow_list_not_tag_denies" {
     error_message = "M-1/H-2: the create-tag, account-settings, protected-VPC and state guardrails exist on both deployers."
   }
 
+  # G3 recovery: the create-tag denies never apply to the EC2 parents of a create (VPC, subnet,
+  # security group, route table), where EC2 puts no request tags in the context; everything
+  # else they cover, including the created VPC endpoint and internet gateway, stays denied.
+  assert {
+    condition = alltrue(flatten([
+      for env in ["nonprod", "prod"] : [
+        for s in data.aws_iam_policy_document.deployer[env].statement :
+        s.resources == null && toset(s.not_resources) == toset([
+          "arn:aws:ec2:eu-central-1:229251310592:vpc/*",
+          "arn:aws:ec2:eu-central-1:229251310592:subnet/*",
+          "arn:aws:ec2:eu-central-1:229251310592:security-group/*",
+          "arn:aws:ec2:eu-central-1:229251310592:route-table/*",
+        ]) && contains(s.actions, "ec2:CreateSubnet") && contains(s.actions, "rds:CreateDBInstance")
+        if contains(["CreatesCarryProjectTag", "CreatesCarryEnvironmentTag"], s.sid)
+      ]
+    ]))
+    error_message = "G3 recovery: CreatesCarry* exclude exactly the four EC2 parent types and still cover every tagged create."
+  }
+
   assert {
     condition     = contains(one([for s in data.aws_iam_policy_document.deployer["nonprod"].statement : s.actions if s.sid == "NeverAccountSettingsOrSharing"]), "rds:ModifyDBSnapshotAttribute") && contains(one([for s in data.aws_iam_policy_document.deployer["nonprod"].statement : s.actions if s.sid == "NeverAccountSettingsOrSharing"]), "ec2:ModifySnapshotAttribute")
     error_message = "M-1: snapshot sharing is denied."

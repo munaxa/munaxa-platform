@@ -353,11 +353,21 @@ data "aws_iam_policy_document" "deployer" {
   # M-1: every create that takes tags must carry Project = munaxa and Environment = <env>
   # (StringNotEquals is true when the key is missing, which is the point here). The creates that
   # take no tags, or whose tags AWS sets (the RDS-managed secret), are not listed.
+  #
+  # G3 recovery (5 Nov 2026): EC2 authorizes a create on every resource it touches and puts the
+  # request tags only into the context of the resource being created and tagged. A subnet,
+  # security group or route table is also authorized on its VPC, and a VPC endpoint on its VPC,
+  # route tables, subnets and security groups; in those contexts aws:RequestTag/* is absent, so
+  # StringNotEquals was true and these two denies refused every child of the new VPC (run
+  # 42123952620, decoded authorization messages). Those four parent types are therefore left out
+  # here. Creating them untagged is still refused by the allow-list, which admits each EC2 create
+  # only on its own type with both tags (iam_allow.tf Ec2Create*), and a wrong Project or
+  # Environment value by NeverTagForAnotherProject and NeverCreateForTheOtherEnvironment.
   statement {
-    sid       = "CreatesCarryProjectTag"
-    effect    = "Deny"
-    actions   = local.tagged_creates
-    resources = ["*"]
+    sid           = "CreatesCarryProjectTag"
+    effect        = "Deny"
+    actions       = local.tagged_creates
+    not_resources = local.ec2_create_parents
     condition {
       test     = "StringNotEquals"
       variable = "aws:RequestTag/Project"
@@ -366,10 +376,10 @@ data "aws_iam_policy_document" "deployer" {
   }
 
   statement {
-    sid       = "CreatesCarryEnvironmentTag"
-    effect    = "Deny"
-    actions   = local.tagged_creates
-    resources = ["*"]
+    sid           = "CreatesCarryEnvironmentTag"
+    effect        = "Deny"
+    actions       = local.tagged_creates
+    not_resources = local.ec2_create_parents
     condition {
       test     = "StringNotEquals"
       variable = "aws:RequestTag/Environment"
