@@ -406,9 +406,9 @@ variable "identity_operator_organisation" {
 variable "session_backstop_schedule" {
   description = "Nonprod only: when EventBridge Scheduler stops the database and scales every service to 0 (backstop.tf), in UTC. Empty turns the backstop off."
   type        = string
-  # Off by default (owner decision D-4 = B, phase 7): G3 keeps its 64 creates, and the backstop is a
-  # separate, separately approved apply right after G3 that sets "cron(0 21 * * ? *)" in
-  # envs/nonprod.tfvars. The first Testing session waits for it.
+  # Off by default (owner decision D-4 = B, phase 7): G3 kept its 64 creates, and the backstop is a
+  # separate apply after G3; envs/nonprod.tfvars sets "cron(0 21 * * ? *)" (nonprod readiness
+  # phase, 6 Nov 2026). The first Testing session waits for its first verified run.
   default = ""
 
   validation {
