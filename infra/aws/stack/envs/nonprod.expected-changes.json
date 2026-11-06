@@ -1,6 +1,6 @@
 {
   "root": "stack-nonprod",
-  "intent": "G3 recovery, second step: the 6 G3 creates still missing after run 42230546277 created 20 of the 26 and stopped on the database security group description (apostrophe, InvalidParameterValue). 6 creates, nothing else. No ALB, no NAT, no service, no backstop.",
+  "intent": "G3 recovery, third step: the 3 G3 creates still missing after run 42234410579 stopped on CreateDBInstance (KMSKeyNotAccessibleFault: kms:DescribeKey on the AWS managed Secrets Manager key, fixed in bootstrap). The database and the two db-admin policies that need its secret. 3 creates, nothing else. No ALB, no NAT, no service, no backstop.",
   "changes": [
     {
       "address": "aws_db_instance.main",
@@ -12,18 +12,6 @@
     },
     {
       "address": "aws_iam_role_policy.docs_db_admin_execution[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "aws_security_group.database",
-      "actions": ["create"]
-    },
-    {
-      "address": "aws_vpc_security_group_egress_rule.db_admin_database",
-      "actions": ["create"]
-    },
-    {
-      "address": "aws_vpc_security_group_ingress_rule.database_from_db_admin",
       "actions": ["create"]
     }
   ]

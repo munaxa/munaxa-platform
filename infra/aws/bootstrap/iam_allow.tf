@@ -54,6 +54,10 @@ locals {
   }
   ec2_create_actions = flatten([for c in values(local.ec2_creates) : c.actions])
 
+  # The account's AWS managed Secrets Manager key (alias/aws/secretsmanager, created by AWS on
+  # 22 Oct 2026; owner CloudShell 6 Nov). AWS managed keys are never deleted or replaced.
+  secretsmanager_default_key_arn = "${local.arn.kms}:key/033b4382-b443-4527-a34e-41d91b62cfd5"
+
   # The EC2 types a create is also authorized on as a parent, where EC2 puts no request tags in
   # the context (iam.tf CreatesCarry*, G3 recovery).
   ec2_create_parents = [for t in ["vpc", "subnet", "security-group", "route-table"] : "${local.arn.ec2}:${t}/*"]
@@ -324,6 +328,18 @@ data "aws_iam_policy_document" "deployer_allow" {
       variable = "aws:ResourceTag/Environment"
       values   = [each.key]
     }
+  }
+
+  # CreateDBInstance with manage_master_user_password also describes the account's AWS managed
+  # Secrets Manager key (alias/aws/secretsmanager) with the deployer's credentials, even though the
+  # master secret uses the data key: G3 recovery run 42234410579 (6 Nov 2026) failed with
+  # KMSKeyNotAccessibleFault, CloudTrail kms:DescribeKey AccessDenied on that key. An AWS managed
+  # key cannot carry our tags, so OwnTagged never matches it. DescribeKey (metadata only) on that
+  # one key, nothing else.
+  statement {
+    sid       = "SecretsManagerDefaultKeyMetadata"
+    actions   = ["kms:DescribeKey"]
+    resources = [local.secretsmanager_default_key_arn]
   }
 
   # Cloud Map's private zone (stack/services.tf): Cloud Map creates and deletes it with the
