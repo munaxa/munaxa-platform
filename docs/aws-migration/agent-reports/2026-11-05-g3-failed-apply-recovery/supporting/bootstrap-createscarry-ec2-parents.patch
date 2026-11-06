@@ -1,0 +1,90 @@
+diff --git a/infra/aws/bootstrap/iam.tf b/infra/aws/bootstrap/iam.tf
+index 2dd1f13..4d0e3a1 100644
+--- a/infra/aws/bootstrap/iam.tf
++++ b/infra/aws/bootstrap/iam.tf
+@@ -353,11 +353,21 @@ data "aws_iam_policy_document" "deployer" {
+   # M-1: every create that takes tags must carry Project = munaxa and Environment = <env>
+   # (StringNotEquals is true when the key is missing, which is the point here). The creates that
+   # take no tags, or whose tags AWS sets (the RDS-managed secret), are not listed.
++  #
++  # G3 recovery (5 Nov 2026): EC2 authorizes a create on every resource it touches and puts the
++  # request tags only into the context of the resource being created and tagged. A subnet,
++  # security group or route table is also authorized on its VPC, and a VPC endpoint on its VPC,
++  # route tables, subnets and security groups; in those contexts aws:RequestTag/* is absent, so
++  # StringNotEquals was true and these two denies refused every child of the new VPC (run
++  # 42123952620, decoded authorization messages). Those four parent types are therefore left out
++  # here. Creating them untagged is still refused by the allow-list, which admits each EC2 create
++  # only on its own type with both tags (iam_allow.tf Ec2Create*), and a wrong Project or
++  # Environment value by NeverTagForAnotherProject and NeverCreateForTheOtherEnvironment.
+   statement {
+-    sid       = "CreatesCarryProjectTag"
+-    effect    = "Deny"
+-    actions   = local.tagged_creates
+-    resources = ["*"]
++    sid           = "CreatesCarryProjectTag"
++    effect        = "Deny"
++    actions       = local.tagged_creates
++    not_resources = local.ec2_create_parents
+     condition {
+       test     = "StringNotEquals"
+       variable = "aws:RequestTag/Project"
+@@ -366,10 +376,10 @@ data "aws_iam_policy_document" "deployer" {
+   }
+ 
+   statement {
+-    sid       = "CreatesCarryEnvironmentTag"
+-    effect    = "Deny"
+-    actions   = local.tagged_creates
+-    resources = ["*"]
++    sid           = "CreatesCarryEnvironmentTag"
++    effect        = "Deny"
++    actions       = local.tagged_creates
++    not_resources = local.ec2_create_parents
+     condition {
+       test     = "StringNotEquals"
+       variable = "aws:RequestTag/Environment"
+diff --git a/infra/aws/bootstrap/iam_allow.tf b/infra/aws/bootstrap/iam_allow.tf
+index 95c0e2f..b386e7e 100644
+--- a/infra/aws/bootstrap/iam_allow.tf
++++ b/infra/aws/bootstrap/iam_allow.tf
+@@ -54,6 +54,10 @@ locals {
+   }
+   ec2_create_actions = flatten([for c in values(local.ec2_creates) : c.actions])
+ 
++  # The EC2 types a create is also authorized on as a parent, where EC2 puts no request tags in
++  # the context (iam.tf CreatesCarry*, G3 recovery).
++  ec2_create_parents = [for t in ["vpc", "subnet", "security-group", "route-table"] : "${local.arn.ec2}:${t}/*"]
++
+   arn = {
+     ec2  = "arn:aws:ec2:${var.region}:${var.account_id}"
+     elb  = "arn:aws:elasticloadbalancing:${var.region}:${var.account_id}"
+diff --git a/infra/aws/bootstrap/tests/bootstrap.tftest.hcl b/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
+index 4190188..c3f780d 100644
+--- a/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
++++ b/infra/aws/bootstrap/tests/bootstrap.tftest.hcl
+@@ -254,6 +254,25 @@ run "b2_writes_are_an_allow_list_not_tag_denies" {
+     error_message = "M-1/H-2: the create-tag, account-settings, protected-VPC and state guardrails exist on both deployers."
+   }
+ 
++  # G3 recovery: the create-tag denies never apply to the EC2 parents of a create (VPC, subnet,
++  # security group, route table), where EC2 puts no request tags in the context; everything
++  # else they cover, including the created VPC endpoint and internet gateway, stays denied.
++  assert {
++    condition = alltrue(flatten([
++      for env in ["nonprod", "prod"] : [
++        for s in data.aws_iam_policy_document.deployer[env].statement :
++        s.resources == null && toset(s.not_resources) == toset([
++          "arn:aws:ec2:eu-central-1:229251310592:vpc/*",
++          "arn:aws:ec2:eu-central-1:229251310592:subnet/*",
++          "arn:aws:ec2:eu-central-1:229251310592:security-group/*",
++          "arn:aws:ec2:eu-central-1:229251310592:route-table/*",
++        ]) && contains(s.actions, "ec2:CreateSubnet") && contains(s.actions, "rds:CreateDBInstance")
++        if contains(["CreatesCarryProjectTag", "CreatesCarryEnvironmentTag"], s.sid)
++      ]
++    ]))
++    error_message = "G3 recovery: CreatesCarry* exclude exactly the four EC2 parent types and still cover every tagged create."
++  }
++
+   assert {
+     condition     = contains(one([for s in data.aws_iam_policy_document.deployer["nonprod"].statement : s.actions if s.sid == "NeverAccountSettingsOrSharing"]), "rds:ModifyDBSnapshotAttribute") && contains(one([for s in data.aws_iam_policy_document.deployer["nonprod"].statement : s.actions if s.sid == "NeverAccountSettingsOrSharing"]), "ec2:ModifySnapshotAttribute")
+     error_message = "M-1: snapshot sharing is denied."
