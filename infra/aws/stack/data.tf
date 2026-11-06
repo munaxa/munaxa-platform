@@ -64,10 +64,11 @@ resource "aws_db_parameter_group" "main" {
   name   = "${local.prefix}-pg16"
   family = "postgres16"
 
-  parameter {
-    name  = "rds.force_ssl"
-    value = "1"
-  }
+  # rds.force_ssl is not set here: it is already 1 by default in the postgres16 family, and RDS
+  # keeps a parameter set to its default value as Source "system", which the provider never reads
+  # back, so declaring it gave a permanent `parameter` update on every plan (G3 recovery run
+  # 42225271265, 6 Nov 2026) and would stop every aws-session plan. TLS stays enforced by that
+  # default; the G3 recovery report checks the live value (DescribeDBParameters: 1).
 
   parameter {
     name  = "log_min_duration_statement"
