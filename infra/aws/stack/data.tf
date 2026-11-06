@@ -50,7 +50,7 @@ resource "aws_kms_alias" "data" {
 
 resource "aws_security_group" "database" {
   name        = "${local.prefix}-database"
-  description = "Shared PostgreSQL: admits each service's tasks and the db-admin task on 5432, nothing else"
+  description = "Shared PostgreSQL: admits the tasks of each service and the db-admin task on 5432, nothing else"
   vpc_id      = aws_vpc.main.id
   tags        = { Name = "${local.prefix}-database" }
 }
