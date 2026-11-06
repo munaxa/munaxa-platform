@@ -34,7 +34,6 @@ section "0. Who, where, when"
 date -u +'started %Y-%m-%dT%H:%M:%SZ'
 run aws sts get-caller-identity --query '{Account:Account,Arn:Arn}' --output json
 echo "region $AWS_REGION; since (CloudTrail window) $SINCE"
-command -v dig >/dev/null && echo "dig: $(command -v dig)" || echo "dig: not installed (DNS checks use nslookup)"
 
 section "1. ACM certificate ($CERT_DOMAIN)"
 CERT_ARN=$(aws acm list-certificates --certificate-statuses PENDING_VALIDATION ISSUED FAILED VALIDATION_TIMED_OUT EXPIRED INACTIVE REVOKED \
@@ -44,33 +43,16 @@ for arn in $CERT_ARN; do
   run aws acm describe-certificate --certificate-arn "$arn" --query 'Certificate.{Status:Status,Type:Type,CreatedAt:CreatedAt,IssuedAt:IssuedAt,NotAfter:NotAfter,FailureReason:FailureReason,InUseBy:InUseBy,RenewalEligibility:RenewalEligibility,SANs:SubjectAlternativeNames,Validation:DomainValidationOptions[].{Domain:DomainName,Method:ValidationMethod,Status:ValidationStatus,Record:ResourceRecord}}' --output json
 done
 
-section "2. Public DNS (no change made)"
-q() { # q <type> <name> [server]
-  local type=$1 name=$2 server=${3:-}
-  if command -v dig >/dev/null; then
-    printf '%-6s %-62s @%-16s -> %s\n' "$type" "$name" "${server:-default}" "$(dig +short +time=3 +tries=2 "$type" "$name" ${server:+@"$server"} | tr '\n' ' ')"
-  else
-    printf '%-6s %-62s @%-16s -> %s\n' "$type" "$name" "${server:-default}" "$(nslookup -type="$type" "$name" ${server:+"$server"} 2>&1 | grep -vE '^(Server|Address:.*#53|$)' | tr '\n' ' ')"
-  fi
+section "2. Public DNS over HTTPS (cloudflare-dns.com; no change made). Status 0 = NOERROR, 3 = NXDOMAIN"
+# CloudShell has neither dig nor nslookup (owner run, 6 Nov 17:23), so this uses DNS over HTTPS.
+q() { # q <type> <name>
+  printf '%-6s %-62s -> %s\n' "$1" "$2" "$(curl -s -m 10 -H 'accept: application/dns-json' \
+    "https://cloudflare-dns.com/dns-query?name=$2&type=$1" | jq -c '[.Status,[.Answer[]?.data]]' 2>&1)"
 }
 q NS munaxa.com
-q SOA munaxa.com
-AUTH=$(command -v dig >/dev/null && dig +short NS munaxa.com | head -1 || true)
-echo "authoritative server used below: ${AUTH:-none found}"
 q CAA munaxa.com
-q CAA test.munaxa.com
-q CAA operator-test.munaxa.com
-for name in test.munaxa.com operator-test.munaxa.com "readiness-probe-$RANDOM.test.munaxa.com"; do
-  q CNAME "$name"; q A "$name"; q AAAA "$name"
-done
-for name in "${VALIDATION_NAMES[@]}"; do
-  q CNAME "$name"
-  q CNAME "$name" 1.1.1.1
-  q CNAME "$name" 8.8.8.8
-  [ -n "$AUTH" ] && q CNAME "$name" "$AUTH"
-  q TXT "$name"
-  q A "$name"
-done
+for name in test.munaxa.com operator-test.munaxa.com; do q CNAME "$name"; q A "$name"; done
+for name in "${VALIDATION_NAMES[@]}"; do q CNAME "$name"; done
 
 section "3. RDS $DB"
 run aws rds describe-db-instances --db-instance-identifier "$DB" --query 'DBInstances[0].{Status:DBInstanceStatus,Class:DBInstanceClass,Engine:Engine,Version:EngineVersion,MultiAZ:MultiAZ,Public:PubliclyAccessible,Encrypted:StorageEncrypted,DeletionProtection:DeletionProtection,StorageGiB:AllocatedStorage,ParameterGroups:DBParameterGroups,Created:InstanceCreateTime}' --output json
@@ -89,7 +71,7 @@ echo "NAT gateways in $VPC:"; run aws ec2 describe-nat-gateways --filter "Name=v
 echo "EC2 instances in $VPC:"; run aws ec2 describe-instances --filters "Name=vpc-id,Values=$VPC" --query 'Reservations[].Instances[].[InstanceId,State.Name]' --output text
 echo "Elastic IPs tagged Environment=nonprod:"; run aws ec2 describe-addresses --filters "Name=tag:Environment,Values=nonprod" --query 'Addresses[].[AllocationId,PublicIp]' --output text
 echo "network interfaces in $VPC (public IPv4 is billed while attached):"
-run aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=$VPC" --query 'NetworkInterfaces[].[NetworkInterfaceId,InterfaceType,Status,Association.PublicIp]' --output text
+run aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=$VPC" --query 'NetworkInterfaces[].[NetworkInterfaceId,InterfaceType,Status,Association.PublicIp,RequesterManaged,RequesterId,Description,SubnetId]' --output text
 
 section "6. EventBridge Scheduler (munaxa-* only)"
 run aws scheduler list-schedules --name-prefix munaxa- --query 'Schedules[].[GroupName,Name,State]' --output text

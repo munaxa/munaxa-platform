@@ -1,0 +1,175 @@
+Owner run of nonprod-readonly-check.sh (pin 2ae4367, sha256 53243de1...1e11 "OK"), AWS CloudShell as root,
+6 Nov 2026 17:23:24 to 17:23:58 UTC. Pasted into the project thread at 17:25 UTC; copied here verbatim
+except for HTML escaping. Section 2 (DNS) returned nothing because CloudShell has neither dig nor
+nslookup; the DNS lookup that replaced it follows at the end (17:37 UTC).
+
+===== 0. Who, where, when =====
+started 2026-11-06T17:23:24Z
+{
+    "Account": "229251310592",
+    "Arn": "arn:aws:iam::229251310592:root"
+}
+region eu-central-1; since (CloudTrail window) 2026-11-05T15:23:24Z
+dig: not installed (DNS checks use nslookup)
+
+===== 1. ACM certificate (*.test.munaxa.com) =====
+certificate(s): arn:aws:acm:eu-central-1:229251310592:certificate/7cb48297-f637-4de3-bc1a-9d8203699f05
+{
+    "Status": "PENDING_VALIDATION",
+    "Type": "AMAZON_ISSUED",
+    "CreatedAt": "2026-11-05T22:46:18.189000+00:00",
+    "IssuedAt": null,
+    "NotAfter": null,
+    "FailureReason": null,
+    "InUseBy": [],
+    "RenewalEligibility": "INELIGIBLE",
+    "SANs": [
+        "*.test.munaxa.com",
+        "operator-test.munaxa.com"
+    ],
+    "Validation": [
+        {
+            "Domain": "*.test.munaxa.com",
+            "Method": "DNS",
+            "Status": "PENDING_VALIDATION",
+            "Record": {
+                "Name": "_03282899ed2d1640c316f06ff46b2cc7.test.munaxa.com.",
+                "Type": "CNAME",
+                "Value": "_535bee6b5545840de86f4ee4156b5e4c.wzccmgtwzk.acm-validations.aws."
+            }
+        },
+        {
+            "Domain": "operator-test.munaxa.com",
+            "Method": "DNS",
+            "Status": "PENDING_VALIDATION",
+            "Record": {
+                "Name": "_d67e37ad6024932ab65abd1e6dad5356.operator-test.munaxa.com.",
+                "Type": "CNAME",
+                "Value": "_77d8da377c7af0e8e77699d08b59fd02.wzccmgtwzk.acm-validations.aws."
+            }
+        }
+    ]
+}
+
+===== 2. Public DNS (no change made) =====
+(every line: "nslookup: command not found"; no result)
+
+===== 3. RDS munaxa-nonprod-pg =====
+{
+    "Status": "stopped",
+    "Class": "db.t4g.micro",
+    "Engine": "postgres",
+    "Version": "16.13",
+    "MultiAZ": false,
+    "Public": false,
+    "Encrypted": true,
+    "DeletionProtection": true,
+    "StorageGiB": 20,
+    "ParameterGroups": [
+        {
+            "DBParameterGroupName": "munaxa-nonprod-pg16",
+            "ParameterApplyStatus": "in-sync"
+        }
+    ],
+    "Created": "2026-11-06T16:11:29.549000+00:00"
+}
+RDS events since 2026-11-05T15:23:24Z (metadata):
+2026-11-06T16:10:16.683000+00:00        DB instance restarted
+2026-11-06T16:11:29.649000+00:00        DB instance created
+2026-11-06T16:11:35.978000+00:00        DB instance shutdown
+2026-11-06T16:11:51.826000+00:00        DB instance restarted
+2026-11-06T16:13:38.086000+00:00        Backing up DB instance
+2026-11-06T16:16:10.601000+00:00        Finished DB Instance backup
+2026-11-06T16:25:15.384000+00:00        DB instance stopped
+
+===== 4. ECS cluster munaxa-nonprod =====
+{
+    "Status": "ACTIVE",
+    "Services": 0,
+    "Running": 0,
+    "Pending": 0
+}
+services:
+[]
+tasks:
+[]
+
+===== 5. Billable session resources in the nonprod VPC =====
+load balancers named munaxa-nonprod*:
+
+NAT gateways in vpc-0824ebbff902d2980:
+
+EC2 instances in vpc-0824ebbff902d2980:
+
+Elastic IPs tagged Environment=nonprod:
+
+network interfaces in vpc-0824ebbff902d2980 (public IPv4 is billed while attached):
+eni-01a8dd0c4c248e423   interface       available None
+
+===== 6. EventBridge Scheduler (munaxa-* only) =====
+
+
+===== 7. Backstop role munaxa-nonprod-session-backstop =====
+(GetRole, ListRolePolicies, GetRolePolicy, ListAttachedRolePolicies: NoSuchEntity, "The role with name
+munaxa-nonprod-session-backstop cannot be found.")
+
+===== 8. CloudTrail: the backstop's own calls since 2026-11-05T15:23:24Z (Event history, management events) =====
+--- StopDBInstance by munaxa-nonprod-session-backstop
+--- UpdateService by munaxa-nonprod-session-backstop
+--- AssumeRole of munaxa-nonprod-session-backstop
+
+===== 9. Scheduler metrics, group default, since 2026-11-05T15:23:24Z (hourly sums) =====
+InvocationAttemptCount
+TargetErrorCount
+TargetErrorThrottledCount
+InvocationThrottleCount
+InvocationDroppedCount
+
+===== 10. ECR images (product repositories, counts and tags only) =====
+munaxa-identity/api        0
+munaxa-identity/migrate    0
+munaxa-control/api         0
+munaxa-control/migrate     0
+munaxa-control/portal      0
+munaxa-work/api            0
+munaxa-work/admin          0
+munaxa-work/migrate        0
+munaxa-school/api          0
+munaxa-school/admin        0
+munaxa-school/migrate      0
+
+===== 11. Secret containers (metadata only: is any version present; no value is read) =====
+|            LastChanged            |               Name                | Versions  |
+|  2026-11-05T22:46:33.431000+00:00 |  munaxa-nonprod/work-api          |  0        |
+|  2026-11-05T22:46:33.422000+00:00 |  munaxa-nonprod/school-migrate    |  0        |
+|  2026-11-05T22:46:33.422000+00:00 |  munaxa-nonprod/control-api       |  0        |
+|  2026-11-05T22:46:33.429000+00:00 |  munaxa-nonprod/docs-operator     |  0        |
+|  2026-11-05T22:46:33.439000+00:00 |  munaxa-nonprod/control-migrate   |  0        |
+|  2026-11-05T22:46:33.647000+00:00 |  munaxa-nonprod/work-migrate      |  0        |
+|  2026-11-05T22:46:34.091000+00:00 |  munaxa-nonprod/identity          |  0        |
+|  2026-11-05T22:46:34.085000+00:00 |  munaxa-nonprod/school-api        |  0        |
+|  2026-11-05T22:46:34.108000+00:00 |  munaxa-nonprod/identity-migrate  |  0        |
+|  2026-11-05T22:46:34.118000+00:00 |  munaxa-nonprod/docs-api          |  0        |
+
+===== 12. KMS keys of nonprod (aliases, key state and spec only) =====
+alias/munaxa-nonprod-data            Enabled    SYMMETRIC_DEFAULT  ENCRYPT_DECRYPT
+
+===== 13. Budgets (munaxa-* only) =====
+munaxa-account-monthly  10.0    6.214   None
+munaxa-docs-eu-prod-monthly     10.0    4.691   None
+munaxa-shared-account-monthly   50.0    6.214   None
+munaxa-shared-testing-monthly   50.0    0.05    None
+
+===== done =====
+finished 2026-11-06T17:23:58Z
+
+===== DNS over HTTPS (cloudflare-dns.com), owner CloudShell, pasted 17:37:57 UTC =====
+[DNS status code (0 = NOERROR, 3 = NXDOMAIN), answers]
+munaxa.com/NS: [0,["bristol.ns.cloudflare.com.","rick.ns.cloudflare.com."]]
+munaxa.com/CAA: [0,[]]
+test.munaxa.com/CNAME: [3,[]]
+test.munaxa.com/A: [3,[]]
+operator-test.munaxa.com/CNAME: [3,[]]
+operator-test.munaxa.com/A: [3,[]]
+_03282899ed2d1640c316f06ff46b2cc7.test.munaxa.com/CNAME: [3,[]]
+_d67e37ad6024932ab65abd1e6dad5356.operator-test.munaxa.com/CNAME: [3,[]]
