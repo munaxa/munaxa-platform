@@ -1,0 +1,64 @@
+# Owner CloudShell output, pasted verbatim into the thread (HTML entities decoded). Some pastes repeat their first lines because of a terminal copy; nothing was removed.
+~ $ mkdir -p /tmp/g3rec && curl -fsSLo /tmp/g3rec/s.sh https://raw.githubusercontent.com/munaxa/munaxa-platform/6cb4ab6850f3d1b930122e2ea790716f75cc0e46/docs/aws-migration/agent-reports/2026-11-06-g3-recovery-execution/supporting/stage-ab-owner-cloudshell.sh && echo "744941d583ef6119275f6ceacff0c3c992d2b5f89ebdc27456d8fa9a0e61cae8  /tmp/g3rec/s.sh" | sha256sum -c - && bash /tmp/g3rec/s.sh
+/tmp/g3rec/s.sh: OK
+start 2026-11-06T13:22:11Z
+== A1 identity and Region
+OK   arn:aws:iam::229251310592:root
+OK   region eu-central-1
+overlay          16G  5.2G  9.7G  35% /
+== A2 nonprod state and lock (read only)
+aws:kms 2026-11-05T22:47:23+00:00       cmp240i_.nN.inwND8wBX52tvNC.Ynp2
+OK   no nonprod lock
+serial 3 lineage 7aae1c65 instances 38
+== A3 nothing running
+OK   no database
+OK   0 ECS tasks
+== A4 live CreatesCarry statements before (expect Resource *)
+{"Sid":"CreatesCarryProjectTag","Resource":"*","NotResource":null}
+{"Sid":"CreatesCarryEnvironmentTag","Resource":"*","NotResource":null}
+{"Sid":"CreatesCarryProjectTag","Resource":"*","NotResource":null}
+{"Sid":"CreatesCarryEnvironmentTag","Resource":"*","NotResource":null}
+== B1 Terraform 1.16.5
+terraform_1.16.5_linux_amd64.zip: OK
+Terraform v1.16.5
+== B2 pinned clone
+OK   pin a25898c7683b13f166b034a265639e3470b099e0, tree 0888198, diff since 6b8997a:  3 files changed, 41 insertions(+), 8 deletions(-)
+== B3 init, tests, state
+OK   init
+
+Success! 12 passed, 0 failed.
+True    2026-11-05T09:55:30+00:00       uGUXhgPucGwHt2NfDcdMYyuIA9QzBXx_
+False   2026-11-05T05:13:03+00:00       7IqoNUAAidH7pCQ0gQRScqJFFnwueU.p
+None
+OK   68 resources in bootstrap state
+== B4 saved plan and checks
+Plan: 0 to add, 3 to change, 0 to destroy.
+OK   3 addresses as approved
+aws_iam_role_policy.deployer["nonprod"]: policy
+aws_iam_role_policy.deployer["prod"]: policy
+aws_iam_role_policy.deployer_session["nonprod"]: policy
+aws_iam_role_policy.deployer["nonprod"] others_unchanged=true carry=2 notresource_ok=true actions_cond_unchanged=true chars=7210
+aws_iam_role_policy.deployer["prod"] others_unchanged=true carry=2 notresource_ok=true actions_cond_unchanged=true chars=7226
+aws_iam_role_policy.deployer_session["nonprod"] others_unchanged=true carry=2 notresource_ok=true actions_cond_unchanged=true chars=9882
+OK   only the two CreatesCarry statements change, Resource * -> NotResource of the 4 EC2 parent types
+== B5 apply the saved plan
+  "nonprod" = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary"
+  "prod" = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary-prod"
+}
+apply exit 0
+== B6 post-apply
+and found no differences, so no changes are needed.
+post-apply plan exit 0
+aws:kms 2026-11-06T13:23:13+00:00       B9mRtCpzZ9icNggvLUe9x4DZNTgWiPsq
+{"Sid":"CreatesCarryProjectTag","Resource":null,"NotResource":["arn:aws:ec2:eu-central-1:229251310592:vpc/*","arn:aws:ec2:eu-central-1:229251310592:subnet/*","arn:aws:ec2:eu-central-1:229251310592:security-group/*","arn:aws:ec2:eu-central-1:229251310592:route-table/*"]}
+{"Sid":"CreatesCarryEnvironmentTag","Resource":null,"NotResource":["arn:aws:ec2:eu-central-1:229251310592:vpc/*","arn:aws:ec2:eu-central-1:229251310592:subnet/*","arn:aws:ec2:eu-central-1:229251310592:security-group/*","arn:aws:ec2:eu-central-1:229251310592:route-table/*"]}
+{"Sid":"CreatesCarryProjectTag","Resource":null,"NotResource":["arn:aws:ec2:eu-central-1:229251310592:vpc/*","arn:aws:ec2:eu-central-1:229251310592:subnet/*","arn:aws:ec2:eu-central-1:229251310592:security-group/*","arn:aws:ec2:eu-central-1:229251310592:route-table/*"]}
+{"Sid":"CreatesCarryEnvironmentTag","Resource":null,"NotResource":["arn:aws:ec2:eu-central-1:229251310592:vpc/*","arn:aws:ec2:eu-central-1:229251310592:subnet/*","arn:aws:ec2:eu-central-1:229251310592:security-group/*","arn:aws:ec2:eu-central-1:229251310592:route-table/*"]}
+{"Sid":"CreatesCarryProjectTag","Resource":null,"NotResource":["arn:aws:ec2:eu-central-1:229251310592:vpc/*","arn:aws:ec2:eu-central-1:229251310592:subnet/*","arn:aws:ec2:eu-central-1:229251310592:security-group/*","arn:aws:ec2:eu-central-1:229251310592:route-table/*"]}
+{"Sid":"CreatesCarryEnvironmentTag","Resource":null,"NotResource":["arn:aws:ec2:eu-central-1:229251310592:vpc/*","arn:aws:ec2:eu-central-1:229251310592:subnet/*","arn:aws:ec2:eu-central-1:229251310592:security-group/*","arn:aws:ec2:eu-central-1:229251310592:route-table/*"]}
+{"chars":7210}
+{"chars":7226}
+{"chars":9882}
+OK   no bootstrap lock
+STAGE B COMPLETE 2026-11-06T13:23:25Z
+~ $

@@ -1,0 +1,58 @@
+# Owner CloudShell output, pasted verbatim into the thread (HTML entities decoded). Some pastes repeat their first lines because of a terminal copy; nothing was removed.
+~ $ mkdir -p /tmp/g3rec2 && curl -fsSLo /tmp/g3rec2/s.sh https://raw.githubusercontent.com/munaxa/munaxa-platform/9e45133dd419c03beb8f51f3ec8ee1559dca9f0a/docs/aws-migration/agent-reports/2026-11-06-g3-recovery-execution/supporting/stage-b2-owner-cloudshell.sh && echo "2443cdec4b6916702d5d9d6beb48e74fe9dbec249cf2980f64b122349d3c32d9  /tmp/g3rec2/s.sh" | sha256sum -c - && bash /tmp/g3rec2/s.sh 9e45133dd419c03beb8f51f3ec8ee1559dca9f0a
+/tmp/g3rec2/s.sh: OK
+start 2026-11-06T16:01:52Z
+OK   arn:aws:iam::229251310592:root
+OK   no nonprod lock
+== B1 Terraform 1.16.5
+terraform_1.16.5_linux_amd64.zip: OK
+Terraform v1.16.5
+== B2 pinned clone
+OK   pin 9e45133dd419c03beb8f51f3ec8ee1559dca9f0a, bootstrap changes since a25898c: infra/aws/bootstra~ $ mkdir -p /tmp/g3rec2 && curl -fsSLo /tmp/g3rec2/s.sh https://raw.githubusercontent.com/munaxa/munaxa-platform/9e45133dd419c03beb8f51f3ec8ee1559dca9f0a/docs/aws-migration/agent-reports/2026-11-06-g3-recovery-execution/supporting/stage-b2-owner-cloudshell.sh && echo "2443cdec4b6916702d5d9d6beb48e74fe9dbec249cf2980f64b122349d3c32d9  /tmp/g3rec2/s.sh" | sha256sum -c - && bash /tmp/g3rec2/s.sh 9e45133dd419c03beb8f51f3ec8ee1559dca9f0a
+/tmp/g3rec2/s.sh: OK
+start 2026-11-06T16:01:52Z
+OK   arn:aws:iam::229251310592:root
+OK   no nonprod lock
+== B1 Terraform 1.16.5
+terraform_1.16.5_linux_amd64.zip: OK
+Terraform v1.16.5
+== B2 pinned clone
+OK   pin 9e45133dd419c03beb8f51f3ec8ee1559dca9f0a, bootstrap changes since a25898c: infra/aws/bootstrap/iam_allow.tf infra/aws/bootstrap/tests/bootstrap.tftest.hcl 
+== A2 nonprod state: the creates still missing must equal the declaration at 9e45133dd419c03beb8f51f3ec8ee1559dca9f0a
+serial 5
+addresses 61
+still missing:
+aws_db_instance.main
+aws_iam_role_policy.db_admin_execution
+aws_iam_role_policy.docs_db_admin_execution[0]
+OK   declaration = the 3 creates still missing
+== B3 init, tests, state
+OK   init
+
+Success! 12 passed, 0 failed.
+True    2026-11-06T13:23:13+00:00       B9mRtCpzZ9icNggvLUe9x4DZNTgWiPsq
+False   2026-11-05T09:55:30+00:00       uGUXhgPucGwHt2NfDcdMYyuIA9QzBXx_
+None
+OK   68 resources in bootstrap state
+== B4 saved plan and checks
+Plan: 0 to add, 2 to change, 0 to destroy.
+OK   2 addresses as approved
+aws_iam_policy.deployer_allow["nonprod"]: policy
+aws_iam_policy.deployer_allow["prod"]: policy
+aws_iam_policy.deployer_allow["nonprod"] others_unchanged=true added=1 add_ok=true chars=5880
+aws_iam_policy.deployer_allow["prod"] others_unchanged=true added=1 add_ok=true chars=5813
+OK   only SecretsManagerDefaultKeyMetadata is added: kms:DescribeKey on the AWS managed Secrets Manager key
+== B5 apply the saved plan
+  "nonprod" = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary"
+  "prod" = "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary-prod"
+}
+apply exit 0
+== B6 post-apply
+and found no differences, so no changes are needed.
+post-apply plan exit 0
+aws:kms 2026-11-06T16:03:12+00:00       gmna.QOYgbhWUniZulJoE1L4dC7j87qX
+{"env":"nonprod","chars":5880,"added":[{"Action":"kms:DescribeKey","Effect":"Allow","Resource":"arn:aws:kms:eu-central-1:229251310592:key/033b4382-b443-4527-a34e-41d91b62cfd5","Sid":"SecretsManagerDefaultKeyMetadata"}]}
+{"env":"prod","chars":5813,"added":[{"Action":"kms:DescribeKey","Effect":"Allow","Resource":"arn:aws:kms:eu-central-1:229251310592:key/033b4382-b443-4527-a34e-41d91b62cfd5","Sid":"SecretsManagerDefaultKeyMetadata"}]}
+OK   no bootstrap lock
+STAGE B2 COMPLETE 2026-11-06T16:03:30Z
+~ $
