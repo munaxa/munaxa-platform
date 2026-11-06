@@ -1,17 +1,57 @@
 {
   "root": "stack-nonprod",
-  "intent": "G3 recovery, third step: the 3 G3 creates still missing after run 42234410579 stopped on CreateDBInstance (KMSKeyNotAccessibleFault: kms:DescribeKey on the AWS managed Secrets Manager key, fixed in bootstrap). The database and the two db-admin policies that need its secret. 3 creates, nothing else. No ALB, no NAT, no service, no backstop.",
+  "intent": "Nonprod shutdown backstop (backstop.tf), the separate apply after G3 (owner decision D-4 = B): the EventBridge Scheduler role, its inline policy, the database stop schedule and the 10 service scale-in schedules, daily at 21:00 UTC. 13 creates, nothing else: no update, replacement or destroy, no ALB, NAT, service, DNS or production resource.",
   "changes": [
     {
-      "address": "aws_db_instance.main",
+      "address": "aws_iam_role.session_backstop[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_iam_role_policy.db_admin_execution",
+      "address": "aws_iam_role_policy.session_backstop[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_iam_role_policy.docs_db_admin_execution[0]",
+      "address": "aws_scheduler_schedule.stop_database[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"control-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"control-portal\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"docs-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"docs-scanner\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"docs-web\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"identity\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"school-admin\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"school-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"work-admin\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.scale_in[\"work-api\"]",
       "actions": ["create"]
     }
   ]

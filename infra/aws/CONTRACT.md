@@ -14,7 +14,7 @@ image published to the shared ECR). Account `229251310592`, region `eu-central-1
 | Item              | Testing (`nonprod`)                     | Production (`prod`)           |
 | ----------------- | --------------------------------------- | ----------------------------- |
 | Prefix            | `munaxa-nonprod`                        | `munaxa-prod`                 |
-| Run model         | On-demand sessions (`aws-session.yml`); nothing runs between sessions; 20:00 UTC backstop | Always on |
+| Run model         | On-demand sessions (`aws-session.yml`); nothing runs between sessions; `down` scheduled 19:17 and 01:47 UTC (GitHub), AWS backstop 21:00 UTC (EventBridge Scheduler, `backstop.tf`) | Always on |
 | Cloud Map         | `nonprod.munaxa.internal`               | `prod.munaxa.internal`        |
 | Log groups        | `/munaxa/nonprod/<service>`, 14 days    | `/munaxa/prod/<service>`, 30 days |
 | Tags              | `Project=munaxa`, `Stack=shared`, `Environment=<env>`, `ManagedBy` (provider default tags) | same |

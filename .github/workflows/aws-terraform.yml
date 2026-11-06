@@ -105,6 +105,14 @@ jobs:
       - name: The db-admin script is valid POSIX shell
         run: shellcheck --shell=sh infra/aws/stack/scripts/db-bootstrap.sh
 
+      # The manual shutdown path beside the AWS-side backstop: idempotent on a stopped, stopping or
+      # absent database, and red on anything it cannot stop (stub aws CLI, no AWS call).
+      - name: The database stop script is idempotent
+        run: |
+          set -euo pipefail
+          shellcheck scripts/aws/stop-database.sh scripts/aws/stop-database.test.sh
+          scripts/aws/stop-database.test.sh
+
   plan:
     name: Plan ${{ inputs.environment }} (${{ inputs.action }})
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'

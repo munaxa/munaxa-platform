@@ -1,4 +1,5 @@
-# Testing's AWS-side shutdown backstop (phase 6, Agent 5). Nonprod only.
+# Testing's AWS-side shutdown backstop (phase 6, Agent 5; enabled in the 6 Nov 2026 nonprod
+# readiness phase). Nonprod only.
 #
 # aws-session.yml `down` is the normal end of a session, and its schedule is the first backstop.
 # GitHub starts scheduled runs late (3 to 6 hours observed), can drop them under load, disables them
@@ -10,17 +11,35 @@
 #
 # It cannot delete the ALB: DeleteLoadBalancer needs the ALB's ARN, which changes with every
 # session, and a schedule's input is fixed. The ALB (about US$0.037 an hour with its two IPv4
-# addresses) is removed by the next `down`. A call on a stopped database or a missing service fails
-# harmlessly (InvalidDBInstanceState, ServiceNotFoundException); nothing is retried for long.
+# addresses) is removed by the next `down`.
+#
+# Idempotent by construction: each schedule makes one fixed API call. On a database that is already
+# stopped or stopping, StopDBInstance answers InvalidDBInstanceState and changes nothing; on a
+# service that does not exist (every night without a session) UpdateService answers
+# ServiceNotFoundException; on a service already at 0 it changes nothing. Scheduler's retry policy
+# (3 attempts within an hour) applies to errors it treats as retryable, such as throttling; its
+# documentation implies that permanent errors like these two are not retried.
+#
+# RDS starts a database by itself after seven consecutive days stopped. The daily run stops it again
+# the same evening (at most about 24 hours of running database, about US$0.46).
+#
+# Evidence (no extra resource, no cost): every call is a CloudTrail management event in Event
+# history, user `munaxa-nonprod-session-backstop`, with its error code or none; the RDS event log
+# records "DB instance stopped"; AWS/Scheduler metrics count attempts and target errors per schedule
+# group (all of these are in `default`, so the nightly ServiceNotFoundException answers are counted
+# there too, and the metrics alone cannot tell a failed database stop: read CloudTrail). Scheduler
+# does not validate the target input at creation, so the first run's CloudTrail record is the proof
+# that the input and the role work (report 2026-11-06-nonprod-readiness).
 #
 # Drift it leaves: a scaled-in service shows desired_count 0 -> n in the next `up` plan (an
 # aws_ecs_service update, which the session plan check allows); `down` deletes the services anyway.
-# Schedules carry no tags (the API has none). Cost: about 11 invocations a day, inside the
-# EventBridge Scheduler free tier of 14 million a month.
+# Schedules carry no tags (the API has none). Cost: 11 invocations a day, inside the EventBridge
+# Scheduler free tier of 14 million a month.
 
 locals {
   backstop_enabled = var.environment == "nonprod" && var.session_backstop_schedule != ""
-  # Every long-running service the stack can create (modules/service var.name, create_service).
+  # Every long-running service the stack can create (modules/service var.name, create_service);
+  # a test keeps it covering every service named in envs/nonprod.tfvars desired_counts.
   backstop_services = local.backstop_enabled ? toset([
     "identity", "control-api", "control-portal", "work-api", "work-admin", "school-api", "school-admin",
     "docs-api", "docs-web", "docs-scanner",

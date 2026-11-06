@@ -412,6 +412,69 @@ run "an_empty_schedule_turns_the_backstop_off" {
   }
 }
 
+# Nonprod readiness (6 Nov 2026): the backstop's AWS-side inputs, checked before the apply. The G3
+# recovery showed that a mocked plan misses what AWS validates only on the call (an EC2 description
+# character, a tag-less AWS managed key). Scheduler validates names and descriptions at creation and
+# the target input never (it fails on every run), so these pin what can be pinned offline: the
+# documented CreateSchedule and RetryPolicy constraints, the exact target input keys, and that every
+# service the nonprod environment runs is covered.
+run "the_backstop_schedules_fit_what_scheduler_accepts" {
+  command = plan
+
+  variables {
+    session_backstop_schedule = "cron(0 21 * * ? *)"
+    # envs/nonprod.tfvars desired_counts: every service Testing can run, Docs included.
+    desired_counts = {
+      identity   = 1, control-api = 1, control-portal = 1, work-api = 1, work-admin = 1,
+      school-api = 1, school-admin = 1, docs-api = 1, docs-web = 1, docs-scanner = 1,
+    }
+  }
+
+  assert {
+    condition     = length(setsubtract(keys(var.desired_counts), keys(aws_scheduler_schedule.scale_in))) == 0
+    error_message = "Every service nonprod can run has a scale-in schedule."
+  }
+  assert {
+    condition = alltrue([for s in concat(values(aws_scheduler_schedule.scale_in), aws_scheduler_schedule.stop_database) :
+      length(s.name) <= 64 && can(regex("^[0-9a-zA-Z_.-]+$", s.name)) && startswith(s.name, "munaxa-nonprod-backstop-")
+    ])
+    error_message = "Schedule names: at most 64 of [0-9a-zA-Z-_.] (CreateSchedule), and inside the deployer's munaxa-nonprod-* allow."
+  }
+  assert {
+    condition = alltrue([for s in concat(values(aws_scheduler_schedule.scale_in), aws_scheduler_schedule.stop_database) :
+      length(s.description) <= 512 && !strcontains(s.description, "\u2014") && !strcontains(s.description, "'")
+    ])
+    error_message = "Descriptions: at most 512 characters, no em dash, no apostrophe."
+  }
+  assert {
+    condition = alltrue([for s in concat(values(aws_scheduler_schedule.scale_in), aws_scheduler_schedule.stop_database) :
+      s.schedule_expression == "cron(0 21 * * ? *)" && s.schedule_expression_timezone == "UTC" && s.state != "DISABLED" &&
+      s.flexible_time_window[0].mode == "OFF" &&
+      s.target[0].retry_policy[0].maximum_retry_attempts >= 0 && s.target[0].retry_policy[0].maximum_retry_attempts <= 185 &&
+      s.target[0].retry_policy[0].maximum_event_age_in_seconds >= 60 && s.target[0].retry_policy[0].maximum_event_age_in_seconds <= 86400
+    ])
+    error_message = "Every schedule: daily 21:00 UTC, never disabled, no flexible window, retry policy inside the RetryPolicy ranges."
+  }
+  assert {
+    condition     = keys(jsondecode(aws_scheduler_schedule.stop_database[0].target[0].input)) == ["DbInstanceIdentifier"]
+    error_message = "The database schedule's input holds the instance identifier and nothing else."
+  }
+  assert {
+    condition = alltrue([for k, s in aws_scheduler_schedule.scale_in :
+      keys(jsondecode(s.target[0].input)) == ["Cluster", "DesiredCount", "Service"] && jsondecode(s.target[0].input).Service == k
+    ])
+    error_message = "Each service schedule's input holds the cluster, its own service and desired count 0, nothing else."
+  }
+  assert {
+    condition     = jsondecode(aws_iam_role.session_backstop[0].assume_role_policy).Statement[0].Principal.Service == "scheduler.amazonaws.com" && length(jsondecode(aws_iam_role.session_backstop[0].assume_role_policy).Statement) == 1 && jsondecode(aws_iam_role.session_backstop[0].assume_role_policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "229251310592"
+    error_message = "Only EventBridge Scheduler of this account can assume the backstop role."
+  }
+  assert {
+    condition     = aws_iam_role.session_backstop[0].name == "munaxa-nonprod-session-backstop" && aws_iam_role.session_backstop[0].path == "/munaxa-shared/"
+    error_message = "The backstop role's name and path are inside the deployer's role/munaxa-shared/munaxa-nonprod-* allow."
+  }
+}
+
 run "identity_without_its_valkey_sidecar_is_refused_in_a_session" {
   command = plan
   variables {

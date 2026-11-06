@@ -9,10 +9,11 @@ vpc_cidr    = "10.130.0.0/16"
 edge_enabled     = false
 services_enabled = false
 
-# Testing's AWS-side shutdown backstop (backstop.tf). Off for G3, so G3 stays the reviewed 64
-# creates (owner decision D-4 = B, phase 7). A separate, separately approved apply right after G3
-# sets "cron(0 21 * * ? *)" here (13 creates); no Testing session starts before it is verified.
-session_backstop_schedule = ""
+# Testing's AWS-side shutdown backstop (backstop.tf): every day at 21:00 UTC, EventBridge Scheduler
+# stops the database and scales every service to 0. It was off for G3 (owner decision D-4 = B,
+# phase 7); this is its separate apply after G3 (13 creates, nonprod readiness phase, 6 Nov 2026).
+# No Testing session starts before its first run is verified (report 2026-11-06-nonprod-readiness).
+session_backstop_schedule = "cron(0 21 * * ? *)"
 
 hosts = {
   identity    = "id.test.munaxa.com"
