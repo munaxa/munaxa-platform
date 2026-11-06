@@ -480,6 +480,22 @@ run "b1_rds_master_secret_only_through_rds" {
     ])
     error_message = "N-1: the boundary also admits the RDS master secret by its own environment's tags."
   }
+
+  assert {
+    condition = alltrue([
+      for env in ["nonprod", "prod"] : length([
+        for s in data.aws_iam_policy_document.deployer_allow[env].statement : s.sid
+        if s.sid == "SecretsManagerDefaultKeyMetadata" && s.actions == toset(["kms:DescribeKey"]) && length(s.condition) == 0
+        && s.resources == toset(["arn:aws:kms:eu-central-1:229251310592:key/033b4382-b443-4527-a34e-41d91b62cfd5"])
+      ]) == 1
+    ])
+    error_message = "G3 recovery: only kms:DescribeKey, only on the AWS managed Secrets Manager key."
+  }
+
+  assert {
+    condition     = alltrue([for env in ["nonprod", "prod"] : length(data.aws_iam_policy_document.deployer_allow[env].minified_json) <= 6144])
+    error_message = "A managed policy holds at most 6,144 characters."
+  }
 }
 
 # Phase 6 (Agent 5): the nonprod boundary admits the AWS-side Testing backstop (stack/backstop.tf);
