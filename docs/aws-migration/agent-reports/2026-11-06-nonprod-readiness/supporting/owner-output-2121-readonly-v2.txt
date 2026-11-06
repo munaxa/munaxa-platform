@@ -1,0 +1,83 @@
+Owner run of nonprod-readonly-check.sh v2 (pin ede42ce, sha256 c2fa8ac7...1546 "OK"), AWS CloudShell as root,
+6 Nov 2026 21:21:43 to 21:22:28 UTC. Pasted in the project chat at 21:22:53 UTC. The output below is copied from
+that message, unchanged except for HTML escaping. Sections 10 to 13 are identical to the 17:23 run
+(owner-output-1723-readonly.txt): 0 images in the 11 product repositories, 10 secret containers with 0 versions,
+alias/munaxa-nonprod-data Enabled, the same budget amounts.
+
+===== 0. =====
+started 2026-11-06T21:21:43Z; Arn arn:aws:iam::229251310592:root; region eu-central-1; CloudTrail window from 2026-11-05T19:21:43Z
+
+===== 1. ACM certificate (*.test.munaxa.com) =====
+arn:aws:acm:eu-central-1:229251310592:certificate/7cb48297-f637-4de3-bc1a-9d8203699f05
+Status ISSUED; Type AMAZON_ISSUED; CreatedAt 2026-11-05T22:46:18.189Z; IssuedAt 2026-11-06T17:50:36.267Z;
+NotAfter 2027-05-22T23:59:59Z; FailureReason null; InUseBy []; RenewalEligibility INELIGIBLE;
+SANs *.test.munaxa.com, operator-test.munaxa.com
+Validation *.test.munaxa.com DNS SUCCESS (_03282899ed2d1640c316f06ff46b2cc7.test.munaxa.com. CNAME _535bee6b5545840de86f4ee4156b5e4c.wzccmgtwzk.acm-validations.aws.)
+Validation operator-test.munaxa.com DNS SUCCESS (_d67e37ad6024932ab65abd1e6dad5356.operator-test.munaxa.com. CNAME _77d8da377c7af0e8e77699d08b59fd02.wzccmgtwzk.acm-validations.aws.)
+
+===== 2. Public DNS over HTTPS (cloudflare-dns.com; no change made). Status 0 = NOERROR, 3 = NXDOMAIN =====
+NS     munaxa.com                                                 -> [0,["bristol.ns.cloudflare.com.","rick.ns.cloudflare.com."]]
+CAA    munaxa.com                                                 -> [0,[]]
+CNAME  test.munaxa.com                                            -> [0,[]]
+A      test.munaxa.com                                            -> [0,[]]
+CNAME  operator-test.munaxa.com                                   -> [0,[]]
+A      operator-test.munaxa.com                                   -> [0,[]]
+CNAME  _03282899ed2d1640c316f06ff46b2cc7.test.munaxa.com          -> [0,["_535bee6b5545840de86f4ee4156b5e4c.wzccmgtwzk.acm-validations.aws."]]
+CNAME  _d67e37ad6024932ab65abd1e6dad5356.operator-test.munaxa.com -> [0,["_77d8da377c7af0e8e77699d08b59fd02.wzccmgtwzk.acm-validations.aws."]]
+
+===== 3. RDS munaxa-nonprod-pg =====
+Status stopped; db.t4g.micro; postgres 16.13; MultiAZ false; Public false; Encrypted true; DeletionProtection true;
+20 GiB; munaxa-nonprod-pg16 in-sync. The RDS events are the same as at 17:23; the last is 16:25:15 "DB instance stopped".
+
+===== 4. ECS cluster munaxa-nonprod =====
+ACTIVE; Services 0; Running 0; Pending 0; services []; tasks []
+
+===== 5. Billable session resources in the nonprod VPC =====
+load balancers: none; NAT gateways: none; EC2 instances: none; Elastic IPs: none
+eni-01a8dd0c4c248e423   interface       available None     True    amazon-rds      RDSNetworkInterface subnet-0c41bfbe889e71a46
+
+===== 6. EventBridge Scheduler (munaxa-* only) =====
+11 schedules in group default, all ENABLED: munaxa-nonprod-backstop-{database,identity,control-api,control-portal,
+work-api,work-admin,school-api,school-admin,docs-api,docs-web,docs-scanner}.
+Each one: Expression cron(0 21 * * ? *); TZ UTC; Window OFF; Role arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-session-backstop;
+Retry {MaximumEventAgeInSeconds 3600, MaximumRetryAttempts 3}; DLQ null; Created 2026-11-06T17:45:24 to 17:45:33Z.
+database: Target arn:aws:scheduler:::aws-sdk:rds:stopDBInstance, Input {"DbInstanceIdentifier":"munaxa-nonprod-pg"}
+others:   Target arn:aws:scheduler:::aws-sdk:ecs:updateService, Input {"Cluster":"munaxa-nonprod","DesiredCount":0,"Service":"<service>"}
+
+===== 7. Backstop role munaxa-nonprod-session-backstop =====
+Arn arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-session-backstop; Path /munaxa-shared/;
+Boundary arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary;
+Trust: Allow scheduler.amazonaws.com sts:AssumeRole, StringEquals aws:SourceAccount 229251310592;
+Created 2026-11-06T17:45:14Z; LastUsed 2026-11-06T21:00:49Z eu-central-1
+Inline policies: ["stop-testing"]:
+  StopTheDatabase: Allow rds:StopDBInstance on arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg
+  ScaleInTheServices: Allow ecs:UpdateService on arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/*
+                      with ArnEquals ecs:cluster arn:aws:ecs:eu-central-1:229251310592:cluster/munaxa-nonprod
+Attached policies: []
+
+===== 8. CloudTrail: the backstop's own calls =====
+--- StopDBInstance by munaxa-nonprod-session-backstop
+2026-11-06T21:00:48Z    StopDBInstance  InvalidDBInstanceStateFault        Instance munaxa-nonprod-pg is not in available state.      {"dBInstanceIdentifier":"munaxa-nonprod-pg"}
+--- UpdateService by munaxa-nonprod-session-backstop
+2026-11-06T21:00:49Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"docs-web","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:40Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"work-api","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:39Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"school-api","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:31Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"docs-scanner","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:26Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"school-admin","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:25Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"work-admin","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:19Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"docs-api","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:17Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"identity","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:15Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"control-api","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+2026-11-06T21:00:04Z    UpdateService   ServiceNotFoundException   Service not found.      {"cluster":"munaxa-nonprod","service":"control-portal","desiredCount":0,"forceNewDeployment":false,"dryrun":false}
+--- AssumeRole of munaxa-nonprod-session-backstop
+2026-11-06T21:00:48Z, 21:00:40Z, 21:00:31Z, 21:00:26Z, 21:00:25Z, 21:00:15Z, 21:00:04Z    scheduler.amazonaws.com OK
+2026-11-06T17:45:33Z (x2), 17:45:24Z (x10)                                                  scheduler.amazonaws.com OK
+
+===== 9. Scheduler metrics, group default (hourly sums) =====
+InvocationAttemptCount     2026-11-06T20:21:00+00:00 11.0
+TargetErrorCount           2026-11-06T20:21:00+00:00 11.0
+TargetErrorThrottledCount  (none)
+InvocationThrottleCount    (none)
+InvocationDroppedCount     2026-11-06T20:21:00+00:00 11.0
+
+finished 2026-11-06T21:22:28Z
