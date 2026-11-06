@@ -223,7 +223,7 @@ Two changes, prepared in this task, **not merged and not applied**:
 
 Local check (Terraform 1.16.5, AWS provider 6.67.0, mocked provider, no AWS call): `terraform fmt -check -recursive infra/aws` clean; `terraform validate` (bootstrap) passes; `terraform test` (bootstrap) **12 passed, 0 failed**; with `iam.tf` reverted, the new assertion fails (so it guards the change). [V]
 
-**C-2, the recovery declaration.** `supporting/nonprod.expected-changes.g3-recovery-DRAFT.json` (sha256 `c8ca8789a72bc9ae0f2aebdadc93522c268af67b32bba528c0cc9ca3e05cb931`): the 26 addresses of §5, each `["create"]`, taken from the merged 64-address declaration by filter (no address typed by hand). `scripts/terraform/check-plan-intent.sh --validate`: "Declaration valid: root stack-nonprod, 26 declared change(s)." It replaces `infra/aws/stack/envs/nonprod.expected-changes.json`, because the apply job enforces an exact match and the real plan will now contain 26 creates, not 64. [V]
+**C-2, the recovery declaration.** `supporting/nonprod.expected-changes.g3-recovery-DRAFT.json` (sha256 `a262c728b7e4538c04a4c19c573695087b22c3398410faf1db6a7c7b28b5f8cd`): the 26 addresses of §5, each `["create"]`, taken from the merged 64-address declaration by filter (no address typed by hand). `scripts/terraform/check-plan-intent.sh --validate`: "Declaration valid: root stack-nonprod, 26 declared change(s)." It replaces `infra/aws/stack/envs/nonprod.expected-changes.json`, because the apply job enforces an exact match and the real plan will now contain 26 creates, not 64. [V]
 
 No change to `infra/aws/stack/*.tf`, the workflows, or any product repository is needed. The G3 architecture and its 64-resource intent are unchanged: the recovery only completes it.
 

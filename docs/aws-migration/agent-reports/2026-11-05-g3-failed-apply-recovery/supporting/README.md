@@ -3,7 +3,7 @@
 | File | What | sha256 |
 | --- | --- | --- |
 | `bootstrap-createscarry-ec2-parents.patch` | C-1: the proposed IAM guardrail change (bootstrap `iam.tf`, `iam_allow.tf`, one test). Applies to `bf46c5d` (`git apply --check` passes). Not merged, not applied | `70fbed7d2319a24307dde7c81a45ac3a16d3a85bd300f62e32ae6ef93e0daf00` |
-| `nonprod.expected-changes.g3-recovery-DRAFT.json` | C-2: the 26-create recovery declaration (filtered from the merged 64; `--validate` passes). Not committed to `envs/` | `c8ca8789a72bc9ae0f2aebdadc93522c268af67b32bba528c0cc9ca3e05cb931` |
+| `nonprod.expected-changes.g3-recovery-DRAFT.json` | C-2: the 26-create recovery declaration (filtered from the merged 64; `--validate` passes). Not committed to `envs/` | `a262c728b7e4538c04a4c19c573695087b22c3398410faf1db6a7c7b28b5f8cd` |
 | `state-38-addresses.txt` | The 38 managed addresses in `nonprod/stack.tfstate` version `cmp240i_.nN.inwND8wBX52tvNC.Ynp2`, serial 3 (addresses only) | — |
 | `recovery-26-addresses.txt` | The declared 64 minus the 38 | — |
 
