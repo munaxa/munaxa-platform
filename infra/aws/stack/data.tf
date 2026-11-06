@@ -64,11 +64,17 @@ resource "aws_db_parameter_group" "main" {
   name   = "${local.prefix}-pg16"
   family = "postgres16"
 
-  # rds.force_ssl is not set here: it is already 1 by default in the postgres16 family, and RDS
-  # keeps a parameter set to its default value as Source "system", which the provider never reads
-  # back, so declaring it gave a permanent `parameter` update on every plan (G3 recovery run
-  # 42225271265, 6 Nov 2026) and would stop every aws-session plan. TLS stays enforced by that
-  # default; the G3 recovery report checks the live value (DescribeDBParameters: 1).
+  # rds.force_ssl = 1 is also the postgres16 default, so RDS stores it with Source "system" and
+  # reports ApplyMethod "pending-reboot" for it. The provider keeps it in state (it is configured)
+  # with the ApplyMethod AWS returns and hashes apply_method into the set, so it must be declared
+  # "pending-reboot" here, or every plan shows a `parameter` update (G3 recovery runs 42225271265
+  # and 42227734534, 6 Nov 2026). The value is 1 either way; dropping the block (platform#56) only
+  # turned the diff into a reset of the parameter.
+  parameter {
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
+  }
 
   parameter {
     name  = "log_min_duration_statement"
