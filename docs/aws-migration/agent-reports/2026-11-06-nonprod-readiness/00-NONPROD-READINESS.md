@@ -74,7 +74,7 @@ Owner run of `supporting/nonprod-readonly-check.sh`, pinned at `2ae4367`, sha256
 
 - **Deadline:** the request is 72 hours old at about 22:46 UTC on 8 Nov. After that the certificate fails and needs a separately approved replacement.
 - **Not changed by this phase:** no DNS record, nameserver, proxy setting or Cloudflare setting.
-- **Status at writing:** [P] owner. §9 records the ISSUED read once it is done.
+- **Status at writing:** the owner reported "Dns added" at 19:43 UTC. ISSUED [P] until script v2 reads it (§9).
 
 ## 4. Shutdown-backstop architecture and inventory
 
@@ -185,7 +185,11 @@ Provider behaviour, checked in the 6.67.0 source (`internal/service/scheduler/sc
 - **Plan job.** Approved by the owner, 17:36 UTC.
 - **Apply job.** Approved by the owner. It verified the saved plan's commit (`b2b78a4`) and sha256 (`caec6812…f88a`), ran `terraform apply` of that saved plan from 17:45:08, and finished **"Applied the saved plan of commit b2b78a40c97dc80a9f3acf7cabb46b0cbf5b1af6."** at **17:45:34 UTC**, with no warning.
 
-**Post-apply plan** ([run 42265993972](https://github.com/munaxa/munaxa-platform/actions/runs/42265993972), report only): [P], awaiting the owner's approval of the plan job. The expectation is no changes; a diff would expose provider refresh drift on the new resources.
+**Post-apply plan** ([run 42265993972](https://github.com/munaxa/munaxa-platform/actions/runs/42265993972), report only, approved by the owner, 19:43:12 to 19:43:28 UTC) [V, job log]:
+
+- **`Plan: 0 to add, 0 to change, 0 to replace, 0 to destroy.` "No changes."**
+- The provider re-reads the 13 new resources (and the 64 G3 ones) with no drift. That is the check against the refresh defect class of the G3 recovery.
+- The job's warning "The plan does not match envs/nonprod.expected-changes.json (report only)" is expected: the declaration still lists the 13 creates that are now applied.
 
 ## 9. Shutdown execution evidence
 
@@ -215,7 +219,7 @@ No NAT gateway, always-on compute, alarm, queue or other paid service was added.
 | 1 | ACM certificate | **BLOCKED — OWNER ACTION** | PENDING_VALIDATION [V 17:23]; 2 CNAMEs to add (§3); deadline about 22:46 UTC 8 Nov |
 | 2 | Shutdown backstop deployed | **VERIFIED COMPLETE** | run 42261528996, 13/0/0/0, applied 17:45:34 [V] |
 | 3 | Backstop execution | **NOT VERIFIED** | first run 21:00 UTC; §9 criteria |
-| 4 | Post-apply plan clean | **NOT VERIFIED** | run 42265993972 awaiting approval |
+| 4 | Post-apply plan clean | **VERIFIED COMPLETE** | run 42265993972: 0/0/0/0, "No changes" [V] |
 | 5 | RDS stopped, auto-restart handled | **VERIFIED COMPLETE** (state); restart handling **NOT VERIFIED** until §9 | `stopped` [V 17:23]; next auto-start about 13 Nov |
 | 6 | ECS cluster, 0 services, 0 tasks | **VERIFIED COMPLETE** | [V 17:23] |
 | 7 | ECR images for Identity, Control, Work, School | **BLOCKED — ENGINEERING** | 0 in all 11 repositories [V]; each product's "Publish image" workflow and a digest PR (owner approves) |
@@ -227,12 +231,12 @@ No NAT gateway, always-on compute, alarm, queue or other paid service was added.
 | 13 | Testing cost and shutdown controls | **VERIFIED COMPLETE** (budgets, manual `down`); backstop **NOT VERIFIED** (§9) | budgets [V]; 0.05 USD testing spend |
 | 14 | Database migrations, smoke tests | **NOT STARTED** | out of scope (forbidden in this brief) |
 
-**Product testing is not ready.** Items 1, 3, 4 and 7 to 12 must close first.
+**Product testing is not ready.** Items 1, 3 and 7 to 12 must close first.
 
 ## 12. Remaining risks and next actions
 
 1. **[O] Add the two ACM CNAMEs before about 22:46 UTC on 8 Nov.**
-2. **[O] Approve post-apply plan run 42265993972**, then run script v2 after 21:08 UTC. The lead then records §8 and §9 in a follow-up update to this report.
+2. **[O] Run script v2 after 21:08 UTC.** The lead then records §8 and §9 in a follow-up update to this report.
 3. **Risk R-1: universal-target input key.** See §7. If the first run shows a validation error, the fix is a one-key change, followed by a new plan and apply with its own declaration.
 4. **Risk R-2: failure visibility is manual.** CloudTrail has to be read; there is no alarm. An alarm would need a bootstrap IAM change, to be decided by the owner.
 5. **Risk R-3: unattached ENI** `eni-01a8dd0c4c248e423`. It has no public IP, so no charge. Script v2 prints its description and requester so its origin can be named. The lead deleted nothing.
