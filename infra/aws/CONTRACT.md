@@ -122,7 +122,7 @@ Plain (non-secret) configuration is set in Terraform `environment` and is listed
 
 ## 6. Databases
 
-One PostgreSQL 16 instance per environment (`munaxa-<env>-pg`, private, `rds.force_ssl=1`). URLs
+One PostgreSQL 16 instance per environment (`munaxa-<env>-pg`, private, `rds.force_ssl=1`, the postgres16 default, not set in the parameter group). URLs
 use `?sslmode=require`, with the instance endpoint DNS name as host (never an IP address):
 node-postgres treats `require` as `verify-full`, so Identity and Work vendor AWS's eu-central-1 RDS
 bundle (`deploy/aws/rds-ca-eu-central-1.crt`, `NODE_EXTRA_CA_CERTS`). Prisma and psql encrypt but
