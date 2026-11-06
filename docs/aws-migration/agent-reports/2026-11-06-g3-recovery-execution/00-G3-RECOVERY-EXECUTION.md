@@ -3,7 +3,7 @@
 - **Date:** 6 Nov 2026, 13:22 UTC to 16:26 UTC. **Author:** the lead of the thread "Recover failed G3 Testing apply".
 - **Authorization:** the owner's brief "Execute G3 Non-Production Recovery — Approved" (6 Nov, about 05:00 UTC), Stages A to E. Two further owner approvals were given on decision cards during execution: PR #56 (13:30) and PR #59, the IAM change (16:00). The owner also approved each plan and apply job in the `aws-nonprod` GitHub environment.
 - **Plan being executed:** [`../2026-11-05-g3-failed-apply-recovery/`](../2026-11-05-g3-failed-apply-recovery/) (platform #54, `f784491`); code and the 26-create declaration in platform #55 (`a25898c`).
-- **AWS access:** the AWS connector's sign-in was expired for the whole task, so every AWS read and both root bootstrap re-applies were run **by the owner as root in CloudShell**, from scripts pinned by commit and sha256 (in `supporting/`). Their outputs are pasted verbatim in `supporting/owner-output-*.log`. The lead made no AWS call. The stack applies and the shutdown ran in GitHub Actions under the nonprod deployer role.
+- **AWS access:** the AWS connector's sign-in was expired for the whole task, so every AWS read and both root bootstrap re-applies were run **by the owner as root in CloudShell**, from scripts pinned by commit and sha256 (in `supporting/`). Their outputs are pasted verbatim in `supporting/owner-output-*.txt`. The lead made no AWS call. The stack applies and the shutdown ran in GitHub Actions under the nonprod deployer role.
 - **Labels:** **[V]** verified from a log or an AWS read (source given), **[E]** inferred, **[O]** owner action.
 
 ## Verdict
@@ -16,7 +16,7 @@ All 64 G3 resources now exist and are tracked in state, no more and no fewer (§
 
 ## 1. Preflight evidence (Stage A)
 
-Owner script `supporting/stage-ab-owner-cloudshell.sh` (sha256 `744941d5…cae8`, fetched at `6cb4ab6`), run 13:22:11 to 13:23:25 UTC. Output: `supporting/owner-output-stage-ab.log`. [V]
+Owner script `supporting/stage-ab-owner-cloudshell.sh` (sha256 `744941d5…cae8`, fetched at `6cb4ab6`), run 13:22:11 to 13:23:25 UTC. Output: `supporting/owner-output-stage-ab.txt`. [V]
 
 | Check | Result |
 |---|---|
@@ -42,7 +42,7 @@ A second bootstrap re-apply (B2) was needed later for the IAM change in §5.4. I
 ## 3. Bootstrap test results
 
 - Stage B, at `a25898c`: `terraform test` → **`Success! 12 passed, 0 failed.`** [V, owner log]
-- Stage B2, at `9e45133`: **`Success! 12 passed, 0 failed.`** These include the new assertions of #59: the exact `SecretsManagerDefaultKeyMetadata` statement, and each `deployer_allow` document at or under 6,144 characters. [V, `supporting/owner-output-stage-b2.log`]
+- Stage B2, at `9e45133`: **`Success! 12 passed, 0 failed.`** These include the new assertions of #59: the exact `SecretsManagerDefaultKeyMetadata` statement, and each `deployer_allow` document at or under 6,144 characters. [V, `supporting/owner-output-stage-b2.txt`]
 - The same suites ran green in CI on #55 and #59 before merge.
 
 ## 4. Fresh plans (Stage C), in order
@@ -91,7 +91,7 @@ The apply created `aws_db_instance.main`, `aws_iam_role_policy.db_admin_executio
 - **Approval.** The owner approved it on a decision card at 16:00, because the brief forbids new IAM permissions without such an approval.
 - **Re-apply (B2).** The owner ran `supporting/stage-b2-owner-cloudshell.sh` (sha256 `2443cdec…d32d9`, pin `9e45133`) at 16:01:52 to 16:03:30. It checked that the state was missing exactly the 3 declared creates, and that bootstrap files changed since `a25898c` were only `iam_allow.tf` and the test.
   - Plan **0 / 2 / 0**, on `aws_iam_policy.deployer_allow["nonprod"]` and `["prod"]`. Exactly that one statement was added; the policies are now 5,880 and 5,813 characters.
-  - Apply exit 0, followed by a clean post-apply plan. The statement is live in both policies, and there was no lock. [V, `supporting/owner-output-stage-b2.log`]
+  - Apply exit 0, followed by a clean post-apply plan. The statement is live in both policies, and there was no lock. [V, `supporting/owner-output-stage-b2.txt`]
   - The `prod` policy belongs to the shared bootstrap's prod deployer role. It changes in the same way, because one code path renders both. No production infrastructure exists or was touched.
 
 ## 6. Shutdown result (Stage D)
@@ -100,12 +100,12 @@ The apply created `aws_db_instance.main`, `aws_iam_role_policy.db_admin_executio
 
 - **"Stop the database":** `database munaxa-nonprod-pg: was available, stop requested`.
 - **"Testing down":** switches plan with edge and services off. The result was **No changes** (0/0/0/0) and `Session down applied`; the database was then `stopping`.
-- **Owner read at 16:23:** `stopping`. **Owner read at 16:25:52:** **`stopped in-sync`** [V, end of `supporting/owner-output-stage-e.log`].
+- **Owner read at 16:23:** `stopping`. **Owner read at 16:25:52:** **`stopped in-sync`** [V, end of `supporting/owner-output-stage-e.txt`].
 - **Nothing else running:** ECS services 0, tasks 0, load balancers 0, NAT gateways 0, Elastic IPs 0, EC2 instances 0 [V, Stage E].
 
 ## 7. AWS versus Terraform reconciliation (Stage E)
 
-Owner script `supporting/stage-e-owner-cloudshell.sh` (sha256 `2e7e5744…7038`, pin `5c2b520`), run 16:23:30 to 16:24:08 UTC as root, read only. Output: `supporting/owner-output-stage-e.log`. Secret values were never read; Secrets Manager was read by `list-secrets` metadata only. [V]
+Owner script `supporting/stage-e-owner-cloudshell.sh` (sha256 `2e7e5744…7038`, pin `5c2b520`), run 16:23:30 to 16:24:08 UTC as root, read only. Output: `supporting/owner-output-stage-e.txt`. Secret values were never read; Secrets Manager was read by `list-secrets` metadata only. [V]
 
 | Item | Result |
 |---|---|
@@ -144,14 +144,14 @@ Owner script `supporting/stage-e-owner-cloudshell.sh` (sha256 `2e7e5744…7038`,
 
 | What | Where |
 |---|---|
-| Stage A and B (owner, root) | `supporting/stage-ab-owner-cloudshell.sh` → `supporting/owner-output-stage-ab.log` (13:22:11 to 13:23:25) |
+| Stage A and B (owner, root) | `supporting/stage-ab-owner-cloudshell.sh` → `supporting/owner-output-stage-ab.txt` (13:22:11 to 13:23:25) |
 | Plans, refused by the intent check | runs 42225271265, 42227734534 |
 | Apply, partial (20) | run 42230546277 |
 | Apply, partial (3) | run 42234410579 |
-| Bootstrap B2 (owner, root) | `supporting/stage-b2-owner-cloudshell.sh` → `supporting/owner-output-stage-b2.log` (16:01:52 to 16:03:30) |
+| Bootstrap B2 (owner, root) | `supporting/stage-b2-owner-cloudshell.sh` → `supporting/owner-output-stage-b2.txt` (16:01:52 to 16:03:30) |
 | Apply, success (3) | run 42248868140 (16:16:39) |
 | Shutdown | run 42251171427 |
-| Stage E (owner, root, read only) | `supporting/stage-e-owner-cloudshell.sh` → `supporting/owner-output-stage-e.log` (16:23:30 to 16:24:08, plus the 16:25:52 RDS read) |
+| Stage E (owner, root, read only) | `supporting/stage-e-owner-cloudshell.sh` → `supporting/owner-output-stage-e.txt` (16:23:30 to 16:24:08, plus the 16:25:52 RDS read) |
 | Code PRs | #55 `a25898c`, #56 `d81185e` (wrong fix), #57 `fc3b1c9`, #58 `8cca472`, #59 `9e45133` |
 | Owner reads used for diagnosis | pasted in the thread at 13:27 (parameters), 14:11 (state), 15:42 and 15:43 (KMS, CloudTrail, state) |
 

@@ -1,0 +1,103 @@
+# Owner CloudShell output, pasted verbatim into the thread (HTML entities decoded). Some pastes repeat their first lines because of a terminal copy; nothing was removed.
+~ $ mkdir -p /tmp/g3rece && curl -fsSLo /tmp/g3rece/s.sh https://raw.githubusercontent.com/munaxa/munaxa-platform/5c2b52065d40ef983f3c1af1b33a6996b9d33191/docs/aws-migration/agent-reports/2026-11-06-g3-recovery-execution/supporting/stage-e-owner-cloudshell.sh && echo "2e7e5744fbd65c2b8edbef5f889de47db8e52b31e6b23361f9c19881958f7038  /tmp/g3rece/s.sh" | sha256sum -c - && bash /tmp/g3rece/s.sh 5c2b52065d40ef983f3c1af1b33a6996b9d33191
+/tmp/g3rece/s.sh: OK
+start 2026-11-06T16:23:30Z
+~ $ mkdir -p /tmp/g3rece && curl -fsSLo /tmp/g3rece/s.sh https://raw.githubusercontent.com/munaxa/munaxa-platform/5c2b52065d40ef983f3c1af1b33a6996b9d33191/docs/aws-migration/agent-reports/2026-11-06-g3-recovery-execution/supporting/stage-e-owner-cloudshell.sh && echo "2e7e5744fbd65c2b8edbef5f889de47db8e52b31e6b23361f9c19881958f7038  /tmp/g3rece/s.sh" | sha256sum -c - && bash /tmp/g3rece/s.sh 5c2b52065d40ef983f3c1af1b33a6996b9d33191
+/tmp/g3rece/s.sh: OK
+start 2026-11-06T16:23:30Zarn:aws:iam::229251310592:root== E1 state
+2026-11-06T16:19:27+00:00       aws:kms
+no lock
+serial 7 lineage 7aae1c65
+state addresses 64
+expected G3 addresses 64
+-- in G3 list, not in state:
+-- in state, not in G3 list:
+== E2 database
+munaxa-nonprod-pg       stopping        db.t4g.micro       postgres        16.13   True    False   False      True    20
+rds.force_ssl   1
+munaxa-docs-eu-prod-pg-final    manual  available
+rds:munaxa-docs-eu-prod-pg-2026-10-22-07-21     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-23-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-24-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-25-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-26-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-27-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-28-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-29-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-30-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-10-31-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-11-01-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-11-02-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-11-03-00-36     automated  available
+rds:munaxa-docs-eu-prod-pg-2026-11-04-00-36     automated  available
+rds:munaxa-nonprod-pg-2026-11-06-16-13  automated available
+(snapshots listed above)
+== E3 compute and edge (G3 creates none of these)
+ecs services 0
+ecs tasks 0
+load balancers 0
+nat gateways 0
+elastic ips 0
+ec2 instances 0
+== E4 network
+vpc vpc-0824ebbff902d2980
+munaxa-nonprod-db-a     10.130.64.0/24  eu-central-1a      False
+munaxa-nonprod-db-b     10.130.65.0/24  eu-central-1b      False
+munaxa-nonprod-db-c     10.130.66.0/24  eu-central-1c      False
+munaxa-nonprod-public-a 10.130.0.0/24   eu-central-1a      False
+munaxa-nonprod-public-b 10.130.1.0/24   eu-central-1b      False
+munaxa-nonprod-rt-db    3       10.130.0.0/16
+munaxa-nonprod-rt-public        2       10.130.0.0/16,0.0.0.0/0
+None    1       10.130.0.0/16
+default 0       0
+munaxa-nonprod-alb      2       0
+munaxa-nonprod-database 1       0
+munaxa-nonprod-db-admin 0       2
+com.amazonaws.eu-central-1.s3   Gateway available
+internet gateways 1
+== E5 certificates, logs, secrets (metadata), images
+*.test.munaxa.com       PENDING_VALIDATION
+/munaxa/nonprod/ops     14      False
+munaxa-nonprod/control-api      True    True    -
+munaxa-nonprod/control-migrate  True    True    -
+munaxa-nonprod/docs-api True    True    -
+munaxa-nonprod/docs-operator    True    True    -
+munaxa-nonprod/identity-migrate True    True    -
+munaxa-nonprod/identity True    True    -
+munaxa-nonprod/school-api       True    True    -
+munaxa-nonprod/school-migrate   True    True    -
+munaxa-nonprod/work-api True    True    -
+munaxa-nonprod/work-migrate     True    True    -
+rds!db-c3ef5041-5407-4ed4-9a10-0fec0dbe18e5     True       True    rds
+munaxa-control/api images=0
+munaxa-control/migrate images=0
+munaxa-control/portal images=0
+munaxa-docs/antivirus images=6
+munaxa-docs/api images=6
+munaxa-docs/web images=6
+munaxa-identity/api images=0
+munaxa-identity/migrate images=0
+munaxa-school/admin images=0
+munaxa-school/api images=0
+munaxa-school/migrate images=0
+munaxa-work/admin images=0
+munaxa-work/api images=0
+munaxa-work/migrate images=0
+== E6 cost and budget
+munaxa-account-monthly  10.0    6.214   None
+munaxa-docs-eu-prod-monthly     10.0    4.691   None
+munaxa-shared-account-monthly   50.0    6.214   None
+munaxa-shared-testing-monthly   50.0    0.05    None
+6.2140406604    USD
+== E7 CloudTrail errors by the nonprod deployer, 6 Nov 13:00-now
+      1 ec2.amazonaws.com       CreateSecurityGroupClient.InvalidParameterValue
+      4 ec2.amazonaws.com       CreateSubnet    Client.RequestLimitExceeded
+      3 ec2.amazonaws.com       RevokeSecurityGroupEgress  Client.InvalidPermission.NotFound
+      1 rds.amazonaws.com       CreateDBInstance  KMSKeyNotAccessibleFault
+(write errors by the nonprod deployer listed above)
+STAGE E DONE 2026-11-06T16:24:08Z
+~ $
+
+# Follow-up read by the owner, 2026-11-06T16:25:52Z (pasted verbatim)
+~ $ aws rds describe-db-instances --region eu-central-1 --db-instance-identifier munaxa-nonprod-pg --query 'DBInstances[0].[DBInstanceStatus,DBParameterGroups[0].ParameterApplyStatus]' --output text
+stopped in-sync
