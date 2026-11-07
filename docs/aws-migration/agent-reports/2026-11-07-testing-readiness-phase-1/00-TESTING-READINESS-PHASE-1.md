@@ -20,7 +20,7 @@ GitHub environment protection, environment reviewers, repository variables, rule
 
 **Image release readiness: READY TO PUBLISH, SUBJECT TO OWNER CONFIRMATIONS.**
 
-- The three image workflows (Identity, Control, Work) are correct in code at the current reviewed `main` commits. Each builds from an `image/<40-hex SHA>` tag, checks that the SHA is on `main`, runs in the protected `image-release` environment and pushes only to its own product's ECR repositories through GitHub OIDC [V-repo].
+- The three image workflows (Identity, Control, Work) are correct in code at the current reviewed `main` commits. Each builds from an `image/<40-hex SHA>` tag, checks that the SHA is on `main`, references an environment named `image-release` and pushes only to its own product's ECR repositories through GitHub OIDC [V-repo]. The workflows reference an environment named `image-release`. Actual environment protection settings, required reviewers, and deployment branch/tag restrictions remain unverified. *(Corrected 7 Nov 2026, see §12.)*
 - **None has ever run** (0 runs, 0 tags in all three repositories) [V-gh]. So "functional" means correct on reading, not proven by a run. The first run is the proof.
 - **No workflow defect was found, so no workflow-fix PR was opened.**
 
@@ -55,7 +55,7 @@ Common to all three [V-repo]:
 
 - **Trigger:** push of a tag matching `image/**`.
 - **Tag format:** `image/<40 lowercase hex commit SHA>`. The `source` job refuses any other name, refuses a tag that points at a different commit, and refuses a commit that is not an ancestor of `origin/main`.
-- **Environment:** the `publish` job runs in `image-release`, which is meant to have a required reviewer. The publisher role's trust admits only `sub = repo:munaxa@311481412/munaxa-<product>@<repo id>:environment:image-release` with `ref` like `refs/tags/image/*` (`bootstrap/iam.tf` 559 to 585) [V-repo; trust verified live in phase 4, V-prior].
+- **Environment:** the `publish` job references an environment named `image-release` [V-repo]. Actual environment protection settings, required reviewers, and deployment branch/tag restrictions remain unverified [U]. The design intends a required reviewer. The publisher role's trust admits only `sub = repo:munaxa@311481412/munaxa-<product>@<repo id>:environment:image-release` with `ref` like `refs/tags/image/*` (`bootstrap/iam.tf` 559 to 585) [V-repo; trust verified live in phase 4, V-prior].
 - **Role variable:** the job stops at its first step if `vars.AWS_IMAGE_PUBLISHER_ROLE_ARN` is empty.
 - **Credentials:** OIDC only, `allowed-account-ids: 229251310592`, 1-hour session, every action pinned by commit SHA.
 - **ECR tags written:** `<7-char short SHA>` and `sha-<full SHA>`. No `latest`. Repositories are tag-IMMUTABLE with scan on push (`bootstrap/main.tf` 102 to 115).
@@ -260,7 +260,7 @@ Unchanged and already correct in `nonprod.tfvars` [V-repo]: `edge_enabled = fals
 With services off and the edge off [V-repo, V-local]:
 
 - **Identity:** `module.identity` (task definition, execution role, task role, security group and its rules, log group; no ECS service while `services_enabled = false`); `module.migrate["identity"]` (run-only); `identity-bootstrap` execution role, policy and task definition.
-- **Control:** `aws_kms_key.licence`, `aws_kms_key_policy.licence`, `aws_kms_alias.licence`; `module.control_api` (with its Cloud Map service registration); `module.control_migrate`; `module.control_portal`. No `control_sweep` schedule (production only).
+- **Control:** `aws_kms_key.licence`, `aws_kms_key_policy.licence`, `aws_kms_alias.licence`; `module.control_api` (its Cloud Map service registration is created only in a session, with the ECS service; corrected 7 Nov 2026); `module.control_migrate`; `module.control_portal`. No `control_sweep` schedule (production only).
 - **Shared:** the `db-admin` task definition (requires `postgres_image`).
 - **Not touched:** RDS, VPC, subnets, the 10 bundles, the ACM certificate, the backstop. Any change or replace there is a stop condition.
 
@@ -300,7 +300,7 @@ Each step names its gate. Nothing below is approved by this report.
 
 | # | Action | Who | Gate | Done when |
 |---|---|---|---|---|
-| 1 | In GitHub, for **each** of munaxa-identity, munaxa-control, munaxa-work: Settings → Environments → `image-release`: required reviewer = the owner, "Prevent self-review" off (sole maintainer), deployment branches and tags = **tags only, pattern `image/*`**, admin bypass off. Settings → Secrets and variables → Actions → Variables: `AWS_IMAGE_PUBLISHER_ROLE_ARN` = the value in §3. Secrets: `PLATFORM_PACKAGES_TOKEN` present (read:packages on the munaxa org, not expired). Settings → Rules: an `image/*` tag ruleset limiting who can create tags (phase 7 `05` O-2 to O-6) | Owner | Read only | Reported in the thread |
+| 1 | In GitHub, for **each** of munaxa-identity, munaxa-control, munaxa-work: Settings → Environments → `image-release`: required reviewer (preferably a second authorized person; see the self-review risk note under this table), deployment branches and tags = **tags only, pattern `image/*`**, admin bypass off. Settings → Secrets and variables → Actions → Variables: `AWS_IMAGE_PUBLISHER_ROLE_ARN` = the value in §3. Secrets: `PLATFORM_PACKAGES_TOKEN` present (read:packages on the munaxa org, not expired). Settings → Rules: an `image/*` tag ruleset limiting who can create tags (phase 7 `05` O-2 to O-6) | Owner | Read only | Reported in the thread |
 | 2 | Run [`supporting/phase1-readonly-check.sh`](supporting/phase1-readonly-check.sh) in CloudShell and paste the log | Owner | Read only | ECR 0 images, roles as in code, 10 containers with 0 versions, no licence key, ACM ISSUED, nothing running |
 | 3 | Approve Identity release at `5277d7190b3dda496443c4bd7d80c78bd4d9174e` (or name a newer reviewed main) | Owner | **Release approval** | Recorded |
 | 4 | Publish Identity: create and push the tag `image/5277d7190b3dda496443c4bd7d80c78bd4d9174e` on that commit (`git tag image/<sha> <sha> && git push origin image/<sha>`, or the GitHub UI), then approve the `image-release` deployment of "Publish images to ECR" | Owner (tag), owner (approval) | G5 | Both legs green; the 2 digests copied from the run summary |
@@ -318,6 +318,8 @@ Each step names its gate. Nothing below is approved by this report.
 | 16 | `down`; Config C PR (`control_operator_organisation_id`, `control_operator_subjects`, control counts 1); apply services off; `up` | Lead, owner | Approval | Control healthy |
 | 17 | Smoke tests S-1 to S-6 of the 5 Nov runbook, plus S-4b (straight to the ALB: portal 401, `/healthz` 200). Recheck ACM `InUseBy` and `RenewalEligibility` while the ALB exists. `down` | Owner, lead | G7 | All pass, session closed, database stopped |
 | 18 | Then Work (Config D) per the 5 Nov runbook 7.10 to 7.13 | | | |
+
+**Self-review risk (corrected 7 Nov 2026).** The original step 1 recommended turning GitHub's "Prevent self-review" off because there is one maintainer. That is not a routine setting. With it off, the person who pushes the `image/*` tag can also approve the deployment that publishes the image, so one person controls both steps and the separation of duties the environment is meant to give is lost. Prefer a second authorized reviewer on `image-release`. If no second reviewer is available, leaving self-review allowed needs the owner's explicit acceptance of this risk, recorded in the thread and limited to non-production Testing. This report changes no GitHub setting.
 
 Run sessions in daytime UTC and finish before 19:00 UTC; the 21:00 UTC backstop is the last line (a state-changing stop by it has still not been observed).
 
@@ -344,7 +346,7 @@ Run sessions in daytime UTC and finish before 19:00 UTC; the 21:00 UTC backstop 
 
 | # | Risk | Severity | Mitigation |
 |---|---|---|---|
-| R-1 | The workflows have never run; the first run may fail on something reading cannot show (OIDC claims, build) | Medium | First run is Identity (2 images). Failures stop before any push or fail closed; nothing is published without the `image-release` approval |
+| R-1 | The workflows have never run; the first run may fail on something reading cannot show (OIDC claims, build) | Medium | First run is Identity (2 images). Failures stop before any push or fail closed. Whether a run waits for an `image-release` approval depends on environment settings that remain unverified [U] |
 | R-2 | Work's (and Identity's) build uses `PLATFORM_PACKAGES_TOKEN` with no fallback; Work's current token validity is unproven | Medium | Step 1 confirms. A missing or expired token fails `pnpm install` (no publish) |
 | R-3 | The deployer's permissions for Config A (KMS key create and policy, service roles, task definitions, Cloud Map service) were never simulated. G3 failed half-way on an unsimulated IAM pattern | High | Consider an owner-run read-only IAM simulation of the Config A actions before the apply; otherwise stop at the first AccessDenied, as in G3 recovery |
 | R-4 | `identity-bootstrap` secret named without its suffix in the task definition | Low | First run proves it; the runbook says what to do if not |
@@ -357,7 +359,7 @@ Run sessions in daytime UTC and finish before 19:00 UTC; the 21:00 UTC backstop 
 
 ### 10.3 Owner approvals required (separately, each)
 
-1. Release approval for each image (Identity, Control, later Work), and the `image-release` deployment approval in each run.
+1. Release approval for each image (Identity, Control, later Work), and the `image-release` deployment approval in each run (only enforced if the environment's required reviewers are configured, which remains unverified).
 2. Creating the Cloudflare Access application and, later, the per-session DNS records.
 3. Writing the secret values (G4) and creating and deleting `identity-bootstrap`.
 4. Merging and applying Config A (creates the KMS key, which `prevent_destroy` keeps), then Config B and Config C.
@@ -370,3 +372,11 @@ Run sessions in daytime UTC and finish before 19:00 UTC; the 21:00 UTC backstop 
 - **Did:** read the four repositories and the two earlier reports; read GitHub CI, PR, tag, workflow and run metadata; ran Terraform locally with a mocked provider (no credentials, no backend); wrote this report, the read-only owner script and the mocked test.
 - **Did not:** no AWS call of any kind (no plan, apply or read); no image publication, ECR write, tag creation or push; no Secrets Manager or KMS action; no Cloudflare or DNS change; no deployment or migration; no Render or Supabase change; no production action; no change to branch protection, environments, IAM or publisher permissions. CanteenHub was not inspected, searched or touched.
 - **Pull requests:** this report only (documentation). No workflow-fix PR, because no workflow defect was found.
+
+## 12. Corrections and process history (7 Nov 2026)
+
+- **`image-release` wording (§1, §3, §9, §10).** Earlier text called `image-release` a protected environment and implied a run waits for its approval. The evidence shows only that the workflows reference an environment named `image-release`. Actual environment protection settings, required reviewers, and deployment branch/tag restrictions remain unverified. The publisher role trust (environment and tag conditions) is enforced in AWS IAM and was verified separately in phase 4; that does not establish the GitHub-side settings.
+- **Self-review (§9).** The recommendation to turn "Prevent self-review" off is withdrawn as a routine step; see the risk note after the §9 table.
+- **Process deviation.** The brief for this phase said not to merge this report's PR. PR #64 was merged on 7 Nov 2026 at 11:19 UTC (squash commit `56640a9`). This is recorded as a process deviation. The merge does not by itself change or invalidate the report's technical findings, which rest on the evidence cited in each section. GitHub records are unchanged.
+- **§8.2 detail.** The Control API's Cloud Map service is created with its ECS service, so only in a session (`modules/service/main.tf` 321 to 322), not by the Config A apply.
+- Follow-up verification: [`../2026-11-07-release-readiness-verification/`](../2026-11-07-release-readiness-verification/).
