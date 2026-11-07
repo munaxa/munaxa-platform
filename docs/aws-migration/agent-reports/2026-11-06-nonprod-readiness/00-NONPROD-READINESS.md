@@ -65,7 +65,7 @@ Owner run of `supporting/nonprod-readonly-check.sh`, pinned at `2ae4367`, sha256
 - `test.munaxa.com`, `operator-test.munaxa.com` and both validation names: NXDOMAIN for CNAME and A. No record exists, so there is nothing to duplicate or conflict with.
 - No wildcard was seen: `test.munaxa.com` itself is NXDOMAIN.
 
-**Owner action [O].** In the Cloudflare dashboard, zone `munaxa.com` → DNS → Records → Add record, twice. Proxy status **DNS only**, TTL Auto. Keep both records permanently, because ACM renews through them.
+**Owner action [O].** In the Cloudflare dashboard, zone `munaxa.com` → DNS → Records → Add record, twice. Proxy status **DNS only**, TTL Auto. Keep both records permanently: ACM DNS validation for renewal needs them (see the renewal note below).
 
 | Type | Name (Cloudflare appends `.munaxa.com`) | Target |
 |---|---|---|
@@ -73,8 +73,15 @@ Owner run of `supporting/nonprod-readonly-check.sh`, pinned at `2ae4367`, sha256
 | CNAME | `_d67e37ad6024932ab65abd1e6dad5356.operator-test` | `_77d8da377c7af0e8e77699d08b59fd02.wzccmgtwzk.acm-validations.aws` |
 
 - **Deadline:** the request is 72 hours old at about 22:46 UTC on 8 Nov. After that the certificate fails and needs a separately approved replacement.
-- **Not changed by this phase:** no DNS record, nameserver, proxy setting or Cloudflare setting.
+- **DNS changes in this phase:** the owner added the two DNS-only ACM validation CNAME records above in Cloudflare. Claude made no DNS or Cloudflare changes. No nameserver or proxy configuration was changed.
 - **Result [V, script v2, 21:21 UTC, `supporting/owner-output-2121-readonly-v2.txt`]:** the owner reported "Dns added" at 19:43 UTC. The certificate is **ISSUED**: `IssuedAt` 2026-11-06T17:50:36Z, `NotAfter` 2027-05-22T23:59:59Z, both validations `SUCCESS`, `InUseBy` empty. Public DNS returns both CNAMEs with exactly the targets above. `test.munaxa.com` and `operator-test.munaxa.com` now answer NOERROR with no record (empty non-terminals created by the validation names), not NXDOMAIN; that is expected and has no effect.
+- **Renewal note (correction, 7 Nov 2026):**
+  - The certificate is issued and currently valid.
+  - At the time of the recorded AWS read (21:21 UTC, `supporting/owner-output-2121-readonly-v2.txt`), it was not associated with an AWS service (`InUseBy` empty).
+  - ACM reported automatic renewal eligibility as `RenewalEligibility` **INELIGIBLE** in that read (and in the 17:23 UTC read, `supporting/owner-output-1723-readonly.txt`).
+  - Retaining the DNS validation records is necessary but does not, by itself, establish automatic renewal eligibility.
+  - After the certificate is attached to the intended non-production AWS service, recheck `RenewalEligibility` and document the result.
+  - This report does not claim that renewal is enabled or guaranteed.
 
 ## 4. Shutdown-backstop architecture and inventory
 
@@ -240,7 +247,7 @@ No NAT gateway, always-on compute, alarm, queue or other paid service was added.
 
 ## 12. Remaining risks and next actions
 
-1. **Done:** ACM CNAMEs added by the owner (19:43); certificate ISSUED 17:50:36 [V]. Keep both records for renewal.
+1. **Done:** ACM CNAMEs added by the owner (19:43); certificate ISSUED 17:50:36 [V]. Keep both records; they are necessary for renewal but do not by themselves make the certificate renewal-eligible (`RenewalEligibility` INELIGIBLE, `InUseBy` empty at 21:21). Recheck `RenewalEligibility` after attaching the certificate to the intended nonprod service, and document the result (§3 renewal note).
 2. **Done:** script v2 run at 21:21; §9 recorded.
 3. **Risk R-1 (input key): closed** by the 21:00:48 CloudTrail record (§7, §9).
 4. **Risk R-2: failure visibility is manual.** CloudTrail has to be read; there is no alarm. An alarm would need a bootstrap IAM change, to be decided by the owner.
@@ -258,12 +265,12 @@ No NAT gateway, always-on compute, alarm, queue or other paid service was added.
 ## 13. Scope statement
 
 - **Production:**
-  - No production resource exists, and none was created, changed or read.
+  - No production workload infrastructure was created, modified or deployed during this phase. Existing shared/bootstrap and production deployment IAM resources were outside this phase's scope and were not modified.
   - No production role, schedule, workflow, IAM policy or boundary was changed.
   - No bootstrap re-apply was needed; the shared bootstrap is unchanged since the G3 recovery (`9e45133`).
 - **CanteenHub:** not inspected, searched, inventoried or touched. Every read in the scripts is filtered to `munaxa` names, the nonprod VPC or the nonprod cluster.
 - **Not done:**
-  - no DNS, Cloudflare, nameserver or proxy change;
+  - DNS: the owner added the two DNS-only ACM validation CNAME records in Cloudflare (§3). Claude made no DNS or Cloudflare changes. No nameserver or proxy configuration was changed;
   - no image published; no product deployed; no migration;
   - no secret value read or written; no Terraform state content read;
   - no Render or Supabase change; no delete or cleanup;
@@ -272,3 +279,11 @@ No NAT gateway, always-on compute, alarm, queue or other paid service was added.
 - **Changed:**
   - code in platform #61 (`b2b78a4`);
   - 13 nonprod AWS resources, through the reviewed apply.
+
+## Correction note (7 Nov 2026)
+
+After an independent review, three statements in this report were corrected in a documentation-only follow-up pull request. Evidence, timestamps, resource counts, workflow run IDs and technical conclusions are unchanged. The original wording is preserved in Git history at `9cf45c0`.
+
+1. DNS scope (§3, §13): distinguishes the owner's two DNS-only ACM validation CNAMEs from agent activity (none).
+2. ACM renewal (§3, §12): records `InUseBy` empty and `RenewalEligibility` INELIGIBLE, and no longer implies that keeping the CNAMEs guarantees renewal.
+3. Production scope (§13): limited to production workload infrastructure; shared/bootstrap and production deployment IAM resources were out of scope and not modified.
