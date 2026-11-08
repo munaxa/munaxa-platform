@@ -456,3 +456,27 @@ Each ECR digest (read back 10:00 UTC) equals the `containerimage.digest` in its 
 Difference from Identity: Control's `publish-images.yml` has no post-push "non-root and no credential" verification step, so that property is **NOT VERIFIED** for Control images by this run (it was not claimed in §3).
 
 Status: Control image publication **VERIFIED**. Work not published. Deployment still NOT READY; nothing deployed, no Terraform applied, no AWS resource changed by Claude.
+
+## 15. Update: Work images published at `b490b25` (10:02 to 10:08 UTC)
+
+The owner checked the Work `AWS_IMAGE_PUBLISHER_ROLE_ARN`, pushed `image/b490b25792c4d35e5b489790508b2ae6489080cc` and approved `image-release`. Claude only read the run and ECR.
+
+Run [42469713757](https://github.com/munaxa/munaxa-work/actions/runs/42469713757), attempt 1, all four jobs succeeded first time: "Resolve the source commit" (commit on `main`), then `api`, `admin` and `migrate` (assume role, ECR sign-in, build and push, non-root and no-credential verification) [V-gh]. The build installed `@munaxa/*` packages with `PLATFORM_PACKAGES_TOKEN`, so the C-1 build risk did not happen.
+
+| Repository | Tags | Digest | Pushed (UTC) | Size |
+|---|---|---|---|---|
+| `munaxa-work/api` | `sha-b490b25792c4d35e5b489790508b2ae6489080cc`, `b490b25` | `sha256:39a89a6fa02c556a7c135c6b5fd801ba563c0bc62883ab2f8cd863db929e3d2e` | 10:05:54 | 276.6 MB |
+| `munaxa-work/admin` | same | `sha256:c06bb7ef50f21f857ddab1f762f8500110d7c90b03b616347a53f3afdb731fdf` | 10:06:49 | 294.5 MB |
+| `munaxa-work/migrate` | same | `sha256:ca8c02d9e67cb703b85da4f91e3042234052529c85e7c9f42e0a4966613350fe` | 10:06:07 | 432.6 MB |
+
+Each ECR digest (read back 10:41 UTC) equals the digest the job pulled back in its verification step [V-aws, V-gh]. All three repositories remain `IMMUTABLE`, one OCI image each.
+
+### 15.1 Image status, all three products
+
+| Product | Commit | Images | Status |
+|---|---|---|---|
+| Identity | `5277d71` | api, migrate | **VERIFIED** (§13) |
+| Control | `a24c568` | api, migrate, portal | **VERIFIED** (§14; non-root check not in its workflow) |
+| Work | `b490b25` | api, admin, migrate | **VERIFIED** (§15) |
+
+All 8 ECR repositories now hold exactly one image each. Image publication is complete. Deployment is still NOT READY: the next step is step 3 of §9 (Identity prerequisites: owner key pair and secret values), then Config A1 under its own plan approval. Nothing deployed, no Terraform applied, no AWS resource changed by Claude.
