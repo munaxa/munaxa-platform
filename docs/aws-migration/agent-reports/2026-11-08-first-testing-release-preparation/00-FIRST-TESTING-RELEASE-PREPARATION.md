@@ -399,3 +399,42 @@ At 09:05 UTC the owner confirmed in the thread that `image-release`, `AWS_IMAGE_
 | Identity publication | BLOCKED | **Waiting only on the release approval (OD-2) and OD-3** (first publish run is also the first build) |
 | Control publication | BLOCKED | Same |
 | Work publication | BLOCKED | Same, plus C-1 build risk; deployment still BLOCKED (§4) |
+
+## 13. Update: Identity images published at `5277d71` (09:19 to 09:36 UTC)
+
+The owner chose "You push the tag, I verify" for Identity at `5277d7190b3dda496443c4bd7d80c78bd4d9174e`. The owner pushed `image/5277d7190b3dda496443c4bd7d80c78bd4d9174e` and approved `image-release`. Claude only read the run, CloudTrail and ECR.
+
+### 13.1 First attempt failed at role assumption (nothing pushed)
+
+Run [42466697538](https://github.com/munaxa/munaxa-identity/actions/runs/42466697538) attempt 1: "Resolve the source commit" passed (commit on `main`). Both image jobs then failed at "Assume the image publisher role" with `Not authorized to perform sts:AssumeRoleWithWebIdentity`. The workflow stopped on the error, as the stop-on-AccessDenied rule requires, and nothing was retried by Claude.
+
+Root cause, from 24 CloudTrail `AssumeRoleWithWebIdentity` events in eu-central-1 (09:20:09 to 09:21:30 UTC, all `AccessDenied`, run id 42466697538 attempt 1 in the user agent) [V-aws]:
+
+- Token claims matched the trust exactly: audience `sts.amazonaws.com`, subject `repo:munaxa@311481412/munaxa-identity@1354378376:environment:image-release`.
+- The requested role was `arn:aws:iam::229251310592:role/munaxa-identity-image-publisher`. The role lives at `role/munaxa-shared/bootstrap/munaxa-identity-image-publisher`. No role exists at the requested ARN, so STS refused.
+- So `AWS_IMAGE_PUBLISHER_ROLE_ARN` in the `image-release` environment had been entered without the IAM path. The checklist and §3 A-5 give the full ARN; the value was typed short.
+- Refuted alternative: session tags. configure-aws-credentials at `e1253824` deletes `Tags` and `TransitiveTagKeys` before `AssumeRoleWithWebIdentity` (`src/assumeRole.ts` lines 9 to 11), so a missing `sts:TagSession` was not the cause.
+
+Fix: the owner corrected the variable. No code, IAM or trust change. The owner then re-ran the failed jobs (attempt 2 reads variables afresh; the same tag and commit).
+
+### 13.2 Second attempt succeeded
+
+| Job | Attempt 2 | Steps |
+|---|---|---|
+| `munaxa-identity/api` (128690908234) | success, 09:33:49 to 09:35:04 UTC | assume role, ECR sign-in, build and push, non-root and no-credential check all passed |
+| `munaxa-identity/migrate` (128690908425) | success, 09:33:50 to 09:35:36 UTC | same |
+
+### 13.3 Images in ECR (read back 09:37 UTC) [V-aws, V-gh]
+
+| Repository | Tags | Digest | Pushed (UTC) | Size |
+|---|---|---|---|---|
+| `munaxa-identity/api` | `sha-5277d7190b3dda496443c4bd7d80c78bd4d9174e`, `5277d71` | `sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156` | 09:34:45 | 141.5 MB |
+| `munaxa-identity/migrate` | `sha-5277d7190b3dda496443c4bd7d80c78bd4d9174e`, `5277d71` | `sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820` | 09:35:02 | 285.2 MB |
+
+Each digest equals the digest the job pulled back in its verification step. Both repositories remain `IMMUTABLE`, one image each, OCI manifests.
+
+### 13.4 Status
+
+- Identity image publication: **VERIFIED** (A-1 to A-6 met in practice; G-1, G-2, G-5, G-7, G-8 proven by this run).
+- Control and Work: not published. Their `AWS_IMAGE_PUBLISHER_ROLE_ARN` must carry the full path `role/munaxa-shared/bootstrap/munaxa-<product>-image-publisher`; the owner was asked to check both.
+- Deployment: still NOT READY (§4, §9). Nothing deployed, no Terraform applied, no AWS resource changed by Claude.
