@@ -12,6 +12,11 @@ authorized, and no Testing or Production workload resource is evidenced. No prod
 shared ECR repositories. Evidence: `docs/aws-migration/agent-reports/` (index `README.md`). Every step
 below that creates, changes or deletes anything is an owner approval gate (G1 to G9).
 
+**Access (8 Nov 2026):** during development the owner and Claude use the existing root account (MFA
+on, no root keys) and the existing root-connected Claude AWS connector; no IAM user, role or Identity
+Center is created just to develop or run read-only checks. Deployment-stage IAM (Identity Center,
+permission sets, break-glass) is prepared but deferred. Policy: [ACCESS-POLICY.md](ACCESS-POLICY.md).
+
 ## Layout
 
 | Path                     | What                                                                                           | Applied by                                 |

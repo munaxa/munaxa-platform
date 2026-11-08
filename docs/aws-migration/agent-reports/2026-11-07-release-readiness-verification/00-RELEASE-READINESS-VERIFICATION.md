@@ -3,6 +3,7 @@
 - **Date:** 7 Nov 2026, 11:38 UTC onward. **Author:** the lead of the thread "Prepare Identity, Control and Work image releases".
 - **Brief:** the owner's "Munaxa — Phase 1 Report Corrections and Read-Only Release Readiness Verification" (7 Nov 2026, 11:38 UTC).
 - **Starting point:** platform `main` = `56640a9` (PR #64, the phase 1 report). Phase 1 report: [`../2026-11-07-testing-readiness-phase-1/00-TESTING-READINESS-PHASE-1.md`](../2026-11-07-testing-readiness-phase-1/00-TESTING-READINESS-PHASE-1.md), corrected in the same PR as this report (§12 there).
+- **Correction (8 Nov 2026):** the owner retains root-connected AWS access during development by decision (see [`../../../../infra/aws/ACCESS-POLICY.md`](../../../../infra/aws/ACCESS-POLICY.md)). The absence of a non-root read-only identity (§3.3, RB-3) is **no longer a blocker** to owner-authorized read-only checks. All technical findings, including the Config A IAM assessment (§4, RB-5), stand. Corrections and the fresh check: [`../2026-11-08-development-access-and-testing-readiness/`](../2026-11-08-development-access-and-testing-readiness/).
 - **Labels:** **[V-gh]** verified from GitHub in this task, with the time; **[V-repo]** verified from code at the commit named; **[V-doc]** verified from public AWS documentation in this task; **[V-prior]** verified by an earlier report, not re-read in AWS; **[E]** inferred; **[U]** unverified; **[O]** owner action.
 
 ## 1. Decision
@@ -64,6 +65,8 @@ Both become **conditionally ready** the moment the owner supplies the evidence i
 Commands used, all read-only: `sts get-caller-identity`, `organizations describe-organization`, `ecr describe-repositories|describe-images`, `iam get-role|get-role-policy|list-role-policies|list-attached-role-policies|get-policy|get-policy-version`, `secretsmanager list-secrets|list-secret-version-ids`, `kms list-aliases|describe-key`, `acm list-certificates|describe-certificate`, `rds describe-db-instances`, `ecs describe-clusters|list-services|describe-services|list-task-definition-families`, `elbv2 describe-load-balancers`, `ec2 describe-nat-gateways|describe-instances|describe-addresses`, `scheduler list-schedules`, `cloudtrail lookup-events`. Checked: `bash -n` passes; no create, put, update, delete, start, stop, tag, run, simulate or get-secret-value verb appears.
 
 ### 3.3 The identity problem: no approved non-root read-only identity exists
+
+> **Correction (8 Nov 2026).** The owner has decided that the existing root account and the existing root-connected Claude AWS connector remain the approved development access method, and authorizes read-only inspection with that connection when requested for the current readiness task. No new IAM identity is required for such a check, option (b) is not pursued, and running v2 with `ALLOW_ROOT_READONLY=yes` (option (a)) is the approved mode, not a deviation. Future deployment IAM stays deferred. This does not authorize arbitrary AWS modifications. The text below is kept as written on 7 Nov.
 
 The brief asks for an "approved read-only identity". Under the recorded owner decisions (29 Oct 2026: root until launch, no Identity Center, no IAM users or access keys), **this account has none**. The GitHub OIDC roles (CI, deployers, publishers) cannot be assumed from CloudShell. So fresh AWS evidence needs one of:
 
@@ -205,8 +208,8 @@ If "Prevent self-review" is off, the person who pushes the `image/*` tag can als
 |---|---|---|
 | RB-1 | GitHub release controls unverified (§6, G-1 to G-10) | Owner |
 | RB-2 | Self-review decision (§6.3): second reviewer, or explicit Testing-only risk acceptance | Owner |
-| RB-3 | No approved non-root read-only AWS identity; choose §3.3 (a), (b) or (c) | Owner |
-| RB-4 | Live publisher role state not re-read since 4 Nov (v2 §2) | Owner, after RB-3 |
+| RB-3 | ~~No approved non-root read-only AWS identity; choose §3.3 (a), (b) or (c)~~ **Withdrawn 8 Nov 2026:** not a blocker; root read-only inspection authorized per task by owner decision ([ACCESS-POLICY.md](../../../../infra/aws/ACCESS-POLICY.md)) | — |
+| RB-4 | Live publisher role state not re-read since 4 Nov (v2 §2). **8 Nov:** see the 2026-11-08 report | Owner-authorized read-only check |
 | RB-5 | Config A IAM not verified (U-1 to U-5). Blocks Config A, **not** image publication | Owner and lead |
 | RB-6 | From phase 1, unchanged: Cloudflare Access application, Identity signing key, secret values, Valkey and PostgreSQL digests, product DNS, no deployment or smoke test | Owner |
 
