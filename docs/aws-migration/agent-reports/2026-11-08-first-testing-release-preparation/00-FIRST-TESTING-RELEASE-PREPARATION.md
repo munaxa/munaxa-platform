@@ -438,3 +438,21 @@ Each digest equals the digest the job pulled back in its verification step. Both
 - Identity image publication: **VERIFIED** (A-1 to A-6 met in practice; G-1, G-2, G-5, G-7, G-8 proven by this run).
 - Control and Work: not published. Their `AWS_IMAGE_PUBLISHER_ROLE_ARN` must carry the full path `role/munaxa-shared/bootstrap/munaxa-<product>-image-publisher`; the owner was asked to check both.
 - Deployment: still NOT READY (§4, §9). Nothing deployed, no Terraform applied, no AWS resource changed by Claude.
+
+## 14. Update: Control images published at `a24c568` (09:55 to 09:59 UTC)
+
+The owner checked the Control `AWS_IMAGE_PUBLISHER_ROLE_ARN` (full path), pushed `image/a24c5681f0ca98f446098444c79bc36cd4d9bc0c` and approved `image-release`. Claude only read the run and ECR.
+
+Run [42469234635](https://github.com/munaxa/munaxa-control/actions/runs/42469234635), attempt 1, all four jobs succeeded first time: "Resolve the source commit" (commit on `main`), then `api`, `migrate` and `portal` (assume role, ECR sign-in, build and push, record digest). The logs show `github_ref_protected: true` and `github_workflow_sha` = the release commit [V-gh].
+
+| Repository | Tags | Digest | Pushed (UTC) | Size |
+|---|---|---|---|---|
+| `munaxa-control/api` | `sha-a24c5681f0ca98f446098444c79bc36cd4d9bc0c`, `a24c568` | `sha256:d6bf8c3c9bdd9b2d6bf67e16412f9a1bfdda19fdf67ff47cee627c63c41b7ce1` | 09:57:56 | 169.7 MB |
+| `munaxa-control/migrate` | same | `sha256:203079c9ecda08a16803a9fc9785f51aa5930706dd1c119a7edc3aceb2822c18` | 09:58:34 | 417.8 MB |
+| `munaxa-control/portal` | same | `sha256:5a76933c875444c7f6a4067c6219eef4c25698b4e6e924a9b2a5fd69e89c63b1` | 09:57:36 | 104.0 MB |
+
+Each ECR digest (read back 10:00 UTC) equals the `containerimage.digest` in its job log [V-aws, V-gh]. All three repositories remain `IMMUTABLE`, one OCI image each.
+
+Difference from Identity: Control's `publish-images.yml` has no post-push "non-root and no credential" verification step, so that property is **NOT VERIFIED** for Control images by this run (it was not claimed in §3).
+
+Status: Control image publication **VERIFIED**. Work not published. Deployment still NOT READY; nothing deployed, no Terraform applied, no AWS resource changed by Claude.
