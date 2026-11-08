@@ -354,3 +354,48 @@ Prices are the eu-central-1 list prices recorded in [`../2026-11-05-testing-read
 | DNS, Cloudflare | **None** |
 | Production, Render, Supabase | **None** |
 | CanteenHub | **Not inspected, inventoried or touched** |
+
+---
+
+## 12. Update, 8 Nov 2026 08:10 to 09:05 UTC: owner GitHub release controls
+
+The owner reconnected GitHub and worked through the checklist in the thread. **No GitHub setting was changed by Claude**; every change below was made by the owner in the GitHub UI.
+
+### 12.1 What this session can and cannot read
+
+- Readable: `GET repos/munaxa/<repo>/rulesets` and `rulesets/<id>` (read-only).
+- Not readable: `environments`, `actions/variables`, `actions/secrets` ("not permitted through this proxy", HTTP 403) and classic branch protection ("Resource not accessible by integration"). Reconnecting GitHub does not change this.
+- Before the owner's change (08:10 UTC) `munaxa-identity` had **no ruleset** (empty list).
+
+### 12.2 Rulesets, created by the owner, read back by Claude [V-gh]
+
+| Repository | Ruleset (id) | Read | Content | Verdict |
+|---|---|---|---|---|
+| identity | Protect image tags (26791699) | 08:32 | tag target; active; `refs/tags/image/*`, `refs/tags/image/**/*`; creation, update, deletion, non-fast-forward; bypass Repository admin (role 5), always. A first attempt (26791314) was a branch-target ruleset on `refs/heads/image/*` and was replaced | **VERIFIED** (G-10) |
+| identity | Protect main (26791541) | 08:29, 08:32 | branch; active; `~DEFAULT_BRANCH`; no bypass; deletion, non-fast-forward, linear history; pull request with 0 approvals, stale approvals dismissed; required check `verify` (GitHub Actions, integration 15368), strict | **VERIFIED** (G-11) |
+| control | Protect image tags | 08:55 | as identity | **VERIFIED** (G-10) |
+| control | Protect main | 08:55 | as identity; required checks `Format · Lint · Typecheck · Test · Build`, `Build the images` with **any source** (integration id null: GitHub lists only sources seen in the last 7 days and control's CI last ran 30 Oct); strict | **VERIFIED** (G-11), source pinning can be added after the next control CI run |
+| work | Protect image tags | 08:55 | as identity | **VERIFIED** (G-10) |
+| work | Protect main | 08:55 | as identity without linear history (Work merges with merge commits); required checks `Standards · Architecture · Localization`, `Lint · Typecheck · Test · Build`, `Mobile`, `Product isolation` (integration 15368); strict | **VERIFIED** (G-11) |
+
+With 0 approvals these rules enforce pull requests, CI and history, not independent review. Only a repository admin can create `image/*` tags, so the tag that starts a publish is the owner's.
+
+### 12.3 Environment, variable and secret (owner-confirmed, not readable by Claude)
+
+At 09:05 UTC the owner confirmed in the thread that `image-release`, `AWS_IMAGE_PUBLISHER_ROLE_ARN` and `PLATFORM_PACKAGES_TOKEN` are set "as requested" in identity, control and work, that is, as specified in the checklist (`../2026-11-08-development-access-and-testing-readiness/01-GITHUB-RELEASE-CONTROLS-CHECKLIST.md` G-1 to G-8). Recorded as **owner-confirmed**, not as VERIFIED by Claude: no screenshot or API read backs it.
+
+- **G-9 token expiry:** the owner reported that `PLATFORM_PACKAGES_TOKEN` has **no expiry** (08:42 UTC). It cannot expire mid-release; the residual risk is a long-lived credential with `read:packages` that stays valid until revoked. Recorded as accepted for non-production Testing.
+- **Self-review (OD-1):** the checklist specification leaves "Prevent self-review" unticked with the owner as reviewer, so the owner both pushes the tag and approves the publish. The owner's "as requested" is recorded as accepting this for non-production Testing only.
+- **Proof at first use:** the first publish run proves G-1, G-2, G-5 and G-7 (it waits for the reviewer, runs only on the tag, assumes the role named by the variable) and G-8 (install step).
+
+### 12.4 Updated status
+
+| Item | Before | Now |
+|---|---|---|
+| G-10, G-11 (rulesets) | NOT VERIFIED | **VERIFIED** for identity, control, work |
+| G-1 to G-8 | NOT VERIFIED | **Owner-confirmed** (not readable by Claude) |
+| G-9 | NOT VERIFIED | Owner reported: no expiry (risk accepted for Testing) |
+| OD-1 self-review | Open | Recorded as accepted for Testing (owner, 09:05) |
+| Identity publication | BLOCKED | **Waiting only on the release approval (OD-2) and OD-3** (first publish run is also the first build) |
+| Control publication | BLOCKED | Same |
+| Work publication | BLOCKED | Same, plus C-1 build risk; deployment still BLOCKED (§4) |
