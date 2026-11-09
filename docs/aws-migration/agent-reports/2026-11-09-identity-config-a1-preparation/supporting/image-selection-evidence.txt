@@ -1,0 +1,89 @@
+# Image selection evidence, 9 Nov 2026 (about 12:50 to 13:08 UTC). Public registry and GitHub source reads only.
+# Manifest digests verified by hashing each manifest body (sha256(body) == digest). No image was pulled or run.
+# Blob downloads from the registries' CDNs were refused by this session's network policy; Docker Hub rate-limited the session.
+
+## ecr valkey/valkey 8.1.11
+platforms:
+   linux/amd64 sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e
+   linux/arm64 sha256:464d7e8ae849ddcec73f4448fc77f672f7101744b90e98586c0581f1764a043e
+   linux/arm/v7 sha256:2749dd5819d69f1e01ce16bed0927c4e51a4f45c6b12c5ea2a40dda0acd153b4
+   linux/ppc64le sha256:265e5da5bfa496560f83ffc6a0249d9a1419583b9a027ea3c0f4160357457050
+selected linux/amd64 manifest: sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e body hash ok: True
+config digest: sha256:ca662989648f173e01fb1a1768e7d84ddcaf8b7de135070b59271b0918104eb3
+layers:
+   sha256:f2be67225471500c788ce88c597eb5ea8336e912ad1ca4815650e0281afe2034 29843579
+   sha256:850c61815eda79d33cb30e935e6366a71fe8ababa52b402d300b077a9fc91fae 1112
+   sha256:83f7dcb10b8277e4b90c1aa16d8be514f792c2234f9c1feb2acd15168618dc9d 1058854
+   sha256:b8a90441d7aa0e1a0aa5abe963e59c3299e6e41d237c72fed630879623564869 13224670
+   sha256:30fa63870bdf4fa1cd66b0366b8adc3b2c3f3b6ef5e697dacabdeaa568d1a90d 139
+   sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32
+   sha256:124012cfa1b24dc444d0806699d14b454d5a517a2ec0572e68200b14fa94107b 670
+
+## hub valkey/valkey 8.1.11
+index digest: sha256:8f836008e0986c36adf50da714c7060cf689dbb335f61fe077939d90fa650809 (body hash ok)
+platforms:
+   linux/amd64 sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e
+   linux/arm64 sha256:464d7e8ae849ddcec73f4448fc77f672f7101744b90e98586c0581f1764a043e
+   linux/arm/v7 sha256:2749dd5819d69f1e01ce16bed0927c4e51a4f45c6b12c5ea2a40dda0acd153b4
+   linux/ppc64le sha256:265e5da5bfa496560f83ffc6a0249d9a1419583b9a027ea3c0f4160357457050
+selected linux/amd64 manifest: sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e body hash ok: True
+config digest: sha256:ca662989648f173e01fb1a1768e7d84ddcaf8b7de135070b59271b0918104eb3
+layers:
+   sha256:f2be67225471500c788ce88c597eb5ea8336e912ad1ca4815650e0281afe2034 29843579
+   sha256:850c61815eda79d33cb30e935e6366a71fe8ababa52b402d300b077a9fc91fae 1112
+   sha256:83f7dcb10b8277e4b90c1aa16d8be514f792c2234f9c1feb2acd15168618dc9d 1058854
+   sha256:b8a90441d7aa0e1a0aa5abe963e59c3299e6e41d237c72fed630879623564869 13224670
+   sha256:30fa63870bdf4fa1cd66b0366b8adc3b2c3f3b6ef5e697dacabdeaa568d1a90d 139
+   sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32
+   sha256:124012cfa1b24dc444d0806699d14b454d5a517a2ec0572e68200b14fa94107b 670
+created: 2026-10-27T00:04:35.980610124Z
+arch: amd64
+User: None
+Entrypoint: ['tini', '--', 'docker-entrypoint.sh']
+Cmd: ['valkey-server']
+Env: ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'VALKEY_VERSION=8.1.11']
+
+## ecr docker/library/postgres 16.15-bookworm
+platforms:
+   linux/amd64 sha256:5983db9a9c6ad225a48a46cfe2e03e6680b1826662befd0465eb05b34cb1c64e
+   unknown/unknown sha256:7e1a5999b6f400d375f0fe12e2dbda9dd8eb35305d658fd58f108e7db5c0badb
+   linux/arm/v7 sha256:98fc79802d5ece9a255b1150376d625d63b74b589b1bf1fcfafa2786df810784
+   unknown/unknown sha256:3905230f40fa9004c5a4d5f0a8dd8d4e8329857ada4095c33d50ff0d0200de73
+   linux/arm64/v8 sha256:fb4a48f09f19618d307deb5d153a0b11768d37d5c3592ad0c63737dbe52c78ce
+   unknown/unknown sha256:b6de3acbad0d199bba5f811686472e4660f1b85a44ab0ab8b8004c19d805d6d9
+   linux/386 sha256:38b7591590a261e74ebce4b9c7aae0f864ce71fcce7d5ae842816e53bf8459c6
+   unknown/unknown sha256:8ecd9cb0b57123d6b3ee50051844592513ea4457f1d9cb6f36bdf56f591551c4
+   linux/ppc64le sha256:113be23e12a2761c425a41ecbb9fa7109cba795712056f66e6976bdda9f5a5b5
+   unknown/unknown sha256:7d2d62a3d4a71c002ed96b11fcea650f54ad5675382c5ff9947196c6184e4ea3
+selected linux/amd64 manifest: sha256:5983db9a9c6ad225a48a46cfe2e03e6680b1826662befd0465eb05b34cb1c64e body hash ok: True
+config digest: sha256:cadebe7c08430c896edac883fa92f8de2c36e330805e770fbee8a7eae13f144f
+layers:
+   sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 28247982
+   sha256:ffef70d379d20033098790a0942d1243a2f7b1c840fe82e868aa394696be1a96 1166
+   sha256:136766c05e5f0509f0553276701f07ca73dadcdf3c76e21875ee4805226a3e47 4534232
+   sha256:2a13757dbdad45ed669f4a27eb3f1b96a02709ae407cb9bb9e031892f3d941cf 1250063
+   sha256:61b3cc329be35129dd12b22c3d583532f357bdc073e90a44d80f39304b19b5fc 8066464
+   sha256:cda6e21da0f2df1ac597fa66f24ffcf7a6ce9f2c87ee3269c95f6cd97bfd4cdb 1196459
+   sha256:a8c21670182b798a92a25dfdb1b59461ad26f4431896ab09b6fa36b997a18406 116
+   sha256:fce9821bac7d54517ffc5965537e68962580ba5e6781e577141c05fa6686c460 3145
+   sha256:1d919c5645b1d3aebc9abc1a89c97de2f81f2eb2736c58c4b13aff3ca508f464 111812952
+   sha256:27df7b5bf0b511acc2200801f919d1f320c2e935a213498a9ed88c008b8fb65f 10020
+   sha256:5760334e16b51366e92dd0f8bc26916a85c03ba001368c8b0c82ff54274ce54d 128
+   sha256:b056e8cb25307ea3367d863d71da2f72c3b689aeb466cf8807ea23c44febb15e 167
+   sha256:9bcbde3fb062e327acb26818f0f214308e39203222a35cb3f2319269d37a3f28 6108
+   sha256:68d798fb46d047ad764709bca6504721292a82bb1c098beaeb3b55d3b9c518c5 184
+
+## Build sources [V-src]
+valkey-io/valkey-container mainline e3be9b56fb26039e4aaf5788cf419740fbdaca54
+  versions.json: 8.1 -> 8.1.11 (sha256 db3642df...3b50 of the 8.1.11 source tarball), 9.0 -> 9.0.7, 9.1 -> 9.1.3, 9.2 -> 9.2.0-rc2
+  8.1/debian/Dockerfile: FROM debian:trixie-slim; ENV VALKEY_VERSION 8.1.11; groupadd -r -g 999 valkey; useradd -r -g valkey -u 999 valkey;
+                         installs tini; build checks valkey-cli --version; ENTRYPOINT ["tini","--","docker-entrypoint.sh"]; CMD ["valkey-server"]
+docker-library/official-images library/postgres:
+  Tags: 16.15-bookworm, 16-bookworm; Architectures: amd64, arm32v7, arm64v8, i386, ppc64le
+  GitCommit: 9d15534160ade17f2b6c455a39ee967c49b1937d; Directory: 16/bookworm
+docker-library/postgres 9d15534160ade17f2b6c455a39ee967c49b1937d 16/bookworm/Dockerfile (sha256 cf0f3f54...e7ec):
+  FROM debian:bookworm-slim; groupadd -r postgres --gid=999; useradd -r -g postgres --uid=999;
+  ENV PG_MAJOR 16; ENV PATH $PATH:/usr/lib/postgresql/$PG_MAJOR/bin; ENV PG_VERSION 16.15-1.pgdg12+2;
+  installs postgresql-16 (psql); ENTRYPOINT ["docker-entrypoint.sh"]; CMD ["postgres"] (both overridden by the task: sh -c)
+Docker Hub cross-check of postgres 16.15-bookworm: refused (HTTP 429 rate limit); ECR Public mirror read only.
+ECR Public docker/library/valkey: HTTP 404 (no Docker Official Valkey image).

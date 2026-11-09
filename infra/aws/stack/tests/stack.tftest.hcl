@@ -575,3 +575,53 @@ run "prod_never_gets_the_backstop" {
     error_message = "Production never gets the Testing backstop, whatever the schedule says."
   }
 }
+
+# Config A1 (2026-11-09 report identity-config-a1-preparation): the first Testing deployment is
+# Identity only, in an environment that sets hosts.docs. postgres_image is set for the products'
+# db-admin, which must not also register Docs' db-admin task definition.
+run "identity_only_config_a1_registers_identity_and_nothing_of_another_product" {
+  command = plan
+
+  variables {
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator-test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+      docs        = "docs.test.munaxa.com"
+    }
+    postgres_image        = "public.ecr.aws/docker/library/postgres@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    docs_redis_image      = "public.ecr.aws/docker/library/redis@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    db_bootstrap_products = ["identity"]
+    images = {
+      identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+
+  assert {
+    condition     = length(module.identity) == 1 && keys(module.migrate) == ["identity"] && length(aws_ecs_task_definition.identity_bootstrap) == 1 && length(aws_ecs_task_definition.db_admin) == 1
+    error_message = "Config A1 registers Identity, its migration, its bootstrap and db-admin."
+  }
+  assert {
+    condition     = length(aws_ecs_task_definition.docs_db_admin) == 0 && length(aws_ecs_task_definition.docs_provision) == 0 && length(module.docs_api) == 0
+    error_message = "Config A1 registers no Docs task definition, although postgres_image and hosts.docs are set."
+  }
+  assert {
+    condition     = length(aws_iam_role.docs_db_admin_execution) == 1
+    error_message = "The Docs db-admin execution role applied in G3 is kept (it follows hosts.docs)."
+  }
+  assert {
+    condition     = length(module.control_api) == 0 && length(module.control_portal) == 0 && length(module.control_migrate) == 0 && length(aws_kms_key.licence) == 0
+    error_message = "Config A1 has no Control resource and no licence key."
+  }
+  assert {
+    condition     = length(module.work_api) == 0 && length(module.work_admin) == 0 && length(module.school_api) == 0 && length(module.school_admin) == 0 && length(aws_ecs_task_definition.school_bootstrap) == 0
+    error_message = "Config A1 has no Work or School resource."
+  }
+  assert {
+    condition     = keys(local.routed_ports) == ["identity"] && module.identity[0].service_name == null
+    error_message = "Only Identity is routed, and with services off no ECS service exists."
+  }
+}

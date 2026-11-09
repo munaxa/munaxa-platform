@@ -1,0 +1,46 @@
+# Config A1 mocked plan addresses (terraform test, mocked AWS provider, NO AWS call; not proof of permissions)
+# platform 646b7b8 + this PR's docs.tf change; Terraform 1.16.5, hashicorp/aws 6.67.0; -var-file=envs/nonprod.tfvars
+# The baseline run is APPLIED into mocked state first, so the A1 plan also shows updates and replacements.
+
+## config_a1_services_off: Plan: 22 to add, 0 to change, 0 to destroy
+aws_ecs_task_definition.db_admin[0]
+aws_ecs_task_definition.identity_bootstrap[0]
+aws_iam_role.identity_bootstrap_execution[0]
+aws_iam_role_policy.identity_bootstrap_execution[0]
+aws_vpc_security_group_egress_rule.alb_to_service["identity"]
+module.identity[0].aws_cloudwatch_log_group.this
+module.identity[0].aws_ecs_task_definition.this
+module.identity[0].aws_iam_role.execution
+module.identity[0].aws_iam_role_policy.execution
+module.identity[0].aws_security_group.this
+module.identity[0].aws_vpc_security_group_egress_rule.database[0]
+module.identity[0].aws_vpc_security_group_egress_rule.https
+module.identity[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+module.identity[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+module.migrate["identity"].aws_cloudwatch_log_group.this
+module.migrate["identity"].aws_ecs_task_definition.this
+module.migrate["identity"].aws_iam_role.execution
+module.migrate["identity"].aws_iam_role_policy.execution
+module.migrate["identity"].aws_security_group.this
+module.migrate["identity"].aws_vpc_security_group_egress_rule.database[0]
+module.migrate["identity"].aws_vpc_security_group_egress_rule.https
+module.migrate["identity"].aws_vpc_security_group_ingress_rule.database_from_service[0]
+
+## Difference from the 8 Nov Config A1 list (23): removed
+aws_ecs_task_definition.docs_db_admin[0]
+
+## config_a1_session_up (after A1 applied; NOT part of the A1 apply): Plan: 11 to add, 0 to change, 0 to destroy
+aws_acm_certificate_validation.main[0]
+aws_lb.main[0]
+aws_lb_listener.http[0]
+aws_lb_listener.https[0]
+aws_lb_listener_rule.control_admin_refused[0]
+aws_lb_listener_rule.control_api_refused[0]
+aws_lb_listener_rule.operator_refused[0]
+module.identity[0].aws_ecs_service.this[0]
+module.identity[0].aws_lb_listener_rule.this["40"]
+module.identity[0].aws_lb_listener_rule.this["50"]
+module.identity[0].aws_lb_target_group.this[0]
+
+## Static check: A1 creates matching control|work|school|docs|licence|prod
+(none)

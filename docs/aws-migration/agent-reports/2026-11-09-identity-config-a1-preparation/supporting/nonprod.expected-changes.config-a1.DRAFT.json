@@ -1,0 +1,94 @@
+{
+  "root": "stack-nonprod",
+  "intent": "Config A1, Identity only, services off (report 2026-11-09-identity-config-a1-preparation): Identity API and migration task definitions with their execution roles, policies, log groups, security groups and rules; the identity-bootstrap task definition, role and policy; the db-admin task definition (db_bootstrap_products = identity); the ALB-to-Identity egress rule. 22 creates. No update, replacement or destroy; no Control, Work, School or Docs resource; no ALB, service, NAT, DNS, KMS key or production resource.",
+  "changes": [
+    {
+      "address": "aws_ecs_task_definition.db_admin[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role.identity_bootstrap_execution[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role_policy.identity_bootstrap_execution[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"identity\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_vpc_security_group_egress_rule.database[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_vpc_security_group_egress_rule.database[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+      "actions": ["create"]
+    }
+  ]
+}

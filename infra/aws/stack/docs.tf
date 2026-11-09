@@ -322,8 +322,12 @@ resource "aws_iam_role_policy" "docs_db_admin_execution" {
   })
 }
 
+# Registered only once Docs itself is defined (every Docs image and the Redis image set), like
+# docs-provision, not as soon as postgres_image is set for the products' db-admin: an
+# Identity-only phase (Config A1) must not register a Docs task definition. Its execution role
+# above keeps following hosts.docs, as applied in G3.
 resource "aws_ecs_task_definition" "docs_db_admin" {
-  count = local.docs_enabled && var.postgres_image != "" ? 1 : 0
+  count = local.docs_defined && var.postgres_image != "" ? 1 : 0
 
   family                   = "${local.prefix}-docs-db-admin"
   skip_destroy             = true
