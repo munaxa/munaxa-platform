@@ -1,0 +1,48 @@
+# Config A1 (Identity only): the lines that change in infra/aws/stack/envs/nonprod.tfvars.
+# Report docs/aws-migration/agent-reports/2026-11-09-identity-config-a1-preparation/ section 6.
+# NO SECRET belongs here. The two <...> placeholders are public values the owner provides
+# (owner guide part B). Everything else is verified (report section 5) or decided.
+
+# Identity only. Every other image stays unset, so no Control, Work, School or Docs resource exists.
+images = {
+  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156"
+  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820"
+}
+
+# Identity's cache sidecar: Valkey 8.1.11, linux/amd64 manifest.
+valkey_image = "public.ecr.aws/valkey/valkey@sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e"
+
+# db-admin's PostgreSQL 16 client: postgres 16.15-bookworm (Docker Official Image), linux/amd64 manifest.
+# Only psql runs (entry point sh -c db-bootstrap.sh); no server is started.
+postgres_image = "public.ecr.aws/docker/library/postgres@sha256:5983db9a9c6ad225a48a46cfe2e03e6680b1826662befd0465eb05b34cb1c64e"
+
+# db-admin creates the identity database and its two roles only.
+db_bootstrap_products = ["identity"]
+
+# ES256 (P-256). The public half only; the private half is in munaxa-nonprod/identity.
+identity_signing_kid = "identity-nonprod-2026-11"
+identity_public_keys = "<the identity_public_keys line from public/identity-a1.auto.tfvars.snippet>"
+
+# Bundle version pins (metadata, not secrets): AWSCURRENT version id of each bundle.
+secret_version_ids = {
+  identity         = "<version id of munaxa-nonprod/identity>"
+  identity-migrate = "<version id of munaxa-nonprod/identity-migrate>"
+}
+
+# The whole map (every key is looked up). Only Identity may run in A1.
+desired_counts = {
+  identity       = 1
+  control-api    = 0
+  control-portal = 0
+  work-api       = 0
+  work-admin     = 0
+  school-api     = 0
+  school-admin   = 0
+  docs-api       = 0
+  docs-web       = 0
+  docs-scanner   = 0
+}
+
+# Unchanged from main: environment, account_id, vpc_cidr, edge_enabled = false,
+# services_enabled = false, session_backstop_schedule, hosts (all six), certificate_domains,
+# operator_cidrs = [], operator_access unset, database and log settings, docs_redis_image.
