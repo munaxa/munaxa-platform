@@ -2,7 +2,7 @@
 
 - **Date:** 9 Nov 2026, from 12:46 UTC. **Thread:** "Prepare Identity-only Testing deployment (Config A1)".
 - **Brief:** the owner's "Prepare Munaxa Identity-Only Testing Deployment (Config A1)", 9 Nov 2026 12:46 UTC. Repository inspection, analysis, documentation, local tests and a proposed Config A1 implementation only.
-- **Starting point:** platform `main` = `646b7b8` (PR #66). Previous report: [`../2026-11-08-first-testing-release-preparation/`](../2026-11-08-first-testing-release-preparation/00-FIRST-TESTING-RELEASE-PREPARATION.md) at `88cba385200041a30881253ae4f74fcf1524334b` on PR #67 (open, not merged). Access policy: [`infra/aws/ACCESS-POLICY.md`](../../../../infra/aws/ACCESS-POLICY.md).
+- **Starting point:** platform `main` = `646b7b8` (PR #66). Previous report: [`../2026-11-08-first-testing-release-preparation/`](../2026-11-08-first-testing-release-preparation/00-FIRST-TESTING-RELEASE-PREPARATION.md) at `88cba385200041a30881253ae4f74fcf1524334b` on PR #67 (open when this task started; squash-merged by the owner as `4a61f77` during it). Access policy: [`infra/aws/ACCESS-POLICY.md`](../../../../infra/aws/ACCESS-POLICY.md).
 - **AWS in this task: read-only only.** The connector's sign-in had expired from 12:55 UTC; after the owner reconnected it (13:09 UTC) Claude ran metadata-only reads 13:10:35 to 13:11:15 UTC (§2.2) through the existing root connection. Nothing was written to AWS.
 - **Labels:** [V-repo] code at the commits named; [V-gh] GitHub read in this task; [V-reg] public container registry read in this task (manifest digests verified by hashing the manifest bodies); [V-src] image build source read in this task; [V-local] local Terraform or Node run in this task, no AWS; [V-aws] AWS read in this task (§2.2); [V-prior] earlier report, not re-read; [E] inference.
 
@@ -54,7 +54,7 @@ After B-2 to B-4 the owner dispatches `aws-terraform.yml` nonprod `plan`, and th
 | Item | Observed (time) | Effect on A1 |
 |---|---|---|
 | Platform `main` | `646b7b8` (12:47), unchanged since 8 Nov 07:3x | Report #67's mocked counts were computed on this commit: still valid |
-| PR #67 | Open, not merged, `mergeable_state: clean`, head `88cba385…` (12:47) | Its report is not on `main`; this report links to it on its branch |
+| PR #67 | Open, not merged, `mergeable_state: clean`, head `88cba385…` (12:47); merged as `4a61f77` later (main now `905f5f6` with #68, docs only) | No infrastructure change; A1 analysis unaffected |
 | Identity `main` | `5277d7190b3dda496443c4bd7d80c78bd4d9174e` (12:49), the published release commit | Images at this commit are the A1 images |
 | `infra/aws` since `646b7b8` | No commit | No change affects A1 |
 | Identity publish run 42466697538, attempt 2 | Job 128690908234 pulled back `munaxa-identity/api@sha256:71d01fdf…8c156`; job 128690908425 pulled back `munaxa-identity/migrate@sha256:d175ef37…20820` (logs read about 13:00) | Digests confirmed |

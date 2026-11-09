@@ -1,0 +1,204 @@
+repo	branch	tip_sha	last_commit	commits_ahead_of_main	disposition	reason	pull_requests
+munaxa	claude/adr-0003-accept-nonprod-account	11c1c81c68bc492e2f43b71eb665170aa4f55c9b	2026-10-06	6	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/adr-0003-aws-nonprod-foundation	8f0b675544c54fbd9652eda3997afc023d5bd7f9	2026-10-06	1	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/adr-0003-consistency-audit	1a78ddbb84f986aa9110ee17ac483a1331a15a04	2026-10-06	2	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/adr-0003-finalize	92577da5cb93f1f92e8010eaaa97c15c9314fbcc	2026-10-06	2	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/adr-ecosystem-boundaries	4e6f6aacbd2e28200075d876226c547f75a4a538	2026-09-30	0	DELETE	fully merged into main (tip is an ancestor of main)	#264:closed/merged:4e6f6aa
+munaxa	claude/adr-munaxa-identity-peer-product	8c80e7ab9afc9c211084ddb5c09e5ef08f0d893a	2026-09-01	0	DELETE	fully merged into main (tip is an ancestor of main)	#263:closed/merged:8c80e7a
+munaxa	claude/busy-dirac-jxd3a4	6908eb704fe2bdbd9d66296001e058d29ef58c1b	2026-10-13	1	DELETE	squash-merged: PR #273 merged at exactly this tip	#273:closed/merged:6908eb7 #272:closed/merged:8d0023d #271:closed/merged:ffd587e #270:closed/merged:82adbbb #269:closed/merged:e9328f3
+munaxa	claude/munaxa-branding-logo-integration-u0nya9	7ea6cf6855db0c070c7f1f7feb89f25d008aeed0	2026-08-12	0	DELETE	fully merged into main (tip is an ancestor of main)	#262:closed/merged:7ea6cf6
+munaxa	claude/nonprod-connector-auth	76e47d64b30409e5685667c5dea84a055aefdc67	2026-10-06	9	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-discovery-identity	1634228b3a2d64694ff0c44113048839bc352507	2026-10-06	11	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-foundation-state	ec4e088f0bb0e7d878aed51d8e4d71e7e192fb4e	2026-10-07	18	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-identity-center-bootstrap	4a0ea055cd23f54c2ea5358430058399d9a72948	2026-10-06	10	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-oauth-fix	14e4fa4f0fa5989dab87daf0b72495a2aa71399c	2026-10-06	13	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-org-discovery	da01d5b4dfcf7217510e975edbe6fa6b27af5889	2026-10-06	7	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-org-discovery-results	c092b5562fd6aa9cfffa2d2a520790cc84aafc7b	2026-10-06	14	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-org-discovery-scoped	711b485bd1b35fd0e6bfcdab4c6f16adf92087dc	2026-10-06	12	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-principal-assessment	58076c6b1b8cd21f6c3f27c5375e05bfb76f5a2a	2026-10-06	8	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-provenance-investigation	612588cd97514f83e73bc04bdd06ae1cb10f541e	2026-10-07	19	KEEP-OWNER-DECISION	unique unmerged work with no PR	
+munaxa	claude/nonprod-provisioning-permission-set	c3222864c1a0fb03e979c80a30fcdbaaecd6fdff	2026-10-06	15	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-provisioning-permission-set-attempt	d558ebe57074c187fbb7362ecf6cc1c4e69e36cb	2026-10-06	16	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	claude/nonprod-provisioning-permission-set-attempt-2	0c755bf1b883343d28e12332072a1ab29db70440	2026-10-06	17	DELETE	older step of the same stack; every commit is in claude/nonprod-provenance-investigation (kept)	
+munaxa	feat/v3-marketing-site	5d405bab810b899fc94363ab059294d7a5525016	2026-10-11	1	DELETE	squash-merged: PR #265 merged at exactly this tip	#265:closed/merged:5d405ba
+munaxa	feat/welcome-email	44ad50abb1d8d9df6cfdf19cc0b896a847b7e6c4	2026-10-11	1	DELETE	squash-merged: PR #267 merged at exactly this tip	#267:closed/merged:44ad50a
+munaxa	fix/product-hostnames	dabd3c5df729d1493b6d3503a23b0a8ada10f101	2026-10-11	1	DELETE	squash-merged: PR #266 merged at exactly this tip	#266:closed/merged:dabd3c5
+munaxa	fix/welcome-email-logo	1f34595bbfea59b28e1fc82f32472e0451eb9bc1	2026-10-11	1	DELETE	squash-merged: PR #268 merged at exactly this tip	#268:closed/merged:1f34595
+munaxa-platform	claude/affectionate-tesla-0ptzhd	cb0d2d412904bf5c8bd65836e9ffc4d49ce362ff	2026-10-28	4	DELETE	squash-merged: PR #21 merged at exactly this tip	#21:closed/merged:cb0d2d4
+munaxa-platform	claude/ci-verify-main	a337ee28840cc27658a0262f2005afcb1732be42	2026-08-06	0	DELETE	fully merged into main (tip is an ancestor of main)	#3:closed/merged:a337ee2
+munaxa-platform	claude/docs-v2-theme-and-shell	41a31206b995155864d413c819c36e3cba259336	2026-10-15	2	DELETE	squash-merged: PR #20 merged at exactly this tip	#20:closed/merged:41a3120
+munaxa-platform	claude/licensing-revocation	e236f97461b4c7aec8a044a638d5e23060a7b35d	2026-10-29	5	DELETE	squash-merged: PR #23 merged at exactly this tip	#23:closed/merged:e236f97
+munaxa-platform	claude/munaxa-branding-logo-integration-u0nya9	743c3da35d0d379a915295ad106b4e04a94ef3c1	2026-08-12	0	DELETE	fully merged into main (tip is an ancestor of main)	#8:closed/merged:743c3da
+munaxa-platform	claude/munaxa-classroom-structure-p788cx	72009f27d917ddc0e68120e6da054f19d13c6c1e	2026-08-16	0	DELETE	fully merged into main (tip is an ancestor of main)	#16:closed/merged:0b5e8bf
+munaxa-platform	claude/platform-dependency-remediation	63277e21e3be79af2d237545effeeb42c4595d85	2026-10-29	1	DELETE	squash-merged: PR #22 merged at exactly this tip	#22:closed/merged:63277e2
+munaxa-platform	claude/platform-treeview-extraction	6e0ea8645ddeb75452142942f64610868a79f05f	2026-08-18	2	DELETE	squash-merged: PR #18 merged at exactly this tip	#18:closed/merged:6e0ea86
+munaxa-platform	claude/project-thread-0b9ykr	c22cc6c27f17425f659c344b6c765391885eb55a	2026-10-31	1	DELETE	squash-merged: PR #32 merged at exactly this tip	#32:closed/merged:c22cc6c #31:closed/merged:8be36c4
+munaxa-platform	claude/project-thread-0f18qv	2488162edcffb0966187c91b56940da34a4db389	2026-10-30	4	DELETE	squash-merged: PR #30 merged at exactly this tip	#30:closed/merged:2488162 #29:closed/merged:7af38e0
+munaxa-platform	claude/project-thread-22wpu4	e1723893aa4c65cc2dc70d1e25988aabb1eaa2a9	2026-11-05	8	DELETE	squash-merged: PR #48 merged at exactly this tip	#48:closed/merged:e172389 #47:closed/merged:0e456b3 #46:closed/merged:6e0bbe9 #45:closed/merged:2d0a337 #44:closed/merged:18f8c9a #43:closed/merged:744c67c
+munaxa-platform	claude/project-thread-2t315i	130b6500c2b2e5adf62b29d49f56b5972839b27f	2026-11-08	1	DELETE	squash-merged: PR #66 merged at exactly this tip	#66:closed/merged:130b650
+munaxa-platform	claude/project-thread-8g2fwu	d18637b4555583998167e2a39cf64d993e8cda40	2026-10-30	3	DELETE	squash-merged: PR #28 merged at exactly this tip	#28:closed/merged:d18637b
+munaxa-platform	claude/project-thread-fwpm5z	f17522403ad82bd320b61d6fc7435c204a4443be	2026-11-05	1	DELETE	squash-merged: PR #50 merged at exactly this tip	#50:closed/merged:f175224 #49:closed/merged:08827f0
+munaxa-platform	claude/project-thread-fxrse6	e50c773c4922dd61967622bbc7598fef1bdf00bd	2026-11-05	5	DELETE	squash-merged: PR #53 merged at exactly this tip	#53:closed/merged:e50c773 #52:closed/merged:98b124c #51:closed/merged:dd1592f
+munaxa-platform	claude/project-thread-m3u6s9	e3d408db9ebf1ca9bc266cb515045a19f9511098	2026-11-04	8	DELETE	squash-merged: PR #39 merged at exactly this tip	#39:closed/merged:e3d408d #38:closed/merged:0ff0879 #37:closed/merged:6df77ff
+munaxa-platform	claude/project-thread-mh21eq	487ea91af74dda82f3596494dd920cad7fee91db	2026-11-06	18	DELETE	all changes already in main (merging changes nothing)	#60:closed/merged:fc4c57a #59:closed/merged:75b65a6 #58:closed/merged:8797293 #57:closed/merged:9993b0c #56:closed/merged:894e5cb #55:closed/merged:17487d3 #54:closed/merged:a31a713
+munaxa-platform	claude/project-thread-oc8prr	99e6c3f5f7132be57708b34745967d21866d8fab	2026-11-06	6	DELETE	squash-merged: PR #62 merged at exactly this tip	#62:closed/merged:99e6c3f #61:closed/merged:2ae4367
+munaxa-platform	claude/project-thread-qotnc6	811acf903999b0f368b4c456c51121fa8dfcf528	2026-10-30	10	DELETE	squash-merged: PR #27 merged at exactly this tip	#27:closed/merged:811acf9 #26:closed/merged:cfb01ee
+munaxa-platform	claude/project-thread-qv1ez6	cc0b4e186eb2cecd1dfbb35000e55fa1e6e3fbb9	2026-11-07	3	DELETE	squash-merged: PR #65 merged at exactly this tip	#65:closed/merged:cc0b4e1 #64:closed/merged:728330e
+munaxa-platform	claude/project-thread-rk24vh	c3504b9fc133798ecd103e0cee26bc3b62241299	2026-11-04	1	DELETE	squash-merged: PR #36 merged at exactly this tip	#36:closed/merged:c3504b9 #35:closed/merged:282bbc1 #34:closed/merged:f060c27 #33:closed/merged:7b2e1d1
+munaxa-platform	claude/project-thread-vruywt	6bbec9daf7dd6640fb500b9ff27409867522504e	2026-11-07	1	DELETE	squash-merged: PR #63 merged at exactly this tip	#63:closed/merged:6bbec9d
+munaxa-platform	claude/project-thread-x513uo	88cba385200041a30881253ae4f74fcf1524334b	2026-11-08	5	DELETE	squash-merged: PR #67 merged at exactly this tip	#67:closed/merged:88cba38
+munaxa-platform	claude/project-thread-yvekte	fb6f095697cc7139ccde1453dba4ed29150737d4	2026-11-05	1	DELETE	squash-merged: PR #42 merged at exactly this tip	#42:closed/merged:fb6f095 #41:closed/merged:4c6a0b0 #40:closed/merged:a0af215
+munaxa-platform	claude/project-thread-zqsmfg	00520ca61817f90da570612069ad0e13940abe6a	2026-10-30	5	DELETE	squash-merged: PR #25 merged at exactly this tip	#25:closed/merged:00520ca #24:closed/merged:94e6410
+munaxa-platform	claude/shared-security-platform-p1-tknut1	4d09a8a7d91a6253ced4489c057e4d2bffb44f93	2026-08-07	1	DELETE	squash-merged: PR #7 merged at exactly this tip	#7:closed/merged:4d09a8a #6:closed/merged:b1284b1 #5:closed/merged:387b5af #4:closed/merged:1bbe436 #2:closed/merged:76cf704
+munaxa-platform	claude/sidebar-nav-contrast-fix-nhpu3b	816aa0d8d481988ec0278496457dbee1b433c090	2026-08-16	4	DELETE	squash-merged: PR #17 merged at exactly this tip	#17:closed/merged:816aa0d #15:closed/merged:0862565 #14:closed/merged:7913598 #13:closed/merged:b94f6ef #12:closed/merged:6c80a7b #11:closed/merged:66b1db8 #10:closed/merged:f7f6dce #9:closed/merged:42affe1
+munaxa-platform	claude/treeview-anchor-activation	fcbad9248f17d709a2cf78bb4778a5aad5ac0cae	2026-08-18	1	DELETE	squash-merged: PR #19 merged at exactly this tip	#19:closed/merged:fcbad92
+munaxa-identity	claude/aws-nonprod-account-decision	72c5ec59c7e57a40d25c26e62bf26dd86d5ea073	2026-10-06	7	DELETE	every commit is in claude/aws-nonprod-dns-decision (kept)	
+munaxa-identity	claude/aws-nonprod-dns-decision	da4f53124aee859ce0888c7d335f39afb82373c6	2026-10-06	8	KEEP-OWNER-DECISION	unique unmerged work with no PR	
+munaxa-identity	claude/aws-nonprod-network-decision	88e58da7367a726fcdbaa9caaf0b8dc08bac44b9	2026-10-06	6	DELETE	every commit is in claude/aws-nonprod-dns-decision (kept)	
+munaxa-identity	claude/aws-staging-architecture	954cf32807898c77dfc5790ea2f8a941c7f986f4	2026-10-06	5	DELETE	every commit is in claude/aws-nonprod-dns-decision (kept)	
+munaxa-identity	claude/confident-fermi-k3cdx2	95b9a2ec61db1ffe94abcba9c5715b8f6cac4c92	2026-10-06	1	DELETE	every commit is in claude/aws-nonprod-dns-decision (kept)	
+munaxa-identity	claude/identity-bootstrap-tls	c62748116cd4d88c76389d7c3542479295e39dcb	2026-10-06	3	DELETE	every commit is in claude/aws-nonprod-dns-decision (kept)	
+munaxa-identity	claude/identity-ecr-publish	1c07a8e02cef6df7e37672a9a42a9b8d6c950639	2026-10-06	4	DELETE	every commit is in claude/aws-nonprod-dns-decision (kept)	
+munaxa-identity	claude/identity-migration-runner	127eff63cfc08ec57a6ef4ab057bb0b671610239	2026-10-06	2	DELETE	every commit is in claude/aws-nonprod-dns-decision (kept)	
+munaxa-identity	claude/project-thread-0b9ykr	b97b3abc9d3a5f5eedd4fbcbb51647d8b455cfee	2026-10-30	0	DELETE	fully merged into main (tip is an ancestor of main)	
+munaxa-identity	claude/project-thread-22wpu4	b15cf104f9448f1b1be83bbfb72995c9695c3a52	2026-11-05	1	DELETE	squash-merged: PR #6 merged at exactly this tip	#6:closed/merged:b15cf10
+munaxa-identity	claude/project-thread-3ugge1	47c39a54b3dc3c60a60f962baed4730c4405678d	2026-10-30	7	DELETE	squash-merged: PR #4 merged at exactly this tip	#4:closed/merged:47c39a5 #3:closed/merged:ab5471a #2:closed/merged:7744a24
+munaxa-identity	claude/project-thread-m3u6s9	92fdf97f00ea739f4c91bf27631bcb67d451af43	2026-11-04	1	DELETE	squash-merged: PR #5 merged at exactly this tip	#5:closed/merged:92fdf97
+munaxa-identity	claude/project-thread-zqsmfg	38ae8467af5271f9835b195f2fad4d4a456c1eca	2026-10-30	2	DELETE	squash-merged: PR #1 merged at exactly this tip	#1:closed/merged:38ae846
+munaxa-control	claude/affectionate-tesla-0ptzhd	73b8a12257ac05c842490c59e7355255ec6a2b78	2026-10-28	9	DELETE	squash-merged: PR #1 merged at exactly this tip	#1:closed/merged:73b8a12
+munaxa-control	claude/control-portal-csp	37bfa282714059c0dacd85fd0ad16148329f996c	2026-10-29	1	DELETE	squash-merged: PR #2 merged at exactly this tip	#2:closed/merged:37bfa28
+munaxa-control	claude/control-revocation-list	3fcdbcd4c00af3f6f4538936eb5cccc5b93a9956	2026-10-29	1	DELETE	squash-merged: PR #3 merged at exactly this tip	#3:closed/merged:3fcdbcd
+munaxa-control	claude/project-thread-0b9ykr	a24c5681f0ca98f446098444c79bc36cd4d9bc0c	2026-10-30	0	DELETE	fully merged into main (tip is an ancestor of main)	
+munaxa-control	claude/project-thread-0f18qv	f530170fee7e8a1e574d93800f27afeec286cac5	2026-10-30	1	DELETE	squash-merged: PR #7 merged at exactly this tip	#7:closed/merged:f530170
+munaxa-control	claude/project-thread-tccr1u	d68e1a71a500832afabf4fd867ce360d003a781d	2026-10-30	3	DELETE	squash-merged: PR #6 merged at exactly this tip	#6:closed/merged:d68e1a7
+munaxa-control	claude/project-thread-zqsmfg	c27370130b2ffbe6c65fd99e8ddea2e135d0c5a5	2026-10-30	5	DELETE	squash-merged: PR #5 merged at exactly this tip	#5:closed/merged:c273701 #4:closed/merged:4fd9af1
+munaxa-work	claude/affectionate-tesla-0ptzhd	452cb7b55f033d23913dee7024d2ef0a20d961ff	2026-10-28	0	DELETE	fully merged into main (tip is an ancestor of main)	#21:closed/merged:452cb7b
+munaxa-work	claude/munaxa-product-readiness-audit-8mr34d	b608790878c8a5f9a28e673bf8f6c0f8b1d29dd6	2026-08-31	11	KEEP-OWNER-DECISION	unique unmerged work with no PR	#19:closed/merged:e48738c #18:closed/merged:e20518d #17:closed/merged:6a31e03 #16:closed/merged:6b6818c
+munaxa-work	claude/munaxa-staging-readiness-audit-rupvod	1d927ee6beaa8e951182da0c0aaf2c2182daeb70	2026-09-02	0	DELETE	fully merged into main (tip is an ancestor of main)	#20:closed/merged:1d927ee
+munaxa-work	claude/project-thread-0b9ykr	da84612ed0187e9e08d9df1971f75111f8270073	2026-10-30	0	DELETE	fully merged into main (tip is an ancestor of main)	
+munaxa-work	claude/project-thread-22wpu4	3ec54b54e13da2d092b135d8349255fe1591d4e4	2026-11-05	1	DELETE	squash-merged: PR #29 merged at exactly this tip	#29:closed/merged:3ec54b5
+munaxa-work	claude/project-thread-cfm3xn	a36acbbffd147243321208356ab5983b7203e45d	2026-10-29	0	DELETE	fully merged into main (tip is an ancestor of main)	#24:closed/merged:a36acbb
+munaxa-work	claude/project-thread-m3u6s9	246edc5ee59182fa70ca40d72e62803c390671b0	2026-11-04	0	DELETE	fully merged into main (tip is an ancestor of main)	#28:closed/merged:246edc5
+munaxa-work	claude/project-thread-zjaxqt	f33da25c706879b8908727987fceffacc289daf3	2026-10-30	0	DELETE	fully merged into main (tip is an ancestor of main)	#27:closed/merged:f33da25 #26:closed/merged:40da4e6
+munaxa-work	claude/project-thread-zqsmfg	36de887682d45404650d22f4b14e4123a30b0a4a	2026-10-30	0	DELETE	fully merged into main (tip is an ancestor of main)	#25:closed/merged:36de887
+munaxa-work	claude/work-dependency-remediation	66edb740d09acad243dc24d5cca9ae2bd5b58116	2026-10-28	0	DELETE	fully merged into main (tip is an ancestor of main)	#22:closed/merged:66edb74
+munaxa-work	claude/work-licence-revocation	1f0dbf4245a43489f97301ec5bc390a6468a7923	2026-10-29	0	DELETE	fully merged into main (tip is an ancestor of main)	#23:closed/merged:1f0dbf4
+munaxa-docs	claude/adr-0021-multi-tenant-launch	f6255df63bfb83e7c0e5ffcfba13dc0bf1de994a	2026-10-01	0	DELETE	fully merged into main (tip is an ancestor of main)	#120:closed/merged:f6255df
+munaxa-docs	claude/adr-0022-hosting-aws	d11aac9897be58dc02a51c54a8daef2ebb35ef27	2026-10-01	0	DELETE	fully merged into main (tip is an ancestor of main)	#123:closed/merged:d11aac9
+munaxa-docs	claude/adr-0023-aws-region-eu-central-1	014154436e58fa90117e3e26c0b59224cb7da120	2026-10-02	0	DELETE	fully merged into main (tip is an ancestor of main)	#125:closed/merged:0141544
+munaxa-docs	claude/adr-0024-minimum-cost-launch	56a49fe663fa36f3456411d05636644e5d1c5095	2026-10-04	0	DELETE	fully merged into main (tip is an ancestor of main)	#126:closed/merged:56a49fe
+munaxa-docs	claude/adr-0025-production-email-ses	f5c3147f9b9bf4aabfecd5e87b5d97df121622c2	2026-10-04	0	DELETE	fully merged into main (tip is an ancestor of main)	#127:closed/merged:f5c3147
+munaxa-docs	claude/affectionate-tesla-0ptzhd	8e6ae02cc69a7099fe0f9963d9142b754f857718	2026-10-29	11	DELETE	squash-merged: PR #162 merged at exactly this tip	#162:closed/merged:8e6ae02 #160:closed/merged:06cc9d2
+munaxa-docs	claude/amazing-turing-09vlks	03af11c07b17c9e80d644c04ef4f87a1dd699717	2026-10-20	89	KEEP-OWNER-DECISION	unique unmerged work with no PR	
+munaxa-docs	claude/antivirus-event-order-test	7f170553f1ac0b0f4584bba2ce1e6ee92e57282e	2026-10-24	1	DELETE	squash-merged: PR #149 merged at exactly this tip	#149:closed/merged:7f17055
+munaxa-docs	claude/antivirus-nonroot	4e8e1ca825b4bc376dc15566c9ba9e5938a6ae7b	2026-09-30	0	DELETE	fully merged into main (tip is an ancestor of main)	#118:closed/merged:4e8e1ca
+munaxa-docs	claude/antivirus-security-updates	2dac410de898d4741b992a1763fca1805599f733	2026-10-24	2	DELETE	squash-merged: PR #143 merged at exactly this tip	#143:closed/merged:2dac410
+munaxa-docs	claude/apply-database-pool-size	bda59e854a35bf1fdef38542d98be8e39122c93d	2026-10-01	0	DELETE	fully merged into main (tip is an ancestor of main)	#122:closed/merged:bda59e8
+munaxa-docs	claude/charming-cray-8jeacx	2c178025e5e547520f5370717a595ba1f4affeea	2026-10-07	20	DELETE	PR #131 closed as superseded; commits kept in refs/pull/131/head	#131:closed:2c17802 #130:closed/merged:f0164a7 #129:closed/merged:22048d5 #128:closed/merged:3589324
+munaxa-docs	claude/ci-docker-hub-auth	0e5d2c2125dbcff7e7954a1bc95f87fc8f278c21	2026-10-12	4	DELETE	squash-merged: PR #135 merged at exactly this tip	#135:closed/merged:0e5d2c2
+munaxa-docs	claude/ci-minio-registry	b6f31395ed9cbd00be7de65714b4ea3edf75dc7d	2026-09-16	1	DELETE	squash-merged: PR #79 merged at exactly this tip	#79:closed/merged:b6f3139
+munaxa-docs	claude/docs-control-plane-licensing-tf	8685a2946c82519b2ba8f99548e480ecfedc622c	2026-10-29	1	DELETE	its one commit is patch-identical to a commit on main (git cherry)	
+munaxa-docs	claude/docs-dependency-remediation	e3b075724807ce1b32165e2d4878d43a790a8f08	2026-10-29	2	DELETE	squash-merged: PR #161 merged at exactly this tip	#161:closed/merged:e3b0757
+munaxa-docs	claude/docs-ecr-runbook	fe021046090762110cfb133caaf1281ac9c8e801	2026-10-24	6	DELETE	squash-merged: PR #144 merged at exactly this tip	#144:closed/merged:fe02104
+munaxa-docs	claude/docs-outbound-tls-servername	6404ee2361942aea1c52e5578a54d14126d12e5d	2026-10-29	1	DELETE	squash-merged: PR #164 merged at exactly this tip	#164:closed/merged:6404ee2
+munaxa-docs	claude/docs-release-4e8e1ca	e791dbdac67ef3827de7d117c881bb77b5caf38a	2026-10-01	0	DELETE	fully merged into main (tip is an ancestor of main)	#119:closed/merged:e791dbd
+munaxa-docs	claude/docs-release-rc-c87519e	797b6976f221d90d91c0947753d734d8fd75972d	2026-09-30	0	DELETE	fully merged into main (tip is an ancestor of main)	#116:closed:797b697
+munaxa-docs	claude/docs-release-rc2	8cb4c14454e2e0e3b4508ef4e6eba76d3e1b0051	2026-09-30	0	DELETE	fully merged into main (tip is an ancestor of main)	#117:closed/merged:8cb4c14
+munaxa-docs	claude/docs-tenancy-contradictions	80cec7c1ad90f0a6c742d190b821ad2445f18df9	2026-10-01	0	DELETE	fully merged into main (tip is an ancestor of main)	#121:closed/merged:80cec7c
+munaxa-docs	claude/docs-tenant-login-and-images	e95586c92cded8b28367b91744c6d9405ef3fef2	2026-09-30	2	DELETE	all changes already in main (merging changes nothing)	
+munaxa-docs	claude/ecr-apply-docs	a97b0abd5182a6d550e5c33243c2e9c36341af8c	2026-10-22	1	DELETE	squash-merged: PR #142 merged at exactly this tip	#142:closed/merged:a97b0ab
+munaxa-docs	claude/ecr-migration	72cbc8e8995eaab79acced9d67acae01cf492b01	2026-10-22	4	DELETE	squash-merged: PR #141 merged at exactly this tip	#141:closed/merged:72cbc8e
+munaxa-docs	claude/ecs-runtime-hardening	7ee0fc22d629a373eb320738bf26fbf4faee2cf9	2026-10-25	2	DELETE	squash-merged: PR #152 merged at exactly this tip	#152:closed/merged:7ee0fc2
+munaxa-docs	claude/fix-smk1-unprovisioned-tenant	605a72f97b39f5dac2f90bc29694d24ae51feb95	2026-10-24	1	DELETE	squash-merged: PR #148 merged at exactly this tip	#148:closed/merged:605a72f
+munaxa-docs	claude/gifted-wozniak-g94u76	0e97a6c9417c98f212426fb5dc814083ecd86eb8	2026-09-29	0	DELETE	fully merged into main (tip is an ancestor of main)	
+munaxa-docs	claude/github-oidc-terraform-ci	b0939a8e65bcc32cafd328f0d1c71fc557160793	2026-10-08	2	DELETE	squash-merged: PR #133 merged at exactly this tip	#133:closed/merged:b0939a8
+munaxa-docs	claude/hetzner-docs-foundation	71c1592e25f56dd8ba26f91e736e29692f106074	2026-10-14	42	DELETE	every commit is in claude/amazing-turing-09vlks (kept)	
+munaxa-docs	claude/malformed-id-not-500	fff1b3994f5fdd2e0e7f744a22f1e75aa26744e6	2026-10-24	4	DELETE	squash-merged: PR #150 merged at exactly this tip	#150:closed/merged:fff1b39
+munaxa-docs	claude/malformed-id-repro	0fe610f3ef67b02d32c330b9ab256acde65169c9	2026-10-24	1	DELETE	all changes already in main (merging changes nothing)	
+munaxa-docs	claude/munaxa-branding-logo-integration-u0nya9	ade62c5d9ef9609537583382e645bb5e6e066f71	2026-08-12	0	DELETE	fully merged into main (tip is an ancestor of main)	#38:closed/merged:ade62c5
+munaxa-docs	claude/munaxa-docs-ui-16icbv	0a9d21ed1d6d4d776151aa7b319deef940a43015	2026-09-24	2	DELETE	squash-merged: PR #115 merged at exactly this tip	#115:closed/merged:0a9d21e #114:closed/merged:52ecae1 #113:closed/merged:d130a09 #112:closed/merged:a3bfe7d #111:closed/merged:afaed35 #110:closed/merged:7217ed7 #109:closed/merged:ff5f822 #108:closed/merged:bdc02a2 #107:closed/merged:2a96ff4 #106:closed/merged:9749260 #105:closed/merged:bb5c12e #104:closed/merged:4eedf6b #103:closed/merged:4a296f2 #102:closed/merged:821a1a1 #101:closed/merged:59e24f2 #100:closed/merged:f3dc7d3 #99:closed/merged:c311454 #98:closed/merged:675559b #97:closed/merged:75b982f #96:closed/merged:36942ce #95:closed/merged:6551dd6 #94:closed/merged:afb7bc9 #93:closed/merged:41e343d #92:closed/merged:11732ef #46:closed/merged:11ef076 #45:closed/merged:0e82570
+munaxa-docs	claude/phase-9-certification	08b7c653ebc4c2f9863df7bab91427320ba58bfd	2026-08-15	1	DELETE	all changes already in main (merging changes nothing)	
+munaxa-docs	claude/phase3-engineering-deployer-trust	398bc19c7fca9d8961506bb320d13b063804d5a3	2026-10-08	2	DELETE	squash-merged: PR #132 merged at exactly this tip	#132:closed/merged:398bc19
+munaxa-docs	claude/project-thread-0f18qv	53c44b5bc9aab02e519ec8e8f5e434d467a92c57	2026-10-30	3	DELETE	squash-merged: PR #168 merged at exactly this tip	#168:closed/merged:53c44b5
+munaxa-docs	claude/project-thread-agftqk	6058c3581c632d8aa72de405abfd0fb7e2b54db1	2026-11-04	1	DELETE	squash-merged: PR #174 merged at exactly this tip	#174:closed/merged:6058c35 #173:closed/merged:8ad2124 #172:closed/merged:966b037 #171:closed/merged:2e93ac6 #170:closed:4c8903f #169:closed/merged:af58195
+munaxa-docs	claude/project-thread-cfm3xn	22c06a7c554b5a65e0af19c032c051d16f385361	2026-10-30	5	DELETE	squash-merged: PR #163 merged at exactly this tip	#163:closed/merged:22c06a7
+munaxa-docs	claude/project-thread-rs73yv	a53852d37574786463a9ca7ad990eff9406d5073	2026-10-30	2	DELETE	all changes already in main (merging changes nothing)	#167:closed:a53852d
+munaxa-docs	claude/project-thread-zqsmfg	1ffdbbacdda9d98e556aa67af856d11b1d034dfe	2026-10-30	2	DELETE	squash-merged: PR #166 merged at exactly this tip	#166:closed/merged:1ffdbba #165:closed/merged:0851a09
+munaxa-docs	claude/release-candidate-remediated	a6f7d9deae1677fe08077f0be29c10bdcdcef8c1	2026-10-25	6	DELETE	PR #155 closed as superseded; commits kept in refs/pull/155/head	#155:closed:a6f7d9d
+munaxa-docs	claude/release-package-c6a6d8c	fca606ba2fa30e0143081818d2c711deabeba2f4	2026-10-25	7	DELETE	PR #153 closed as superseded; commits kept in refs/pull/153/head	#153:closed:fca606b
+munaxa-docs	claude/release-package-f8a8bea	2a82aa65f8a3ca7b5309d582413894b6b4be1286	2026-10-25	1	DELETE	squash-merged: PR #156 merged at exactly this tip	#156:closed/merged:2a82aa6
+munaxa-docs	claude/release-smoke-harness	e6024596d892588ffa1e515f13abaee0e712bfa2	2026-10-24	12	DELETE	squash-merged: PR #147 merged at exactly this tip	#147:closed/merged:e602459
+munaxa-docs	claude/runtime-image-cve-assessment	e0640eb178cc7f0375b6e2dcb4a1d39344b7cf04	2026-10-24	1	DELETE	squash-merged: PR #151 merged at exactly this tip	#151:closed/merged:e0640eb
+munaxa-docs	claude/runtime-image-remediation	8cebc378255b9bf0362584649e36cdcf5366b594	2026-10-25	1	DELETE	squash-merged: PR #154 merged at exactly this tip	#154:closed/merged:8cebc37
+munaxa-docs	claude/runtime-strip-setuid	2af5d1789441a41f360260cfe600d2da7bbc1b40	2026-10-23	1	DELETE	squash-merged: PR #145 merged at exactly this tip	#145:closed/merged:2af5d17
+munaxa-docs	claude/s3-ecs-task-role-credentials	041e8278d2808926d5aaad4c890f41ec2a648424	2026-10-02	0	DELETE	fully merged into main (tip is an ancestor of main)	#124:closed/merged:041e827
+munaxa-docs	claude/service-root-ecr	b4c0008cf4951b6cba82712889caf9d9a0a11a84	2026-10-24	4	DELETE	squash-merged: PR #146 merged at exactly this tip	#146:closed/merged:b4c0008
+munaxa-docs	claude/sidebar-nav-contrast-fix-nhpu3b	a346e0ef39b06afacbb6b869b6133d7542516891	2026-08-16	1	DELETE	squash-merged: PR #44 merged at exactly this tip	#44:closed/merged:a346e0e #43:closed/merged:a753e21 #42:closed/merged:468ed52 #41:closed/merged:f88a11c #40:closed/merged:64881c8 #39:closed/merged:285acfd #37:closed/merged:5fd6be4
+munaxa-docs	claude/slice-100-audit	67ba84fa9640455f6ac255fcef5da2e618ec2cff	2026-09-17	1	DELETE	squash-merged: PR #85 merged at exactly this tip	#85:closed/merged:67ba84f
+munaxa-docs	claude/slice-101-audit	04963581eb5c6e84e7bd11a7e9373ee8199bb71d	2026-09-17	1	DELETE	squash-merged: PR #86 merged at exactly this tip	#86:closed/merged:0496358
+munaxa-docs	claude/slice-102-audit	74b9282452440df3e9f8c6d2ba8f3d00f918a2ff	2026-09-17	1	DELETE	squash-merged: PR #87 merged at exactly this tip	#87:closed/merged:74b9282
+munaxa-docs	claude/slice-103-audit	6d86d85865b6ff8d0aa5f65f090a633be5def46c	2026-09-17	1	DELETE	squash-merged: PR #88 merged at exactly this tip	#88:closed/merged:6d86d85
+munaxa-docs	claude/slice-104-audit	8dc0007b8121d11afb58a37eece6faf79cb7577e	2026-09-17	1	DELETE	squash-merged: PR #89 merged at exactly this tip	#89:closed/merged:8dc0007
+munaxa-docs	claude/slice-105a-purged-number	37325f616e9d82209964bff7321f5b90b4db9266	2026-09-18	1	DELETE	squash-merged: PR #90 merged at exactly this tip	#90:closed/merged:37325f6
+munaxa-docs	claude/slice-106-search-projection	78dd6be65133c68b7a7adb3b1f1cf47f5e38554f	2026-09-20	1	DELETE	squash-merged: PR #91 merged at exactly this tip	#91:closed/merged:78dd6be
+munaxa-docs	claude/slice-51-audit	0d6ba893680ada394dd2cd2eeda541f374852039	2026-08-24	1	DELETE	squash-merged: PR #47 merged at exactly this tip	#47:closed/merged:0d6ba89
+munaxa-docs	claude/slice-52-audit	bace5a9413e1ff14de790ccfafac1fa5804c41a3	2026-08-26	2	DELETE	squash-merged: PR #48 merged at exactly this tip	#48:closed/merged:bace5a9
+munaxa-docs	claude/slice-53-audit	09484371bd6c202f336c3bcf14de1ebe72e7d3f9	2026-08-26	1	DELETE	squash-merged: PR #49 merged at exactly this tip	#49:closed/merged:0948437
+munaxa-docs	claude/slice-54-audit	d99054bee43418e54559b7116d9287a08cccece9	2026-08-26	1	DELETE	squash-merged: PR #50 merged at exactly this tip	#50:closed/merged:d99054b
+munaxa-docs	claude/slice-55-audit	954c6770be5c539056db5d39a01a80223bada769	2026-08-26	1	DELETE	squash-merged: PR #51 merged at exactly this tip	#51:closed/merged:954c677
+munaxa-docs	claude/slice-56-audit	23c35007716ddf734684124d7993ddc4ee34d924	2026-08-27	1	DELETE	squash-merged: PR #52 merged at exactly this tip	#52:closed/merged:23c3500
+munaxa-docs	claude/slice-58-audit	947d016e5470e5cbf8490f3455293c359acb8e27	2026-08-27	2	DELETE	squash-merged: PR #53 merged at exactly this tip	#53:closed/merged:947d016
+munaxa-docs	claude/slice-59-audit	04cdde3ec276277ca6938dc77eebf8b0bee4c746	2026-08-27	1	DELETE	squash-merged: PR #54 merged at exactly this tip	#54:closed/merged:04cdde3
+munaxa-docs	claude/slice-60-audit	40a2ede16b617a856e8a60859496e9c964b2c335	2026-08-27	1	DELETE	squash-merged: PR #55 merged at exactly this tip	#55:closed/merged:40a2ede
+munaxa-docs	claude/slice-61-audit	da2fe42e40a95a3ee7da5ea36ee1dca51e1c3598	2026-08-28	1	DELETE	squash-merged: PR #56 merged at exactly this tip	#56:closed/merged:da2fe42
+munaxa-docs	claude/slice-62-audit	8c91579453bb2c943f8c973e6b94373b7b806efd	2026-08-31	1	DELETE	squash-merged: PR #57 merged at exactly this tip	#57:closed/merged:8c91579
+munaxa-docs	claude/slice-63-audit	0cffd0ddc8ad870035a405493a9387f7f21242a2	2026-08-31	1	DELETE	squash-merged: PR #58 merged at exactly this tip	#58:closed/merged:0cffd0d
+munaxa-docs	claude/slice-64-audit	b8bb995538e49a996ff9d2cdf5fb1e21fe8ec843	2026-08-31	1	DELETE	squash-merged: PR #59 merged at exactly this tip	#59:closed/merged:b8bb995
+munaxa-docs	claude/slice-65-audit	d321e930f1fba54a044b2c3ab2e159f4a09e663e	2026-08-31	1	DELETE	squash-merged: PR #60 merged at exactly this tip	#60:closed/merged:d321e93
+munaxa-docs	claude/slice-66-audit	117e8ca87b1d9d1631cf28aa22fbfa67d31a359a	2026-08-31	1	DELETE	squash-merged: PR #61 merged at exactly this tip	#61:closed/merged:117e8ca
+munaxa-docs	claude/slice-67-audit	8653b726716730745d97e06bdbbd4cd770745ce2	2026-08-31	1	DELETE	squash-merged: PR #62 merged at exactly this tip	#62:closed/merged:8653b72
+munaxa-docs	claude/slice-68-audit	82c07777cff77ddcbcd431b3be51f5ecf5060d66	2026-08-31	1	DELETE	squash-merged: PR #63 merged at exactly this tip	#63:closed/merged:82c0777
+munaxa-docs	claude/slice-69-audit	9785e0be4456b85cb820864f8d768f6ddefbbdf3	2026-08-31	1	DELETE	squash-merged: PR #64 merged at exactly this tip	#64:closed/merged:9785e0b
+munaxa-docs	claude/slice-70-audit	6b15ec14681c6a23127c16ec89bd9a4278be966a	2026-09-01	1	DELETE	squash-merged: PR #65 merged at exactly this tip	#65:closed/merged:6b15ec1
+munaxa-docs	claude/slice-71-audit	eac081925c4c180aab1ed0ce9aaec13d23209787	2026-09-01	1	DELETE	squash-merged: PR #66 merged at exactly this tip	#66:closed/merged:eac0819
+munaxa-docs	claude/slice-73-audit	7041ae1e8ec0ab1a6033b8f2185d592a244f74af	2026-09-01	1	DELETE	squash-merged: PR #67 merged at exactly this tip	#67:closed/merged:7041ae1
+munaxa-docs	claude/slice-75-audit	fe304c77a5e0615d5f22bf3a37330a0085dcab27	2026-09-01	1	DELETE	squash-merged: PR #68 merged at exactly this tip	#68:closed/merged:fe304c7
+munaxa-docs	claude/slice-76-audit	49160085b4ce77f464e10548fee8f4f145d0898e	2026-09-01	1	DELETE	squash-merged: PR #69 merged at exactly this tip	#69:closed/merged:4916008
+munaxa-docs	claude/slice-79-audit	a22820cf45147b4c8c2ad56aff5fe04e47ffe93e	2026-09-02	1	DELETE	squash-merged: PR #70 merged at exactly this tip	#70:closed/merged:a22820c
+munaxa-docs	claude/slice-84-audit	43cf9bd3900277ae97792e563a491c4bece33a20	2026-09-02	1	DELETE	squash-merged: PR #71 merged at exactly this tip	#71:closed/merged:43cf9bd
+munaxa-docs	claude/slice-85-audit	0e3734617254d096b9f28720fe2879c86dc0a953	2026-09-02	1	DELETE	squash-merged: PR #72 merged at exactly this tip	#72:closed/merged:0e37346
+munaxa-docs	claude/slice-86-audit	b0eabd23103b23d8bbe9b23dc8eef18ed24071ad	2026-09-02	1	DELETE	squash-merged: PR #73 merged at exactly this tip	#73:closed/merged:b0eabd2
+munaxa-docs	claude/slice-88-audit	dc45b4ac6a7aa84170459b0b8a2ebb5b7228c30e	2026-09-02	1	DELETE	squash-merged: PR #74 merged at exactly this tip	#74:closed/merged:dc45b4a
+munaxa-docs	claude/slice-90-audit	f1b675ba2fa236550b299acde528b77d81f85d9c	2026-09-02	1	DELETE	squash-merged: PR #75 merged at exactly this tip	#75:closed/merged:f1b675b
+munaxa-docs	claude/slice-92-audit	bb3032da826cb9a87559ecef98a33aeaf9526a26	2026-09-09	1	DELETE	squash-merged: PR #76 merged at exactly this tip	#76:closed/merged:bb3032d
+munaxa-docs	claude/slice-93-audit	28564b6bca764527d9e2370e8e6b484849ba6566	2026-09-10	2	DELETE	squash-merged: PR #77 merged at exactly this tip	#77:closed/merged:28564b6
+munaxa-docs	claude/slice-94-audit	a3970a62b1839d159c90a1368f56ea5bdd407bcb	2026-09-16	2	DELETE	squash-merged: PR #78 merged at exactly this tip	#78:closed/merged:a3970a6
+munaxa-docs	claude/slice-95-audit	b6e68a58e6c5a145192f3319163190e95f8613af	2026-09-16	1	DELETE	squash-merged: PR #80 merged at exactly this tip	#80:closed/merged:b6e68a5
+munaxa-docs	claude/slice-96-audit	4deb0459c1c8cc84483e0748a1b55c34488cd6a7	2026-09-16	1	DELETE	squash-merged: PR #81 merged at exactly this tip	#81:closed/merged:4deb045
+munaxa-docs	claude/slice-97-audit	a995fe8ddcadedcfc4eb42b37f73bc50cf6f5fe9	2026-09-16	1	DELETE	squash-merged: PR #82 merged at exactly this tip	#82:closed/merged:a995fe8
+munaxa-docs	claude/slice-98-audit	88af53147f919b07d5e80536ecf5c29abfe29dc2	2026-09-16	1	DELETE	squash-merged: PR #83 merged at exactly this tip	#83:closed/merged:88af531
+munaxa-docs	claude/slice-99-audit	2537b92c1032d53ac2fd4d92a32ee4455f413793	2026-09-17	1	DELETE	squash-merged: PR #84 merged at exactly this tip	#84:closed/merged:2537b92
+munaxa-docs	claude/smk1-smoke-evidence	8cf4572c929974dc1ddc2e94bb3be3a253c92b12	2026-10-24	10	KEEP-OWNER-DECISION	unique unmerged work with no PR	
+munaxa-docs	claude/sweet-brown-4wq1q7	1d6653ce61408ca2f4d906eafce411af8b33845c	2026-10-26	6	DELETE	squash-merged: PR #159 merged at exactly this tip	#159:closed/merged:1d6653c #158:closed/merged:0665dce #140:closed/merged:c838b62 #139:closed/merged:7de90c8 #138:closed/merged:97e6e6f
+munaxa-docs	claude/terraform-plan-review-gate	9b5d939abef18e74c53aa522b6ce2353a651acfe	2026-10-26	2	DELETE	squash-merged: PR #157 merged at exactly this tip	#157:closed/merged:9b5d939
+munaxa-docs	claude/two-environment-cicd	7acb043597c716f2b6fa7e999ef6adcaea25d0bf	2026-10-12	10	DELETE	PR #134 closed as superseded; commits kept in refs/pull/134/head	#134:closed:7acb043
+munaxa-docs	claude/zealous-cori-v2b9l4	a3e3da4d013a868072bfb4b4d31c5a87104f591b	2026-11-07	10	KEEP-OWNER-DECISION	unique unmerged work with no PR	
+munaxa-school	chore/landing-off-munaxa-worker	615553ccb6a9a35c8b747c0c854b468ae69e571e	2026-10-11	2	DELETE	squash-merged: PR #11 merged at exactly this tip	#11:closed/merged:615553c
+munaxa-school	claude/academic-year-subjects-timetable-j2yih6	3328145b6e7f48430bf30fdfa54ca46e12b80f88	2026-08-16	1	DELETE	squash-merged: PR #7 merged at exactly this tip	#7:closed/merged:3328145
+munaxa-school	claude/affectionate-tesla-0ptzhd	d92a25e15c5ea1a103ab52d6d98555b155b880fc	2026-10-29	14	DELETE	squash-merged: PR #12 merged at exactly this tip	#12:closed/merged:d92a25e
+munaxa-school	claude/munaxa-branding-logo-integration-u0nya9	0e8cda3c18a17860f73fe5c48bcd84aba98517f9	2026-08-12	0	DELETE	fully merged into main (tip is an ancestor of main)	#3:closed/merged:0e8cda3
+munaxa-school	claude/munaxa-classroom-structure-p788cx	d3ee8c49c0c110273caed508fe58156b1eb9d351	2026-08-15	1	DELETE	squash-merged: PR #6 merged at exactly this tip	#6:closed/merged:d3ee8c4 #5:closed/merged:55ef9ff #4:closed/merged:90500eb
+munaxa-school	claude/munaxa-school-render-ujxyzz	0dab27723b12249500fcbdfea9bd6894bb06e289	2026-08-16	3	DELETE	squash-merged: PR #8 merged at exactly this tip	#8:closed/merged:0dab277
+munaxa-school	claude/project-thread-0b9ykr	54cf3eb7b0e07a1b8a08d261cd324fa6f30d9687	2026-10-30	0	DELETE	fully merged into main (tip is an ancestor of main)	
+munaxa-school	claude/project-thread-22wpu4	177495ae3983a7ce76ee59d8483916eb2ed7853b	2026-11-05	1	DELETE	squash-merged: PR #24 merged at exactly this tip	#24:closed/merged:177495a
+munaxa-school	claude/project-thread-cfm3xn	17f90acb7321fddd74f5142342c58fb0d9e90e4e	2026-10-30	3	DELETE	squash-merged: PR #18 merged at exactly this tip	#18:closed/merged:17f90ac
+munaxa-school	claude/project-thread-fhe4kt	e08193b57285fe7bea3ef8c84e1236315e78ff59	2026-10-30	1	DELETE	squash-merged: PR #23 merged at exactly this tip	#23:closed/merged:e08193b #22:closed/merged:0953ee9 #21:closed/merged:f67fa31
+munaxa-school	claude/project-thread-zqsmfg	b411cff9d0dbc82d8ae31af9aa4b9d88af405c61	2026-10-30	5	DELETE	squash-merged: PR #20 merged at exactly this tip	#20:closed/merged:b411cff #19:closed/merged:4edf649
+munaxa-school	claude/school-auth-security-review-11ssy8	8a5b1d4b40eaa6b9cd07e6b95e5a96f0f2c9cef8	2026-08-06	1	KEEP-OWNER-DECISION	unique unmerged work with no PR	
+munaxa-school	claude/school-dependency-remediation	79b773ad3b81981277a156c79ca379d36573ad11	2026-10-29	2	DELETE	squash-merged: PR #14 merged at exactly this tip	#14:closed/merged:79b773a
+munaxa-school	claude/school-deploy-package-token	14fa566aa90ac924bf3af6e939829dd0468030d4	2026-10-29	1	DELETE	squash-merged: PR #16 merged at exactly this tip	#16:closed/merged:14fa566
+munaxa-school	claude/school-licence-revocation	6ab8f49e784a49c28806ee8c1ce1bc7a94f35007	2026-10-29	2	DELETE	squash-merged: PR #17 merged at exactly this tip	#17:closed/merged:6ab8f49
+munaxa-school	claude/school-production-gate	aa1135322f64746a54003f7ab99115416c9760b6	2026-10-29	3	DELETE	squash-merged: PR #13 merged at exactly this tip	#13:closed/merged:aa11353
+munaxa-school	claude/school-storage-metering	f9ecccf8d167905f5e2433dd3fb033593dc7efd1	2026-10-29	19	DELETE	squash-merged: PR #15 merged at exactly this tip	#15:closed/merged:f9ecccf
+munaxa-school	claude/supabase-advisor-issues-c8rwqo	938a75aa05babf1447d2eb04d8ea5b612982c9ac	2026-08-04	1	DELETE	squash-merged: PR #2 merged at exactly this tip	#2:closed/merged:938a75a
+munaxa-school	claude/timetable-nav-classroom-add-tzr157	f478bbc4ddb340b9de7cdfd9399f1b9bfb64c437	2026-08-18	2	DELETE	squash-merged: PR #10 merged at exactly this tip	#10:closed/merged:f478bbc #9:closed/merged:9c9825b
