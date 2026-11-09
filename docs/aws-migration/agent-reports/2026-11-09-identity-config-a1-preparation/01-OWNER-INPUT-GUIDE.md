@@ -37,9 +37,9 @@ its output would reach the screen.
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force "$env:USERPROFILE\munaxa-a1" | Out-Null
 Set-Location "$env:USERPROFILE\munaxa-a1"
-# <commit> = the commit of this PR's branch or of main after merge, as given in the thread.
+# Pinned to commit 631bd49f0b13b0afad49ab2ecd6a9ca4c6989676 (this PR); the hash check below still applies.
 Invoke-WebRequest -UseBasicParsing `
-  -Uri "https://raw.githubusercontent.com/munaxa/munaxa-platform/<commit>/docs/aws-migration/agent-reports/2026-11-09-identity-config-a1-preparation/supporting/identity-a1-owner-values.mjs" `
+  -Uri "https://raw.githubusercontent.com/munaxa/munaxa-platform/631bd49f0b13b0afad49ab2ecd6a9ca4c6989676/docs/aws-migration/agent-reports/2026-11-09-identity-config-a1-preparation/supporting/identity-a1-owner-values.mjs" `
   -OutFile .\identity-a1-owner-values.mjs
 (Get-FileHash .\identity-a1-owner-values.mjs -Algorithm SHA256).Hash
 ```
