@@ -23,7 +23,7 @@ image digests, version ids) may be shared and committed.
 
 1. Node.js 18 or later (`node --version`). If missing: `winget install OpenJS.NodeJS.LTS`, then open a new PowerShell window.
 2. Turn off Windows clipboard history for the duration: Settings, System, Clipboard, **Clipboard history: Off**, and **Sync across devices: Off**. (Win+V would otherwise keep a copy of each paste.)
-3. Look up the database endpoint (not secret): AWS console, region **Europe (Frankfurt) eu-central-1**, RDS, Databases, `munaxa-nonprod-pg`, Connectivity and security, **Endpoint**. It looks like `munaxa-nonprod-pg.<id>.eu-central-1.rds.amazonaws.com`. Use exactly this name, never an IP address: Identity's bootstrap scripts verify the certificate's host name.
+3. The database endpoint (not secret), read by Claude on 9 Nov 13:10 UTC: **`munaxa-nonprod-pg.cjw44yig4u0v.eu-central-1.rds.amazonaws.com`** (RDS, Databases, `munaxa-nonprod-pg`, Connectivity and security, Endpoint). Use exactly this name, never an IP address: Identity's bootstrap scripts verify the certificate's host name.
 
 ### A.1 Get the generator and check it
 
@@ -49,7 +49,7 @@ The hash must be **`F7292ED5E8E0FFB396463688AFA116D7C2A68E70D701929F35FEC0439BA6
 ### A.2 Generate (nothing secret is shown)
 
 ```powershell
-$dbHost = 'munaxa-nonprod-pg.<id>.eu-central-1.rds.amazonaws.com'   # from A.0 step 3
+$dbHost = 'munaxa-nonprod-pg.cjw44yig4u0v.eu-central-1.rds.amazonaws.com'   # A.0 step 3
 $v = node .\identity-a1-owner-values.mjs --kid identity-nonprod-2026-11 --db-host $dbHost --public-out .\public | ConvertFrom-Json
 if (-not $v.identity -or -not $v.identityMigrate) { throw 'Generator failed; nothing to paste.' }
 ```

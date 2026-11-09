@@ -3,8 +3,8 @@
 - **Date:** 9 Nov 2026, from 12:46 UTC. **Thread:** "Prepare Identity-only Testing deployment (Config A1)".
 - **Brief:** the owner's "Prepare Munaxa Identity-Only Testing Deployment (Config A1)", 9 Nov 2026 12:46 UTC. Repository inspection, analysis, documentation, local tests and a proposed Config A1 implementation only.
 - **Starting point:** platform `main` = `646b7b8` (PR #66). Previous report: [`../2026-11-08-first-testing-release-preparation/`](../2026-11-08-first-testing-release-preparation/00-FIRST-TESTING-RELEASE-PREPARATION.md) at `88cba385200041a30881253ae4f74fcf1524334b` on PR #67 (open, not merged). Access policy: [`infra/aws/ACCESS-POLICY.md`](../../../../infra/aws/ACCESS-POLICY.md).
-- **AWS in this task: no AWS call succeeded.** The root-connected AWS connector returned "needs you to sign in again" at about 12:55 UTC and again on a retry later in the task; the owner was asked to reconnect it. Every AWS fact below is either from the 8 Nov report (labelled [V-prior]) or from GitHub job logs read today. Nothing was written to AWS.
-- **Labels:** [V-repo] code at the commits named; [V-gh] GitHub read in this task; [V-reg] public container registry read in this task (manifest digests verified by hashing the manifest bodies); [V-src] image build source read in this task; [V-local] local Terraform or Node run in this task, no AWS; [V-prior] earlier report, not re-read; [E] inference.
+- **AWS in this task: read-only only.** The connector's sign-in had expired from 12:55 UTC; after the owner reconnected it (13:09 UTC) Claude ran metadata-only reads 13:10:35 to 13:11:15 UTC (§2.2) through the existing root connection. Nothing was written to AWS.
+- **Labels:** [V-repo] code at the commits named; [V-gh] GitHub read in this task; [V-reg] public container registry read in this task (manifest digests verified by hashing the manifest bodies); [V-src] image build source read in this task; [V-local] local Terraform or Node run in this task, no AWS; [V-aws] AWS read in this task (§2.2); [V-prior] earlier report, not re-read; [E] inference.
 
 | File | Content |
 |---|---|
@@ -22,28 +22,28 @@
 
 ## 1. Summary and verdict
 
-### Verdict: NOT READY FOR ACTUAL PLAN REVIEW. Ready on the code side; three owner inputs and one read-only re-check stand between this and a real plan.
+### Verdict: NOT READY FOR ACTUAL PLAN REVIEW. Code and AWS foundation ready; the owner's key and secret values, the inputs PR and this PR's merge stand between this and a real plan.
 
 | Area | Status |
 |---|---|
 | Config A1 code (this PR) | **Ready.** One-line count change keeps Docs' `db-admin` task definition out of A1; a new test proves it (fails on the old code, passes on the new) |
 | Declaration | **Ready (mocked).** 22 creates, 0 updates, 0 destroys, planned on top of an applied mocked baseline. Report #67's 23 minus `docs_db_admin` |
-| Identity image digests | **Verified from GitHub job logs today** (both match the 8 Nov ECR read-back). ECR not re-read (connector) |
+| Identity image digests | **Verified today** in ECR (13:10 UTC) and in the publish job logs |
 | Valkey image | **Selected and verified:** `valkey/valkey` 8.1.11, linux/amd64 manifest by digest on ECR Public, identical on Docker Hub |
 | PostgreSQL client image | **Selected and verified:** official `postgres` 16.15-bookworm, linux/amd64 manifest by digest on ECR Public (§5.3) |
 | Signing key | **Owner action.** The repository script prints the private key, so it is not used as is; a tested generator that never prints a secret replaces it (§8) |
 | Secret bundles | **Owner action.** Exact inventory in §7; values generated on the owner's PC and pasted into Secrets Manager |
-| Fresh AWS state | **NOT VERIFIED today** (connector sign-in expired). Last evidence 8 Nov 10:41 UTC [V-prior] |
+| Fresh AWS state | **Verified today** (13:10 to 13:11 UTC, read-only): RDS stopped, nothing running, backstop 11 ENABLED and ran 8 Nov 21:00, ACM ISSUED, 0 secret versions, no AccessDenied (§2.2) |
 | Deployer IAM for A1 | **NOT VERIFIED** (never exercised; §9). The first apply stops on any `AccessDenied` |
 
 **Blockers for "ready for actual plan review", exactly:**
 
-1. **B-1** Owner: reconnect the AWS connector and authorize the read-only re-check of runbook step 3 (or run it in CloudShell). Without it the G3 state, RDS status and backstop are 8 Nov evidence only.
+1. ~~**B-1** fresh read-only AWS check~~: **closed** 9 Nov 13:11 UTC (§2.2).
 2. **B-2** Owner: guide part A (key and the two bundles in Secrets Manager), then part B (public snippet and the two version ids into the thread).
 3. **B-3** Inputs PR (Claude, after B-2): the template lines in `envs/nonprod.tfvars` and the declaration in `envs/nonprod.expected-changes.json`, merged by the owner.
 4. **B-4** This preparation PR merged (the dispatch plan runs on `main` only).
 
-After B-1 to B-4 the owner dispatches `aws-terraform.yml` nonprod `plan`, and the plan is reviewed against §4.
+After B-2 to B-4 the owner dispatches `aws-terraform.yml` nonprod `plan`, and the plan is reviewed against §4.
 
 ---
 
@@ -59,29 +59,38 @@ After B-1 to B-4 the owner dispatches `aws-terraform.yml` nonprod `plan`, and th
 | `infra/aws` since `646b7b8` | No commit | No change affects A1 |
 | Identity publish run 42466697538, attempt 2 | Job 128690908234 pulled back `munaxa-identity/api@sha256:71d01fdf…8c156`; job 128690908425 pulled back `munaxa-identity/migrate@sha256:d175ef37…20820` (logs read about 13:00) | Digests confirmed |
 
-### 2.2 AWS (not re-read today)
+### 2.2 AWS, fresh read-only check (9 Nov 13:10:35 to 13:11:15 UTC) [V-aws]
 
-The connector failed with a sign-in error before any call, so none of items 4.5 to 4.8 of the brief
-could be checked today. The last observations, all 8 Nov [V-prior, report #67 §5.1, §13, §15]:
+After the owner reconnected the connector (13:09 UTC), three read-only batches through the existing
+root connection (caller `arn:aws:iam::229251310592:root`), under the brief's §4 and access policy
+§1.3. Calls: `GetCallerIdentity`, `ecr:DescribeImages`, `DescribeRepositories`,
+`rds:DescribeDBInstances`, `ecs:DescribeClusters`, `ListTaskDefinitionFamilies`, `ListServices`,
+`scheduler:ListSchedules`, `secretsmanager:ListSecrets` (names, version counts, key id only),
+`elbv2:DescribeLoadBalancers`, `ec2:DescribeNatGateways`, `DescribeAddresses`, `DescribeInstances`,
+`DescribeNetworkInterfaces`, `acm:ListCertificates`, `DescribeCertificate`, `kms:ListAliases`,
+`cloudtrail:LookupEvents`. No write, no `Simulate*`, no secret value, no state object. No
+`AccessDenied`.
 
-| Check | Last value | Observed |
-|---|---|---|
-| Caller | `arn:aws:iam::229251310592:root` | 07:57 |
-| ECR `munaxa-identity/api`, `/migrate` | 1 image each, IMMUTABLE; digests as §2.1 | 09:37 |
-| All 8 product repositories | 1 image each | 10:41 |
-| RDS `munaxa-nonprod-pg` | stopped, 16.13, db.t4g.micro, not public, deletion protection on | 07:57 |
-| ECS `munaxa-nonprod` | 0 services, 0 tasks, 0 task-definition families | 07:58 |
-| ALB, NAT, EIP, EC2 | 0 | 07:58 |
-| Backstop | 11 schedules ENABLED | 07:58 |
-| Secrets `munaxa-nonprod/*` | 10 containers, 0 versions | 07:57 |
-| CloudTrail write events (26 h) | no AccessDenied | 07:58 |
-| ACM | ISSUED (read 8 Nov 06:54) | 06:54 |
+| # | Check | Result (9 Nov) | Same as 8 Nov? |
+|---|---|---|---|
+| 1 | `munaxa-identity/api` | 1 image `sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156`, tags `5277d71`, `sha-5277d719…`, pushed 8 Nov 09:34:45 | yes; equals §2.1 job log |
+| 2 | `munaxa-identity/migrate` | 1 image `sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820`, same tags, pushed 09:35:02 | yes |
+| 3 | Control and Work repositories | 1 image each, digests as report #67 §14, §15 (not used in A1) | yes |
+| 4 | ECR tag mutability | all 14 `munaxa-*` repositories IMMUTABLE | yes |
+| 5 | RDS `munaxa-nonprod-pg` | **stopped**, 16.13, db.t4g.micro, 20 GB gp3, not public, single-AZ, deletion protection on, parameter group `munaxa-nonprod-pg16` in-sync. Endpoint `munaxa-nonprod-pg.cjw44yig4u0v.eu-central-1.rds.amazonaws.com` (DNS name, not secret) | yes |
+| 6 | ECS cluster `munaxa-nonprod` | ACTIVE, 0 running, 0 pending, 0 services | yes |
+| 7 | Active task-definition families in the account | 6, all `munaxa-docs-eu-prod-*` (retired old Docs stack; task definitions are kept, they run nothing and cost nothing); **no `munaxa-nonprod-*` family** | the 8 Nov "0" counted `munaxa-nonprod` families only [E]; not A1-relevant |
+| 8 | ALB, NAT, Elastic IP, EC2 | 0, 0, 0, 0; one ENI, `RDSNetworkInterface`, no public IP | yes |
+| 9 | Backstop | 11 schedules `munaxa-nonprod-backstop-*`, all **ENABLED** | yes |
+| 10 | Backstop run 8 Nov 21:00 UTC | `StopDBInstance` → `InvalidDBInstanceStateFault` (already stopped), 10 × `UpdateService` → `ServiceNotFoundException`, as the backstop role | as designed |
+| 11 | Secrets `munaxa-nonprod/*` | 10 containers, **0 versions each**, all key `45eda044-…`; none pending deletion; no `identity-bootstrap` | yes |
+| 12 | ACM | `*.test.munaxa.com` + `operator-test.munaxa.com`, ISSUED, expires 22 May 2027, `InUseBy` empty, renewal INELIGIBLE (until attached) | yes |
+| 13 | KMS aliases (`munaxa`) | `alias/munaxa-nonprod-data`, `alias/munaxa-shared-tfstate`, `alias/munaxa-docs-eu-prod-tfstate`; no licence key | yes |
+| 14 | CloudTrail write events, 8 Nov 07:11 to 9 Nov 13:11 | 326 (all pages): image publishers' ECR pushes 8 Nov, the 21:00 backstop run, 2 root CloudShell `DeleteSession`; **no AccessDenied or Unauthorized** | — |
 
-[E] Expected now: RDS still stopped (AWS restarts a stopped instance after 7 days, about 13 Nov
-16:18 UTC), backstop runs at 21:00 UTC on 8 Nov as before. **Not verified.** Runbook step 3 is the
-re-check, metadata only (`Describe*`, `List*`, `LookupEvents`), before the inputs PR.
-
----
+**G3 foundation and shutdown controls are consistent with the 8 Nov report. Nothing has changed
+since then that affects A1.** RDS auto-restart is still expected about 13 Nov 16:18 UTC [E]; the
+backstop stops it the same evening.
 
 ## 3. Config A1 Terraform change (this PR)
 
@@ -192,11 +201,11 @@ Every difference is explained in the thread first, and the declaration changes o
 
 | Input | Value | Evidence |
 |---|---|---|
-| `images.identity_api` | `229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156` | Job 128690908234 log, pulled back by digest 8 Nov 09:34:54 [V-gh today]; ECR read-back 8 Nov 09:37 [V-prior] |
-| `images.identity_migrate` | `229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820` | Job 128690908425 log, 09:35:21 [V-gh today]; ECR 8 Nov [V-prior] |
+| `images.identity_api` | `229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156` | Job 128690908234 log, pulled back by digest 8 Nov 09:34:54 [V-gh]; ECR 9 Nov 13:10, the only image, IMMUTABLE [V-aws] |
+| `images.identity_migrate` | `229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820` | Job 128690908425 log, 09:35:21 [V-gh]; ECR 9 Nov 13:10 [V-aws] |
 
 Both match `variables.tf`'s pattern; both repositories are IMMUTABLE, so the tags cannot be moved
-[V-prior]. Built by the release workflow on `ubuntu-latest` (linux/amd64), matching every task
+[V-aws]. Built by the release workflow on `ubuntu-latest` (linux/amd64), matching every task
 definition's `cpu_architecture = "X86_64"`.
 
 ### 5.2 Valkey (Identity's cache sidecar)
@@ -345,13 +354,13 @@ stops on any `AccessDenied`** (decode, read the policy in code, report; ACCESS-P
 
 | # | Item | Status (9 Nov) |
 |---|---|---|
-| 1 | Image digests verified | **Done** (GitHub logs today; ECR 8 Nov). ECR re-read in runbook step 3 |
+| 1 | Image digests verified | **Done** (ECR and job logs, 9 Nov) |
 | 2 | Signing key generated, public key validated | **Open, owner** (guide A; validation built in) |
 | 3 | Secret bundles populated by the owner | **Open, owner** (guide A.3, A.4) |
 | 4 | Valkey and PostgreSQL digests selected | **Done** (§5.2, §5.3) |
 | 5 | Terraform inputs validated | **Done for the template** (mocked plan); real values after item 2 |
 | 6 | Docs task definition excluded | **Done** (this PR, test) |
-| 7 | Actual Config A1 plan generated | Open (after B-1 to B-4) |
+| 7 | Actual Config A1 plan generated | Open (after B-2 to B-4) |
 | 8 | Actual plan reviewed against the declaration | Open |
 | 9 | Owner approval obtained separately | Open |
 | 10 | Config A1 apply after explicit authorization | Open |
@@ -384,7 +393,7 @@ monitoring; its resources cost nothing while idle. A session costs about US$0.10
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R-1 | Fresh AWS state not re-read (connector sign-in) | Runbook step 3 before the inputs PR |
+| R-1 | AWS state can drift between today's check and the plan (RDS auto-restart about 13 Nov) | Runbook step 3 repeats the read-only check right before the inputs PR |
 | R-2 | Deployer permissions I-1, I-2 never exercised | Stop on `AccessDenied` at apply; nothing is broadened pre-emptively |
 | R-3 | Real plan may show provider-normalized updates the mock cannot | Stop condition §4.3; explain before any declaration change |
 | R-4 | PostgreSQL and Valkey contents checked from build source, not file listings | First `db-admin` and session runs fail safely if wrong |
@@ -402,7 +411,7 @@ monitoring; its resources cost nothing while idle. A session costs about US$0.10
 | Area | In this task |
 |---|---|
 | Terraform | **No apply, no destroy, no plan against AWS.** Local `fmt`, `validate`, `test` with a mocked provider only |
-| AWS | **No call succeeded** (connector sign-in expired); no write, no `Simulate*`, no secret read |
+| AWS | **Read-only metadata calls only** (§2.2, 13:10:35 to 13:11:15 UTC, root connector, owner-authorized in the brief); no write, no `Simulate*`, no secret value, no state read |
 | Secrets, KMS | **None** created, updated, retrieved or printed. No KMS key created or modified |
 | GitHub | Read only (PR, commits, job logs). One branch and one PR in munaxa-platform, **not merged**. No setting, secret, variable, environment, ruleset, tag or workflow dispatch |
 | Images | None published |
