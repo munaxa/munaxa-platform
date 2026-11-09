@@ -75,3 +75,9 @@ They need only `git` and the owner's normal GitHub sign-in, and work from any fo
 ## 6. Not changed
 
 No rulesets, repository settings, tags, environments, variables, secrets, AWS, Cloudflare or deploys. No PR was closed. No force-push.
+
+## 7. Closing note (9 Nov 2026, 13:33 UTC)
+
+- The owner ran `delete-branches.ps1` at about 13:25 UTC. It deleted everything listed in munaxa-identity, -control, -work, -docs and -school, but nothing in munaxa or munaxa-platform (no tip had moved and no ruleset blocks it; most likely a GitHub sign-in failure on the first two pushes). `delete-branches-remaining.ps1` then removed those 52 plus `claude/project-thread-glr7yg`. All 196 listed branches are gone, verified via the GitHub API at 13:30 UTC.
+- Owner decision (13:31 UTC, decision card): delete 6 of the 7 kept branches and keep `munaxa-docs` `claude/zealous-cori-v2b9l4` (marketing images and reel videos). `delete-branches-final-6.ps1` removed them; verified at 13:33 UTC. Their tips are in `supporting/branch-disposition.tsv`.
+- Final state (13:42 UTC): every repository has only `main`, except munaxa-docs (`claude/zealous-cori-v2b9l4`, kept by the owner). munaxa-platform's Config A1 branch `claude/project-thread-qdcu86` is gone since PR #69 merged. The first closing-note PR (#70) was closed by the owner with its branch deleted; this note was re-opened as a new PR because reports must be on `main`. Its branch `claude/project-thread-glr7yg` is the only other branch, to delete after it merges.
