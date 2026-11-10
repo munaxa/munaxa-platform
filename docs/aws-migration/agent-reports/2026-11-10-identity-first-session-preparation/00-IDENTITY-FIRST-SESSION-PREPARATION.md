@@ -9,6 +9,13 @@
 - Starting evidence: [`01-REAL-PLAN-AND-APPLY.md`](../2026-11-10-identity-config-a1-continuation/01-REAL-PLAN-AND-APPLY.md).
 - **Preparation only. No AWS call, workflow dispatch, DNS change, ECS task, migration, bootstrap,
   secret, KMS or IAM change, and no merge was made (section 12).**
+- **Corrected 10 Nov 2026 (owner review, report
+  [`2026-11-10-identity-preflight-and-session-readiness`](../2026-11-10-identity-preflight-and-session-readiness/00-IDENTITY-PREFLIGHT-AND-SESSION-READINESS.md)):**
+  - `supporting/verify-identity-jwt.mjs` now also checks the audience and the expiry (with tests);
+  - the CloudTrail denial check (P-12, step 23) is replaced by the tested
+    `supporting/cloudtrail-denials.py`. The original command undercounted, could report a false
+    denial and stopped after 50 events.
+  - Original text at `3c836a2`.
 
 Labels:
 - **[V-gh]** verified from GitHub evidence (workflow runs, job steps, merged commits), read today.
@@ -198,7 +205,7 @@ C=munaxa-nonprod
 | P-9 | ACM | `ARN=$(aws acm list-certificates --query "CertificateSummaryList[?DomainName=='*.test.munaxa.com'].CertificateArn" --output text); aws acm describe-certificate --certificate-arn $ARN --query 'Certificate.[Status,NotAfter,SubjectAlternativeNames,InUseBy]'` | `ISSUED`, about 22 May 2027, SANs `*.test.munaxa.com` and `operator-test.munaxa.com`, `InUseBy` empty. `id.test.munaxa.com` is covered by the wildcard |
 | P-10 | Images exist | `aws ecr describe-images --repository-name munaxa-identity/api --image-ids imageDigest=sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156 --query 'imageDetails[0].imageTags'` (same for `munaxa-identity/migrate` with `sha256:d175ef37…0820`) | Tags include `5277d71` |
 | P-11 | Service-linked roles (F-3) | `aws iam get-role --role-name AWSServiceRoleForECS --query Role.Arn`; `aws iam get-role --role-name AWSServiceRoleForElasticLoadBalancing --query Role.Arn` | Both exist. If either is missing: **stop**, report; do not create it or broaden IAM without a separate decision |
-| P-12 | No denials since the apply | `aws cloudtrail lookup-events --start-time 2026-11-10T06:00:00Z --max-results 50 --query 'Events[].CloudTrailEvent' --output text \| grep -c -E '"errorCode":"(AccessDenied\|.*UnauthorizedOperation)'` | `0` |
+| P-12 | No denials since the apply | `for r in eu-central-1 us-east-1; do aws cloudtrail lookup-events --region $r --start-time 2026-11-10T06:00:00Z --output json \| python3 -I cloudtrail-denials.py; done` (corrected; script in `supporting/`) | `events N denials 0` for both regions |
 | P-13 | Network names resolve | `aws ec2 describe-subnets --filters Name=tag:Name,Values=$C-public-a,$C-public-b --query 'length(Subnets)'`; `aws ec2 describe-security-groups --filters Name=group-name,Values=$C-db-admin,$C-identity-migrate,$C-identity --query 'length(SecurityGroups)'` | `2` and `3` |
 
 ### 3.3 Session limits (decide before step 8)
@@ -501,7 +508,7 @@ unset PW
 export TOKEN=$(awk '$6 !~ /refresh/ && $7 ~ /^eyJ/ {print $7}' /tmp/id.jar | head -1)
 # Get the script: from main once this PR is merged (or paste supporting/verify-identity-jwt.mjs with a heredoc)
 curl -sSLO https://raw.githubusercontent.com/munaxa/munaxa-platform/main/docs/aws-migration/agent-reports/2026-11-10-identity-first-session-preparation/supporting/verify-identity-jwt.mjs
-sha256sum verify-identity-jwt.mjs   # 9aec82467ef3fb75d3ddcf102cc3da1fcb1ad5bc9e54149015d9a4c72973ff52
+sha256sum verify-identity-jwt.mjs   # bf5e88f2a933439fe8ced20269f26934cbeaa7a614b46637f6101020e63db9cf (corrected version)
 node verify-identity-jwt.mjs
 unset TOKEN ID; rm -f /tmp/id.jar verify-identity-jwt.mjs
 ```
@@ -509,8 +516,13 @@ unset TOKEN ID; rm -f /tmp/id.jar verify-identity-jwt.mjs
 **Expected:**
 - `login 200`;
 - `wrong-password 401` with `{"code":"AUTH_INVALID_CREDENTIALS"}`;
-- the script prints `alg ES256`, `kid identity-nonprod-2026-11`, `iss https://id.test.munaxa.com`,
-  `signatureValid: true` and **`PASS`**.
+- the script prints one `ok` line per check and **`PASS`**. The checks are:
+  - `alg` ES256 and `kid` `identity-nonprod-2026-11`;
+  - the signature against the committed key;
+  - `iss` exactly `https://id.test.munaxa.com`;
+  - `aud` exactly `munaxa-work` and `munaxa-control` (from `IDENTITY_AUTH_AUDIENCE`);
+  - `exp` in the future, `iat` not in the future, lifetime exactly 900 seconds (Identity's default
+    `ACCESS_TOKEN_TTL`; the task definition sets none).
 
 What this proves:
 - The private key in `munaxa-nonprod/identity` and the public key committed in
@@ -521,8 +533,9 @@ The script ([`supporting/verify-identity-jwt.mjs`](supporting/verify-identity-jw
 follows:
 - It verifies with Node's `crypto` and the committed key.
 - It prints no token and no subject.
-- It was tested here with a generated key pair: PASS for a matching pair, FAIL for a different
-  key.
+- It is tested by `supporting/verify-identity-jwt.test.mjs` (`node --test`, 26 cases: valid,
+  wrong key, wrong kid, issuer, each audience error, expired, future `iat`, wrong lifetime, `alg
+  none`/HS256, malformed tokens, CLI exit codes).
 
 Optionally, sign in through a browser at `https://id.test.munaxa.com/api/auth/login` (organisation
 `munaxa-group`). Never paste the token or cookies anywhere.
@@ -530,8 +543,9 @@ Optionally, sign in through a browser at `https://id.test.munaxa.com/api/auth/lo
 Stop conditions:
 - `401` on the right password;
 - `503` (a dependency);
-- a `FAIL`. A `FAIL` with `signatureValid: false` means the key pair does not match: stop, do not
-  configure any product with this key.
+- a `FAIL`. A `FAIL` on the signature line means the key pair does not match: stop, do not
+  configure any product with this key. A `FAIL` on `aud` or the lifetime means the running
+  configuration differs from `main`: stop and report.
 
 ### Step 20: access restrictions (no DNS needed for the operator host)
 
@@ -617,8 +631,9 @@ aws ec2 describe-network-interfaces --filters Name=association.public-ip,Values=
 aws ec2 describe-nat-gateways --filter Name=state,Values=available,pending --query 'length(NatGateways)'                   # 0
 aws scheduler list-schedules --name-prefix munaxa-nonprod-backstop --query 'length(Schedules[?State==`ENABLED`])'           # 11
 aws secretsmanager list-secrets --filters Key=name,Values=munaxa-nonprod/identity-bootstrap --query 'length(SecretList)'   # 0
-aws cloudtrail lookup-events --start-time <session start, UTC> --max-results 50 --query 'Events[].CloudTrailEvent' --output text \
-  | grep -c -E '"errorCode":"(AccessDenied|.*UnauthorizedOperation)'                     # 0, or each one explained
+for r in eu-central-1 us-east-1; do   # corrected: all pages, errorCode only (supporting/cloudtrail-denials.py)
+  aws cloudtrail lookup-events --region $r --start-time <session start, UTC> --output json | python3 -I cloudtrail-denials.py
+done                                                                                       # denials 0, or each one explained
 ```
 
 - **Cost Explorer (owner, next day):** service breakdown for the session day, filtered by tag
@@ -707,7 +722,9 @@ Any stop condition: delete the bootstrap secret if it exists, then go to step 22
 - `supporting/verify-identity-jwt.mjs`:
   - a token signed with a generated P-256 key verifies with the matching public key (PASS);
   - the same token fails against the committed key (FAIL);
-  - sha256 `9aec82467ef3fb75d3ddcf102cc3da1fcb1ad5bc9e54149015d9a4c72973ff52`.
+  - sha256 `9aec82467ef3fb75d3ddcf102cc3da1fcb1ad5bc9e54149015d9a4c72973ff52` (original); the
+    corrected version with the audience and expiry checks is
+    `bf5e88f2a933439fe8ced20269f26934cbeaa7a614b46637f6101020e63db9cf`.
 - Source reads:
   - platform: `aws-session.yml`, `stack/{services,edge,ops,data,backstop,outputs,network}.tf`,
     `modules/service/main.tf`, `stack/scripts/db-bootstrap.sh`,
