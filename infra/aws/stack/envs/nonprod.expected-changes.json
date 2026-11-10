@@ -1,57 +1,93 @@
 {
   "root": "stack-nonprod",
-  "intent": "Nonprod shutdown backstop (backstop.tf), the separate apply after G3 (owner decision D-4 = B): the EventBridge Scheduler role, its inline policy, the database stop schedule and the 10 service scale-in schedules, daily at 21:00 UTC. 13 creates, nothing else: no update, replacement or destroy, no ALB, NAT, service, DNS or production resource.",
+  "intent": "Config A1, Identity only, services off (report 2026-11-09-identity-config-a1-preparation): Identity API and migration task definitions with their execution roles, policies, log groups, security groups and rules; the identity-bootstrap task definition, role and policy; the db-admin task definition (db_bootstrap_products = identity); the ALB-to-Identity egress rule. 22 creates. No update, replacement or destroy; no Control, Work, School or Docs resource; no ALB, service, NAT, DNS, KMS key or production resource.",
   "changes": [
     {
-      "address": "aws_iam_role.session_backstop[0]",
+      "address": "aws_ecs_task_definition.db_admin[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_iam_role_policy.session_backstop[0]",
+      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.stop_database[0]",
+      "address": "aws_iam_role.identity_bootstrap_execution[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"control-api\"]",
+      "address": "aws_iam_role_policy.identity_bootstrap_execution[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"control-portal\"]",
+      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"identity\"]",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"docs-api\"]",
+      "address": "module.identity[0].aws_cloudwatch_log_group.this",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"docs-scanner\"]",
+      "address": "module.identity[0].aws_ecs_task_definition.this",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"docs-web\"]",
+      "address": "module.identity[0].aws_iam_role.execution",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"identity\"]",
+      "address": "module.identity[0].aws_iam_role_policy.execution",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"school-admin\"]",
+      "address": "module.identity[0].aws_security_group.this",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"school-api\"]",
+      "address": "module.identity[0].aws_vpc_security_group_egress_rule.database[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"work-admin\"]",
+      "address": "module.identity[0].aws_vpc_security_group_egress_rule.https",
       "actions": ["create"]
     },
     {
-      "address": "aws_scheduler_schedule.scale_in[\"work-api\"]",
+      "address": "module.identity[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.identity[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_vpc_security_group_egress_rule.database[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_vpc_security_group_ingress_rule.database_from_service[0]",
       "actions": ["create"]
     }
   ]
