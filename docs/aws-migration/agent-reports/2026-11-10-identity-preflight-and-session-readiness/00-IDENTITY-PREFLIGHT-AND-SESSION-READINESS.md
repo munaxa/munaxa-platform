@@ -210,7 +210,8 @@ bash preflight-readonly.sh 2>&1 | tee preflight-$(date -u +%Y%m%dT%H%MZ).txt
 Paste the whole output into the thread. The script:
 
 - stops before any other AWS call unless the active account is exactly `229251310592`;
-- calls only the 31 read operations in its allowlist (`Describe*`, `List*`, `Get*` metadata,
+- calls only the read operations in its allowlist (31 at this report; 32 since PR #78 added
+  `ecs list-task-definition-families`) (`Describe*`, `List*`, `Get*` metadata,
   `sts get-caller-identity`, `cloudtrail lookup-events`); anything else is refused;
 - never calls `get-secret-value`;
 - reads no Terraform state, no logs and no application data;

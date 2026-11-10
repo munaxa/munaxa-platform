@@ -195,6 +195,14 @@ The commands print metadata only: no secret value, no state object.
 
 ### 3.2 AWS (read-only, needs authorization)
 
+> **Superseded for execution (10 Nov, after PR #78).** Do not run the commands in this section by
+> hand. The AWS preflight now runs as one tested script,
+> `2026-11-10-identity-preflight-and-session-readiness/supporting/preflight-readonly.sh`, downloaded
+> alone from `main` with its SHA256 checked. The P-12 denial filter is embedded in that script, so
+> no separate helper is needed for the preflight. The exact procedure is section 10 of
+> `2026-11-10-identity-post-merge-preflight-verification/`. The table below is kept as the
+> description of what each check means.
+
 Run the setup block once per CloudShell tab. The checks follow it.
 
 ```bash
@@ -216,7 +224,7 @@ C=munaxa-nonprod
 | P-9  | ACM                                            | `ARN=$(aws acm list-certificates --query "CertificateSummaryList[?DomainName=='*.test.munaxa.com'].CertificateArn" --output text); aws acm describe-certificate --certificate-arn $ARN --query 'Certificate.[Status,NotAfter,SubjectAlternativeNames,InUseBy]'`                                                                                                             | `ISSUED`, about 22 May 2027, SANs `*.test.munaxa.com` and `operator-test.munaxa.com`, `InUseBy` empty. `id.test.munaxa.com` is covered by the wildcard           |
 | P-10 | Images exist                                   | `aws ecr describe-images --repository-name munaxa-identity/api --image-ids imageDigest=sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156 --query 'imageDetails[0].imageTags'` (same for `munaxa-identity/migrate` with `sha256:d175ef37…0820`)                                                                                                        | Tags include `5277d71`                                                                                                                                           |
 | P-11 | Service-linked roles (F-3)                     | `aws iam get-role --role-name AWSServiceRoleForECS --query Role.Arn`; `aws iam get-role --role-name AWSServiceRoleForElasticLoadBalancing --query Role.Arn`                                                                                                                                                                                                                 | Both exist. If either is missing: **stop**, report; do not create it or broaden IAM without a separate decision                                                  |
-| P-12 | No denials since the apply                     | `for r in eu-central-1 us-east-1; do aws cloudtrail lookup-events --region $r --start-time 2026-11-10T06:00:00Z --output json \| python3 -I cloudtrail-denials.py; done` (corrected; script in `supporting/`)                                                                                                                                                               | `events N denials 0` for both regions                                                                                                                            |
+| P-12 | No denials since the apply                     | `for r in eu-central-1 us-east-1; do aws cloudtrail lookup-events --region $r --start-time 2026-11-10T06:00:00Z --output json \| python3 -I cloudtrail-denials.py; done` (corrected; script in `supporting/`; since PR #78 the preflight script embeds the same filter)                                                                                                                                                               | `events N denials 0` for both regions                                                                                                                            |
 | P-13 | Network names resolve                          | `aws ec2 describe-subnets --filters Name=tag:Name,Values=$C-public-a,$C-public-b --query 'length(Subnets)'`; `aws ec2 describe-security-groups --filters Name=group-name,Values=$C-db-admin,$C-identity-migrate,$C-identity --query 'length(SecurityGroups)'`                                                                                                               | `2` and `3`                                                                                                                                                      |
 
 ### 3.3 Session limits (decide before step 8)
@@ -656,6 +664,9 @@ aws ec2 describe-network-interfaces --filters Name=association.public-ip,Values=
 aws ec2 describe-nat-gateways --filter Name=state,Values=available,pending --query 'length(NatGateways)'                   # 0
 aws scheduler list-schedules --name-prefix munaxa-nonprod-backstop --query 'length(Schedules[?State==`ENABLED`])'           # 11
 aws secretsmanager list-secrets --filters Key=name,Values=munaxa-nonprod/identity-bootstrap --query 'length(SecretList)'   # 0
+# Step 23 runs after the session, so it needs the helper itself. Download it alone and check it first:
+#   curl -sSfO https://raw.githubusercontent.com/munaxa/munaxa-platform/main/docs/aws-migration/agent-reports/2026-11-10-identity-first-session-preparation/supporting/cloudtrail-denials.py
+#   sha256sum cloudtrail-denials.py   # ed3711dabcfd29d2514ea75a56637913a02164afaf4b33516e81a07daf7f12f8
 for r in eu-central-1 us-east-1; do   # corrected: all pages, errorCode only (supporting/cloudtrail-denials.py)
   aws cloudtrail lookup-events --region $r --start-time <session start, UTC> --output json | python3 -I cloudtrail-denials.py
 done                                                                                       # denials 0, or each one explained

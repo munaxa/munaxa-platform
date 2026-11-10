@@ -195,7 +195,7 @@ nothing that reads secret values. Confirm this when F-3 is designed.
 # then open CloudShell in eu-central-1.
 mkdir -p ~/identity-preflight && cd ~/identity-preflight
 B=https://raw.githubusercontent.com/munaxa/munaxa-platform/main/docs/aws-migration/agent-reports
-# until this PR is merged, replace main with claude/project-thread-yi55u0
+# (PR #78 is merged as ae90b2d: download from main only; see the post-merge verification report)
 curl -sSfO $B/2026-11-10-identity-preflight-and-session-readiness/supporting/preflight-readonly.sh
 sha256sum preflight-readonly.sh
 #   8208beeffdf82d54a1729ee37835cdba10495b7bcad3e1c21807dc0f302107f3  preflight-readonly.sh
