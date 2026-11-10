@@ -17,8 +17,8 @@ Labels: **[V]** verified here, **[O]** owner action required, **[U]** unverified
 
 ## 1. Verdict
 
-**VERIFIED — READY FOR OWNER-RUN READ-ONLY PREFLIGHT**, with one condition: the `main` push CI
-Accessibility job (section 8). This is not an AWS-readiness verdict.
+**VERIFIED — READY FOR OWNER-RUN READ-ONLY PREFLIGHT**. All CI jobs on the `main` merge commit
+succeeded (section 8). This is not an AWS-readiness verdict.
 
 - PR #78 is merged, and `main` is byte-identical to the reviewed PR head [V].
 - On `main`, the script implements the corrected P-3, P-4 and P-12 checks and the caller guard [V].
@@ -189,7 +189,7 @@ These runs prove the logic only, against stubbed AWS answers. They prove nothing
 |                              |                   |           | Plan, Apply                            | **skipped** (not dispatched; no AWS)   |
 | CI 42810181227               | push to `main`    | `ae90b2d` | Lint · Typecheck · Test · Build        | success (11:48 UTC)                    |
 |                              |                   |           | Façades                                | success                                |
-|                              |                   |           | Accessibility                          | **pending**: in progress at 11:54 UTC |
+|                              |                   |           | Accessibility                          | success (11:59:57 UTC)                |
 
 - **AWS Terraform has no push run.** `.github/workflows/aws-terraform.yml` triggers only on
   `pull_request` to `main` and on `workflow_dispatch`, so there is no run for `ae90b2d`. Its last
