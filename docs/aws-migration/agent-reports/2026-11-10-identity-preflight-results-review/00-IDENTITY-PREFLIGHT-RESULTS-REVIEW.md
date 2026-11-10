@@ -180,6 +180,10 @@ This keeps the policy and makes root use deliberate. It reuses the 7 Nov pattern
 
 ## 6. Read-only preflight procedure (replaces readiness report section 5.2)
 
+> **Superseded for execution** by `2026-11-10-identity-post-merge-preflight-verification/` section
+> 13.8 (P-11b/P-13 hardening). The SHA256, operation count and expected lines below are as of
+> `ae90b2d` and are kept for the audit trail.
+
 **A. Intended non-root operator identity (target).**
 
 Prerequisites, owner decisions not yet taken:
@@ -187,7 +191,8 @@ Prerequisites, owner decisions not yet taken:
 - ACCESS-POLICY F-1 to F-3: Identity Center and a ReadOnly permission set.
 - A policy update that lifts D-4 for this purpose.
 
-The permission set must allow the script's 32 read operations, listed in its `ALLOWED_OPS`, and
+The permission set must allow the script's read operations, listed in its current `ALLOWED_OPS` (32 at
+this report, 37 since the hardening), and
 nothing that reads secret values. Confirm this when F-3 is designed.
 
 ```bash

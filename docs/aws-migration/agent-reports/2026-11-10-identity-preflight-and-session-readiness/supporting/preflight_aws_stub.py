@@ -10,7 +10,8 @@ first selector option present, e.g. the role or secret name) or else "service op
                                           (Code) when calling the Op operation: ...") with exit 254
   {"stderr": "...", "rc": 255}            CLI-level failure (network, credentials) without an AWS code
 A call with no matching key fails with exit 254 and code StubMissingResponse. Every call is appended
-to STUB_LOG as one JSON line.
+to STUB_LOG as one JSON line. With several selector options the most specific key is tried first:
+"service operation value1 value2 ...", in SELECTORS order.
 """
 import json
 import os
@@ -19,7 +20,8 @@ import sys
 import jmespath
 
 SELECTORS = ("--db-instance-identifier", "--task-definition", "--secret-id", "--key-id", "--name",
-             "--certificate-arn", "--repository-name", "--role-name", "--region", "--family-prefix")
+             "--certificate-arn", "--repository-name", "--role-name", "--policy-name", "--policy-arn",
+             "--version-id", "--region", "--family-prefix")
 
 
 def text(value):
@@ -50,10 +52,13 @@ def main(argv):
             options[rest[i]] = True
             i += 1
     with open(os.environ["STUB_LOG"], "a") as log:
-        log.write(json.dumps({"service": service, "operation": operation, "options": options}) + "\n")
+        env = {k: v for k, v in os.environ.items() if k.startswith("AWS_ENDPOINT_URL") or k == "AWS_CLI_AUTO_PROMPT"}
+        log.write(json.dumps({"service": service, "operation": operation, "options": options, "env": env}) + "\n")
     with open(os.environ["STUB_SCENARIO"]) as f:
         scenario = json.load(f)
-    keys = [f"{service} {operation} {options[s]}" for s in SELECTORS if isinstance(options.get(s), str)][:1]
+    values = [options[s] for s in SELECTORS if isinstance(options.get(s), str)]
+    keys = [" ".join([service, operation, *values])] if len(values) > 1 else []
+    keys += [f"{service} {operation} {v}" for v in values[:1]]
     keys.append(f"{service} {operation}")
     response = next((scenario[k] for k in keys if k in scenario), None)
     op_name = "".join(part.capitalize() for part in operation.split("-"))
