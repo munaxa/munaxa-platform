@@ -5,7 +5,9 @@
     python3 -I preflight_readonly_test.py -v
 
 Covers: the expected state (PASS), wrong account and unreadable account (stop before any other
-call), AWS CLI failures (access denied, throttling, network, missing helper; never PASS), expected
+call), root refused unless ALLOW_ROOT_READONLY=yes, non-root roles and users accepted, task
+definition revisions listed per exact family, the bootstrap task on the Identity api image, the
+migrate task's DATABASE_MIGRATION_URL, the embedded CloudTrail filter (identical to the helper), AWS CLI failures (access denied, throttling, network, missing helper; never PASS), expected
 and unexpected missing resources (ABSENT is a FAIL, not an ERROR; the bootstrap secret's absence is
 a PASS), a FAIL plus an ERROR (INCOMPLETE wins), and that only allowlisted read calls are made and
 no secret value, environment value or policy content is printed.
@@ -69,7 +71,8 @@ def baseline():
     boot_ref = f"{SM}{C}/identity-bootstrap"
     master = f"{SM}rds!db-11112222-3333-4444-5555-666677778888-XyZ123"
     return {
-        "sts get-caller-identity": {"json": {"Account": ACCOUNT, "Arn": f"arn:aws:iam::{ACCOUNT}:root", "UserId": ACCOUNT}},
+        "sts get-caller-identity": {"json": {"Account": ACCOUNT, "UserId": "AROAEXAMPLE:operator",
+                                             "Arn": f"arn:aws:sts::{ACCOUNT}:assumed-role/AWSReservedSSO_ReadOnly_0123456789abcdef/operator"}},
         f"rds describe-db-instances {C}-pg": {"json": {"DBInstances": [{
             "DBInstanceStatus": "stopped", "DBInstanceClass": "db.t4g.micro", "PubliclyAccessible": False,
             "DeletionProtection": True, "MultiAZ": False, "StorageEncrypted": True, "DBSubnetGroup": {"VpcId": VPC},
@@ -77,18 +80,23 @@ def baseline():
             "MasterUserSecret": {"SecretArn": master, "SecretStatus": "active"}, "EngineVersion": "16.4"}]}},
         f"ecs describe-clusters": {"json": {"clusters": [{"clusterName": C, "status": "ACTIVE", "runningTasksCount": 0,
                                                           "pendingTasksCount": 0, "activeServicesCount": 0}], "failures": []}},
-        "ecs list-task-definitions": {"json": {"taskDefinitionArns": [
-            f"arn:aws:ecs:eu-central-1:{ACCOUNT}:task-definition/{C}-{f}:1"
-            for f in ("db-admin", "identity", "identity-bootstrap", "identity-migrate")]}},
+        # As in ECS: list-task-definition-families matches a prefix, list-task-definitions' familyPrefix
+        # is the exact family name, so the bare prefix lists nothing (the 10 Nov owner run).
+        "ecs list-task-definition-families": {"json": {"families": [
+            f"{C}-{f}" for f in ("db-admin", "identity", "identity-bootstrap", "identity-migrate")]}},
+        f"ecs list-task-definitions {C}": {"json": {"taskDefinitionArns": []}},
+        **{f"ecs list-task-definitions {C}-{f}": {"json": {"taskDefinitionArns": [
+            f"arn:aws:ecs:eu-central-1:{ACCOUNT}:task-definition/{C}-{f}:1"]}}
+           for f in ("db-admin", "identity", "identity-bootstrap", "identity-migrate")},
         f"ecs describe-task-definition {C}-identity": td("identity", [
             f"{ECR}/munaxa-identity/api@sha256:{D_ID}", f"public.ecr.aws/valkey/valkey@sha256:{D_VK}"], [
             [("DATABASE_URL", f"{ident_ref}:DATABASE_URL::{PIN_I}"), ("REDIS_URL", f"{ident_ref}:REDIS_URL::{PIN_I}")],
             [("REDIS_PASSWORD", f"{ident_ref}:REDIS_PASSWORD::{PIN_I}")]]),
         f"ecs describe-task-definition {C}-identity-migrate": td("identity-migrate", [
             f"{ECR}/munaxa-identity/migrate@sha256:{D_MG}"], [
-            [("DIRECT_DATABASE_URL", f"{mig_ref}:DATABASE_MIGRATION_URL::{PIN_M}")]]),
+            [("DATABASE_MIGRATION_URL", f"{mig_ref}:DATABASE_MIGRATION_URL::{PIN_M}")]]),
         f"ecs describe-task-definition {C}-identity-bootstrap": td("identity-bootstrap", [
-            f"{ECR}/munaxa-identity/migrate@sha256:{D_MG}"], [
+            f"{ECR}/munaxa-identity/api@sha256:{D_ID}"], [
             [("DIRECT_DATABASE_URL", f"{mig_ref}:DATABASE_MIGRATION_URL::{PIN_M}"),
              ("IDENTITY_OWNER_EMAIL", f"{boot_ref}:IDENTITY_OWNER_EMAIL::"),
              ("IDENTITY_OWNER_PASSWORD", f"{boot_ref}:IDENTITY_OWNER_PASSWORD::")]]),
@@ -159,12 +167,10 @@ NETWORK = {"stderr": '\nCould not connect to the endpoint URL: "https://ecs.eu-c
 
 
 class Run:
-    def __init__(self, scenario, with_helper=True, with_aws=True):
+    def __init__(self, scenario, with_aws=True, extra_env=None):
         self.dir = tempfile.mkdtemp(prefix="preflight-test-")
         try:
-            shutil.copy(SCRIPT, self.dir)
-            if with_helper:
-                shutil.copy(DENIALS, self.dir)
+            shutil.copy(SCRIPT, self.dir)  # alone: the script must not need any other file
             bindir = os.path.join(self.dir, "bin")
             os.mkdir(bindir)
             for tool in ("bash", "python3", "grep", "sed", "cut", "tr", "sort", "paste", "head", "date",
@@ -179,7 +185,7 @@ class Run:
             log = os.path.join(self.dir, "calls.jsonl")
             open(log, "w").close()
             env = {"PATH": bindir, "STUB_SCENARIO": os.path.join(self.dir, "scenario.json"), "STUB_LOG": log,
-                   "HOME": self.dir, "LANG": "C.UTF-8"}
+                   "HOME": self.dir, "LANG": "C.UTF-8", **(extra_env or {})}
             proc = subprocess.run([shutil.which("bash"), os.path.join(self.dir, "preflight-readonly.sh")],
                                   env=env, capture_output=True, text=True, timeout=120)
             self.rc, self.out = proc.returncode, proc.stdout + proc.stderr
@@ -293,10 +299,10 @@ class PreflightTest(unittest.TestCase):
 
     def test_network_failure_is_error(self):
         def change(s):
-            s["ecs list-task-definitions"] = NETWORK
+            s["ecs list-task-definition-families"] = NETWORK
         run = self.run_with(change)
         self.assertEqual(run.status("P-3"), "ERROR")
-        self.assertIn("aws ecs list-task-definitions failed (exit 255): Could not connect to the endpoint URL", run.out)
+        self.assertIn("aws ecs list-task-definition-families failed (exit 255): Could not connect to the endpoint URL", run.out)
         self.assertEqual(run.rc, 2)
 
     def test_throttling_on_count_is_error_not_zero(self):
@@ -320,14 +326,17 @@ class PreflightTest(unittest.TestCase):
             s["cloudtrail lookup-events eu-central-1"] = {"json": "not an event list"}
         run = self.run_with(change)
         self.assertEqual(run.status("P-12"), "ERROR")
-        self.assertIn("cloudtrail-denials.py exit 2", run.out)
+        self.assertIn("denial filter exit 2", run.out)
 
-    def test_missing_denials_helper_is_error(self):
-        run = self.run_with(with_helper=False)
-        self.assertEqual(run.status("P-12"), "ERROR")
-        self.assertIn("cloudtrail-denials.py not found next to this script", run.out)
-        self.assertEqual(run.rc, 2)
-        self.assertNotIn("lookup-events", [c["operation"] for c in run.calls])
+    def test_denial_filter_is_embedded_and_identical_to_helper(self):
+        # 10 Nov owner run: P-12 ERROR "cloudtrail-denials.py not found next to this script". The filter
+        # is now embedded; every Run copies the script alone, so the PASS tests prove it is enough.
+        with open(SCRIPT) as f:
+            source = f.read()
+        embedded = re.search(r"DENIAL_FILTER=\$\(\n  cat <<'PY'\n(.*?)\nPY\n\)", source, re.S).group(1)
+        with open(DENIALS) as f:
+            self.assertEqual(embedded, f.read().rstrip("\n"))
+        self.assertNotIn("cloudtrail-denials.py not found", source)
 
     def test_unexpected_response_for_unknown_call_is_error(self):
         def change(s):
@@ -414,10 +423,105 @@ class PreflightTest(unittest.TestCase):
         self.assertEqual(run.rc, 2)
         self.assertIn("OVERALL: INCOMPLETE (1 check(s) with command failures, 1 failed)", run.out)
 
+    # -- caller identity (10 Nov owner run was root; ACCESS-POLICY.md 1.3)
+    def root(self, s):
+        s["sts get-caller-identity"]["json"]["Arn"] = f"arn:aws:iam::{ACCOUNT}:root"
+
+    def test_root_is_refused_without_owner_flag(self):
+        run = self.run_with(self.root)
+        self.assertEqual(run.rc, 3, run.out)
+        self.assertIn(f"STOP: the caller is the account root user (arn:aws:iam::{ACCOUNT}:root)", run.out)
+        self.assertIn("OVERALL: NOT RUN (root caller not accepted)", run.out)
+        self.assertEqual(len(run.calls), 1)
+
+    def test_root_flag_must_be_exactly_yes(self):
+        for value in ("1", "true", "YES", ""):
+            run = self.run_with(self.root, extra_env={"ALLOW_ROOT_READONLY": value})
+            self.assertEqual(run.rc, 3, value)
+            self.assertEqual(len(run.calls), 1, value)
+
+    def test_root_with_owner_flag_runs_and_warns(self):
+        run = self.run_with(self.root, extra_env={"ALLOW_ROOT_READONLY": "yes"})
+        self.assertEqual(run.rc, 0, run.out)
+        self.assertIn("root (accepted: ALLOW_ROOT_READONLY=yes, owner's decision; read-only calls only)", run.out)
+        self.assertIn("WARNING: running as root by the owner's explicit choice", run.out)
+        self.assertIn("OVERALL: PASS", run.out)
+
+    def test_non_root_role_and_user_need_no_flag(self):
+        run = self.run_with()
+        self.assertIn("assumed role AWSReservedSSO_ReadOnly_0123456789abcdef", run.out)
+        self.assertNotIn("WARNING: running as root", run.out)
+
+        def user(s):
+            s["sts get-caller-identity"]["json"]["Arn"] = f"arn:aws:iam::{ACCOUNT}:user/operator"
+        run = self.run_with(user)
+        self.assertEqual(run.rc, 0, run.out)
+        self.assertIn("IAM user operator", run.out)
+
+    def test_caller_arn_from_another_account_or_unknown_shape_stops(self):
+        for arn in ("arn:aws:sts::111122223333:assumed-role/ReadOnly/x", f"arn:aws:sts::{ACCOUNT}:federated-user/x",
+                    "None"):
+            def change(s, arn=arn):
+                s["sts get-caller-identity"]["json"]["Arn"] = arn
+            run = self.run_with(change)
+            self.assertEqual(run.rc, 3, arn)
+            self.assertIn("OVERALL: NOT RUN (caller not recognised)", run.out)
+            self.assertEqual(len(run.calls), 1)
+
+    # -- 10 Nov owner run, P-3 and P-4 (preflight expectations corrected to stack source)
+    def test_task_definitions_listed_per_exact_family(self):
+        run = self.run_with()
+        listed = [c["options"].get("--family-prefix") for c in run.calls if c["operation"] == "list-task-definitions"]
+        self.assertEqual(listed, [f"{C}-identity", f"{C}-identity-migrate", f"{C}-identity-bootstrap", f"{C}-db-admin"])
+        self.assertIn(f"[PASS] P-3: families with an ACTIVE revision = {C}-db-admin,{C}-identity,{C}-identity-bootstrap,{C}-identity-migrate", run.out)
+
+    def test_extra_family_or_second_revision_fails(self):
+        def change(s):
+            s["ecs list-task-definition-families"]["json"]["families"].append(f"{C}-docs-db-admin")
+            s[f"ecs list-task-definitions {C}-identity"]["json"]["taskDefinitionArns"].append(
+                f"arn:aws:ecs:eu-central-1:{ACCOUNT}:task-definition/{C}-identity:2")
+        run = self.run_with(change)
+        self.assertEqual(run.status("P-3"), "FAIL")
+        self.assertIn(f"{C}-identity ACTIVE revisions = '{C}-identity:1,{C}-identity:2'", run.out)
+        self.assertEqual(run.rc, 1)
+
+    def test_bootstrap_on_migrate_image_fails(self):
+        def change(s):
+            s[f"ecs describe-task-definition {C}-identity-bootstrap"]["json"]["taskDefinition"]["containerDefinitions"][0][
+                "image"] = f"{ECR}/munaxa-identity/migrate@sha256:{D_MG}"
+        run = self.run_with(change)
+        self.assertIn(f"[FAIL] P-3: {C}-identity-bootstrap images", run.out)
+        self.assertIn("lack @sha256:71d01fdf", run.out)
+
+    def test_bootstrap_on_api_image_passes(self):
+        run = self.run_with()
+        self.assertIn(f"[PASS] P-3: {C}-identity-bootstrap image @sha256:71d01fdf", run.out)
+
+    def test_migrate_needs_database_migration_url_only(self):
+        run = self.run_with()
+        self.assertIn("[PASS] P-4: identity-migrate secret names = DATABASE_MIGRATION_URL", run.out)
+        self.assertIn(f"[PASS] P-4: identity-migrate DATABASE_MIGRATION_URL pinned to {PIN_M}", run.out)
+
+        def change(s):  # the old (wrong) expectation's shape now fails
+            s[f"ecs describe-task-definition {C}-identity-migrate"] = td("identity-migrate", [
+                f"{ECR}/munaxa-identity/migrate@sha256:{D_MG}"], [
+                [("DIRECT_DATABASE_URL", f"{SM}{C}/identity-migrate-Ef34Gh:DATABASE_MIGRATION_URL::{PIN_M}")]])
+        run = self.run_with(change)
+        self.assertEqual(run.status("P-4"), "FAIL")
+
+    def test_migrate_with_unpinned_reference_fails(self):
+        def change(s):
+            s[f"ecs describe-task-definition {C}-identity-migrate"] = td("identity-migrate", [
+                f"{ECR}/munaxa-identity/migrate@sha256:{D_MG}"], [
+                [("DATABASE_MIGRATION_URL", f"{SM}{C}/identity-migrate-Ef34Gh:DATABASE_MIGRATION_URL::")]])
+        run = self.run_with(change)
+        self.assertEqual(run.status("P-4"), "FAIL")
+
     # -- static guarantees
     def test_script_only_calls_allowlisted_read_operations(self):
         with open(SCRIPT) as f:
-            source = f.read()
+            # the embedded denial filter (Python, tested as cloudtrail-denials.py) is not shell code
+            source = re.sub(r"<<'PY'\n.*?\nPY\n", "", f.read(), flags=re.S)
         allowed = re.search(r'ALLOWED_OPS="([^"]*)"', source).group(1).split()
         for entry in allowed:
             service, operation = entry.split(":")
