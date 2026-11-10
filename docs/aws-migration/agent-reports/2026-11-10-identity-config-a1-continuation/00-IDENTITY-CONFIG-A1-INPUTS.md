@@ -35,7 +35,7 @@ for `aws_ecs_task_definition.docs_db_admin`.
 ## 2. PR and branch
 
 - Branch: `claude/identity-config-a1-inputs`, from `main` at `6496a80`.
-- PR: see the PR that carries this report (link in the thread message and in the index).
+- PR: [#73](https://github.com/munaxa/munaxa-platform/pull/73), not merged.
 
 ## 3. Values in the inputs
 
