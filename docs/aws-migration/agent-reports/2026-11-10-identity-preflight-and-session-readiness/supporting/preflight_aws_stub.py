@@ -19,7 +19,7 @@ import sys
 import jmespath
 
 SELECTORS = ("--db-instance-identifier", "--task-definition", "--secret-id", "--key-id", "--name",
-             "--certificate-arn", "--repository-name", "--role-name", "--region")
+             "--certificate-arn", "--repository-name", "--role-name", "--region", "--family-prefix")
 
 
 def text(value):

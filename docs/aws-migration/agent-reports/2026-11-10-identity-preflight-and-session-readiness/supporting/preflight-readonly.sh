@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # First Identity session preflight, P-1 to P-13 (report 2026-11-10-identity-preflight-and-session-readiness).
 #
-# READ-ONLY. Run in AWS CloudShell, eu-central-1, with cloudtrail-denials.py in the same folder.
-# - Account guard: stops before any other AWS call unless the active account is exactly 229251310592.
+# READ-ONLY. Run in AWS CloudShell, eu-central-1. Self-contained: the CloudTrail denial filter
+# (cloudtrail-denials.py from 2026-11-10-identity-first-session-preparation/supporting) is embedded.
+# - Account and identity guard: stops before any other AWS call unless the active account is exactly
+#   229251310592 and the caller ARN belongs to it. A root caller is refused unless the owner sets
+#   ALLOW_ROOT_READONLY=yes (infra/aws/ACCESS-POLICY.md 1.3: owner-run read-only checks as root are
+#   the approved development mode); a non-root role or user in the account needs no flag.
 # - Every AWS call goes through aws_call, which only runs the read operations in ALLOWED_OPS
 #   (Describe/List/Get metadata, sts get-caller-identity, cloudtrail lookup-events). There is no
 #   create, update, delete, start, stop, run, put, tag, Terraform, IAM, KMS or Secrets Manager write,
@@ -21,7 +25,6 @@ export AWS_REGION=eu-central-1 AWS_DEFAULT_REGION=eu-central-1 AWS_PAGER=""
 EXPECTED_ACCOUNT=229251310592
 C=munaxa-nonprod
 SINCE=${PREFLIGHT_SINCE:-2026-11-10T06:00:00Z}
-DENIALS="$(cd "$(dirname "$0")" && pwd)/cloudtrail-denials.py"
 PIN_IDENTITY=ad02f18e-f3e7-41da-9959-f9b41e0b7e1a
 PIN_MIGRATE=a3cc6622-df66-4787-bae7-83ccfec56ff4
 D_IDENTITY=71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156
@@ -31,7 +34,8 @@ D_POSTGRES=5983db9a9c6ad225a48a46cfe2e03e6680b1826662befd0465eb05b34cb1c64e
 CHECKS=(P-1 P-2 P-3 P-4 P-5 P-6 P-7 P-8 P-9 P-10 P-11 P-11b P-12 P-13)
 
 # The only AWS operations this script may call.
-ALLOWED_OPS=" sts:get-caller-identity rds:describe-db-instances ecs:describe-clusters ecs:list-task-definitions
+ALLOWED_OPS=" sts:get-caller-identity rds:describe-db-instances ecs:describe-clusters ecs:list-task-definition-families
+ ecs:list-task-definitions
  ecs:describe-task-definition ecs:list-services ecs:list-tasks secretsmanager:describe-secret
  secretsmanager:list-secret-version-ids secretsmanager:list-secrets kms:describe-key elbv2:describe-load-balancers
  elbv2:describe-target-groups ec2:describe-nat-gateways ec2:describe-addresses ec2:describe-instances
@@ -40,6 +44,67 @@ ALLOWED_OPS=" sts:get-caller-identity rds:describe-db-instances ecs:describe-clu
  iam:get-role iam:list-roles iam:list-role-policies iam:list-attached-role-policies iam:get-role-policy
  cloudtrail:lookup-events "
 ALLOWED_OPS=${ALLOWED_OPS//$'\n'/ }
+
+# CloudTrail denial filter: byte-for-byte copy of cloudtrail-denials.py (a test enforces it).
+DENIAL_FILTER=$(
+  cat <<'PY'
+#!/usr/bin/env python3
+"""Count authorization denials in CloudTrail event history (read-only, metadata only).
+
+    aws cloudtrail lookup-events --region eu-central-1 --start-time 2026-11-10T06:00:00Z --output json \
+      | python3 -I cloudtrail-denials.py
+
+Give the AWS CLI no --max-results: without it the CLI follows every page, so the whole window is
+read; with it the CLI stops at that many events (the 10 Nov report's 50-event command did that).
+Run it once for eu-central-1 and once for us-east-1 (IAM and STS events are recorded there).
+
+A denial is an event whose `errorCode` field (not its message, not its request) contains
+AccessDenied (AccessDenied, AccessDeniedException) or ends in UnauthorizedOperation
+(UnauthorizedOperation, Client.UnauthorizedOperation). Prints one line per denial: time, source,
+action, error code, principal ARN; never the request or response. Exit 0 none, 1 some, 2 bad input.
+"""
+import json
+import re
+import sys
+
+DENIAL = re.compile(r"AccessDenied|UnauthorizedOperation$")
+
+
+def denials(document):
+    """document: the parsed lookup-events JSON ({"Events": [...]}) or a bare list of events."""
+    events = document.get("Events", []) if isinstance(document, dict) else document
+    found = []
+    for item in events:
+        raw = item.get("CloudTrailEvent") if isinstance(item, dict) else None
+        event = json.loads(raw) if isinstance(raw, str) else (raw or item)
+        code = event.get("errorCode")
+        if isinstance(code, str) and DENIAL.search(code):
+            found.append((
+                event.get("eventTime", "?"),
+                event.get("eventSource", "?"),
+                event.get("eventName", "?"),
+                code,
+                (event.get("userIdentity") or {}).get("arn", "?"),
+            ))
+    return len(events), found
+
+
+def main():
+    try:
+        total, found = denials(json.load(sys.stdin))
+    except (ValueError, AttributeError) as error:
+        print(f"cannot read lookup-events JSON: {error}")
+        return 2
+    print(f"events {total} denials {len(found)}")
+    for row in found:
+        print(*row, sep="  ")
+    return 1 if found else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+PY
+)
 
 ERRFILE=$(mktemp)
 trap 'rm -f "$ERRFILE"' EXIT
@@ -106,12 +171,33 @@ if ((rc != 0)); then
   exit 3
 fi
 IFS=$'\t' read -r ACCOUNT ARN <<<"$IDENT"
-if [[ ${ACCOUNT:-} != "$EXPECTED_ACCOUNT" ]]; then
-  echo "STOP: active account is '${ACCOUNT:-}', expected $EXPECTED_ACCOUNT. No other AWS call was made."
+ACCOUNT=${ACCOUNT:-} ARN=${ARN:-}
+if [[ $ACCOUNT != "$EXPECTED_ACCOUNT" ]]; then
+  echo "STOP: active account is '$ACCOUNT', expected $EXPECTED_ACCOUNT. No other AWS call was made."
   echo "OVERALL: NOT RUN (wrong account)"
   exit 3
 fi
-record P-1 PASS "account $ACCOUNT ($ARN), region $AWS_REGION, $(date -u +%FT%TZ)"
+case $ARN in
+"arn:aws:iam::$EXPECTED_ACCOUNT:root")
+  if [[ ${ALLOW_ROOT_READONLY:-} != yes ]]; then
+    echo "STOP: the caller is the account root user ($ARN). No other AWS call was made."
+    echo "Run as a non-root read-only identity, or, only by the owner's decision under infra/aws/ACCESS-POLICY.md 1.3,"
+    echo "rerun as: ALLOW_ROOT_READONLY=yes bash preflight-readonly.sh"
+    echo "OVERALL: NOT RUN (root caller not accepted)"
+    exit 3
+  fi
+  CALLER_TYPE="root (accepted: ALLOW_ROOT_READONLY=yes, owner's decision; read-only calls only)"
+  ;;
+"arn:aws:sts::$EXPECTED_ACCOUNT:assumed-role/"*/*) CALLER_TYPE="assumed role ${ARN#*:assumed-role/}" CALLER_TYPE=${CALLER_TYPE%%/*} ;;
+"arn:aws:iam::$EXPECTED_ACCOUNT:user/"*) CALLER_TYPE="IAM user ${ARN##*/}" ;;
+*)
+  echo "STOP: caller ARN '$ARN' is not a root, assumed-role or IAM user ARN of account $EXPECTED_ACCOUNT. No other AWS call was made."
+  echo "OVERALL: NOT RUN (caller not recognised)"
+  exit 3
+  ;;
+esac
+record P-1 PASS "account $ACCOUNT, caller $ARN, $CALLER_TYPE, region $AWS_REGION, $(date -u +%FT%TZ)"
+[[ $ARN == *":root" ]] && info "WARNING: running as root by the owner's explicit choice. Root bypasses IAM policies, so a PASS here proves nothing about any deployer's permissions (ACCESS-POLICY.md 1.2)."
 
 # ---------------------------------------------------------------- P-2 database
 h "P-2 RDS"
@@ -145,13 +231,20 @@ if [[ $? == 0 ]]; then
     expect P-3 "cluster status running pending services" "$(tr '\t' ' ' <<<"$OUT")" "ACTIVE 0 0 0"
   fi
 fi
-aws_call P-3 '' ecs list-task-definitions --family-prefix $C --status ACTIVE --query 'taskDefinitionArns' --output text
+# ListTaskDefinitionFamilies matches a name prefix; ListTaskDefinitions' familyPrefix is the exact
+# family name (ECS API reference), so revisions are listed per family.
+aws_call P-3 '' ecs list-task-definition-families --family-prefix $C --status ACTIVE --query 'families' --output text
 if [[ $? == 0 ]]; then
-  defs=$(tr '\t' '\n' <<<"$OUT" | sed -n 's#.*task-definition/##p' | LC_ALL=C sort | paste -sd, -)
-  expect P-3 "active task definitions" "$defs" "$C-db-admin:1,$C-identity-bootstrap:1,$C-identity-migrate:1,$C-identity:1"
+  fams=$(tr '\t' '\n' <<<"$OUT" | grep -v '^$' | LC_ALL=C sort | paste -sd, -)
+  expect P-3 "families with an ACTIVE revision" "$fams" "$C-db-admin,$C-identity,$C-identity-bootstrap,$C-identity-migrate"
 fi
+for fam in identity identity-migrate identity-bootstrap db-admin; do
+  aws_call P-3 '' ecs list-task-definitions --family-prefix $C-$fam --status ACTIVE --query 'taskDefinitionArns' --output text
+  [[ $? == 0 ]] && expect P-3 "$C-$fam ACTIVE revisions" "$(tr '\t' '\n' <<<"$OUT" | sed -n 's#.*task-definition/##p' | LC_ALL=C sort | paste -sd, -)" "$C-$fam:1"
+done
 TD_ABSENT='ClientException.*(Unable to describe task definition|does not exist)'
-for f in identity:$D_IDENTITY,$D_VALKEY identity-migrate:$D_MIGRATE identity-bootstrap:$D_MIGRATE db-admin:$D_POSTGRES; do
+# identity-bootstrap runs the Identity api (runtime) image: stack/ops.tf identity_bootstrap, image = var.images.identity_api.
+for f in identity:$D_IDENTITY,$D_VALKEY identity-migrate:$D_MIGRATE identity-bootstrap:$D_IDENTITY db-admin:$D_POSTGRES; do
   fam=${f%%:*} digests=${f#*:}
   aws_call P-3 "$TD_ABSENT" ecs describe-task-definition --task-definition $C-$fam --query 'taskDefinition.[revision,status,join(`,`,containerDefinitions[].image)]' --output text
   case $? in
@@ -183,17 +276,26 @@ case $? in
   ;;
 3) absent P-4 "task definition $C-identity" ;;
 esac
-for fam in identity-migrate identity-bootstrap; do
-  secret_refs $fam
-  case $? in
-  0) has_ref P-4 "$fam DIRECT_DATABASE_URL pinned to $PIN_MIGRATE" "^DIRECT_DATABASE_URL"$'\t'".*:secret:$C/identity-migrate-[A-Za-z0-9]{6}:DATABASE_MIGRATION_URL::$PIN_MIGRATE\$" ;;
-  3) absent P-4 "task definition $C-$fam" ;;
-  esac
-  if [[ $fam == identity-bootstrap && -n $OUT ]]; then
-    has_ref P-4 "bootstrap IDENTITY_OWNER_EMAIL reference" ":secret:$C/identity-bootstrap:IDENTITY_OWNER_EMAIL::\$"
-    has_ref P-4 "bootstrap IDENTITY_OWNER_PASSWORD reference" ":secret:$C/identity-bootstrap:IDENTITY_OWNER_PASSWORD::\$"
-  fi
-done
+# identity-migrate: modules/service secret_keys = local.secret_keys["identity-migrate"] = ["DATABASE_MIGRATION_URL"]
+# (stack/data.tf); the migrate image's CMD exports DATABASE_URL from DATABASE_MIGRATION_URL.
+secret_refs identity-migrate
+case $? in
+0)
+  expect P-4 "identity-migrate secret names" "$(cut -f1 <<<"$OUT" | LC_ALL=C sort | paste -sd, -)" DATABASE_MIGRATION_URL
+  has_ref P-4 "identity-migrate DATABASE_MIGRATION_URL pinned to $PIN_MIGRATE" "^DATABASE_MIGRATION_URL"$'\t'".*:secret:$C/identity-migrate-[A-Za-z0-9]{6}:DATABASE_MIGRATION_URL::$PIN_MIGRATE\$"
+  ;;
+3) absent P-4 "task definition $C-identity-migrate" ;;
+esac
+# identity-bootstrap: the scripts read DIRECT_DATABASE_URL (stack/ops.tf identity_bootstrap secrets).
+secret_refs identity-bootstrap
+case $? in
+0)
+  has_ref P-4 "identity-bootstrap DIRECT_DATABASE_URL pinned to $PIN_MIGRATE" "^DIRECT_DATABASE_URL"$'\t'".*:secret:$C/identity-migrate-[A-Za-z0-9]{6}:DATABASE_MIGRATION_URL::$PIN_MIGRATE\$"
+  has_ref P-4 "bootstrap IDENTITY_OWNER_EMAIL reference" ":secret:$C/identity-bootstrap:IDENTITY_OWNER_EMAIL::\$"
+  has_ref P-4 "bootstrap IDENTITY_OWNER_PASSWORD reference" ":secret:$C/identity-bootstrap:IDENTITY_OWNER_PASSWORD::\$"
+  ;;
+3) absent P-4 "task definition $C-identity-bootstrap" ;;
+esac
 secret_refs db-admin
 case $? in
 0)
@@ -353,17 +455,15 @@ fi
 h "P-12 CloudTrail denials since $SINCE (all pages, errorCode only)"
 if ! command -v python3 >/dev/null 2>&1; then
   record P-12 ERROR "python3 not found"
-elif [[ ! -f $DENIALS ]]; then
-  record P-12 ERROR "cloudtrail-denials.py not found next to this script"
 else
   for r in eu-central-1 us-east-1; do
     aws_call P-12 '' cloudtrail lookup-events --region $r --start-time "$SINCE" --output json || continue
     rc=0
-    res=$(printf '%s' "$OUT" | python3 -I "$DENIALS" 2>&1) || rc=$?
+    res=$(printf '%s' "$OUT" | python3 -I -c "$DENIAL_FILTER" 2>&1) || rc=$?
     case $rc in
     0) record P-12 PASS "$r: $(head -1 <<<"$res")" ;;
     1) record P-12 FAIL "$r: $res" ;;
-    *) record P-12 ERROR "$r: cloudtrail-denials.py exit $rc: $(head -1 <<<"$res")" ;;
+    *) record P-12 ERROR "$r: denial filter exit $rc: $(head -1 <<<"$res")" ;;
     esac
   done
 fi
