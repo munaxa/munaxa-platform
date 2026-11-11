@@ -795,6 +795,25 @@ run "aw01_without_security_config_identity_keeps_the_5277d71_contract" {
     error_message = "Without identity_security_config the Identity environment is exactly the ten names release 5277d71 reads."
   }
   assert {
+    condition = jsonencode(jsondecode(module.identity[0].task_definition_container_definitions)[0].environment) == jsonencode([
+      { name = "CSRF_TRUSTED_ORIGINS", value = "https://id.test.munaxa.com,https://work.test.munaxa.com,https://operator.test.munaxa.com" },
+      { name = "IDENTITY_AUTH_AUDIENCE", value = "munaxa-work,munaxa-control" },
+      { name = "IDENTITY_BASE_URL", value = "https://id.test.munaxa.com" },
+      { name = "IDENTITY_DEFAULT_ORGANISATION", value = "" },
+      { name = "IDENTITY_SIGNING_ALGORITHM", value = "ES256" },
+      { name = "IDENTITY_SIGNING_KID", value = "identity-test-2026-11" },
+      { name = "LOG_PRETTY", value = "false" },
+      { name = "NODE_ENV", value = "production" },
+      { name = "PORT", value = "4001" },
+      { name = "TRUST_PROXY_HOPS", value = "1" },
+    ])
+    error_message = "Without identity_security_config every Identity environment value is the one release 5277d71 runs with."
+  }
+  assert {
+    condition     = jsondecode(module.identity[0].task_definition_container_definitions)[0].image == var.images.identity_api && length(jsondecode(module.identity[0].task_definition_container_definitions)) == 2 && jsondecode(module.identity[0].task_definition_container_definitions)[1].name == "valkey"
+    error_message = "Without identity_security_config Identity keeps its digest and its single Valkey sidecar."
+  }
+  assert {
     condition = [for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.valueFrom] == [
       for k in ["DATABASE_URL", "IDENTITY_SIGNING_PRIVATE_KEY", "IDENTITY_SIGNING_SECRET", "REDIS_URL", "REDIS_PASSWORD"] :
       "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:${k}::00000000-0000-4000-8000-000000000001"
