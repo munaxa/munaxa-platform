@@ -1,0 +1,136 @@
+{
+  "called_at_utc": "2026-11-11T09:25:50.013Z",
+  "script": "A=\"229251310592\"; R=\"eu-central-1\"\nROLE=f\"arn:aws:iam::{A}:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session\"\ndef C(pairs): return [{\"ContextKeyName\":k,\"ContextKeyValues\":[v],\"ContextKeyType\":\"string\"} for k,v in pairs]\nTAGS=[(\"aws:RequestTag/Project\",\"munaxa\"),(\"aws:RequestTag/Environment\",\"nonprod\"),(\"aws:RequestedRegion\",R)]\nRT=[(\"aws:ResourceTag/Project\",\"munaxa\"),(\"aws:ResourceTag/Environment\",\"nonprod\"),(\"aws:RequestedRegion\",R)]\nlb=f\"arn:aws:elasticloadbalancing:{R}:{A}:loadbalancer/app/munaxa-nonprod/0123456789abcdef\"\nlst=f\"arn:aws:elasticloadbalancing:{R}:{A}:listener/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef\"\nrule=f\"arn:aws:elasticloadbalancing:{R}:{A}:listener-rule/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef/0123456789abcdef\"\ntg=f\"arn:aws:elasticloadbalancing:{R}:{A}:targetgroup/munaxa-nonprod-identity/0123456789abcdef\"\ncases=[\n (\"S-02b\",\"allowed\",[\"elasticloadbalancing:CreateListener\"],lb,TAGS),\n (\"S-03b\",\"allowed\",[\"elasticloadbalancing:CreateRule\"],lst,TAGS),\n (\"S-06b\",\"allowed\",[\"elasticloadbalancing:ModifyListener\",\"elasticloadbalancing:DeleteListener\"],lst,RT),\n (\"S-06c\",\"allowed\",[\"elasticloadbalancing:ModifyTargetGroupAttributes\",\"elasticloadbalancing:DeleteTargetGroup\",\"elasticloadbalancing:RegisterTargets\"],tg,RT),\n (\"S-06d\",\"allowed\",[\"elasticloadbalancing:ModifyRule\",\"elasticloadbalancing:DeleteRule\"],rule,RT),\n]\nasync def run(c):\n    cid,exp,acts,res,cx=c\n    r=await call_boto3(service_name=\"iam\",operation_name=\"SimulatePrincipalPolicy\",region_name=\"us-east-1\",\n        params={\"PolicySourceArn\":ROLE,\"ActionNames\":acts,\"ResourceArns\":[res],\"ContextEntries\":C(cx)})\n    return {\"id\":cid,\"resource\":res,\"results\":[{\"action\":e[\"EvalActionName\"],\"decision\":e[\"EvalDecision\"],\"ok\":(e[\"EvalDecision\"]==\"allowed\")==(exp==\"allowed\"),\"matched\":[s.get(\"SourcePolicyId\") for s in e.get(\"MatchedStatements\",[])]} for e in r[\"EvaluationResults\"]]}\nresult=await asyncio.gather(*[run(c) for c in cases])\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": [
+      {
+        "id": "S-02b",
+        "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/0123456789abcdef",
+        "results": [
+          {
+            "action": "elasticloadbalancing:CreateListener",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          }
+        ]
+      },
+      {
+        "id": "S-03b",
+        "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef",
+        "results": [
+          {
+            "action": "elasticloadbalancing:CreateRule",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          }
+        ]
+      },
+      {
+        "id": "S-06b",
+        "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef",
+        "results": [
+          {
+            "action": "elasticloadbalancing:ModifyListener",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          },
+          {
+            "action": "elasticloadbalancing:DeleteListener",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          }
+        ]
+      },
+      {
+        "id": "S-06c",
+        "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:targetgroup/munaxa-nonprod-identity/0123456789abcdef",
+        "results": [
+          {
+            "action": "elasticloadbalancing:ModifyTargetGroupAttributes",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          },
+          {
+            "action": "elasticloadbalancing:DeleteTargetGroup",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          },
+          {
+            "action": "elasticloadbalancing:RegisterTargets",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          }
+        ]
+      },
+      {
+        "id": "S-06d",
+        "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener-rule/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef/0123456789abcdef",
+        "results": [
+          {
+            "action": "elasticloadbalancing:ModifyRule",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          },
+          {
+            "action": "elasticloadbalancing:DeleteRule",
+            "decision": "allowed",
+            "ok": true,
+            "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"]
+          }
+        ]
+      }
+    ],
+    "api_calls": [
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 3
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      }
+    ]
+  }
+}

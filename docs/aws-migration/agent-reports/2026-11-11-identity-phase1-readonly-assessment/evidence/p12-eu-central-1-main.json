@@ -1,0 +1,626 @@
+{
+  "called_at_utc": "2026-11-11T09:22:19.796Z",
+  "script": "import re\nDEN = re.compile(r\"AccessDenied|UnauthorizedOperation$\")\nREGION=\"eu-central-1\"\nSTART=datetime.datetime(2026,11,10,6,0,0,tzinfo=datetime.timezone.utc)\nEND=datetime.datetime(2026,11,11,9,20,0,tzinfo=datetime.timezone.utc)\nt0=time.time()\ntoken=None; total=0; pages=0; den=[]; tag_ok=[]\nwhile True:\n    p={\"StartTime\":START,\"EndTime\":END,\"MaxResults\":50}\n    if token: p[\"NextToken\"]=token\n    r=await call_boto3(service_name=\"cloudtrail\",operation_name=\"LookupEvents\",region_name=REGION,params=p)\n    pages+=1\n    for e in r.get(\"Events\",[]):\n        total+=1\n        ev=json.loads(e[\"CloudTrailEvent\"])\n        c=ev.get(\"errorCode\")\n        ui=ev.get(\"userIdentity\") or {}\n        if isinstance(c,str) and DEN.search(c):\n            den.append({\"t\":ev.get(\"eventTime\"),\"src\":ev.get(\"eventSource\"),\"name\":ev.get(\"eventName\"),\"code\":c,\n              \"msg\":ev.get(\"errorMessage\"),\"arn\":ui.get(\"arn\"),\"region\":ev.get(\"awsRegion\"),\n              \"bucket\":(ev.get(\"requestParameters\") or {}).get(\"bucketName\") or (ev.get(\"requestParameters\") or {}).get(\"resourceArn\"),\n              \"ua\":ev.get(\"userAgent\"),\"src_id\":(ui.get(\"sessionContext\") or {}).get(\"sourceIdentity\")})\n        elif ev.get(\"eventName\")==\"GetBucketTagging\" and not c:\n            tag_ok.append([ev.get(\"eventTime\"),ui.get(\"arn\"),(ev.get(\"requestParameters\") or {}).get(\"bucketName\")])\n    token=r.get(\"NextToken\")\n    if not token or time.time()-t0>45: break\nresult={\"total\":total,\"pages\":pages,\"done\":token is None,\"token\":token,\"den\":den,\"tag_ok\":tag_ok,\"secs\":round(time.time()-t0,1)}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "total": 2450,
+      "pages": 49,
+      "done": false,
+      "den": [
+        {
+          "t": "2026-11-11T08:27:29Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42987103535 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42987103535",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-school-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-11T08:27:29Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42987103535 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42987103535",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-docs-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-11T00:05:23Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-school-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-11T00:05:23Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-docs-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-10T08:51:47Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-docs-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-10T08:51:47Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-school-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-10T06:13:16Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-school-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-10T06:13:15Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-docs-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-10T06:09:44Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-school-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-10T06:09:44Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-docs-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-10T06:05:36Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-docs-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        },
+        {
+          "t": "2026-11-10T06:05:36Z",
+          "src": "s3.amazonaws.com",
+          "name": "ListTagsForResource",
+          "code": "AccessDenied",
+          "msg": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+          "arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306",
+          "region": "eu-central-1",
+          "bucket": "munaxa-nonprod-school-files-229251310592",
+          "ua": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]",
+          "src_id": "github-actions"
+        }
+      ],
+      "tag_ok": [
+        [
+          "2026-11-11T08:27:29Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42987103535",
+          "munaxa-nonprod-school-files-229251310592"
+        ],
+        [
+          "2026-11-11T08:27:29Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42987103535",
+          "munaxa-nonprod-docs-files-229251310592"
+        ],
+        [
+          "2026-11-11T06:11:28Z",
+          "arn:aws:iam::229251310592:root",
+          "munaxa-nonprod-docs-files-229251310592"
+        ],
+        [
+          "2026-11-11T06:11:27Z",
+          "arn:aws:iam::229251310592:root",
+          "munaxa-nonprod-school-files-229251310592"
+        ],
+        [
+          "2026-11-11T00:05:23Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147",
+          "munaxa-nonprod-school-files-229251310592"
+        ],
+        [
+          "2026-11-11T00:05:23Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147",
+          "munaxa-nonprod-docs-files-229251310592"
+        ],
+        [
+          "2026-11-10T08:51:47Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006",
+          "munaxa-nonprod-school-files-229251310592"
+        ],
+        [
+          "2026-11-10T08:51:47Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006",
+          "munaxa-nonprod-docs-files-229251310592"
+        ],
+        [
+          "2026-11-10T06:13:16Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719",
+          "munaxa-nonprod-school-files-229251310592"
+        ],
+        [
+          "2026-11-10T06:13:16Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719",
+          "munaxa-nonprod-docs-files-229251310592"
+        ],
+        [
+          "2026-11-10T06:09:44Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624",
+          "munaxa-nonprod-docs-files-229251310592"
+        ],
+        [
+          "2026-11-10T06:09:44Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624",
+          "munaxa-nonprod-school-files-229251310592"
+        ],
+        [
+          "2026-11-10T06:05:36Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306",
+          "munaxa-nonprod-school-files-229251310592"
+        ],
+        [
+          "2026-11-10T06:05:36Z",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306",
+          "munaxa-nonprod-docs-files-229251310592"
+        ]
+      ],
+      "secs": 45.9
+    },
+    "api_calls": [
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      }
+    ]
+  }
+}

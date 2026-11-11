@@ -1,0 +1,53 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "kms:ListResourceTags",
+        "kms:GetKeyRotationStatus",
+        "kms:GetKeyPolicy",
+        "kms:DescribeKey"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Environment": "nonprod",
+          "aws:ResourceTag/Project": "munaxa"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:kms:eu-central-1:229251310592:key/*",
+      "Sid": "RefreshOwnKeys"
+    },
+    {
+      "Action": ["secretsmanager:GetResourcePolicy", "secretsmanager:DescribeSecret"],
+      "Effect": "Allow",
+      "Resource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/*",
+      "Sid": "RefreshOwnSecretContainers"
+    },
+    {
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetReplicationConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetBucket*",
+        "s3:GetAccelerateConfiguration"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::munaxa-nonprod-*",
+      "Sid": "RefreshOwnBuckets"
+    },
+    {
+      "Action": [
+        "iam:ListRoleTags",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:GetRolePolicy",
+        "iam:GetRole"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-*",
+      "Sid": "RefreshOwnRoles"
+    }
+  ],
+  "Version": "2012-10-17"
+}

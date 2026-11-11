@@ -1,0 +1,81 @@
+{
+  "called_at_utc": "2026-11-11T09:21:57.248Z",
+  "script": "import re\nDEN = re.compile(r\"AccessDenied|UnauthorizedOperation$\")\nstart = datetime.datetime(2026,11,10,6,0,0,tzinfo=datetime.timezone.utc)\nend = start + datetime.timedelta(hours=6)\nt0=time.time()\nr = await call_boto3(service_name=\"cloudtrail\", operation_name=\"LookupEvents\", region_name=\"eu-central-1\",\n    params={\"StartTime\": start, \"EndTime\": end})\nevs = r.get(\"Events\", [])\nden=[]\nfor e in evs:\n    ev=json.loads(e[\"CloudTrailEvent\"])\n    c=ev.get(\"errorCode\")\n    if isinstance(c,str) and DEN.search(c):\n        den.append([ev.get(\"eventTime\"),ev.get(\"eventSource\"),ev.get(\"eventName\"),c,(ev.get(\"userIdentity\") or {}).get(\"arn\")])\nresult={\"n\":len(evs),\"next\":bool(r.get(\"NextToken\")),\"den\":den,\"secs\":round(time.time()-t0,1)}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "n": 1000,
+      "next": true,
+      "den": [
+        [
+          "2026-11-10T08:51:47Z",
+          "s3.amazonaws.com",
+          "ListTagsForResource",
+          "AccessDenied",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006"
+        ],
+        [
+          "2026-11-10T08:51:47Z",
+          "s3.amazonaws.com",
+          "ListTagsForResource",
+          "AccessDenied",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006"
+        ],
+        [
+          "2026-11-10T06:13:16Z",
+          "s3.amazonaws.com",
+          "ListTagsForResource",
+          "AccessDenied",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719"
+        ],
+        [
+          "2026-11-10T06:13:15Z",
+          "s3.amazonaws.com",
+          "ListTagsForResource",
+          "AccessDenied",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719"
+        ],
+        [
+          "2026-11-10T06:09:44Z",
+          "s3.amazonaws.com",
+          "ListTagsForResource",
+          "AccessDenied",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624"
+        ],
+        [
+          "2026-11-10T06:09:44Z",
+          "s3.amazonaws.com",
+          "ListTagsForResource",
+          "AccessDenied",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624"
+        ],
+        [
+          "2026-11-10T06:05:36Z",
+          "s3.amazonaws.com",
+          "ListTagsForResource",
+          "AccessDenied",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306"
+        ],
+        [
+          "2026-11-10T06:05:36Z",
+          "s3.amazonaws.com",
+          "ListTagsForResource",
+          "AccessDenied",
+          "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306"
+        ]
+      ],
+      "secs": 4.7
+    },
+    "api_calls": [
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 1000
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+# python3 -I verify.py iam p11 session-spec.json  (VERIFY and SESSION_SPEC extracted byte-for-byte from preflight-readonly.sh on main 49c51f3)
+PASS	session roles under /munaxa-shared/bootstrap/ = munaxa-shared-ci-nonprod-session, munaxa-shared-deployer-nonprod-session
+PASS	munaxa-shared-ci-nonprod-session Path = /munaxa-shared/bootstrap/
+PASS	munaxa-shared-ci-nonprod-session Arn = arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod-session
+PASS	munaxa-shared-ci-nonprod-session MaxSessionDuration = 3600
+PASS	munaxa-shared-ci-nonprod-session permissions boundary = none (as in the code)
+PASS	munaxa-shared-ci-nonprod-session trust policy: 1 statement(s) match the code
+PASS	munaxa-shared-ci-nonprod-session inline policies = assume-own-session-deployer-only
+PASS	munaxa-shared-ci-nonprod-session inline assume-own-session-deployer-only: 1 statement(s) match the code
+PASS	munaxa-shared-ci-nonprod-session attached policies = none
+PASS	munaxa-shared-deployer-nonprod-session Path = /munaxa-shared/bootstrap/
+PASS	munaxa-shared-deployer-nonprod-session Arn = arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session
+PASS	munaxa-shared-deployer-nonprod-session MaxSessionDuration = 3600
+PASS	munaxa-shared-deployer-nonprod-session permissions boundary = none (as in the code)
+PASS	munaxa-shared-deployer-nonprod-session trust policy: 1 statement(s) match the code
+PASS	munaxa-shared-deployer-nonprod-session inline policies = session-deployer
+PASS	munaxa-shared-deployer-nonprod-session inline session-deployer: 30 statement(s) match the code
+PASS	munaxa-shared-deployer-nonprod-session attached policies = munaxa-shared-deployer-nonprod-session-read, munaxa-shared-deployer-read
+PASS	managed policy munaxa-shared-deployer-nonprod-session-read: 4 statement(s) match the code
+PASS	managed policy munaxa-shared-deployer-read: 2 statement(s) match the code
+PASS	alias/munaxa-shared-tfstate = the state key in the expected policy
+exit 0
+
+# python3 -I verify.py net p11 munaxa-nonprod vpc-0824ebbff902d2980 PASS
+PASS	VPC munaxa-nonprod CIDR = 10.130.0.0/16
+PASS	VPC munaxa-nonprod state = available
+PASS	VPC munaxa-nonprod IsDefault = False
+PASS	VPC munaxa-nonprod = database VPC vpc-0824ebbff902d2980
+PASS	subnet munaxa-nonprod-db-a eu-central-1a 10.130.64.0/24, no public IP on launch, available
+PASS	subnet munaxa-nonprod-db-b eu-central-1b 10.130.65.0/24, no public IP on launch, available
+PASS	subnet munaxa-nonprod-db-c eu-central-1c 10.130.66.0/24, no public IP on launch, available
+PASS	subnet munaxa-nonprod-public-a eu-central-1a 10.130.0.0/24, no public IP on launch, available
+PASS	subnet munaxa-nonprod-public-b eu-central-1b 10.130.1.0/24, no public IP on launch, available
+PASS	internet gateway munaxa-nonprod-igw igw-01c51c4963afa87fb attached to vpc-0824ebbff902d2980
+PASS	S3 gateway endpoint vpce-0ef83b62278737210 on munaxa-nonprod-rt-public only
+PASS	route table main associations = main only
+PASS	route table main routes = local only
+PASS	route table munaxa-nonprod-rt-db associations = munaxa-nonprod-db-a, munaxa-nonprod-db-b, munaxa-nonprod-db-c
+PASS	route table munaxa-nonprod-rt-db routes = local only
+PASS	route table munaxa-nonprod-rt-public associations = munaxa-nonprod-public-a, munaxa-nonprod-public-b
+PASS	route table munaxa-nonprod-rt-public routes = local, 0.0.0.0/0 -> igw-01c51c4963afa87fb active, S3 endpoint active
+PASS	security groups in vpc-0824ebbff902d2980 = default, munaxa-nonprod-alb, munaxa-nonprod-database, munaxa-nonprod-db-admin, munaxa-nonprod-identity, munaxa-nonprod-identity-migrate
+PASS	default security group has no rules
+exit 0

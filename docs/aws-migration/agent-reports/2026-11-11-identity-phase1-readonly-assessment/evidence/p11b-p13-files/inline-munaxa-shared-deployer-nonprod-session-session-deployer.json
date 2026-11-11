@@ -1,0 +1,441 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "s3:ListBucket",
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::munaxa-shared-tfstate-229251310592",
+      "Sid": "StateList"
+    },
+    {
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::munaxa-shared-tfstate-229251310592/nonprod/*",
+      "Sid": "State"
+    },
+    {
+      "Action": ["kms:GenerateDataKey", "kms:Encrypt", "kms:Decrypt"],
+      "Effect": "Allow",
+      "Resource": "arn:aws:kms:eu-central-1:229251310592:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5",
+      "Sid": "StateKey"
+    },
+    {
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      },
+      "Effect": "Deny",
+      "NotAction": ["sts:*", "s3:*", "route53:*", "iam:*"],
+      "Resource": "*",
+      "Sid": "ThisRegionOnly"
+    },
+    {
+      "Action": "*",
+      "Effect": "Deny",
+      "Resource": [
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-docs*",
+        "arn:aws:s3:::munaxa-docs*",
+        "arn:aws:rds:eu-central-1:229251310592:snapshot:munaxa-docs*",
+        "arn:aws:rds:eu-central-1:229251310592:db:munaxa-docs*",
+        "arn:aws:logs:eu-central-1:229251310592:log-group:*munaxa-docs*",
+        "arn:aws:kms:eu-central-1:229251310592:alias/munaxa-docs*",
+        "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/*",
+        "arn:aws:iam::229251310592:role/munaxa-docs/*",
+        "arn:aws:iam::229251310592:policy/munaxa-shared/*",
+        "arn:aws:iam::229251310592:policy/munaxa-docs/*",
+        "arn:aws:iam::229251310592:oidc-provider/*",
+        "arn:aws:ecs:eu-central-1:229251310592:cluster/munaxa-docs*",
+        "arn:aws:cloudtrail:*:229251310592:trail/munaxa-docs*"
+      ],
+      "Sid": "NeverMunaxaDocsOrBootstrap"
+    },
+    {
+      "Effect": "Deny",
+      "NotAction": [
+        "s3:PutObject",
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "kms:GenerateDataKey",
+        "kms:Encrypt",
+        "kms:DescribeKey",
+        "kms:Decrypt"
+      ],
+      "Resource": [
+        "arn:aws:s3:::munaxa-shared-tfstate-229251310592/*",
+        "arn:aws:s3:::munaxa-shared-tfstate-229251310592",
+        "arn:aws:kms:eu-central-1:229251310592:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5"
+      ],
+      "Sid": "ProtectStateKeyAndBucket"
+    },
+    {
+      "Action": ["kms:UpdateAlias", "kms:DeleteAlias", "kms:CreateAlias"],
+      "Effect": "Deny",
+      "Resource": [
+        "arn:aws:kms:eu-central-1:229251310592:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5",
+        "arn:aws:kms:eu-central-1:229251310592:alias/munaxa-shared-*"
+      ],
+      "Sid": "NeverSharedAliases"
+    },
+    {
+      "Action": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Project": "MunaxaDocs"
+        }
+      },
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NeverMunaxaDocsProductionByTag"
+    },
+    {
+      "Action": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "MunaxaDocs"
+        }
+      },
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NeverTagAsMunaxaDocs"
+    },
+    {
+      "Action": "*",
+      "Condition": {
+        "Null": {
+          "aws:ResourceTag/Project": "false"
+        },
+        "StringNotEquals": {
+          "aws:ResourceTag/Project": "munaxa"
+        }
+      },
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NeverAnotherProjectByTag"
+    },
+    {
+      "Action": "*",
+      "Condition": {
+        "Null": {
+          "aws:RequestTag/Project": "false"
+        },
+        "StringNotEquals": {
+          "aws:RequestTag/Project": "munaxa"
+        }
+      },
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NeverTagForAnotherProject"
+    },
+    {
+      "Action": [
+        "servicediscovery:CreateService",
+        "servicediscovery:CreatePrivateDnsNamespace",
+        "rds:CreateDBSubnetGroup",
+        "rds:CreateDBParameterGroup",
+        "rds:CreateDBInstance",
+        "logs:CreateLogGroup",
+        "kms:CreateKey",
+        "elasticloadbalancing:CreateTargetGroup",
+        "elasticloadbalancing:CreateRule",
+        "elasticloadbalancing:CreateLoadBalancer",
+        "elasticloadbalancing:CreateListener",
+        "ecs:RegisterTaskDefinition",
+        "ecs:CreateService",
+        "ecs:CreateCluster",
+        "ec2:CreateVpcEndpoint",
+        "ec2:CreateVpc",
+        "ec2:CreateSubnet",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateRouteTable",
+        "ec2:CreateInternetGateway",
+        "acm:RequestCertificate"
+      ],
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestTag/Project": "munaxa"
+        }
+      },
+      "Effect": "Deny",
+      "NotResource": [
+        "arn:aws:ec2:eu-central-1:229251310592:vpc/*",
+        "arn:aws:ec2:eu-central-1:229251310592:subnet/*",
+        "arn:aws:ec2:eu-central-1:229251310592:security-group/*",
+        "arn:aws:ec2:eu-central-1:229251310592:route-table/*"
+      ],
+      "Sid": "CreatesCarryProjectTag"
+    },
+    {
+      "Action": [
+        "servicediscovery:CreateService",
+        "servicediscovery:CreatePrivateDnsNamespace",
+        "rds:CreateDBSubnetGroup",
+        "rds:CreateDBParameterGroup",
+        "rds:CreateDBInstance",
+        "logs:CreateLogGroup",
+        "kms:CreateKey",
+        "elasticloadbalancing:CreateTargetGroup",
+        "elasticloadbalancing:CreateRule",
+        "elasticloadbalancing:CreateLoadBalancer",
+        "elasticloadbalancing:CreateListener",
+        "ecs:RegisterTaskDefinition",
+        "ecs:CreateService",
+        "ecs:CreateCluster",
+        "ec2:CreateVpcEndpoint",
+        "ec2:CreateVpc",
+        "ec2:CreateSubnet",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateRouteTable",
+        "ec2:CreateInternetGateway",
+        "acm:RequestCertificate"
+      ],
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestTag/Environment": "nonprod"
+        }
+      },
+      "Effect": "Deny",
+      "NotResource": [
+        "arn:aws:ec2:eu-central-1:229251310592:vpc/*",
+        "arn:aws:ec2:eu-central-1:229251310592:subnet/*",
+        "arn:aws:ec2:eu-central-1:229251310592:security-group/*",
+        "arn:aws:ec2:eu-central-1:229251310592:route-table/*"
+      ],
+      "Sid": "CreatesCarryEnvironmentTag"
+    },
+    {
+      "Action": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Environment": "prod"
+        }
+      },
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NeverTheOtherEnvironmentByTag"
+    },
+    {
+      "Action": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "prod"
+        }
+      },
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NeverCreateForTheOtherEnvironment"
+    },
+    {
+      "Action": "*",
+      "Effect": "Deny",
+      "Resource": [
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-prod/*",
+        "arn:aws:s3:::munaxa-shared-tfstate-229251310592/prod/*",
+        "arn:aws:s3:::munaxa-prod-*",
+        "arn:aws:rds:eu-central-1:229251310592:db:munaxa-prod-*",
+        "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/prod/*",
+        "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-prod-*",
+        "arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary-prod",
+        "arn:aws:ecs:eu-central-1:229251310592:cluster/munaxa-prod*"
+      ],
+      "Sid": "NeverTheOtherEnvironmentByName"
+    },
+    {
+      "Effect": "Deny",
+      "NotAction": "ec2:Describe*",
+      "Resource": "arn:aws:ec2:eu-central-1:229251310592:vpc/vpc-0ed30515ad9631ea6",
+      "Sid": "NeverProtectedVpcs"
+    },
+    {
+      "Condition": {
+        "ArnEquals": {
+          "ec2:Vpc": "arn:aws:ec2:eu-central-1:229251310592:vpc/vpc-0ed30515ad9631ea6"
+        }
+      },
+      "Effect": "Deny",
+      "NotAction": "ec2:Describe*",
+      "Resource": "*",
+      "Sid": "NeverInProtectedVpcs"
+    },
+    {
+      "Action": [
+        "route53:DisassociateVPCFromHostedZone",
+        "route53:CreateHostedZone",
+        "route53:AssociateVPCWithHostedZone"
+      ],
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "route53:VPCs": "vpc-0ed30515ad9631ea6"
+        }
+      },
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NeverProtectedVpcsInZones"
+    },
+    {
+      "Action": [
+        "securityhub:*",
+        "secretsmanager:PutResourcePolicy",
+        "s3:PutAccountPublicAccessBlock",
+        "rds:ModifyDBSnapshotAttribute",
+        "rds:ModifyDBClusterSnapshotAttribute",
+        "rds:ModifyCertificates",
+        "logs:PutAccountPolicy",
+        "logs:DeleteAccountPolicy",
+        "kms:CancelKeyDeletion",
+        "iam:DeleteRolePermissionsBoundary",
+        "guardduty:*",
+        "ecs:PutAccountSetting*",
+        "ecs:DeleteAccountSetting",
+        "ec2:ModifySnapshotAttribute",
+        "ec2:ModifyInstanceMetadataDefaults",
+        "ec2:ModifyImageAttribute",
+        "ec2:*Vpn*",
+        "ec2:*VpcPeering*",
+        "ec2:*TransitGateway*",
+        "ec2:*SerialConsole*",
+        "ec2:*Ipam*",
+        "ec2:*EbsDefaultKmsKeyId",
+        "ec2:*ByDefault",
+        "ec2:*BlockPublicAccess*",
+        "config:*",
+        "cloudtrail:*",
+        "ce:*",
+        "budgets:*",
+        "access-analyzer:*"
+      ],
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NeverAccountSettingsOrSharing"
+    },
+    {
+      "Action": [
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:BatchGetSecretValue",
+        "organizations:*",
+        "kms:Sign",
+        "iam:CreateUser",
+        "iam:CreateLoginProfile",
+        "iam:CreateAccessKey",
+        "account:*"
+      ],
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "NoSecretValuesNoUsersNoKeys"
+    },
+    {
+      "Action": [
+        "elasticloadbalancing:*",
+        "ecs:UpdateService",
+        "ecs:UntagResource",
+        "ecs:TagResource",
+        "ecs:DeleteService",
+        "ecs:CreateService"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:elasticloadbalancing:eu-central-1:229251310592:targetgroup/munaxa-nonprod-*",
+        "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/*",
+        "arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener/app/munaxa-nonprod/*",
+        "arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener-rule/app/munaxa-nonprod/*",
+        "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/*"
+      ],
+      "Sid": "SessionEdgeAndServices"
+    },
+    {
+      "Action": [
+        "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
+        "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:ModifySecurityGroupRules",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:AuthorizeSecurityGroupEgress"
+      ],
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "SessionNeverSecurityGroupRules"
+    },
+    {
+      "Action": [
+        "elasticloadbalancing:SetSubnets",
+        "elasticloadbalancing:SetSecurityGroups",
+        "elasticloadbalancing:SetIpAddressType",
+        "ec2:ModifyNetworkInterfaceAttribute",
+        "ec2:DeleteSecurityGroup",
+        "ec2:CreateSecurityGroup"
+      ],
+      "Effect": "Deny",
+      "Resource": "*",
+      "Sid": "SessionNeverNetworkPlacement"
+    },
+    {
+      "Action": ["ec2:DeleteTags", "ec2:CreateTags"],
+      "Effect": "Deny",
+      "Resource": [
+        "arn:aws:ec2:eu-central-1:229251310592:security-group/*",
+        "arn:aws:ec2:eu-central-1:229251310592:security-group-rule/*"
+      ],
+      "Sid": "SessionNeverGroupTags"
+    },
+    {
+      "Action": [
+        "servicediscovery:UpdateService",
+        "servicediscovery:DeleteService",
+        "servicediscovery:CreateService"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Environment": "nonprod",
+          "aws:ResourceTag/Project": "munaxa"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "SessionCloudMapServices"
+    },
+    {
+      "Action": "servicediscovery:CreateService",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "nonprod",
+          "aws:RequestTag/Project": "munaxa"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:servicediscovery:eu-central-1:229251310592:service/*",
+      "Sid": "SessionDiscoveryWithOwnTags"
+    },
+    {
+      "Action": "servicediscovery:TagResource",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "nonprod",
+          "aws:RequestTag/Project": "munaxa"
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "SessionDiscoveryTagOnCreate"
+    },
+    {
+      "Action": "iam:PassRole",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": ["ecs-tasks.amazonaws.com", "ecs.amazonaws.com"]
+        }
+      },
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-*",
+      "Sid": "SessionPassOwnRoles"
+    },
+    {
+      "Action": ["rds:StopDBInstance", "rds:StartDBInstance"],
+      "Effect": "Allow",
+      "Resource": "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg",
+      "Sid": "SessionDatabaseStartStop"
+    }
+  ]
+}
