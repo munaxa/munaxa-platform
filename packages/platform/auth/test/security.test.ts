@@ -98,6 +98,56 @@ describe('token forgery', () => {
     expect(() => tokens.verifyAccessToken(`${header}.${payload}.anything`)).toThrow();
   });
 
+  describe('claims a trusted key signed but that are malformed', () => {
+    const sign = (
+      signer: { sign(payload: string): { value: string } },
+      claims: Record<string, unknown>,
+    ): string => {
+      const header = toBase64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT', kid: 'k1' }));
+      const payload = toBase64Url(JSON.stringify(claims));
+      return `${header}.${payload}.${signer.sign(`${header}.${payload}`).value}`;
+    };
+    const base = {
+      sub: USER,
+      tid: ROOT_TENANT_ID,
+      iss: 'munaxa-test',
+      aud: ['munaxa-api'],
+      iat: Math.floor(START / 1_000),
+      exp: Math.floor(START / 1_000) + 900,
+      jti: 'jti_test',
+      ver: 1,
+    };
+
+    it('accepts the well-formed baseline', async () => {
+      const { tokens, signer } = await fixture();
+      expect(tokens.verifyAccessToken(sign(signer, base)).sub).toBe(USER);
+    });
+
+    it('rejects a token with no exp, which would otherwise never expire', async () => {
+      const { tokens, signer } = await fixture();
+      const { exp: _omitted, ...withoutExp } = base;
+      expect(() => tokens.verifyAccessToken(sign(signer, withoutExp))).toThrow(/expiry/);
+    });
+
+    it('rejects a non-numeric exp or iat', async () => {
+      const { tokens, signer } = await fixture();
+      expect(() => tokens.verifyAccessToken(sign(signer, { ...base, exp: 'never' }))).toThrow(
+        /expiry/,
+      );
+      expect(() => tokens.verifyAccessToken(sign(signer, { ...base, iat: 'now' }))).toThrow(
+        /issue time/,
+      );
+    });
+
+    it('matches a string aud exactly, never as a substring', async () => {
+      const { tokens, signer } = await fixture();
+      expect(tokens.verifyAccessToken(sign(signer, { ...base, aud: 'munaxa-api' })).sub).toBe(USER);
+      expect(() =>
+        tokens.verifyAccessToken(sign(signer, { ...base, aud: 'munaxa-api-admin' })),
+      ).toThrow(/audience/);
+    });
+  });
+
   it('rejects a token signed by a different key', async () => {
     const a = await fixture();
     const b = await fixture();
