@@ -58,17 +58,28 @@ describe('write cost', () => {
   });
 
   it('is not delayed by a slow sink beyond that sink’s own latency', async () => {
-    const slow = { write: async () => new Promise<void>((resolve) => setTimeout(resolve, 5)) };
+    // Measured by overlap, not wall-clock time: a timing bound (three 5 ms sinks < 14 ms) failed
+    // on loaded CI runners. If the sinks run concurrently all three are in flight at once; if they
+    // ran one after another the peak would be 1.
+    let inFlight = 0;
+    let peak = 0;
+    const slow = {
+      write: async () => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        await new Promise<void>((resolve) => setTimeout(resolve, 5));
+        inFlight--;
+      },
+    };
     const audit = new AuditService({
       repository: new MemoryAuditRepository(),
       sinks: [slow, slow, slow],
       clock: new FixedClock(0),
     });
 
-    const start = performance.now();
     await audit.record(context(), { name: 'auth.login.succeeded', outcome: 'success' });
-    // Three 5ms sinks run concurrently, so the write costs ~5ms, not ~15ms.
-    expect(performance.now() - start).toBeLessThan(14);
+    expect(peak).toBe(3);
+    expect(inFlight).toBe(0);
   });
 });
 
