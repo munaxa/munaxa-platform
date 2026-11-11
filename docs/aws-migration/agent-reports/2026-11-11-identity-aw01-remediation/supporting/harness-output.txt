@@ -1,0 +1,12 @@
+PASS  H1 hardened task definition + full bundle: expected starts, got starts
+PASS  H2 hardened, MFA_ENCRYPTION_KEYS missing from bundle: expected refused, got refused (MFA_ENCRYPTION_KEYS, MFA_ENCRYPTION_PRIMARY_KID)
+PASS  H3 hardened, primary kid not in the ring: expected refused, got refused (MFA_ENCRYPTION_PRIMARY_KID)
+PASS  H4 hardened, ring not kid=key: expected refused, got refused (MFA_ENCRYPTION_KEYS)
+PASS  H5 hardened, key not 32 bytes: expected refused, got refused (MFA_ENCRYPTION_KEYS)
+PASS  H6 hardened, MFA key is IDENTITY_SIGNING_SECRET: expected refused, got refused (MFA_ENCRYPTION_KEYS)
+PASS  H7 hardened without IDENTITY_PASSWORD_RESET (default enabled): expected refused, got refused (IDENTITY_PASSWORD_RESET)
+PASS  H8 hardened with IDENTITY_PASSWORD_RESET=enabled: expected refused, got refused (IDENTITY_PASSWORD_RESET)
+PASS  H9 MFA_POLICY=privileged without MFA_PRIVILEGED_ROLES: expected refused, got refused (MFA_PRIVILEGED_ROLES)
+PASS  H10 MFA_POLICY=privileged with role keys: expected starts, got starts
+PASS  L1 AW-01 reproduced: 5277d71 task definition, hardened image: expected refused, got refused (MFA_ENCRYPTION_KEYS, IDENTITY_PASSWORD_RESET)
+11/11 as expected

@@ -1,0 +1,7 @@
+M1 reset enabled -> Failure! 35 passed, 2 failed.
+M2 no MFA key in bundle -> Failure! 29 passed, 1 failed, 7 skipped.
+M3 MFA key always referenced -> Failure! 36 passed, 1 failed.
+M4 kid not passed -> Failure! 35 passed, 2 failed.
+M5 policy hard-coded all -> Failure! 35 passed, 2 failed.
+M6 role validation removed -> Failure! 36 passed, 1 failed.
+M7 key-shaped kid allowed -> Failure! 35 passed, 1 failed, 1 skipped.

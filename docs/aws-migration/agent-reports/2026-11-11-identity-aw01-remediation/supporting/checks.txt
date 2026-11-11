@@ -1,0 +1,11 @@
+fmt OK
+Success! The configuration is valid.
+
+Success! The configuration is valid.
+
+Success! 12 passed, 0 failed.
+Success! 37 passed, 0 failed.
+# pass 72
+# fail 0
+Declaration valid: root stack-nonprod, 22 declared change(s).
+Declaration valid: root stack-prod, 0 declared change(s).
