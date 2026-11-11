@@ -20,9 +20,8 @@ This PR is **the one integration PR**:
    were dropped.
 2. It adds this runbook folder.
 3. It rewrites the README index **once**: one **Latest** row (this runbook), plain rows for #87,
-   #88, #89 and for workstreams 2, 3 and 5 (PR #92, PR #90, PR #91), without re-padding the table.
-   The workstream 1 row is added to this PR when its PR exists, so it appears in the same single
-   index change.
+   #88, #89, for workstreams 2, 3 and 5 (PR #92, PR #90, PR #91), without re-padding the table.
+   and workstream 1 (PR #93), all in the same single index change.
 4. Workstreams 1, 2, 3 and 5 agreed **not** to edit the README.
 5. One file of the #87 content gets a dated banner here, documented below: the operator checklist
    (on `main` since #86). Nothing else in the #87, #88 or #89 files changes.
@@ -55,8 +54,8 @@ allows squash merges only.
 | --- | --- | --- | --- |
 | 1 | PR #91, Option A custody review (workstream 5) | Docs only; cited by the runbook | none (new folder, no README) |
 | 2 | PR #90, independent cleanup design (workstream 3) | Docs only; cited by the runbook | none |
-| 3 | Workstream 1 probe PR | The pin `C` is its squash commit, so it must be on `main` first | none expected (new files) |
-| 4 | PR #92, workstream 2 task definition (disabled by default, no plan change) | Needs nothing from 3 at merge time | none expected |
+| 3 | PR #93, workstream 1 probe | The pin `C` is its squash commit, so it must be on `main` first | #93 and #92 both edit `.github/workflows/aws-terraform.yml`; whichever merges second is updated to drop #93's single-file test step (#92's glob covers it). That update is a documented edit of the second PR's branch |
+| 4 | PR #92, workstream 2 task definition (disabled by default, no plan change) | Needs nothing from 3 at merge time | see row 3 |
 | 5 | **This PR** | Carries #87, #88, #89 and the single README update | none, if 1 to 4 do not touch the README |
 | — | Close #87, #88, #89 as superseded by this PR | Their content is on `main` after 5 | — |
 | 6 | Enable PR (`identity_probe_source` = `C`, `H`; expected changes = 1 create) | Needs `C` from 3 | — |

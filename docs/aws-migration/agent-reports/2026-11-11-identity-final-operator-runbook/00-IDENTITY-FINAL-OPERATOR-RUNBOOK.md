@@ -54,7 +54,7 @@ items in section 2 marked **blocking** are closed.
 
 | # | Item | Owner of the item | Blocking? | State |
 | --- | --- | --- | --- | --- |
-| I-1 | Probe `identity-session-probe.mjs` and its tests (workstream 1) | Claude, then ChatGPT review, then **[OWNER]** merge word | **Yes** | [P] PR pending |
+| I-1 | Probe `identity-session-probe.mjs` and its tests (workstream 1, PR #93, head `7d65fb1`) | Claude, then ChatGPT review, then **[OWNER]** merge word | **Yes** | [P] PR #93 open. Its SHA256 at `bc1d202` is `f7a15787…`; **the session pin is taken from the merged `main` commit, not from this value** |
 | I-2 | Probe task definition `identity-probe.tf` (workstream 2, PR #92, head `4c632ab`), disabled by default | Claude, then review, then **[OWNER]** merge word | **Yes** | [P] PR #92 open; enable-PR drafts in its `supporting/` |
 | I-3 | Enable PR: `identity_probe_source = { commit, sha256 }` in `envs/nonprod.tfvars` and `nonprod.expected-changes.json` = exactly 1 create | Claude, after I-1 is merged | **Yes** | Not started (needs I-1's merge commit) |
 | I-4 | Terraform plan and apply of I-3 (1 create, `aws_ecs_task_definition.identity_probe[0]`) | **[OWNER]** separate authorization; Claude dispatches | **Yes** | Not authorized |
@@ -100,9 +100,9 @@ cannot change at `RunTask` time.
 
 ### 3.3 The loader
 
-The loader is the container command. It is written by workstream 1 (exported from the probe as
-`LOADER_SOURCE`) and baked byte for byte into the task definition by workstream 2 [P]. Its
-contract, which this runbook depends on:
+The loader is the container command, defined in the task definition by workstream 2 (PR #92) [P];
+the probe (workstream 1, PR #93) no longer carries a copy. Its contract, which this runbook depends
+on:
 
 - `node --input-type=module -e <LOADER_SOURCE>` on the Identity API image's Node 22;
 - reads `PROBE_COMMIT` and `PROBE_SHA256` from the task definition's environment;
@@ -119,7 +119,7 @@ contract, which this runbook depends on:
 output in `supporting/data-url-import-check-output.txt`): a `data:` module imported this way can
 import `node:crypto` and `node:https`; a changed byte gives a different hash and is not imported.
 The read-only root filesystem itself was not simulated.
-The real loader and probe are tested in the workstream-1 PR [P].
+The real loader and probe are tested in PRs #92 and #93 [P].
 
 **Pin rules.**
 
