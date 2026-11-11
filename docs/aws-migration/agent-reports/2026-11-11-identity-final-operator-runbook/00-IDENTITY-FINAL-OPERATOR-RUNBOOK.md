@@ -55,7 +55,7 @@ items in section 2 marked **blocking** are closed.
 | # | Item | Owner of the item | Blocking? | State |
 | --- | --- | --- | --- | --- |
 | I-1 | Probe `identity-session-probe.mjs` and its tests (workstream 1) | Claude, then ChatGPT review, then **[OWNER]** merge word | **Yes** | [P] PR pending |
-| I-2 | Probe task definition `identity-probe.tf` (workstream 2), disabled by default | Claude, then review, then **[OWNER]** merge word | **Yes** | [P] PR pending |
+| I-2 | Probe task definition `identity-probe.tf` (workstream 2, PR #92, head `4c632ab`), disabled by default | Claude, then review, then **[OWNER]** merge word | **Yes** | [P] PR #92 open; enable-PR drafts in its `supporting/` |
 | I-3 | Enable PR: `identity_probe_source = { commit, sha256 }` in `envs/nonprod.tfvars` and `nonprod.expected-changes.json` = exactly 1 create | Claude, after I-1 is merged | **Yes** | Not started (needs I-1's merge commit) |
 | I-4 | Terraform plan and apply of I-3 (1 create, `aws_ecs_task_definition.identity_probe[0]`) | **[OWNER]** separate authorization; Claude dispatches | **Yes** | Not authorized |
 | I-5 | Option A connector scripts and their review (workstream 5, PR #91, `supporting/option-a-connector-scripts.DRAFT.py`: C-8, C-8v, C-16, C-24) | Claude, ChatGPT review | **Yes** | [P] draft in PR #91 |
