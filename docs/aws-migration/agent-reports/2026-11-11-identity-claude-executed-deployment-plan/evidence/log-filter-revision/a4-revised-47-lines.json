@@ -1,0 +1,524 @@
+{
+  "called_at_utc": "2026-11-11T09:36:17.908Z",
+  "script": "OLD='?eyJ ?BEGIN ?PRIVATE ?\"password\\\\\":\\\\\"\"'\nNEW='%eyJ|PRIVATE\\\\sKEY|[Pp]assword\\\\x5c?\\\\x22\\\\s*:\\\\s*\\\\x5c?\\\\x22[^\\\\x22\\\\x5c\\\\[]%'\nJ=\"eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw\"\nF=\"FAKE-not-a-password\"\nT=[\n # original 19, same order and text\n (\"SECRET\",\"o01 jwt-json\",'{\"level\":30,\"msg\":\"issued\",\"token\":\"%s\"}'%J),\n (\"SECRET\",\"o02 jwt-bearer\",\"authorization: Bearer %s\"%J),\n (\"SECRET\",\"o03 jwt-bare\",J),\n (\"SECRET\",\"o04 pem-private\",\"-----BEGIN PRIVATE KEY-----\"),\n (\"SECRET\",\"o05 pem-ec\",\"-----BEGIN EC PRIVATE KEY-----\"),\n (\"SECRET\",\"o06 pem-rsa\",\"-----BEGIN RSA PRIVATE KEY-----\"),\n (\"SECRET\",\"o07 password-json\",'{\"level\":30,\"body\":{\"email\":\"x@example.invalid\",\"password\":\"%s\"}}'%F),\n (\"SECRET\",\"o08 password-json-space\",'{\"body\": {\"password\": \"%s\"}}'%F),\n (\"SECRET\",\"o09 jwt-in-url\",\"GET /callback?token=%s 200\"%J),\n (\"CLEAN\",\"o10 request-log\",'{\"level\":30,\"req\":{\"method\":\"POST\",\"url\":\"/auth/login\"},\"res\":{\"statusCode\":200},\"responseTime\":12}'),\n (\"CLEAN\",\"o11 startup\",'{\"level\":30,\"msg\":\"Nest application successfully started\"}'),\n (\"CLEAN\",\"o12 health\",'{\"level\":30,\"req\":{\"method\":\"GET\",\"url\":\"/health\"},\"res\":{\"statusCode\":200}}'),\n (\"CLEAN\",\"o13 redacted-upper\",'{\"level\":30,\"body\":{\"email\":\"[REDACTED]\",\"password\":\"[REDACTED]\"}}'),\n (\"CLEAN\",\"o14 passwordhash-word\",'{\"level\":30,\"msg\":\"passwordHash column migrated\"}'),\n (\"CLEAN\",\"o15 migration\",'All migrations have been successfully applied.'),\n (\"CLEAN\",\"o16 lowercase-words\",'begin transaction; private schema ok'),\n (\"CLEAN\",\"o17 public-key\",'-----BEGIN PUBLIC KEY-----'),\n (\"CLEAN\",\"o18 eye-word\",\"eyeJ test eyj lowercase\"),\n (\"CLEAN\",\"o19 401\",'{\"level\":40,\"msg\":\"Unauthorized\",\"res\":{\"statusCode\":401}}'),\n # new: whitespace variations (secret)\n (\"SECRET\",\"n20 pw-space-after\",'{\"password\": \"%s\"}'%F),\n (\"SECRET\",\"n21 pw-space-before\",'{\"password\" :\"%s\"}'%F),\n (\"SECRET\",\"n22 pw-space-both\",'{\"password\" : \"%s\"}'%F),\n (\"SECRET\",\"n23 pw-tab\",'{\"password\":\\t\"%s\"}'%F),\n (\"SECRET\",\"n24 pw-two-spaces\",'{\"password\":  \"%s\"}'%F),\n (\"SECRET\",\"n25 pw-escaped-json\",'{\"msg\":\"payload {\\\\\"password\\\\\":\\\\\"%s\\\\\"}\"}'%F),\n (\"SECRET\",\"n26 pw-capital-key\",'{\"Password\":\"%s\"}'%F),\n (\"SECRET\",\"n27 pw-nested-key\",'{\"body\":{\"newPassword\":\"%s\"}}'%F),\n (\"SECRET\",\"n28 pw-one-char\",'{\"password\":\"x\"}'),\n # new: redacted values (clean)\n (\"CLEAN\",\"n29 redacted-lower\",'{\"password\":\"[redacted]\"}'),\n (\"CLEAN\",\"n30 redacted-lower-space\",'{\"password\": \"[redacted]\"}'),\n (\"CLEAN\",\"n31 redacted-upper-space\",'{\"password\" : \"[REDACTED]\"}'),\n (\"CLEAN\",\"n32 redacted-nested\",'{\"req\":{\"body\":{\"identifier\":\"[redacted]\",\"password\":\"[redacted]\"}}}'),\n (\"CLEAN\",\"n33 empty-password\",'{\"password\":\"\"}'),\n (\"CLEAN\",\"n34 password-null\",'{\"password\":null}'),\n (\"CLEAN\",\"n35 passwordHash-field\",'{\"passwordHash\":\"[redacted]\"}'),\n (\"CLEAN\",\"n36 password-word-prose\",'password reset is not implemented'),\n # new: PEM headers\n (\"SECRET\",\"n37 pem-openssh\",\"-----BEGIN OPENSSH PRIVATE KEY-----\"),\n (\"SECRET\",\"n38 pem-encrypted\",\"-----BEGIN ENCRYPTED PRIVATE KEY-----\"),\n (\"SECRET\",\"n39 pem-in-json\",'{\"privateKey\":\"-----BEGIN PRIVATE KEY-----\\\\nMIIFAKE\\\\n-----END PRIVATE KEY-----\"}'),\n (\"SECRET\",\"n40 pem-end-line\",\"-----END PRIVATE KEY-----\"),\n (\"CLEAN\",\"n41 pem-public-rsa\",\"-----BEGIN RSA PUBLIC KEY-----\"),\n (\"CLEAN\",\"n42 pem-certificate\",\"-----BEGIN CERTIFICATE-----\"),\n (\"CLEAN\",\"n43 pem-public-end\",\"-----END PUBLIC KEY-----\"),\n (\"CLEAN\",\"n44 private-word\",'{\"msg\":\"Cache-Control: private, no-store\"}'),\n # new: JWT variations\n (\"SECRET\",\"n45 jwt-cookie\",\"set-cookie: munaxa_rt=%s; HttpOnly; Secure\"%J),\n (\"SECRET\",\"n46 jwt-header-only\",'{\"partial\":\"eyJhbGciOiJFUzI1NiJ9\"}'),\n (\"CLEAN\",\"n47 jwks-public\",'{\"keys\":[{\"kty\":\"EC\",\"crv\":\"P-256\",\"kid\":\"test\",\"x\":\"FAKEX\",\"y\":\"FAKEY\"}]}'),\n]\nasync def test(p):\n    r=await call_boto3(service_name=\"logs\",operation_name=\"TestMetricFilter\",region_name=\"eu-central-1\",\n        params={\"filterPattern\":p,\"logEventMessages\":[t[2] for t in T]})\n    return {m[\"eventNumber\"] for m in r.get(\"matches\",[])}\nold,new=await asyncio.gather(test(OLD),test(NEW))\nrows=[]\nfor i,(k,n,_) in enumerate(T,1):\n    rows.append({\"n\":i,\"kind\":k,\"name\":n,\"old\":i in old,\"old_ok\":(i in old)==(k==\"SECRET\"),\"new\":i in new,\"new_ok\":(i in new)==(k==\"SECRET\")})\nresult={\"at\":datetime.datetime.utcnow().isoformat()+\"Z\",\"old_pattern\":OLD,\"new_pattern\":NEW,\"lines\":[t[2] for t in T],\n \"old_wrong\":[r[\"name\"] for r in rows if not r[\"old_ok\"]],\"new_wrong\":[r[\"name\"] for r in rows if not r[\"new_ok\"]],\"rows\":rows}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "at": "2026-11-11T09:36:20.209116Z",
+      "old_pattern": "?eyJ ?BEGIN ?PRIVATE ?\"password\\\":\\\"\"",
+      "new_pattern": "%eyJ|PRIVATE\\sKEY|[Pp]assword\\x5c?\\x22\\s*:\\s*\\x5c?\\x22[^\\x22\\x5c\\[]%",
+      "lines": [
+        "{\"level\":30,\"msg\":\"issued\",\"token\":\"eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw\"}",
+        "authorization: Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw",
+        "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw",
+        "-----BEGIN PRIVATE KEY-----",
+        "-----BEGIN EC PRIVATE KEY-----",
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "{\"level\":30,\"body\":{\"email\":\"x@example.invalid\",\"password\":\"FAKE-not-a-password\"}}",
+        "{\"body\": {\"password\": \"FAKE-not-a-password\"}}",
+        "GET /callback?token=eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw 200",
+        "{\"level\":30,\"req\":{\"method\":\"POST\",\"url\":\"/auth/login\"},\"res\":{\"statusCode\":200},\"responseTime\":12}",
+        "{\"level\":30,\"msg\":\"Nest application successfully started\"}",
+        "{\"level\":30,\"req\":{\"method\":\"GET\",\"url\":\"/health\"},\"res\":{\"statusCode\":200}}",
+        "{\"level\":30,\"body\":{\"email\":\"[REDACTED]\",\"password\":\"[REDACTED]\"}}",
+        "{\"level\":30,\"msg\":\"passwordHash column migrated\"}",
+        "All migrations have been successfully applied.",
+        "begin transaction; private schema ok",
+        "-----BEGIN PUBLIC KEY-----",
+        "eyeJ test eyj lowercase",
+        "{\"level\":40,\"msg\":\"Unauthorized\",\"res\":{\"statusCode\":401}}",
+        "{\"password\": \"FAKE-not-a-password\"}",
+        "{\"password\" :\"FAKE-not-a-password\"}",
+        "{\"password\" : \"FAKE-not-a-password\"}",
+        "{\"password\":\t\"FAKE-not-a-password\"}",
+        "{\"password\":  \"FAKE-not-a-password\"}",
+        "{\"msg\":\"payload {\\\"password\\\":\\\"FAKE-not-a-password\\\"}\"}",
+        "{\"Password\":\"FAKE-not-a-password\"}",
+        "{\"body\":{\"newPassword\":\"FAKE-not-a-password\"}}",
+        "{\"password\":\"x\"}",
+        "{\"password\":\"[redacted]\"}",
+        "{\"password\": \"[redacted]\"}",
+        "{\"password\" : \"[REDACTED]\"}",
+        "{\"req\":{\"body\":{\"identifier\":\"[redacted]\",\"password\":\"[redacted]\"}}}",
+        "{\"password\":\"\"}",
+        "{\"password\":null}",
+        "{\"passwordHash\":\"[redacted]\"}",
+        "password reset is not implemented",
+        "-----BEGIN OPENSSH PRIVATE KEY-----",
+        "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+        "{\"privateKey\":\"-----BEGIN PRIVATE KEY-----\\nMIIFAKE\\n-----END PRIVATE KEY-----\"}",
+        "-----END PRIVATE KEY-----",
+        "-----BEGIN RSA PUBLIC KEY-----",
+        "-----BEGIN CERTIFICATE-----",
+        "-----END PUBLIC KEY-----",
+        "{\"msg\":\"Cache-Control: private, no-store\"}",
+        "set-cookie: munaxa_rt=eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw; HttpOnly; Secure",
+        "{\"partial\":\"eyJhbGciOiJFUzI1NiJ9\"}",
+        "{\"keys\":[{\"kty\":\"EC\",\"crv\":\"P-256\",\"kid\":\"test\",\"x\":\"FAKEX\",\"y\":\"FAKEY\"}]}"
+      ],
+      "old_wrong": [
+        "o08 password-json-space",
+        "o13 redacted-upper",
+        "o17 public-key",
+        "n20 pw-space-after",
+        "n21 pw-space-before",
+        "n22 pw-space-both",
+        "n23 pw-tab",
+        "n24 pw-two-spaces",
+        "n25 pw-escaped-json",
+        "n26 pw-capital-key",
+        "n27 pw-nested-key",
+        "n29 redacted-lower",
+        "n32 redacted-nested",
+        "n33 empty-password",
+        "n41 pem-public-rsa",
+        "n42 pem-certificate"
+      ],
+      "new_wrong": [],
+      "rows": [
+        {
+          "n": 1,
+          "kind": "SECRET",
+          "name": "o01 jwt-json",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 2,
+          "kind": "SECRET",
+          "name": "o02 jwt-bearer",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 3,
+          "kind": "SECRET",
+          "name": "o03 jwt-bare",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 4,
+          "kind": "SECRET",
+          "name": "o04 pem-private",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 5,
+          "kind": "SECRET",
+          "name": "o05 pem-ec",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 6,
+          "kind": "SECRET",
+          "name": "o06 pem-rsa",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 7,
+          "kind": "SECRET",
+          "name": "o07 password-json",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 8,
+          "kind": "SECRET",
+          "name": "o08 password-json-space",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 9,
+          "kind": "SECRET",
+          "name": "o09 jwt-in-url",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 10,
+          "kind": "CLEAN",
+          "name": "o10 request-log",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 11,
+          "kind": "CLEAN",
+          "name": "o11 startup",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 12,
+          "kind": "CLEAN",
+          "name": "o12 health",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 13,
+          "kind": "CLEAN",
+          "name": "o13 redacted-upper",
+          "old": true,
+          "old_ok": false,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 14,
+          "kind": "CLEAN",
+          "name": "o14 passwordhash-word",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 15,
+          "kind": "CLEAN",
+          "name": "o15 migration",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 16,
+          "kind": "CLEAN",
+          "name": "o16 lowercase-words",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 17,
+          "kind": "CLEAN",
+          "name": "o17 public-key",
+          "old": true,
+          "old_ok": false,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 18,
+          "kind": "CLEAN",
+          "name": "o18 eye-word",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 19,
+          "kind": "CLEAN",
+          "name": "o19 401",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 20,
+          "kind": "SECRET",
+          "name": "n20 pw-space-after",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 21,
+          "kind": "SECRET",
+          "name": "n21 pw-space-before",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 22,
+          "kind": "SECRET",
+          "name": "n22 pw-space-both",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 23,
+          "kind": "SECRET",
+          "name": "n23 pw-tab",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 24,
+          "kind": "SECRET",
+          "name": "n24 pw-two-spaces",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 25,
+          "kind": "SECRET",
+          "name": "n25 pw-escaped-json",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 26,
+          "kind": "SECRET",
+          "name": "n26 pw-capital-key",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 27,
+          "kind": "SECRET",
+          "name": "n27 pw-nested-key",
+          "old": false,
+          "old_ok": false,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 28,
+          "kind": "SECRET",
+          "name": "n28 pw-one-char",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 29,
+          "kind": "CLEAN",
+          "name": "n29 redacted-lower",
+          "old": true,
+          "old_ok": false,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 30,
+          "kind": "CLEAN",
+          "name": "n30 redacted-lower-space",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 31,
+          "kind": "CLEAN",
+          "name": "n31 redacted-upper-space",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 32,
+          "kind": "CLEAN",
+          "name": "n32 redacted-nested",
+          "old": true,
+          "old_ok": false,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 33,
+          "kind": "CLEAN",
+          "name": "n33 empty-password",
+          "old": true,
+          "old_ok": false,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 34,
+          "kind": "CLEAN",
+          "name": "n34 password-null",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 35,
+          "kind": "CLEAN",
+          "name": "n35 passwordHash-field",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 36,
+          "kind": "CLEAN",
+          "name": "n36 password-word-prose",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 37,
+          "kind": "SECRET",
+          "name": "n37 pem-openssh",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 38,
+          "kind": "SECRET",
+          "name": "n38 pem-encrypted",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 39,
+          "kind": "SECRET",
+          "name": "n39 pem-in-json",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 40,
+          "kind": "SECRET",
+          "name": "n40 pem-end-line",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 41,
+          "kind": "CLEAN",
+          "name": "n41 pem-public-rsa",
+          "old": true,
+          "old_ok": false,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 42,
+          "kind": "CLEAN",
+          "name": "n42 pem-certificate",
+          "old": true,
+          "old_ok": false,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 43,
+          "kind": "CLEAN",
+          "name": "n43 pem-public-end",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 44,
+          "kind": "CLEAN",
+          "name": "n44 private-word",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        },
+        {
+          "n": 45,
+          "kind": "SECRET",
+          "name": "n45 jwt-cookie",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 46,
+          "kind": "SECRET",
+          "name": "n46 jwt-header-only",
+          "old": true,
+          "old_ok": true,
+          "new": true,
+          "new_ok": true
+        },
+        {
+          "n": 47,
+          "kind": "CLEAN",
+          "name": "n47 jwks-public",
+          "old": false,
+          "old_ok": true,
+          "new": false,
+          "new_ok": true
+        }
+      ]
+    },
+    "api_calls": [
+      {
+        "service": "logs",
+        "operation": "TestMetricFilter",
+        "status": "success",
+        "n_items": {
+          "matches": 22
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "TestMetricFilter",
+        "status": "success",
+        "n_items": {
+          "matches": 24
+        }
+      }
+    ]
+  }
+}

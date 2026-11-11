@@ -36,6 +36,7 @@ Labels:
   - **Password reset:** a token store exists, but no HTTP route does.
 
   Both are recorded as limitations, not as tests (section 8.2).
+
 - One logging observation: bootstrap step 13 writes the operator's email address to the
   `/munaxa/nonprod/ops` log group, which has 14-day retention. That is not a secret, but it is
   personal data (section 8.3).
@@ -47,25 +48,25 @@ judgement on the procedure's quality and completeness, not authorization to depl
 
 ### 2.1 Repository state [V-gh] [V-src]
 
-| Check | Result |
-| --- | --- |
-| `main` head | `55b5449`, "final Identity non-production deployment-readiness review (#85)" |
-| PR #85 | **Merged**, squash commit `55b5449`, 11 Nov 08:07 UTC |
-| PR #84 | Merged, `7cd5e4f` |
-| Open PRs on `munaxa-platform` | None |
+| Check                                                  | Result                                                                                                                 |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `main` head                                            | `55b5449`, "final Identity non-production deployment-readiness review (#85)"                                           |
+| PR #85                                                 | **Merged**, squash commit `55b5449`, 11 Nov 08:07 UTC                                                                  |
+| PR #84                                                 | Merged, `7cd5e4f`                                                                                                      |
+| Open PRs on `munaxa-platform`                          | None                                                                                                                   |
 | Commits since the readiness review's basis (`d9ecb2f`) | `d95ee7b` (#82), `f594ab8` (#83), `7cd5e4f` (#84), `55b5449` (#85): all under `docs/aws-migration/agent-reports/` only |
-| `infra/` and `.github/` | No change since `67904bc` (Config A1 inputs, applied 10 Nov) |
-| `preflight-readonly.sh` SHA256 | `21ae3205aa867df610bb27ee59f08325bf1adca1e8dabef5f147b8c21c159f7c` (expected) |
-| `verify-identity-jwt.mjs` SHA256 | `bf5e88f2a933439fe8ced20269f26934cbeaa7a614b46637f6101020e63db9cf` (expected) |
-| `cloudtrail-denials.py` SHA256 | `0669df65de48088855ac71b10024496f6fe9e555cc79d01262890731be1b7589` (expected) |
-| Identity `main` | `5277d71`, the image build commit (no later Identity change) |
+| `infra/` and `.github/`                                | No change since `67904bc` (Config A1 inputs, applied 10 Nov)                                                           |
+| `preflight-readonly.sh` SHA256                         | `21ae3205aa867df610bb27ee59f08325bf1adca1e8dabef5f147b8c21c159f7c` (expected)                                          |
+| `verify-identity-jwt.mjs` SHA256                       | `bf5e88f2a933439fe8ced20269f26934cbeaa7a614b46637f6101020e63db9cf` (expected)                                          |
+| `cloudtrail-denials.py` SHA256                         | `0669df65de48088855ac71b10024496f6fe9e555cc79d01262890731be1b7589` (expected)                                          |
+| Identity `main`                                        | `5277d71`, the image build commit (no later Identity change)                                                           |
 
 ### 2.2 Workflow runs [V-gh]
 
-| Workflow | Latest runs | Effect on readiness |
-| --- | --- | --- |
-| AWS Testing session (`aws-session.yml`) | 19 runs in total. Latest `42928482147`, 11 Nov 00:04 UTC, `schedule` (`down`), success. **`up` has never run** | None. Tonight's 19:17 UTC scheduled `down` has not run yet |
-| AWS Terraform (`aws-terraform.yml`) | Runs 94 to 98 (06:46 to 07:52 UTC) are `pull_request` runs on docs PRs: mocked tests only, Plan and Apply skipped | None: no AWS credentials, no state access |
+| Workflow                                | Latest runs                                                                                                       | Effect on readiness                                        |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| AWS Testing session (`aws-session.yml`) | 19 runs in total. Latest `42928482147`, 11 Nov 00:04 UTC, `schedule` (`down`), success. **`up` has never run**    | None. Tonight's 19:17 UTC scheduled `down` has not run yet |
+| AWS Terraform (`aws-terraform.yml`)     | Runs 94 to 98 (06:46 to 07:52 UTC) are `pull_request` runs on docs PRs: mocked tests only, Plan and Apply skipped | None: no AWS credentials, no state access                  |
 
 No AWS-credentialed run has happened since the 07:01 UTC preflight, so its evidence is still
 current for a session **today**. It must be re-run (section 3, A-3) if the session is on another
@@ -73,17 +74,17 @@ day, or if any AWS-credentialed workflow runs or any `infra/` PR merges first.
 
 ### 2.3 Readiness distinctions carried forward unchanged
 
-| Item | Status | Source |
-| --- | --- | --- |
-| P-12 raw result | **FAIL** (`OVERALL: FAIL (1 check(s) failed)`, exit 1) | [R] 05:43 raw output; [O] 07:01 |
-| P-12 investigation | **RESOLVED — EXPECTED BEHAVIOUR** (10 implicit `s3:ListTagsForResource` denials, provider 6.67.0 fallback; accepted D-1) | [R] |
-| Other preflight checks | P-1 to P-11b and P-13 PASS | [R] 05:43; [O] 07:01 |
-| G-4 environment `aws-nonprod-session` | **VERIFIED on owner evidence** (no reviewers, no timer, `main` only, admin bypass enabled, no environment secrets, both variables correct) | [O] |
-| SC-1 installed GitHub Apps | **NOT VERIFIED, by owner choice.** Not inspected here | — |
-| Identity used for the preflight | Root, read-only, `ALLOW_ROOT_READONLY=yes` | [R] |
-| Effective session-deployer permissions | **Not exercised** (`up` never ran; P-11b compares documents only) | [R] |
-| Secret version ids, signing key pair, bootstrap partial ARN | **Session-time verification conditions** (steps 8, 10, 11, 13, 19) | [R] |
-| Raw 07:01 preflight output | **Not in the repository** (only `preflight-20261111T0543Z.txt` is). Not in the project uploads either. Not recreated here. L-1 stays open | [V-gh] |
+| Item                                                        | Status                                                                                                                                     | Source                          |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| P-12 raw result                                             | **FAIL** (`OVERALL: FAIL (1 check(s) failed)`, exit 1)                                                                                     | [R] 05:43 raw output; [O] 07:01 |
+| P-12 investigation                                          | **RESOLVED — EXPECTED BEHAVIOUR** (10 implicit `s3:ListTagsForResource` denials, provider 6.67.0 fallback; accepted D-1)                   | [R]                             |
+| Other preflight checks                                      | P-1 to P-11b and P-13 PASS                                                                                                                 | [R] 05:43; [O] 07:01            |
+| G-4 environment `aws-nonprod-session`                       | **VERIFIED on owner evidence** (no reviewers, no timer, `main` only, admin bypass enabled, no environment secrets, both variables correct) | [O]                             |
+| SC-1 installed GitHub Apps                                  | **NOT VERIFIED, by owner choice.** Not inspected here                                                                                      | —                               |
+| Identity used for the preflight                             | Root, read-only, `ALLOW_ROOT_READONLY=yes`                                                                                                 | [R]                             |
+| Effective session-deployer permissions                      | **Not exercised** (`up` never ran; P-11b compares documents only)                                                                          | [R]                             |
+| Secret version ids, signing key pair, bootstrap partial ARN | **Session-time verification conditions** (steps 8, 10, 11, 13, 19)                                                                         | [R]                             |
+| Raw 07:01 preflight output                                  | **Not in the repository** (only `preflight-20261111T0543Z.txt` is). Not in the project uploads either. Not recreated here. L-1 stays open  | [V-gh]                          |
 
 If the raw 07:01 file is wanted as repository evidence, the owner should add it, for example as
 `2026-11-11-identity-final-deployment-readiness-review/evidence/preflight-20261111T0701Z.txt`.
@@ -92,19 +93,19 @@ If the raw 07:01 file is wanted as repository evidence, the owner should add it,
 
 Every item must be true before step 8. Each one is a hard stop if it is not.
 
-| # | Precondition | How to confirm | Status now |
-| --- | --- | --- | --- |
-| A-1 | **Written owner authorization** for the first Identity session. It names the date and start time and accepts the corrected readings of steps 8 and 17 (F-1, F-2), the 3-hour hard stop and the cost ceiling | Owner message in the project | **Not given** |
-| A-2 | **Date and start time.** Start no later than **15:30 UTC**. All checks done and `down` dispatched by **18:30 UTC**, ahead of the 19:17 UTC scheduled `down` and the 21:00 UTC backstop | Owner names it in A-1 | Open |
-| A-3 | **Preflight freshness.** The 07:01 UTC run is valid for a session today, if nothing in L-6 has happened since. Otherwise re-run it with readiness-status §5 (SHA-gated download; mode B; root with `ALLOW_ROOT_READONLY=yes`). The expected raw result is P-12 FAIL, with only S-1 to S-8 denials, and every other check PASS | Re-check G-2 below; re-run if needed | Current for today [V-gh] |
-| A-4 | **GitHub G-1 to G-5** on the session day: `main` head `55b5449` or a later docs-only commit; no AWS Terraform run waiting or in progress; latest AWS Testing session run green; G-4 unchanged; no `infra/` PR pending | Owner, GitHub UI | PASS at 08:30 UTC [V-gh], except G-4 [O] |
-| A-5 | **Workflow and branch:** `.github/workflows/aws-session.yml` ("AWS Testing session"), branch **`main`** | Both jobs require `github.ref == 'refs/heads/main'` [V-src] | — |
-| A-6 | **Workflow inputs:** exactly one input, `session` (choice `up` or `down`). `up` for step 8, `down` for step 22. Nothing else | `aws-session.yml` lines 32 to 42 [V-src] | — |
-| A-7 | **Account and region:** `229251310592`, `eu-central-1`. The workflow pins both (`allowed-account-ids`, `AWS_REGION`). CloudShell is checked by the setup block | [V-src] | — |
-| A-8 | **Cost ceiling:** about **US$0.20** expected for 2 hours; **US$0.35** at the 3-hour hard stop (section 9) | Owner accepts in A-1 | — |
-| A-9 | **Three-hour hard limit** from the `up` dispatch time, whatever the state | Owner records the dispatch time | — |
-| A-10 | **Owner prerequisites at hand:** CloudShell in `eu-central-1` as root (ACCESS-POLICY); the Cloudflare dashboard for zone `munaxa.com`; the password manager, ready to create the "Munaxa Testing Identity operator" entry (a dedicated Testing address and a 32-character password) | Owner | — |
-| A-11 | **SC-1** stays unverified by owner choice. Recorded, not inspected | — | Accepted limitation |
+| #    | Precondition                                                                                                                                                                                                                                                                                                                  | How to confirm                                              | Status now                               |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------- |
+| A-1  | **Written owner authorization** for the first Identity session. It names the date and start time and accepts the corrected readings of steps 8 and 17 (F-1, F-2), the 3-hour hard stop and the cost ceiling                                                                                                                   | Owner message in the project                                | **Not given**                            |
+| A-2  | **Date and start time.** Start no later than **15:30 UTC**. All checks done and `down` dispatched by **18:30 UTC**, ahead of the 19:17 UTC scheduled `down` and the 21:00 UTC backstop                                                                                                                                        | Owner names it in A-1                                       | Open                                     |
+| A-3  | **Preflight freshness.** The 07:01 UTC run is valid for a session today, if nothing in L-6 has happened since. Otherwise re-run it with readiness-status §5 (SHA-gated download; mode B; root with `ALLOW_ROOT_READONLY=yes`). The expected raw result is P-12 FAIL, with only S-1 to S-8 denials, and every other check PASS | Re-check G-2 below; re-run if needed                        | Current for today [V-gh]                 |
+| A-4  | **GitHub G-1 to G-5** on the session day: `main` head `55b5449` or a later docs-only commit; no AWS Terraform run waiting or in progress; latest AWS Testing session run green; G-4 unchanged; no `infra/` PR pending                                                                                                         | Owner, GitHub UI                                            | PASS at 08:30 UTC [V-gh], except G-4 [O] |
+| A-5  | **Workflow and branch:** `.github/workflows/aws-session.yml` ("AWS Testing session"), branch **`main`**                                                                                                                                                                                                                       | Both jobs require `github.ref == 'refs/heads/main'` [V-src] | —                                        |
+| A-6  | **Workflow inputs:** exactly one input, `session` (choice `up` or `down`). `up` for step 8, `down` for step 22. Nothing else                                                                                                                                                                                                  | `aws-session.yml` lines 32 to 42 [V-src]                    | —                                        |
+| A-7  | **Account and region:** `229251310592`, `eu-central-1`. The workflow pins both (`allowed-account-ids`, `AWS_REGION`). CloudShell is checked by the setup block                                                                                                                                                                | [V-src]                                                     | —                                        |
+| A-8  | **Cost ceiling:** about **US$0.20** expected for 2 hours; **US$0.35** at the 3-hour hard stop (section 9)                                                                                                                                                                                                                     | Owner accepts in A-1                                        | —                                        |
+| A-9  | **Three-hour hard limit** from the `up` dispatch time, whatever the state                                                                                                                                                                                                                                                     | Owner records the dispatch time                             | —                                        |
+| A-10 | **Owner prerequisites at hand:** CloudShell in `eu-central-1` as root (ACCESS-POLICY); the Cloudflare dashboard for zone `munaxa.com`; the password manager, ready to create the "Munaxa Testing Identity operator" entry (a dedicated Testing address and a 32-character password)                                           | Owner                                                       | —                                        |
+| A-11 | **SC-1** stays unverified by owner choice. Recorded, not inspected                                                                                                                                                                                                                                                            | —                                                           | Accepted limitation                      |
 
 ## 4. Exact sequential operator procedure
 
@@ -123,25 +124,25 @@ Order: A-1 to A-11 → step 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 �
 Cost risk is the extra cost if the step goes wrong, on top of the running session (about
 US$0.10 an hour).
 
-| Step | Action (operator) | Expected result | Evidence to retain | Failure condition (stop) | Recovery | Cost risk |
-| --- | --- | --- | --- | --- | --- | --- |
-| 8 | Dispatch `aws-session.yml`, `main`, `session=up` (part B) | Run green. Summary lists the 11 session creates only. DB `available`. ALB `active`, `internet-facing`, listeners 80/443. Service `identity` `ACTIVE`, desired 1. First tasks get past secret injection and Valkey becomes HEALTHY; then Identity exits with a **database** error (expected, F-1) | Run id and URL; summary; CloudShell outputs; dispatch UTC time | Plan check refuses; any `AccessDenied`; `CannotPullContainerError`; `ResourceInitializationError`; Valkey unhealthy; Identity exits with an **environment/configuration** error; DB not `available`; job timeout (50 min) | A failed or cancelled `up` stops the DB by itself. Then dispatch `down` to remove anything created. For `AccessDenied`: decode (owner, root), compare with `iam_session.tf`, report. **No IAM change** | ALB about US$0.04/h until `down` |
-| 9 | Cloudflare: one CNAME `id.test` → the ALB DNS name, **DNS only** | `getent hosts id.test.munaxa.com` resolves to the ALB's addresses | ALB DNS name; screenshot of the record (proxy grey) | Record proxied; resolves elsewhere | Fix the record; no AWS change | None |
-| 10 | `run_one munaxa-nonprod-db-admin:1 $SG_DBADMIN` | Exit 0. Log: `db-bootstrap: identity: database identity, roles identity_owner and identity_app are in place.` (control, work, school: "no bundle values, skipped.") | Task id, exit code, that log line | Non-zero exit; `TaskFailedToStart`; `ResourceInitializationError`; `... is missing or malformed; nothing was changed for identity.` | `down`. Bundle content is fixed by owner guide A/B and a version-id PR | Cents |
-| 11 | `run_one munaxa-nonprod-identity-migrate:1 $SG_MIGRATE` | Exit 0. `All migrations have been successfully applied.` | Task id, exit code, the final Prisma line | Non-zero; `P1000` or `P1001` | `down`. No fix-forward in the session; a reviewed procedure later | Cents |
-| 12 | Owner guide C: create `munaxa-nonprod/identity-bootstrap` (keys `IDENTITY_OWNER_EMAIL`, `IDENTITY_OWNER_PASSWORD`; key `alias/munaxa-nonprod-data`; no rotation) | `describe-secret` shows the name, the data key and 1 version | That metadata output only | Wrong name or key | Delete and recreate it correctly | < US$0.01 |
-| 13 | `run_one munaxa-nonprod-identity-bootstrap:1 $SG_DBADMIN` (default command) | Exit 0. `Created <address> in organisation munaxa-group.`, then `organisation <uuid>` and `sub <uuid>` | Task id; organisation id and `sub` (public ids). **Not the address** | Non-zero; `ResourceInitializationError` naming the bootstrap secret (partial ARN, R-6); password-policy refusal | Step 16 first, then `down`. Partial ARN failure: fix by PR to the full ARN; do not improvise. Password policy: regenerate the password, update the secret, re-run 13 | Cents |
-| 14 | Same, with the `seed-control-roles.mjs` command override | Exit 0. One line per role, then `OPERATOR_ORGANISATION_ID <uuid>`, equal to step 13's organisation | Task id; `OPERATOR_ORGANISATION_ID` | Non-zero; organisation id differs | Step 16, `down` | Cents |
-| 15 | Same, with `bootstrap-account.mjs --role control-operator-admin` | Exit 0. `Already bootstrapped. … No password was written.`, then `Assigned control-operator-admin, unscoped.`, same `sub` | Task id; the confirmation line | Non-zero; `No role "control-operator-admin"` | Step 16, `down` | Cents |
-| 16 | Owner guide D: force-delete the bootstrap secret | `list-secrets` count `0` | Count output | Count stays `1` after a few 30-second retries | Repeat the delete; never `down` with the secret present | None |
-| 17 | `update-service --service identity --force-new-deployment`; wait stable | `STABLE`; running 1 and desired 1; one deployment `COMPLETED`; target `healthy`; containers `identity` and `valkey` RUNNING HEALTHY | Outputs | Not stable in 15 min; target unhealthy | Collect stopped-task reasons and logs; `down` | Small (a few minutes) |
-| 18 | Health probes | `live 200`; `ready 200` with `cache: redis` and `signingKid: identity-nonprod-2026-11` | Status codes and the `ready` body | Not 200; `503` naming `database`, `schema`, `cache` or `signing` | `down` | None |
-| 19 | Login, wrong password, unauthenticated session, JWT verification | `login 200`; `wrong-password 401` `AUTH_INVALID_CREDENTIALS`; session without cookie `{"signedIn":false}`, with cookie `signedIn: true`; JWT script `PASS` | Status codes, script output (no token, no cookie) | `401` with the right password; `503`; any JWT `FAIL` (signature `FAIL` = key pair mismatch) | `down`. Key mismatch: new key pair (guide A/B), new version id and public key by PR | None |
-| 19b | Refresh and logout (added here) | `refresh 200`; `logout 200`; refresh with the pre-logout cookie copy `401` | Status codes only | Refresh `401` with a valid cookie; old refresh `200` after logout | `down`; report (a revocation failure is a security finding) | None |
-| 20 | Access restrictions via `--resolve` | Operator host `403` and `403`; `control-api` admin `403`; wrong host `404`; HTTP `301` to HTTPS | Status codes | Operator host anything but `403` | `down` immediately; report | None |
-| 21 | ACM and TLS | `ISSUED`; `InUseBy` = the ALB; listener `ELBSecurityPolicy-TLS13-1-2-2021-06`, same certificate ARN; openssl shows SAN `*.test.munaxa.com, operator-test.munaxa.com`, not expired | Outputs | Certificate error; wrong ARN | `down` | None |
-| 22 | Dispatch `aws-session.yml`, `main`, `session=down` | Both jobs green; summary lists only deletes of the 11 session addresses; DB `stopping` then `stopped` | Run id; DB status | Red run; DB not stopping | Dispatch `down` again (the DB job is separate). Still running: owner stops the DB in the console. The 21:00 UTC backstop is the last line | ALB US$0.04/h until removed |
-| 23 | Read-only shutdown evidence (owner or authorized read) | 0 ALB, 0 services, 0 tasks, 0 EIP, 0 public ENI, 0 NAT; DB `stopped`; 11 backstop schedules ENABLED; bootstrap secret count 0; CloudTrail denials only S-1 to S-8 (2 per session run) | Outputs; Cost Explorer next day | Anything left running; any denial outside the signature | `down` again or owner console stop; report | Whatever is left running |
+| Step | Action (operator)                                                                                                                                                | Expected result                                                                                                                                                                                                                                                                                  | Evidence to retain                                                   | Failure condition (stop)                                                                                                                                                                                                  | Recovery                                                                                                                                                                                               | Cost risk                        |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
+| 8    | Dispatch `aws-session.yml`, `main`, `session=up` (part B)                                                                                                        | Run green. Summary lists the 11 session creates only. DB `available`. ALB `active`, `internet-facing`, listeners 80/443. Service `identity` `ACTIVE`, desired 1. First tasks get past secret injection and Valkey becomes HEALTHY; then Identity exits with a **database** error (expected, F-1) | Run id and URL; summary; CloudShell outputs; dispatch UTC time       | Plan check refuses; any `AccessDenied`; `CannotPullContainerError`; `ResourceInitializationError`; Valkey unhealthy; Identity exits with an **environment/configuration** error; DB not `available`; job timeout (50 min) | A failed or cancelled `up` stops the DB by itself. Then dispatch `down` to remove anything created. For `AccessDenied`: decode (owner, root), compare with `iam_session.tf`, report. **No IAM change** | ALB about US$0.04/h until `down` |
+| 9    | Cloudflare: one CNAME `id.test` → the ALB DNS name, **DNS only**                                                                                                 | `getent hosts id.test.munaxa.com` resolves to the ALB's addresses                                                                                                                                                                                                                                | ALB DNS name; screenshot of the record (proxy grey)                  | Record proxied; resolves elsewhere                                                                                                                                                                                        | Fix the record; no AWS change                                                                                                                                                                          | None                             |
+| 10   | `run_one munaxa-nonprod-db-admin:1 $SG_DBADMIN`                                                                                                                  | Exit 0. Log: `db-bootstrap: identity: database identity, roles identity_owner and identity_app are in place.` (control, work, school: "no bundle values, skipped.")                                                                                                                              | Task id, exit code, that log line                                    | Non-zero exit; `TaskFailedToStart`; `ResourceInitializationError`; `... is missing or malformed; nothing was changed for identity.`                                                                                       | `down`. Bundle content is fixed by owner guide A/B and a version-id PR                                                                                                                                 | Cents                            |
+| 11   | `run_one munaxa-nonprod-identity-migrate:1 $SG_MIGRATE`                                                                                                          | Exit 0. `All migrations have been successfully applied.`                                                                                                                                                                                                                                         | Task id, exit code, the final Prisma line                            | Non-zero; `P1000` or `P1001`                                                                                                                                                                                              | `down`. No fix-forward in the session; a reviewed procedure later                                                                                                                                      | Cents                            |
+| 12   | Owner guide C: create `munaxa-nonprod/identity-bootstrap` (keys `IDENTITY_OWNER_EMAIL`, `IDENTITY_OWNER_PASSWORD`; key `alias/munaxa-nonprod-data`; no rotation) | `describe-secret` shows the name, the data key and 1 version                                                                                                                                                                                                                                     | That metadata output only                                            | Wrong name or key                                                                                                                                                                                                         | Delete and recreate it correctly                                                                                                                                                                       | < US$0.01                        |
+| 13   | `run_one munaxa-nonprod-identity-bootstrap:1 $SG_DBADMIN` (default command)                                                                                      | Exit 0. `Created <address> in organisation munaxa-group.`, then `organisation <uuid>` and `sub <uuid>`                                                                                                                                                                                           | Task id; organisation id and `sub` (public ids). **Not the address** | Non-zero; `ResourceInitializationError` naming the bootstrap secret (partial ARN, R-6); password-policy refusal                                                                                                           | Step 16 first, then `down`. Partial ARN failure: fix by PR to the full ARN; do not improvise. Password policy: regenerate the password, update the secret, re-run 13                                   | Cents                            |
+| 14   | Same, with the `seed-control-roles.mjs` command override                                                                                                         | Exit 0. One line per role, then `OPERATOR_ORGANISATION_ID <uuid>`, equal to step 13's organisation                                                                                                                                                                                               | Task id; `OPERATOR_ORGANISATION_ID`                                  | Non-zero; organisation id differs                                                                                                                                                                                         | Step 16, `down`                                                                                                                                                                                        | Cents                            |
+| 15   | Same, with `bootstrap-account.mjs --role control-operator-admin`                                                                                                 | Exit 0. `Already bootstrapped. … No password was written.`, then `Assigned control-operator-admin, unscoped.`, same `sub`                                                                                                                                                                        | Task id; the confirmation line                                       | Non-zero; `No role "control-operator-admin"`                                                                                                                                                                              | Step 16, `down`                                                                                                                                                                                        | Cents                            |
+| 16   | Owner guide D: force-delete the bootstrap secret                                                                                                                 | `list-secrets` count `0`                                                                                                                                                                                                                                                                         | Count output                                                         | Count stays `1` after a few 30-second retries                                                                                                                                                                             | Repeat the delete; never `down` with the secret present                                                                                                                                                | None                             |
+| 17   | `update-service --service identity --force-new-deployment`; wait stable                                                                                          | `STABLE`; running 1 and desired 1; one deployment `COMPLETED`; target `healthy`; containers `identity` and `valkey` RUNNING HEALTHY                                                                                                                                                              | Outputs                                                              | Not stable in 15 min; target unhealthy                                                                                                                                                                                    | Collect stopped-task reasons and logs; `down`                                                                                                                                                          | Small (a few minutes)            |
+| 18   | Health probes                                                                                                                                                    | `live 200`; `ready 200` with `cache: redis` and `signingKid: identity-nonprod-2026-11`                                                                                                                                                                                                           | Status codes and the `ready` body                                    | Not 200; `503` naming `database`, `schema`, `cache` or `signing`                                                                                                                                                          | `down`                                                                                                                                                                                                 | None                             |
+| 19   | Login, wrong password, unauthenticated session, JWT verification                                                                                                 | `login 200`; `wrong-password 401` `AUTH_INVALID_CREDENTIALS`; session without cookie `{"signedIn":false}`, with cookie `signedIn: true`; JWT script `PASS`                                                                                                                                       | Status codes, script output (no token, no cookie)                    | `401` with the right password; `503`; any JWT `FAIL` (signature `FAIL` = key pair mismatch)                                                                                                                               | `down`. Key mismatch: new key pair (guide A/B), new version id and public key by PR                                                                                                                    | None                             |
+| 19b  | Refresh and logout (added here)                                                                                                                                  | `refresh 200`; `logout 200`; refresh with the pre-logout cookie copy `401`                                                                                                                                                                                                                       | Status codes only                                                    | Refresh `401` with a valid cookie; old refresh `200` after logout                                                                                                                                                         | `down`; report (a revocation failure is a security finding)                                                                                                                                            | None                             |
+| 20   | Access restrictions via `--resolve`                                                                                                                              | Operator host `403` and `403`; `control-api` admin `403`; wrong host `404`; HTTP `301` to HTTPS                                                                                                                                                                                                  | Status codes                                                         | Operator host anything but `403`                                                                                                                                                                                          | `down` immediately; report                                                                                                                                                                             | None                             |
+| 21   | ACM and TLS                                                                                                                                                      | `ISSUED`; `InUseBy` = the ALB; listener `ELBSecurityPolicy-TLS13-1-2-2021-06`, same certificate ARN; openssl shows SAN `*.test.munaxa.com, operator-test.munaxa.com`, not expired                                                                                                                | Outputs                                                              | Certificate error; wrong ARN                                                                                                                                                                                              | `down`                                                                                                                                                                                                 | None                             |
+| 22   | Dispatch `aws-session.yml`, `main`, `session=down`                                                                                                               | Both jobs green; summary lists only deletes of the 11 session addresses; DB `stopping` then `stopped`                                                                                                                                                                                            | Run id; DB status                                                    | Red run; DB not stopping                                                                                                                                                                                                  | Dispatch `down` again (the DB job is separate). Still running: owner stops the DB in the console. The 21:00 UTC backstop is the last line                                                              | ALB US$0.04/h until removed      |
+| 23   | Read-only shutdown evidence (owner or authorized read)                                                                                                           | 0 ALB, 0 services, 0 tasks, 0 EIP, 0 public ENI, 0 NAT; DB `stopped`; 11 backstop schedules ENABLED; bootstrap secret count 0; CloudTrail denials only S-1 to S-8 (2 per session run)                                                                                                            | Outputs; Cost Explorer next day                                      | Anything left running; any denial outside the signature                                                                                                                                                                   | `down` again or owner console stop; report                                                                                                                                                             | Whatever is left running         |
 
 ### 4.2 Expected AWS resource changes
 
@@ -157,6 +158,7 @@ US$0.10 an hour).
 
   The workflow refuses any change outside `aws_lb*`, `aws_acm_certificate_validation`,
   `aws_ecs_service` and `aws_service_discovery_service`, and any network-placement change.
+
 - **Out-of-band changes** (not Terraform):
   - the database start (by `up`);
   - 5 one-off ECS tasks (steps 10, 11, 13, 14, 15);
@@ -169,19 +171,19 @@ US$0.10 an hour).
 
 All names below were checked against `main` today [V-src]:
 
-| Item | Value | Source |
-| --- | --- | --- |
-| Cluster | `munaxa-nonprod` | `local.prefix` |
-| ECS service | `identity` (not `munaxa-nonprod-identity`, F-2) | `modules/service/main.tf:339` (`name = var.name`) |
-| Task-definition families | `munaxa-nonprod-db-admin`, `-identity`, `-identity-migrate`, `-identity-bootstrap`; one ACTIVE revision each (`:1`, P-3) | `ops.tf:106`, `ops.tf:253`, `modules/service` `family = local.id` |
-| Container names | `db-admin`, `identity` and `valkey`, `identity-migrate`, `identity-bootstrap` | `ops.tf:120`, `services.tf:106`, `ops.tf:267` |
+| Item                           | Value                                                                                                                                                                                                           | Source                                                                           |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Cluster                        | `munaxa-nonprod`                                                                                                                                                                                                | `local.prefix`                                                                   |
+| ECS service                    | `identity` (not `munaxa-nonprod-identity`, F-2)                                                                                                                                                                 | `modules/service/main.tf:339` (`name = var.name`)                                |
+| Task-definition families       | `munaxa-nonprod-db-admin`, `-identity`, `-identity-migrate`, `-identity-bootstrap`; one ACTIVE revision each (`:1`, P-3)                                                                                        | `ops.tf:106`, `ops.tf:253`, `modules/service` `family = local.id`                |
+| Container names                | `db-admin`, `identity` and `valkey`, `identity-migrate`, `identity-bootstrap`                                                                                                                                   | `ops.tf:120`, `services.tf:106`, `ops.tf:267`                                    |
 | Log groups and stream prefixes | `/munaxa/nonprod/ops` (`db-admin`, `identity-bootstrap`); `/munaxa/nonprod/identity` (`identity`, `valkey`); `/munaxa/nonprod/identity-migrate` (`identity-migrate`). Stream = `<prefix>/<container>/<task id>` | `ops.tf:150-152`, `ops.tf:286`, `services.tf:161`, `modules/service/main.tf:241` |
-| Security groups | `munaxa-nonprod-db-admin` (db-admin and bootstrap), `munaxa-nonprod-identity-migrate`, `munaxa-nonprod-identity` (service) | `ops.tf:23`, `modules/service` `name = local.id` |
-| Target group | `munaxa-nonprod-identity`; health check `/api/auth/health/ready`, matcher 200-399 | `modules/service/main.tf:263`, `services.tf` |
-| ALB | `munaxa-nonprod`; HTTP 80 → 301 to 443; HTTPS 443 `ELBSecurityPolicy-TLS13-1-2-2021-06`; default 404 | `edge.tf:70`, `edge.tf:91-118` |
-| Hosts | `id.test.munaxa.com` (rule 40); operator `operator-test.munaxa.com` refused by rule 39 | `envs/nonprod.tfvars`, `edge.tf:177` |
-| Pinned secret versions | `identity` `ad02f18e-f3e7-41da-9959-f9b41e0b7e1a`; `identity-migrate` `a3cc6622-df66-4787-bae7-83ccfec56ff4` | `envs/nonprod.tfvars:83-84` |
-| Signing kid | `identity-nonprod-2026-11` | `envs/nonprod.tfvars:77` |
+| Security groups                | `munaxa-nonprod-db-admin` (db-admin and bootstrap), `munaxa-nonprod-identity-migrate`, `munaxa-nonprod-identity` (service)                                                                                      | `ops.tf:23`, `modules/service` `name = local.id`                                 |
+| Target group                   | `munaxa-nonprod-identity`; health check `/api/auth/health/ready`, matcher 200-399                                                                                                                               | `modules/service/main.tf:263`, `services.tf`                                     |
+| ALB                            | `munaxa-nonprod`; HTTP 80 → 301 to 443; HTTPS 443 `ELBSecurityPolicy-TLS13-1-2-2021-06`; default 404                                                                                                            | `edge.tf:70`, `edge.tf:91-118`                                                   |
+| Hosts                          | `id.test.munaxa.com` (rule 40); operator `operator-test.munaxa.com` refused by rule 39                                                                                                                          | `envs/nonprod.tfvars`, `edge.tf:177`                                             |
+| Pinned secret versions         | `identity` `ad02f18e-f3e7-41da-9959-f9b41e0b7e1a`; `identity-migrate` `a3cc6622-df66-4787-bae7-83ccfec56ff4`                                                                                                    | `envs/nonprod.tfvars:83-84`                                                      |
+| Signing kid                    | `identity-nonprod-2026-11`                                                                                                                                                                                      | `envs/nonprod.tfvars:77`                                                         |
 
 ### 5.1 Step 8: dispatch `up` (owner only, after A-1)
 
@@ -355,18 +357,18 @@ Each test was checked against the Identity source at `5277d71` [V-src]. Routes e
 
 ### 6.1 Coverage of the requested tests
 
-| Requested test | Implemented in Identity? | Covered by | Notes |
-| --- | --- | --- | --- |
-| Identity service health | Yes: `health.controller.ts` (`live`; `ready` with database, schema, cache and signing probes) | Step 18; step 17 target health | `ready` 503 body names the failed dependency |
-| Login | Yes: `POST /api/auth/login`, JSON `{identifier, password, organisation}`. The token is set only as an httpOnly cookie, never in a body | Step 19 | `Origin: https://id.test.munaxa.com` is required: origin checking is the CSRF defence (`CSRF_TRUSTED_ORIGINS`) |
-| Token issuance and validation | Yes: ES256 access token in the session cookie | Step 19, `verify-identity-jwt.mjs` (alg, kid, signature, iss, aud, exp, iat, 900 s lifetime) | Signature `FAIL` = key pair mismatch, a hard stop |
-| Refresh-token behaviour | **Yes:** `POST /api/auth/refresh` with cookie `__Secure-mx_refresh` (path `/api/auth/refresh`); rotates cookies; a failed refresh clears them | **Step 19b (added here)** | Not in the earlier runbook |
-| Invalid credentials | Yes: `401 {"code":"AUTH_INVALID_CREDENTIALS"}`, identical for unknown user, wrong password and unknown organisation | Step 19 (one wrong attempt only, because of lockout counters) | — |
-| Unauthorized access | Identity has no protected resource route. Unauthenticated `GET /api/auth/session` answers `{"signedIn":false}`; `POST /api/auth/refresh` without a cookie answers 401 | Step 19 (session without cookie), step 19b (refresh after logout) | Edge refusals: operator host 403, `control-api` admin 403, unknown host 404 (step 20) |
-| Database connectivity | Yes: `ready` runs `select 1` and checks the 8 tables | Steps 17 and 18 | Also proven by steps 10 and 11 exit 0 |
-| MFA | **Not available.** Login returns `401 AUTH_MFA_REQUIRED` for an account with `mfaEnrolled`, but no enrolment or verification route exists. Sessions are created with `mfaSatisfied: false` | **No test: unsupported** | Section 8.2 |
-| Password reset | **Not available.** `PrismaResetTokenStore` exists, but no HTTP route exposes reset | **No test: unsupported** | Section 8.2 |
-| Logging and sensitive-data exposure | Pino JSON logs, with redaction of authorization and cookie headers, set-cookie, `password`, `identifier`, tokens, `privateKey`, `passwordHash` (`observability/logger.ts`) | **Step 19c (added here)** | Bootstrap prints the operator email (section 8.3) |
+| Requested test                      | Implemented in Identity?                                                                                                                                                                   | Covered by                                                                                   | Notes                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Identity service health             | Yes: `health.controller.ts` (`live`; `ready` with database, schema, cache and signing probes)                                                                                              | Step 18; step 17 target health                                                               | `ready` 503 body names the failed dependency                                                                   |
+| Login                               | Yes: `POST /api/auth/login`, JSON `{identifier, password, organisation}`. The token is set only as an httpOnly cookie, never in a body                                                     | Step 19                                                                                      | `Origin: https://id.test.munaxa.com` is required: origin checking is the CSRF defence (`CSRF_TRUSTED_ORIGINS`) |
+| Token issuance and validation       | Yes: ES256 access token in the session cookie                                                                                                                                              | Step 19, `verify-identity-jwt.mjs` (alg, kid, signature, iss, aud, exp, iat, 900 s lifetime) | Signature `FAIL` = key pair mismatch, a hard stop                                                              |
+| Refresh-token behaviour             | **Yes:** `POST /api/auth/refresh` with cookie `__Secure-mx_refresh` (path `/api/auth/refresh`); rotates cookies; a failed refresh clears them                                              | **Step 19b (added here)**                                                                    | Not in the earlier runbook                                                                                     |
+| Invalid credentials                 | Yes: `401 {"code":"AUTH_INVALID_CREDENTIALS"}`, identical for unknown user, wrong password and unknown organisation                                                                        | Step 19 (one wrong attempt only, because of lockout counters)                                | —                                                                                                              |
+| Unauthorized access                 | Identity has no protected resource route. Unauthenticated `GET /api/auth/session` answers `{"signedIn":false}`; `POST /api/auth/refresh` without a cookie answers 401                      | Step 19 (session without cookie), step 19b (refresh after logout)                            | Edge refusals: operator host 403, `control-api` admin 403, unknown host 404 (step 20)                          |
+| Database connectivity               | Yes: `ready` runs `select 1` and checks the 8 tables                                                                                                                                       | Steps 17 and 18                                                                              | Also proven by steps 10 and 11 exit 0                                                                          |
+| MFA                                 | **Not available.** Login returns `401 AUTH_MFA_REQUIRED` for an account with `mfaEnrolled`, but no enrolment or verification route exists. Sessions are created with `mfaSatisfied: false` | **No test: unsupported**                                                                     | Section 8.2                                                                                                    |
+| Password reset                      | **Not available.** `PrismaResetTokenStore` exists, but no HTTP route exposes reset                                                                                                         | **No test: unsupported**                                                                     | Section 8.2                                                                                                    |
+| Logging and sensitive-data exposure | Pino JSON logs, with redaction of authorization and cookie headers, set-cookie, `password`, `identifier`, tokens, `privateKey`, `passwordHash` (`observability/logger.ts`)                 | **Step 19c (added here)**                                                                    | Bootstrap prints the operator email (section 8.3)                                                              |
 
 ### 6.2 Step 18: health
 
@@ -435,12 +437,19 @@ rm -f /tmp/id.jar /tmp/id.before-logout verify-identity-jwt.mjs; unset ID
 
 ```bash
 aws logs filter-log-events --log-group-name /munaxa/nonprod/identity --start-time $(( $(date -d '-3 hours' +%s) * 1000 )) \
-  --filter-pattern '?eyJ ?BEGIN ?PRIVATE ?"password\":\""' --query 'length(events)'     # 0
+  --filter-pattern '%eyJ|PRIVATE\sKEY|[Pp]assword\x5c?\x22\s*:\s*\x5c?\x22[^\x22\x5c\[]%' --query 'length(events)'     # 0
 ```
 
-- **Expected:** `0`. That means no JWT, no PEM and no clear password field in the service logs.
-- The filter pattern syntax is CloudWatch Logs' standard OR form (`?term`). The exact pattern is
-  **NOT VERIFIED** against live logs.
+- **Expected:** `0`. That means no JWT, no private-key PEM line and no unredacted password field
+  in the service logs.
+- The pattern is a single CloudWatch Logs regular expression. It was tested on 47 synthetic lines
+  with `TestMetricFilter`, and all 47 were classified correctly. It has **not** been run on live
+  logs. Details and limits:
+  `2026-11-11-identity-claude-executed-deployment-plan/02-LOG-FILTER-CORRECTION.md`.
+- **Correction (11 Nov 2026, PR #87):** the first pattern was
+  `?eyJ ?BEGIN ?PRIVATE ?"password\":\""`. It missed `"password": "…"` written with a space
+  (F-1). It also counted redacted password values and public-key or certificate PEM headers (F-2),
+  which would have caused false stops.
 - A non-zero count is a stop. Report the count and the field names only, never the line contents.
 
 ### 6.6 Step 20: access restrictions
@@ -466,25 +475,25 @@ The expected values match `edge.tf` [V-src]:
 
 **Hard stops: never continue after one of these.**
 
-| # | Condition | Where | Recovery |
-| --- | --- | --- | --- |
-| H-1 | Any `AccessDenied` other than the S-1 to S-8 `s3:ListTagsForResource` signature | Step 8, any CloudShell call, step 22, step 23 CloudTrail | `down`. Decode as root (owner). Compare with `bootstrap/iam_session.tf`. Report. **No IAM change in the session** |
-| H-2 | Session plan refused ("changes more than the session" or "network placement") | Step 8 | Nothing changed and the DB was not started. Report the addresses |
-| H-3 | Unexpected Terraform plan: anything other than 11 creates on `up`, or 11 deletes on `down` | Steps 8 and 22 | Stop. On `up`, the workflow refuses unexpected types itself. A count mismatch within the allowed types is still a stop: `down` and report |
-| H-4 | Database not `available` within the job, or a DB connectivity failure (`P1001`, `ready` 503 `database`) | Steps 8, 10, 11, 18 | `down` |
-| H-5 | Migration failure (non-zero, `P1000`/`P1001`, not "All migrations…") | Step 11 | `down`. No fix-forward |
-| H-6 | Bootstrap failure (non-zero; `ResourceInitializationError` on the bootstrap secret) | Steps 13 to 15 | **Step 16 first**, then `down`. Partial ARN: fix by PR |
-| H-7 | `CannotPullContainerError` | Steps 8, 10, 11, 13 | `down`. Compare with P-10 |
-| H-8 | `ResourceInitializationError` (version id, KMS) | Steps 8, 10, 11 | `down`. Check P-5. Fix by PR |
-| H-9 | Identity exits with a configuration error (not a database error) at step 8 | Step 8 | `down`. Owner regenerates the bundle (guide A/B); new version id by PR |
-| H-10 | Service not stable in 15 minutes, or target unhealthy | Step 17 | Collect stopped reasons and logs; `down` |
-| H-11 | TLS failure (certificate error, wrong ARN, not ISSUED) or DNS not resolving to the ALB | Steps 9, 21 | DNS: correct the record. TLS: `down` and report |
-| H-12 | Any JWT `FAIL`; login 401 with the right password; old refresh token accepted after logout | Steps 19, 19b | `down`. Do not configure any product with this key |
-| H-13 | Operator host reachable (not 403) | Step 20 | `down` immediately |
-| H-14 | Any AWS resource created outside section 4.2 | Any | `down`; report; owner removes it after review |
-| H-15 | **Time:** 3 hours after the `up` dispatch, or 18:30 UTC, whichever comes first | Any | Delete the bootstrap secret if it exists; `down` now |
-| H-16 | **Cost:** any sign that the session will exceed US$0.35 (for example a second ALB, a NAT gateway, a larger task or another service) | Any | `down` now; report |
-| H-17 | Secret value shown in a command, log or output | Any | Stop; `down`; the owner rotates that secret by the guide; report without the value |
+| #    | Condition                                                                                                                           | Where                                                    | Recovery                                                                                                                                  |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| H-1  | Any `AccessDenied` other than the S-1 to S-8 `s3:ListTagsForResource` signature                                                     | Step 8, any CloudShell call, step 22, step 23 CloudTrail | `down`. Decode as root (owner). Compare with `bootstrap/iam_session.tf`. Report. **No IAM change in the session**                         |
+| H-2  | Session plan refused ("changes more than the session" or "network placement")                                                       | Step 8                                                   | Nothing changed and the DB was not started. Report the addresses                                                                          |
+| H-3  | Unexpected Terraform plan: anything other than 11 creates on `up`, or 11 deletes on `down`                                          | Steps 8 and 22                                           | Stop. On `up`, the workflow refuses unexpected types itself. A count mismatch within the allowed types is still a stop: `down` and report |
+| H-4  | Database not `available` within the job, or a DB connectivity failure (`P1001`, `ready` 503 `database`)                             | Steps 8, 10, 11, 18                                      | `down`                                                                                                                                    |
+| H-5  | Migration failure (non-zero, `P1000`/`P1001`, not "All migrations…")                                                                | Step 11                                                  | `down`. No fix-forward                                                                                                                    |
+| H-6  | Bootstrap failure (non-zero; `ResourceInitializationError` on the bootstrap secret)                                                 | Steps 13 to 15                                           | **Step 16 first**, then `down`. Partial ARN: fix by PR                                                                                    |
+| H-7  | `CannotPullContainerError`                                                                                                          | Steps 8, 10, 11, 13                                      | `down`. Compare with P-10                                                                                                                 |
+| H-8  | `ResourceInitializationError` (version id, KMS)                                                                                     | Steps 8, 10, 11                                          | `down`. Check P-5. Fix by PR                                                                                                              |
+| H-9  | Identity exits with a configuration error (not a database error) at step 8                                                          | Step 8                                                   | `down`. Owner regenerates the bundle (guide A/B); new version id by PR                                                                    |
+| H-10 | Service not stable in 15 minutes, or target unhealthy                                                                               | Step 17                                                  | Collect stopped reasons and logs; `down`                                                                                                  |
+| H-11 | TLS failure (certificate error, wrong ARN, not ISSUED) or DNS not resolving to the ALB                                              | Steps 9, 21                                              | DNS: correct the record. TLS: `down` and report                                                                                           |
+| H-12 | Any JWT `FAIL`; login 401 with the right password; old refresh token accepted after logout                                          | Steps 19, 19b                                            | `down`. Do not configure any product with this key                                                                                        |
+| H-13 | Operator host reachable (not 403)                                                                                                   | Step 20                                                  | `down` immediately                                                                                                                        |
+| H-14 | Any AWS resource created outside section 4.2                                                                                        | Any                                                      | `down`; report; owner removes it after review                                                                                             |
+| H-15 | **Time:** 3 hours after the `up` dispatch, or 18:30 UTC, whichever comes first                                                      | Any                                                      | Delete the bootstrap secret if it exists; `down` now                                                                                      |
+| H-16 | **Cost:** any sign that the session will exceed US$0.35 (for example a second ALB, a NAT gateway, a larger task or another service) | Any                                                      | `down` now; report                                                                                                                        |
+| H-17 | Secret value shown in a command, log or output                                                                                      | Any                                                      | Stop; `down`; the owner rotates that secret by the guide; report without the value                                                        |
 
 Every fix is a reviewed PR and its own apply, with the session down. Do not edit task
 definitions, IAM, security groups or secrets by hand during the session.
@@ -534,29 +543,29 @@ it for 14 days.
 
 From list prices [R] (first-session preparation §8). This is not a billing measurement.
 
-| Item | Per hour |
-| --- | --- |
-| Fargate Identity task, 0.5 vCPU / 1 GB (Valkey inside it) | about US$0.028 |
-| ALB (2 subnets) plus minimal LCU | about US$0.027 to 0.035 |
-| Public IPv4: 1 task and 2 ALB addresses | about US$0.015 |
-| RDS db.t4g.micro while running | about US$0.019 |
-| **Total** | **about US$0.10** |
+| Item                                                      | Per hour                |
+| --------------------------------------------------------- | ----------------------- |
+| Fargate Identity task, 0.5 vCPU / 1 GB (Valkey inside it) | about US$0.028          |
+| ALB (2 subnets) plus minimal LCU                          | about US$0.027 to 0.035 |
+| Public IPv4: 1 task and 2 ALB addresses                   | about US$0.015          |
+| RDS db.t4g.micro while running                            | about US$0.019          |
+| **Total**                                                 | **about US$0.10**       |
 
-| Duration | Estimate |
-| --- | --- |
-| Planned 2 h | about **US$0.20** |
-| **Hard stop at 3 h** | about **US$0.30 to 0.35** (ceiling US$0.35) |
-| One-off tasks (5 tasks, minutes each) | under US$0.02 |
-| Bootstrap secret (hours) | under US$0.01 |
+| Duration                              | Estimate                                    |
+| ------------------------------------- | ------------------------------------------- |
+| Planned 2 h                           | about **US$0.20**                           |
+| **Hard stop at 3 h**                  | about **US$0.30 to 0.35** (ceiling US$0.35) |
+| One-off tasks (5 tasks, minutes each) | under US$0.02                               |
+| Bootstrap secret (hours)              | under US$0.01                               |
 
 **Time plan:**
 
-| Phase | Time |
-| --- | --- |
-| Database start and `up` | about 15 minutes |
-| Tasks (steps 10 to 17) | about 30 minutes |
-| Checks (steps 18 to 21) | about 30 minutes |
-| Buffer | the rest of 2 hours |
+| Phase                   | Time                |
+| ----------------------- | ------------------- |
+| Database start and `up` | about 15 minutes    |
+| Tasks (steps 10 to 17)  | about 30 minutes    |
+| Checks (steps 18 to 21) | about 30 minutes    |
+| Buffer                  | the rest of 2 hours |
 
 **Shutdown layers:**
 
@@ -609,20 +618,20 @@ done
 
 ## 11. Outstanding limitations
 
-| # | Limitation | Effect | Treatment |
-| --- | --- | --- | --- |
-| L-1 | Raw 07:01 preflight output not in the repository (owner supplied it in the project conversation; not recreated here) | Repository evidence incomplete | Owner adds the file if wanted. Not a blocker |
-| SC-1 | Installed GitHub Apps not verified, by owner choice | An app with Actions write could dispatch | Accepted by the owner; recorded |
-| L-2 | Session-deployer effective permissions not exercised | First `up` may fail with `AccessDenied` | H-1 |
-| L-3 | Secret versions, key pair, bootstrap partial ARN unproven | Possible stop at step 8, 10, 11, 13 or 19 | H-6, H-8, H-12 |
-| L-4 | G-4 rests on owner evidence | — | Recorded |
-| L-5 | Administrator bypass enabled | Low; main-only job guards and OIDC trust remain | Recorded |
-| L-6 | Evidence recency: the preflight is valid for today only, if nothing changes | Stale evidence | A-3 |
-| L-7 | DNS is a manual Cloudflare change | Operator error possible | Step 9 evidence |
-| L-8 | MFA and password reset not implemented | Not testable; operator account is password-only | Section 8.2 |
-| L-9 | Old-refresh-after-logout result and the step 19c log filter are NOT VERIFIED from source | First observation is in the session | H-12; H-17 |
-| L-10 | Operator email in `/munaxa/nonprod/ops` for 14 days | Personal data in logs | Section 8.3 |
-| L-11 | Root used for the read-only preflight and for CloudShell steps 10 to 23 | Broad identity | ACCESS-POLICY owner decision |
+| #    | Limitation                                                                                                           | Effect                                          | Treatment                                    |
+| ---- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------- |
+| L-1  | Raw 07:01 preflight output not in the repository (owner supplied it in the project conversation; not recreated here) | Repository evidence incomplete                  | Owner adds the file if wanted. Not a blocker |
+| SC-1 | Installed GitHub Apps not verified, by owner choice                                                                  | An app with Actions write could dispatch        | Accepted by the owner; recorded              |
+| L-2  | Session-deployer effective permissions not exercised                                                                 | First `up` may fail with `AccessDenied`         | H-1                                          |
+| L-3  | Secret versions, key pair, bootstrap partial ARN unproven                                                            | Possible stop at step 8, 10, 11, 13 or 19       | H-6, H-8, H-12                               |
+| L-4  | G-4 rests on owner evidence                                                                                          | —                                               | Recorded                                     |
+| L-5  | Administrator bypass enabled                                                                                         | Low; main-only job guards and OIDC trust remain | Recorded                                     |
+| L-6  | Evidence recency: the preflight is valid for today only, if nothing changes                                          | Stale evidence                                  | A-3                                          |
+| L-7  | DNS is a manual Cloudflare change                                                                                    | Operator error possible                         | Step 9 evidence                              |
+| L-8  | MFA and password reset not implemented                                                                               | Not testable; operator account is password-only | Section 8.2                                  |
+| L-9  | Old-refresh-after-logout result and the step 19c log filter are NOT VERIFIED from source                             | First observation is in the session             | H-12; H-17                                   |
+| L-10 | Operator email in `/munaxa/nonprod/ops` for 14 days                                                                  | Personal data in logs                           | Section 8.3                                  |
+| L-11 | Root used for the read-only preflight and for CloudShell steps 10 to 23                                              | Broad identity                                  | ACCESS-POLICY owner decision                 |
 
 ## 12. Final recommendation
 
