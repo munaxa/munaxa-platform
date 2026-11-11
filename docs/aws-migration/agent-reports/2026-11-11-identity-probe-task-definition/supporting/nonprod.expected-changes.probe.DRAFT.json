@@ -1,0 +1,10 @@
+{
+  "root": "stack-nonprod",
+  "intent": "DRAFT for the probe-enable PR only (report 2026-11-11-identity-probe-task-definition): register the identity-probe task definition. 1 create. No update, replacement or destroy; no IAM role or policy, no security group or rule, no ALB, service, secret, DNS or production resource.",
+  "changes": [
+    {
+      "address": "aws_ecs_task_definition.identity_probe[0]",
+      "actions": ["create"]
+    }
+  ]
+}
