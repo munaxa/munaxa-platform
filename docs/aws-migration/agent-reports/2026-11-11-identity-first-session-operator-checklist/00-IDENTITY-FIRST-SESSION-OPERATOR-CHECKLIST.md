@@ -1,5 +1,12 @@
 # First Identity non-production session: operator checklist (11 Nov 2026)
 
+> **Note, 11 Nov 2026 (Workstream 4).** For the Claude-executed session, follow
+> `../2026-11-11-identity-final-operator-runbook/00-IDENTITY-FINAL-OPERATOR-RUNBOOK.md`. It replaces
+> this checklist's CloudShell commands with connector and probe steps, does not use step 9 (DNS),
+> moves step 16 (delete the bootstrap secret) to after the probe, and replaces "never `down` with
+> the secret present" with `down` at the hard stop whatever the secret's state. The expected
+> results and hard stops H-1 to H-17 here still apply.
+
 - Repository: `munaxa/munaxa-platform`, `main` at `55b5449` (PR #85 squash merge). Identity source
   `munaxa/munaxa-identity` `main` at `5277d71`, the commit the deployed images were built from.
 - Environment `nonprod`, account `229251310592`, region `eu-central-1`.
