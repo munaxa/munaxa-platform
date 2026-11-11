@@ -1,0 +1,176 @@
+Owner CloudShell run, 11 Nov 2026, pasted into the project thread at 05:45 UTC. Verbatim, as pasted
+(HTML entities in the paste decoded: &gt; to >, &amp; to &, &#39; to ', &#34; to ").
+
+~ $ mkdir -p ~/identity-preflight && cd ~/identity-preflight
+identity-preflight $ curl -sSfO https://raw.githubusercontent.com/munaxa/munaxa-platform/main/docs/aws-migration/agent-reports/2026-11-10-identity-preflight-and-session-readiness/supporting/preflight-readonly.sh
+identity-preflight $ sha256sum preflight-readonly.sh
+21ae3205aa867df610bb27ee59f08325bf1adca1e8dabef5f147b8c21c159f7c  preflight-readonly.sh
+identity-preflight $ ALLOW_ROOT_READONLY=yes bash preflight-readonly.sh 2>&1 | tee preflight-$(date -u +%Y%m%dT%H%MZ).txt
+
+=== P-1 account guard and region ===
+  [PASS] P-1: account 229251310592, caller arn:aws:iam::229251310592:root, root (accepted: ALLOW_ROOT_READONLY=yes, owner's decision; read-only calls only), region eu-central-1, 2026-11-11T05:43:46Z
+  [INFO] WARNING: running as root by the owner's explicit choice. Root bypasses IAM policies, so a PASS here proves nothing about any deployer's permissions (ACCESS-POLICY.md 1.2).
+
+=== P-2 RDS ===
+  [PASS] P-2: status = stopped
+  [PASS] P-2: class = db.t4g.micro
+  [PASS] P-2: PubliclyAccessible = False
+  [PASS] P-2: DeletionProtection = True
+  [PASS] P-2: MultiAZ = False
+  [PASS] P-2: StorageEncrypted = True
+  [PASS] P-2: parameter group = munaxa-nonprod-pg16
+  [PASS] P-2: parameter apply status = in-sync
+  [PASS] P-2: master secret status = active
+  [PASS] P-2: vpc = vpc-0824ebbff902d2980
+  [INFO] engine 16.13
+
+=== P-3 ECS cluster and A1 task definitions ===
+  [PASS] P-3: cluster status running pending services = ACTIVE 0 0 0
+  [PASS] P-3: families with an ACTIVE revision = munaxa-nonprod-db-admin,munaxa-nonprod-identity,munaxa-nonprod-identity-bootstrap,munaxa-nonprod-identity-migrate
+  [PASS] P-3: munaxa-nonprod-identity ACTIVE revisions = munaxa-nonprod-identity:1
+  [PASS] P-3: munaxa-nonprod-identity-migrate ACTIVE revisions = munaxa-nonprod-identity-migrate:1
+  [PASS] P-3: munaxa-nonprod-identity-bootstrap ACTIVE revisions = munaxa-nonprod-identity-bootstrap:1
+  [PASS] P-3: munaxa-nonprod-db-admin ACTIVE revisions = munaxa-nonprod-db-admin:1
+  [PASS] P-3: munaxa-nonprod-identity revision status = 1 ACTIVE
+  [PASS] P-3: munaxa-nonprod-identity image @sha256:71d01fdf
+  [PASS] P-3: munaxa-nonprod-identity image @sha256:757b7e55
+  [PASS] P-3: munaxa-nonprod-identity-migrate revision status = 1 ACTIVE
+  [PASS] P-3: munaxa-nonprod-identity-migrate image @sha256:d175ef37
+  [PASS] P-3: munaxa-nonprod-identity-bootstrap revision status = 1 ACTIVE
+  [PASS] P-3: munaxa-nonprod-identity-bootstrap image @sha256:71d01fdf
+  [PASS] P-3: munaxa-nonprod-db-admin revision status = 1 ACTIVE
+  [PASS] P-3: munaxa-nonprod-db-admin image @sha256:5983db9a
+
+=== P-4 secret references in task definitions (ARNs and version ids only) ===
+  [PASS] P-4: identity: 6 references, all munaxa-nonprod/identity pinned to ad02f18e-f3e7-41da-9959-f9b41e0b7e1a
+  [PASS] P-4: identity-migrate secret names = DATABASE_MIGRATION_URL
+  [PASS] P-4: identity-migrate DATABASE_MIGRATION_URL pinned to a3cc6622-df66-4787-bae7-83ccfec56ff4
+  [PASS] P-4: identity-bootstrap DIRECT_DATABASE_URL pinned to a3cc6622-df66-4787-bae7-83ccfec56ff4
+  [PASS] P-4: bootstrap IDENTITY_OWNER_EMAIL reference
+  [PASS] P-4: bootstrap IDENTITY_OWNER_PASSWORD reference
+  [PASS] P-4: db-admin master secret username
+  [PASS] P-4: db-admin master secret password
+  [PASS] P-4: db-admin identity pin
+  [PASS] P-4: db-admin identity-migrate pin
+
+=== P-5 secret bundles and data key (metadata only) ===
+  [PASS] P-5: data key state usage = Enabled ENCRYPT_DECRYPT
+  [PASS] P-5: munaxa-nonprod/identity DeletedDate = None
+  [PASS] P-5: munaxa-nonprod/identity uses the data key
+  [PASS] P-5: munaxa-nonprod/identity version ad02f18e-f3e7-41da-9959-f9b41e0b7e1a stages = AWSCURRENT
+  [PASS] P-5: munaxa-nonprod/identity-migrate DeletedDate = None
+  [PASS] P-5: munaxa-nonprod/identity-migrate uses the data key
+  [PASS] P-5: munaxa-nonprod/identity-migrate version a3cc6622-df66-4787-bae7-83ccfec56ff4 stages = AWSCURRENT
+
+=== P-6 leftover bootstrap secret (expected absent) ===
+  [PASS] P-6: secrets named munaxa-nonprod/identity-bootstrap = 0
+
+=== P-7 nothing running ===
+  [PASS] P-7: services = 0
+  [PASS] P-7: tasks = 0
+  [PASS] P-7: load balancers = 0
+  [PASS] P-7: target groups = 0
+  [PASS] P-7: NAT gateways = 0
+  [PASS] P-7: Elastic IPs = 0
+  [PASS] P-7: EC2 instances = 0
+  [PASS] P-7: public ENIs = 0
+
+=== P-8 backstop ===
+  [PASS] P-8: backstop schedules total enabled = 11 11
+  [PASS] P-8: database schedule = cron(0 21 * * ? *) UTC ENABLED
+  [PASS] P-8: database target = arn:aws:scheduler:::aws-sdk:rds:stopDBInstance
+  [PASS] P-8: database input = {"DbInstanceIdentifier":"munaxa-nonprod-pg"}
+
+=== P-9 ACM ===
+  [PASS] P-9: status = ISSUED
+  [PASS] P-9: SANs = *.test.munaxa.com,operator-test.munaxa.com
+  [PASS] P-9: SANs = *.test.munaxa.com,operator-test.munaxa.com
+  [PASS] P-9: InUseBy = 0
+  [INFO] NotAfter 2027-05-22T23:59:59+00:00
+
+=== P-10 images ===
+  [PASS] P-10: munaxa-identity/api @sha256:71d01fdf tags = sha-5277d7190b3dda496443c4bd7d80c78bd4d9174e,5277d71
+  [PASS] P-10: munaxa-identity/migrate @sha256:d175ef37 tags = 5277d71,sha-5277d7190b3dda496443c4bd7d80c78bd4d9174e
+
+=== P-11 service-linked roles (must exist; the session deployer cannot create them) ===
+  [PASS] P-11: role = AWSServiceRoleForECS
+  [PASS] P-11: role = AWSServiceRoleForElasticLoadBalancing
+
+=== P-11b session roles (settings, trust and every policy document compared with the code) ===
+  [PASS] P-11b: session roles under /munaxa-shared/bootstrap/ = munaxa-shared-ci-nonprod-session, munaxa-shared-deployer-nonprod-session
+  [PASS] P-11b: munaxa-shared-ci-nonprod-session Path = /munaxa-shared/bootstrap/
+  [PASS] P-11b: munaxa-shared-ci-nonprod-session Arn = arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod-session
+  [PASS] P-11b: munaxa-shared-ci-nonprod-session MaxSessionDuration = 3600
+  [PASS] P-11b: munaxa-shared-ci-nonprod-session permissions boundary = none (as in the code)
+  [PASS] P-11b: munaxa-shared-ci-nonprod-session trust policy: 1 statement(s) match the code
+  [PASS] P-11b: munaxa-shared-ci-nonprod-session inline policies = assume-own-session-deployer-only
+  [PASS] P-11b: munaxa-shared-ci-nonprod-session inline assume-own-session-deployer-only: 1 statement(s) match the code
+  [PASS] P-11b: munaxa-shared-ci-nonprod-session attached policies = none
+  [PASS] P-11b: munaxa-shared-deployer-nonprod-session Path = /munaxa-shared/bootstrap/
+  [PASS] P-11b: munaxa-shared-deployer-nonprod-session Arn = arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session
+  [PASS] P-11b: munaxa-shared-deployer-nonprod-session MaxSessionDuration = 3600
+  [PASS] P-11b: munaxa-shared-deployer-nonprod-session permissions boundary = none (as in the code)
+  [PASS] P-11b: munaxa-shared-deployer-nonprod-session trust policy: 1 statement(s) match the code
+  [PASS] P-11b: munaxa-shared-deployer-nonprod-session inline policies = session-deployer
+  [PASS] P-11b: munaxa-shared-deployer-nonprod-session inline session-deployer: 30 statement(s) match the code
+  [PASS] P-11b: munaxa-shared-deployer-nonprod-session attached policies = munaxa-shared-deployer-nonprod-session-read, munaxa-shared-deployer-read
+  [PASS] P-11b: managed policy munaxa-shared-deployer-nonprod-session-read: 4 statement(s) match the code
+  [PASS] P-11b: managed policy munaxa-shared-deployer-read: 2 statement(s) match the code
+  [PASS] P-11b: alias/munaxa-shared-tfstate = the state key in the expected policy
+  [INFO] P-11b compares documents with the code. It does not evaluate effective permissions: under root nothing here exercises IAM.
+
+=== P-12 CloudTrail denials since 2026-11-10T06:00:00Z (all pages, errorCode only) ===
+  [INFO] window 2026-11-10T06:00:00Z to 2026-11-11T05:44:39Z
+  [FAIL] P-12: eu-central-1: events 1658 denials 10
+2026-11-11T00:05:23Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147
+2026-11-11T00:05:23Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147
+2026-11-10T08:51:47Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006
+2026-11-10T08:51:47Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006
+2026-11-10T06:13:16Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719
+2026-11-10T06:13:15Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719
+2026-11-10T06:09:44Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624
+2026-11-10T06:09:44Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624
+2026-11-10T06:05:36Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306
+2026-11-10T06:05:36Z  s3.amazonaws.com  ListTagsForResource  AccessDenied  arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306
+  [PASS] P-12: us-east-1: events 322 denials 0
+
+=== P-13 network topology (stack/network.tf, Config A1) ===
+  [PASS] P-13: VPC munaxa-nonprod CIDR = 10.130.0.0/16
+  [PASS] P-13: VPC munaxa-nonprod state = available
+  [PASS] P-13: VPC munaxa-nonprod IsDefault = False
+  [PASS] P-13: VPC munaxa-nonprod = database VPC vpc-0824ebbff902d2980
+  [PASS] P-13: subnet munaxa-nonprod-db-a eu-central-1a 10.130.64.0/24, no public IP on launch, available
+  [PASS] P-13: subnet munaxa-nonprod-db-b eu-central-1b 10.130.65.0/24, no public IP on launch, available
+  [PASS] P-13: subnet munaxa-nonprod-db-c eu-central-1c 10.130.66.0/24, no public IP on launch, available
+  [PASS] P-13: subnet munaxa-nonprod-public-a eu-central-1a 10.130.0.0/24, no public IP on launch, available
+  [PASS] P-13: subnet munaxa-nonprod-public-b eu-central-1b 10.130.1.0/24, no public IP on launch, available
+  [PASS] P-13: internet gateway munaxa-nonprod-igw igw-01c51c4963afa87fb attached to vpc-0824ebbff902d2980
+  [PASS] P-13: S3 gateway endpoint vpce-0ef83b62278737210 on munaxa-nonprod-rt-public only
+  [PASS] P-13: route table main associations = main only
+  [PASS] P-13: route table main routes = local only
+  [PASS] P-13: route table munaxa-nonprod-rt-db associations = munaxa-nonprod-db-a, munaxa-nonprod-db-b, munaxa-nonprod-db-c
+  [PASS] P-13: route table munaxa-nonprod-rt-db routes = local only
+  [PASS] P-13: route table munaxa-nonprod-rt-public associations = munaxa-nonprod-public-a, munaxa-nonprod-public-b
+  [PASS] P-13: route table munaxa-nonprod-rt-public routes = local, 0.0.0.0/0 -> igw-01c51c4963afa87fb active, S3 endpoint active
+  [PASS] P-13: security groups in vpc-0824ebbff902d2980 = default, munaxa-nonprod-alb, munaxa-nonprod-database, munaxa-nonprod-db-admin, munaxa-nonprod-identity, munaxa-nonprod-identity-migrate
+  [PASS] P-13: default security group has no rules
+
+=== Summary ===
+P-1    PASS
+P-2    PASS
+P-3    PASS
+P-4    PASS
+P-5    PASS
+P-6    PASS
+P-7    PASS
+P-8    PASS
+P-9    PASS
+P-10   PASS
+P-11   PASS
+P-11b  PASS
+P-12   FAIL
+P-13   PASS
+
+preflight finished 2026-11-11T05:45:03Z
+OVERALL: FAIL (1 check(s) failed)
+identity-preflight $
