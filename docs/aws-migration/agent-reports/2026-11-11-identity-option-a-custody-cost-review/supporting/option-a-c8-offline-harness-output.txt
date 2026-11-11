@@ -1,0 +1,8 @@
+happy              result=CREATED code=None rolled=None leak=False stored=['munaxa-nonprod/identity-bootstrap', 'munaxa-nonprod/identity-operator'] calls=['DescribeSecret', 'DescribeSecret', 'GetRandomPassword', 'CreateSecret', 'CreateSecret']
+  bootstrap keys ['IDENTITY_OWNER_EMAIL', 'IDENTITY_OWNER_PASSWORD'] same pw True
+persistent fails   result=ABORT code=CREATE_PERSISTENT_AWS_ValidationException rolled=None leak=False stored=[] calls=['DescribeSecret', 'DescribeSecret', 'GetRandomPassword', 'CreateSecret']
+bootstrap fails    result=ABORT code=CREATE_BOOTSTRAP_AWS_ValidationException rolled=True leak=False stored=[] calls=['DescribeSecret', 'DescribeSecret', 'GetRandomPassword', 'CreateSecret', 'CreateSecret', 'DeleteSecret']
+name exists        result=ABORT code=NAME_EXISTS rolled=None leak=False stored=[] calls=['DescribeSecret']
+policy regen       result=CREATED code=None rolled=None leak=False stored=['munaxa-nonprod/identity-bootstrap', 'munaxa-nonprod/identity-operator'] calls=['DescribeSecret', 'DescribeSecret', 'GetRandomPassword', 'GetRandomPassword', 'GetRandomPassword', 'CreateSecret', 'CreateSecret']
+policy exhausted   result=ABORT code=GENERATE_POLICY_RETRIES rolled=None leak=False stored=[] calls=['DescribeSecret', 'DescribeSecret', 'GetRandomPassword', 'GetRandomPassword', 'GetRandomPassword']
+placeholder: {'result': 'ABORT', 'code': 'EMAIL_NOT_SET'}
