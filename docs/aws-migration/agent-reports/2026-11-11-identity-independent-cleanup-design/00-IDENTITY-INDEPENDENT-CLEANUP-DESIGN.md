@@ -40,7 +40,10 @@ The existing layers and their gaps [V] (`.github/workflows/aws-session.yml`,
 
 So if Claude loses the session or the connector right after `up`, the ALB can run until the next
 scheduled `down` that GitHub actually starts, the secret stays until someone deletes it by hand
-(residual risk R-1), and the cost reaches about US$1.00 (PR #89, section G).
+(residual risk R-1), and the cost reaches about US$1.00 (PR #89, section G). **If both scheduled
+`down` runs are dropped, the cost has no fixed upper limit:** the 21:00 backstop cannot delete the
+ALB, which keeps costing about US$0.89 a day (about US$27 a month) until someone runs `down`
+(PR #95 X-6).
 
 **The US$0.35 ceiling is conditional, not guaranteed.** It holds only when a cleanup that removes
 the ALB, the services, the running tasks and the database runs by T0 + 3 h and succeeds, and only
@@ -48,6 +51,9 @@ at the rates estimated in the first-session report (not re-priced today). Today 
 does that by T0 + 3 h is L1. No design below makes the ceiling a guarantee: each one moves the
 condition from "Claude stays connected" to "an AWS-side or separately controlled mechanism fires
 and succeeds". Section 7 states the residual cost in each failure case.
+
+**Implementation proposal (11 Nov 2026, fast-track package):** option 3 is worked out in detail,
+still as a proposal only, in `01-CLEANUP-IMPLEMENTATION-PROPOSAL.md` in this folder.
 
 ## 2. Requirements for an independent cleanup
 
@@ -265,8 +271,8 @@ hour; firing at T0 + 2 h 55 min avoids that.
 | L1 `down` on time | about US$0.20 to 0.30 |
 | Claude lost after `up`; option 3 fires and succeeds at T0 + 3 h | about US$0.30 to 0.33; ceiling holds |
 | Claude lost; option 3 fires, the DB stop retries for 1 h | up to about US$0.35 |
-| Claude lost; option 3 does not fire or fails at the ALB | falls back to L2/L3: about US$1.00 (PR #89) |
-| Claude lost; options 1 to 5 not built (today) | about US$1.00 and the secret remains (R-1) |
+| Claude lost; option 3 does not fire or fails at the ALB | falls back to L2/L3: about US$1.00 if a scheduled `down` runs; **no fixed upper limit** (ALB about US$0.89 a day) if both are dropped |
+| Claude lost; options 1 to 5 not built (today) | about US$1.00 if a scheduled `down` runs, **no fixed upper limit** if both are dropped; the secret remains (R-1) |
 
 The persistent secret `munaxa-nonprod/identity-operator` (Workstream 5) adds about US$0.40 a month,
 outside the per-session ceiling [E, U].
