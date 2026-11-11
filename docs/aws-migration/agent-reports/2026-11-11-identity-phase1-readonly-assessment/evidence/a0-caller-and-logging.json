@@ -1,0 +1,29 @@
+{
+  "called_at_utc": "2026-11-11T09:14:50.085Z",
+  "script": "r = await call_boto3(service_name=\"sts\", operation_name=\"GetCallerIdentity\", region_name=\"eu-central-1\")\nd = await call_boto3(service_name=\"rds\", operation_name=\"DescribeDBInstances\", region_name=\"eu-central-1\", params={\"DBInstanceIdentifier\": \"munaxa-nonprod-pg\"})\nresult = {\"account\": r.get(\"Account\"), \"arn_suffix\": r.get(\"Arn\",\"\")[-12:], \"db_status\": d[\"DBInstances\"][0][\"DBInstanceStatus\"], \"marker_param_echo_test\": \"munaxa-nonprod-pg was a parameter\"}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "account": "229251310592",
+      "arn_suffix": "1310592:root",
+      "db_status": "stopped",
+      "marker_param_echo_test": "munaxa-nonprod-pg was a parameter"
+    },
+    "api_calls": [
+      {
+        "service": "sts",
+        "operation": "GetCallerIdentity",
+        "status": "success"
+      },
+      {
+        "service": "rds",
+        "operation": "DescribeDBInstances",
+        "status": "success",
+        "n_items": {
+          "DBInstances": 1
+        }
+      }
+    ]
+  }
+}

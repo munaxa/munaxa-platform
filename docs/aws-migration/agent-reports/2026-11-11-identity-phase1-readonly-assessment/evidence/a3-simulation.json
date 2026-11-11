@@ -1,0 +1,1047 @@
+{
+  "called_at_utc": "2026-11-11T09:25:17.174Z",
+  "script": "A=\"229251310592\"; R=\"eu-central-1\"\nROLE=f\"arn:aws:iam::{A}:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session\"\ndef ctx(**kw):\n    out=[]\n    for k,v in kw.items():\n        key=k.replace(\"__\",\"/\").replace(\"_\",\":\",1) if False else k\n    return out\ndef C(pairs):\n    return [{\"ContextKeyName\":k,\"ContextKeyValues\":[v],\"ContextKeyType\":\"string\"} for k,v in pairs]\nTAGS=[(\"aws:RequestTag/Project\",\"munaxa\"),(\"aws:RequestTag/Environment\",\"nonprod\"),(\"aws:RequestedRegion\",R)]\nRT=[(\"aws:ResourceTag/Project\",\"munaxa\"),(\"aws:ResourceTag/Environment\",\"nonprod\"),(\"aws:RequestedRegion\",R)]\nREG=[(\"aws:RequestedRegion\",R)]\nlb=f\"arn:aws:elasticloadbalancing:{R}:{A}:loadbalancer/app/munaxa-nonprod/0123456789abcdef\"\nlst=f\"arn:aws:elasticloadbalancing:{R}:{A}:listener/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef\"\nrule=f\"arn:aws:elasticloadbalancing:{R}:{A}:listener-rule/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef/0123456789abcdef\"\ntg=f\"arn:aws:elasticloadbalancing:{R}:{A}:targetgroup/munaxa-nonprod-identity/0123456789abcdef\"\nsvc=f\"arn:aws:ecs:{R}:{A}:service/munaxa-nonprod/identity\"\ndb=f\"arn:aws:rds:{R}:{A}:db:munaxa-nonprod-pg\"\nsd=f\"arn:aws:servicediscovery:{R}:{A}:service/srv-0123456789abcdef\"\nexe=f\"arn:aws:iam::{A}:role/munaxa-shared/munaxa-nonprod-identity-execution\"\ncases=[\n # id, expect, actions, resource, context\n (\"S-01\",\"allowed\",[\"elasticloadbalancing:CreateLoadBalancer\"],lb,TAGS),\n (\"S-02\",\"allowed\",[\"elasticloadbalancing:CreateListener\"],lst,TAGS),\n (\"S-03\",\"allowed\",[\"elasticloadbalancing:CreateRule\"],rule,TAGS),\n (\"S-04\",\"allowed\",[\"elasticloadbalancing:CreateTargetGroup\"],tg,TAGS),\n (\"S-05\",\"allowed\",[\"elasticloadbalancing:AddTags\"],lb,TAGS),\n (\"S-06\",\"allowed\",[\"elasticloadbalancing:ModifyListener\",\"elasticloadbalancing:ModifyTargetGroupAttributes\",\"elasticloadbalancing:ModifyLoadBalancerAttributes\"],lb,RT),\n (\"S-07\",\"allowed\",[\"elasticloadbalancing:DeleteLoadBalancer\",\"elasticloadbalancing:DeleteListener\"],lb,RT),\n (\"S-08\",\"allowed\",[\"ecs:CreateService\"],svc,TAGS),\n (\"S-09\",\"allowed\",[\"ecs:UpdateService\",\"ecs:DeleteService\",\"ecs:TagResource\"],svc,RT),\n (\"S-10\",\"allowed\",[\"servicediscovery:CreateService\"],sd,TAGS),\n (\"S-11\",\"allowed\",[\"iam:PassRole\"],exe,REG+[(\"iam:PassedToService\",\"ecs-tasks.amazonaws.com\")]),\n (\"S-12\",\"allowed\",[\"rds:StartDBInstance\",\"rds:StopDBInstance\"],db,RT),\n (\"S-13\",\"allowed\",[\"s3:GetObject\",\"s3:PutObject\"],f\"arn:aws:s3:::munaxa-shared-tfstate-{A}/nonprod/terraform.tfstate\",REG),\n (\"S-14\",\"allowed\",[\"kms:Decrypt\",\"kms:GenerateDataKey\"],f\"arn:aws:kms:{R}:{A}:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5\",REG),\n (\"S-15\",\"allowed\",[\"ecs:DescribeServices\",\"elasticloadbalancing:DescribeLoadBalancers\",\"rds:DescribeDBInstances\",\"ec2:DescribeSubnets\"],\"*\",REG),\n # guardrails, expected denied\n (\"D-01\",\"denied\",[\"secretsmanager:GetSecretValue\",\"secretsmanager:PutSecretValue\"],f\"arn:aws:secretsmanager:{R}:{A}:secret:munaxa-nonprod/identity-abc123\",RT),\n (\"D-02\",\"denied\",[\"ec2:AuthorizeSecurityGroupIngress\",\"ec2:AuthorizeSecurityGroupEgress\",\"ec2:CreateSecurityGroup\"],f\"arn:aws:ec2:{R}:{A}:security-group/sg-063a81c72c7f3239f\",RT),\n (\"D-03\",\"denied\",[\"elasticloadbalancing:CreateLoadBalancer\"],lb,[(\"aws:RequestTag/Project\",\"other\"),(\"aws:RequestTag/Environment\",\"nonprod\"),(\"aws:RequestedRegion\",R)]),\n (\"D-04\",\"denied\",[\"elasticloadbalancing:CreateLoadBalancer\"],lb,[(\"aws:RequestTag/Project\",\"munaxa\"),(\"aws:RequestTag/Environment\",\"prod\"),(\"aws:RequestedRegion\",R)]),\n (\"D-05\",\"denied\",[\"ecs:CreateService\",\"ecs:UpdateService\"],f\"arn:aws:ecs:{R}:{A}:service/munaxa-prod/identity\",TAGS),\n (\"D-06\",\"denied\",[\"rds:StartDBInstance\",\"rds:DeleteDBInstance\"],f\"arn:aws:rds:{R}:{A}:db:munaxa-docs-pg\",REG),\n (\"D-07\",\"denied\",[\"iam:CreateUser\",\"iam:CreateAccessKey\",\"iam:PutRolePolicy\",\"iam:AttachRolePolicy\"],f\"arn:aws:iam::{A}:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session\",REG),\n (\"D-08\",\"denied\",[\"iam:PassRole\"],f\"arn:aws:iam::{A}:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod\",REG+[(\"iam:PassedToService\",\"ecs-tasks.amazonaws.com\")]),\n (\"D-09\",\"denied\",[\"s3:GetObject\",\"s3:PutObject\"],f\"arn:aws:s3:::munaxa-shared-tfstate-{A}/prod/terraform.tfstate\",REG),\n (\"D-10\",\"denied\",[\"ecs:CreateService\"],svc,[(\"aws:RequestTag/Project\",\"munaxa\"),(\"aws:RequestTag/Environment\",\"nonprod\"),(\"aws:RequestedRegion\",\"us-east-1\")]),\n (\"D-11\",\"denied\",[\"route53:ChangeResourceRecordSets\"],\"arn:aws:route53:::hostedzone/Z0000000000000\",REG),\n (\"D-12\",\"denied\",[\"rds:ModifyDBInstance\",\"rds:DeleteDBInstance\"],db,RT),\n (\"D-13\",\"denied\",[\"ecs:RunTask\"],f\"arn:aws:ecs:{R}:{A}:task-definition/munaxa-nonprod-identity-bootstrap:1\",RT),\n (\"D-14\",\"denied\",[\"kms:Sign\",\"kms:ScheduleKeyDeletion\"],f\"arn:aws:kms:{R}:{A}:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5\",REG),\n (\"D-15\",\"denied\",[\"cloudtrail:StopLogging\",\"cloudtrail:DeleteTrail\"],f\"arn:aws:cloudtrail:{R}:{A}:trail/munaxa-org-trail\",REG),\n]\nasync def run(c):\n    cid,exp,acts,res,cx=c\n    r=await call_boto3(service_name=\"iam\",operation_name=\"SimulatePrincipalPolicy\",region_name=\"us-east-1\",\n        params={\"PolicySourceArn\":ROLE,\"ActionNames\":acts,\"ResourceArns\":[res],\"ContextEntries\":C(cx)})\n    rows=[]\n    for e in r[\"EvaluationResults\"]:\n        d=e[\"EvalDecision\"]\n        st=[s.get(\"SourcePolicyId\") for s in e.get(\"MatchedStatements\",[])]\n        ok=(d==\"allowed\") if exp==\"allowed\" else (d!=\"allowed\")\n        rows.append({\"action\":e[\"EvalActionName\"],\"decision\":d,\"expected\":exp,\"ok\":ok,\"matched\":st,\"missing_ctx\":e.get(\"MissingContextValues\",[])})\n    return {\"id\":cid,\"resource\":res,\"context\":dict(cx),\"results\":rows}\nout=await asyncio.gather(*[run(c) for c in cases],return_exceptions=True)\nres=[]\nfor c,o in zip(cases,out):\n    res.append(o if not isinstance(o,Exception) else {\"id\":c[0],\"error\":str(o)})\nsummary={\"ok\":sum(1 for r in res if \"results\" in r for x in r[\"results\"] if x[\"ok\"]),\"bad\":[ (r[\"id\"],x[\"action\"],x[\"decision\"]) for r in res if \"results\" in r for x in r[\"results\"] if not x[\"ok\"]],\"errors\":[r for r in res if \"error\" in r]}\nresult={\"at\":datetime.datetime.utcnow().isoformat()+\"Z\",\"summary\":summary,\"cases\":res}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "at": "2026-11-11T09:25:32.208959Z",
+      "summary": {
+        "ok": 48,
+        "bad": [
+          ["S-02", "elasticloadbalancing:CreateListener", "implicitDeny"],
+          ["S-03", "elasticloadbalancing:CreateRule", "implicitDeny"],
+          ["S-06", "elasticloadbalancing:ModifyListener", "implicitDeny"],
+          ["S-06", "elasticloadbalancing:ModifyTargetGroupAttributes", "implicitDeny"],
+          ["S-07", "elasticloadbalancing:DeleteListener", "implicitDeny"]
+        ],
+        "errors": []
+      },
+      "cases": [
+        {
+          "id": "S-01",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/0123456789abcdef",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:CreateLoadBalancer",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-02",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:CreateListener",
+              "decision": "implicitDeny",
+              "expected": "allowed",
+              "ok": false,
+              "matched": [],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-03",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:listener-rule/app/munaxa-nonprod/0123456789abcdef/0123456789abcdef/0123456789abcdef",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:CreateRule",
+              "decision": "implicitDeny",
+              "expected": "allowed",
+              "ok": false,
+              "matched": [],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-04",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:targetgroup/munaxa-nonprod-identity/0123456789abcdef",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:CreateTargetGroup",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-05",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/0123456789abcdef",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:AddTags",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-06",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/0123456789abcdef",
+          "context": {
+            "aws:ResourceTag/Project": "munaxa",
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:ModifyListener",
+              "decision": "implicitDeny",
+              "expected": "allowed",
+              "ok": false,
+              "matched": [],
+              "missing_ctx": []
+            },
+            {
+              "action": "elasticloadbalancing:ModifyTargetGroupAttributes",
+              "decision": "implicitDeny",
+              "expected": "allowed",
+              "ok": false,
+              "matched": [],
+              "missing_ctx": []
+            },
+            {
+              "action": "elasticloadbalancing:ModifyLoadBalancerAttributes",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-07",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/0123456789abcdef",
+          "context": {
+            "aws:ResourceTag/Project": "munaxa",
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:DeleteLoadBalancer",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "elasticloadbalancing:DeleteListener",
+              "decision": "implicitDeny",
+              "expected": "allowed",
+              "ok": false,
+              "matched": [],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-08",
+          "resource": "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/identity",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "ecs:CreateService",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-09",
+          "resource": "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/identity",
+          "context": {
+            "aws:ResourceTag/Project": "munaxa",
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "ecs:UpdateService",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "ecs:DeleteService",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "ecs:TagResource",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-10",
+          "resource": "arn:aws:servicediscovery:eu-central-1:229251310592:service/srv-0123456789abcdef",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "servicediscovery:CreateService",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-11",
+          "resource": "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-execution",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1",
+            "iam:PassedToService": "ecs-tasks.amazonaws.com"
+          },
+          "results": [
+            {
+              "action": "iam:PassRole",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-12",
+          "resource": "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg",
+          "context": {
+            "aws:ResourceTag/Project": "munaxa",
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "rds:StartDBInstance",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "rds:StopDBInstance",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-13",
+          "resource": "arn:aws:s3:::munaxa-shared-tfstate-229251310592/nonprod/terraform.tfstate",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "s3:GetObject",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "s3:PutObject",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-14",
+          "resource": "arn:aws:kms:eu-central-1:229251310592:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "kms:Decrypt",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "kms:GenerateDataKey",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "S-15",
+          "resource": "*",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "ecs:DescribeServices",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["munaxa-shared-deployer-read"],
+              "missing_ctx": []
+            },
+            {
+              "action": "elasticloadbalancing:DescribeLoadBalancers",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["munaxa-shared-deployer-read"],
+              "missing_ctx": []
+            },
+            {
+              "action": "rds:DescribeDBInstances",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["munaxa-shared-deployer-read"],
+              "missing_ctx": []
+            },
+            {
+              "action": "ec2:DescribeSubnets",
+              "decision": "allowed",
+              "expected": "allowed",
+              "ok": true,
+              "matched": ["munaxa-shared-deployer-read"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-01",
+          "resource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-abc123",
+          "context": {
+            "aws:ResourceTag/Project": "munaxa",
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "secretsmanager:GetSecretValue",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "secretsmanager:PutSecretValue",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-02",
+          "resource": "arn:aws:ec2:eu-central-1:229251310592:security-group/sg-063a81c72c7f3239f",
+          "context": {
+            "aws:ResourceTag/Project": "munaxa",
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "ec2:AuthorizeSecurityGroupIngress",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "ec2:AuthorizeSecurityGroupEgress",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "ec2:CreateSecurityGroup",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-03",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/0123456789abcdef",
+          "context": {
+            "aws:RequestTag/Project": "other",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:CreateLoadBalancer",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [
+                "role_munaxa-shared-deployer-nonprod-session_session-deployer",
+                "role_munaxa-shared-deployer-nonprod-session_session-deployer"
+              ],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-04",
+          "resource": "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/0123456789abcdef",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "prod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "elasticloadbalancing:CreateLoadBalancer",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [
+                "role_munaxa-shared-deployer-nonprod-session_session-deployer",
+                "role_munaxa-shared-deployer-nonprod-session_session-deployer"
+              ],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-05",
+          "resource": "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-prod/identity",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "ecs:CreateService",
+              "decision": "implicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [],
+              "missing_ctx": [
+                "aws:ResourceTag/Project",
+                "ec2:Vpc",
+                "route53:VPCs",
+                "aws:ResourceTag/Environment",
+                "iam:PassedToService"
+              ]
+            },
+            {
+              "action": "ecs:UpdateService",
+              "decision": "implicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [],
+              "missing_ctx": [
+                "aws:ResourceTag/Project",
+                "ec2:Vpc",
+                "route53:VPCs",
+                "aws:ResourceTag/Environment",
+                "iam:PassedToService"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "D-06",
+          "resource": "arn:aws:rds:eu-central-1:229251310592:db:munaxa-docs-pg",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "rds:StartDBInstance",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "rds:DeleteDBInstance",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-07",
+          "resource": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "iam:CreateUser",
+              "decision": "implicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [],
+              "missing_ctx": []
+            },
+            {
+              "action": "iam:CreateAccessKey",
+              "decision": "implicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [],
+              "missing_ctx": []
+            },
+            {
+              "action": "iam:PutRolePolicy",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "iam:AttachRolePolicy",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-08",
+          "resource": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1",
+            "iam:PassedToService": "ecs-tasks.amazonaws.com"
+          },
+          "results": [
+            {
+              "action": "iam:PassRole",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-09",
+          "resource": "arn:aws:s3:::munaxa-shared-tfstate-229251310592/prod/terraform.tfstate",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "s3:GetObject",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "s3:PutObject",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-10",
+          "resource": "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/identity",
+          "context": {
+            "aws:RequestTag/Project": "munaxa",
+            "aws:RequestTag/Environment": "nonprod",
+            "aws:RequestedRegion": "us-east-1"
+          },
+          "results": [
+            {
+              "action": "ecs:CreateService",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-11",
+          "resource": "arn:aws:route53:::hostedzone/Z0000000000000",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "route53:ChangeResourceRecordSets",
+              "decision": "implicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [],
+              "missing_ctx": [
+                "aws:ResourceTag/Project",
+                "ec2:Vpc",
+                "route53:VPCs",
+                "aws:RequestTag/Environment",
+                "aws:RequestTag/Project",
+                "aws:ResourceTag/Environment",
+                "iam:PassedToService"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "D-12",
+          "resource": "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg",
+          "context": {
+            "aws:ResourceTag/Project": "munaxa",
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "rds:ModifyDBInstance",
+              "decision": "implicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [],
+              "missing_ctx": [
+                "ec2:Vpc",
+                "route53:VPCs",
+                "aws:RequestTag/Environment",
+                "aws:RequestTag/Project",
+                "iam:PassedToService"
+              ]
+            },
+            {
+              "action": "rds:DeleteDBInstance",
+              "decision": "implicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [],
+              "missing_ctx": [
+                "ec2:Vpc",
+                "route53:VPCs",
+                "aws:RequestTag/Environment",
+                "aws:RequestTag/Project",
+                "iam:PassedToService"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "D-13",
+          "resource": "arn:aws:ecs:eu-central-1:229251310592:task-definition/munaxa-nonprod-identity-bootstrap:1",
+          "context": {
+            "aws:ResourceTag/Project": "munaxa",
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "ecs:RunTask",
+              "decision": "implicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [],
+              "missing_ctx": [
+                "ec2:Vpc",
+                "route53:VPCs",
+                "aws:RequestTag/Environment",
+                "aws:RequestTag/Project",
+                "iam:PassedToService"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "D-14",
+          "resource": "arn:aws:kms:eu-central-1:229251310592:key/679d1b6b-cb6a-491b-a585-cb630b3fbce5",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "kms:Sign",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": [
+                "role_munaxa-shared-deployer-nonprod-session_session-deployer",
+                "role_munaxa-shared-deployer-nonprod-session_session-deployer"
+              ],
+              "missing_ctx": []
+            },
+            {
+              "action": "kms:ScheduleKeyDeletion",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        },
+        {
+          "id": "D-15",
+          "resource": "arn:aws:cloudtrail:eu-central-1:229251310592:trail/munaxa-org-trail",
+          "context": {
+            "aws:RequestedRegion": "eu-central-1"
+          },
+          "results": [
+            {
+              "action": "cloudtrail:StopLogging",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            },
+            {
+              "action": "cloudtrail:DeleteTrail",
+              "decision": "explicitDeny",
+              "expected": "denied",
+              "ok": true,
+              "matched": ["role_munaxa-shared-deployer-nonprod-session_session-deployer"],
+              "missing_ctx": []
+            }
+          ]
+        }
+      ]
+    },
+    "api_calls": [
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 3
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 3
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 4
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 3
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 4
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 1
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      },
+      {
+        "service": "iam",
+        "operation": "SimulatePrincipalPolicy",
+        "status": "success",
+        "n_items": {
+          "EvaluationResults": 2
+        }
+      }
+    ]
+  }
+}

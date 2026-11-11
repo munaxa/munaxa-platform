@@ -1,0 +1,25 @@
+{
+  "called_at_utc": "2026-11-11T09:23:14.933Z",
+  "script": "import re\nDEN = re.compile(r\"AccessDenied|UnauthorizedOperation$\")\nSTART=datetime.datetime(2026,11,10,6,0,0,tzinfo=datetime.timezone.utc)\nEND=datetime.datetime(2026,11,11,9,20,0,tzinfo=datetime.timezone.utc)\ntoken=\"LGmUU+MYHkUqLmoRYuZ9k2gHQbYXIe0bHZRmbSDxWuGAftyI6B+bYW4+w924uvLGyOeLCMGkt58O0qU/FjX1kg==\"\ntotal=0;pages=0;den=[];oldest=None\nwhile token:\n    r=await call_boto3(service_name=\"cloudtrail\",operation_name=\"LookupEvents\",region_name=\"eu-central-1\",params={\"StartTime\":START,\"EndTime\":END,\"MaxResults\":50,\"NextToken\":token})\n    pages+=1\n    for e in r.get(\"Events\",[]):\n        total+=1; ev=json.loads(e[\"CloudTrailEvent\"]); oldest=ev.get(\"eventTime\")\n        c=ev.get(\"errorCode\")\n        if isinstance(c,str) and DEN.search(c): den.append([ev.get(\"eventTime\"),ev.get(\"eventName\"),c,(ev.get(\"userIdentity\") or {}).get(\"arn\")])\n    token=r.get(\"NextToken\")\nresult={\"total\":total,\"pages\":pages,\"done\":token is None,\"den\":den,\"oldest\":oldest}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "total": 2,
+      "pages": 1,
+      "done": true,
+      "den": [],
+      "oldest": "2026-11-10T06:05:14Z"
+    },
+    "api_calls": [
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 2
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "called_at_utc": "2026-11-11T09:23:22.455Z",
+  "script": "import re\nDEN = re.compile(r\"AccessDenied|UnauthorizedOperation$\")\nSTART=datetime.datetime(2026,11,10,6,0,0,tzinfo=datetime.timezone.utc)\nEND=datetime.datetime(2026,11,11,9,20,0,tzinfo=datetime.timezone.utc)\nt0=time.time();token=None\ntotal=0;pages=0;den=[];oldest=None;newest=None\nwhile True:\n    p={\"StartTime\":START,\"EndTime\":END,\"MaxResults\":50}\n    if token: p[\"NextToken\"]=token\n    r=await call_boto3(service_name=\"cloudtrail\",operation_name=\"LookupEvents\",region_name=\"us-east-1\",params=p)\n    pages+=1\n    for e in r.get(\"Events\",[]):\n        total+=1; ev=json.loads(e[\"CloudTrailEvent\"]); oldest=ev.get(\"eventTime\"); newest=newest or oldest\n        c=ev.get(\"errorCode\")\n        if isinstance(c,str) and DEN.search(c): den.append([ev.get(\"eventTime\"),ev.get(\"eventSource\"),ev.get(\"eventName\"),c,(ev.get(\"userIdentity\") or {}).get(\"arn\")])\n    token=r.get(\"NextToken\")\n    if not token or time.time()-t0>45: break\nresult={\"total\":total,\"pages\":pages,\"done\":token is None,\"token\":token,\"den\":den,\"oldest\":oldest,\"newest\":newest}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "total": 635,
+      "pages": 13,
+      "done": true,
+      "den": [],
+      "oldest": "2026-11-10T06:04:51Z",
+      "newest": "2026-11-11T09:20:00Z"
+    },
+    "api_calls": [
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 50
+        }
+      },
+      {
+        "service": "cloudtrail",
+        "operation": "LookupEvents",
+        "status": "success",
+        "n_items": {
+          "Events": 35
+        }
+      }
+    ]
+  }
+}

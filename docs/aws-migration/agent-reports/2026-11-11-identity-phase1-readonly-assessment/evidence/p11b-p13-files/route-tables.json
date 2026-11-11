@@ -1,0 +1,160 @@
+[
+  {
+    "Associations": [
+      {
+        "Main": false,
+        "RouteTableAssociationId": "rtbassoc-0fdae6b30b8110e87",
+        "RouteTableId": "rtb-06ba15e9ec88add59",
+        "SubnetId": "subnet-083f62b446501270e",
+        "AssociationState": {
+          "State": "associated"
+        }
+      },
+      {
+        "Main": false,
+        "RouteTableAssociationId": "rtbassoc-022653c5ba9ff43b5",
+        "RouteTableId": "rtb-06ba15e9ec88add59",
+        "SubnetId": "subnet-0d19305f91c135c57",
+        "AssociationState": {
+          "State": "associated"
+        }
+      },
+      {
+        "Main": false,
+        "RouteTableAssociationId": "rtbassoc-0652bc1a693507d12",
+        "RouteTableId": "rtb-06ba15e9ec88add59",
+        "SubnetId": "subnet-0c41bfbe889e71a46",
+        "AssociationState": {
+          "State": "associated"
+        }
+      }
+    ],
+    "PropagatingVgws": [],
+    "RouteTableId": "rtb-06ba15e9ec88add59",
+    "Routes": [
+      {
+        "DestinationCidrBlock": "10.130.0.0/16",
+        "GatewayId": "local",
+        "Origin": "CreateRouteTable",
+        "State": "active"
+      }
+    ],
+    "Tags": [
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-rt-db"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      }
+    ],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "OwnerId": "229251310592"
+  },
+  {
+    "Associations": [
+      {
+        "Main": true,
+        "RouteTableAssociationId": "rtbassoc-0dc0624c1116583cb",
+        "RouteTableId": "rtb-097fb8b570941d867",
+        "AssociationState": {
+          "State": "associated"
+        }
+      }
+    ],
+    "PropagatingVgws": [],
+    "RouteTableId": "rtb-097fb8b570941d867",
+    "Routes": [
+      {
+        "DestinationCidrBlock": "10.130.0.0/16",
+        "GatewayId": "local",
+        "Origin": "CreateRouteTable",
+        "State": "active"
+      }
+    ],
+    "Tags": [],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "OwnerId": "229251310592"
+  },
+  {
+    "Associations": [
+      {
+        "Main": false,
+        "RouteTableAssociationId": "rtbassoc-0a3d5ddb6c86a2eeb",
+        "RouteTableId": "rtb-04e784db42499a7f7",
+        "SubnetId": "subnet-03202d5663c3df1b0",
+        "AssociationState": {
+          "State": "associated"
+        }
+      },
+      {
+        "Main": false,
+        "RouteTableAssociationId": "rtbassoc-06b83c38dcdeea3f0",
+        "RouteTableId": "rtb-04e784db42499a7f7",
+        "SubnetId": "subnet-04c7ea0f4e672ff8c",
+        "AssociationState": {
+          "State": "associated"
+        }
+      }
+    ],
+    "PropagatingVgws": [],
+    "RouteTableId": "rtb-04e784db42499a7f7",
+    "Routes": [
+      {
+        "DestinationCidrBlock": "10.130.0.0/16",
+        "GatewayId": "local",
+        "Origin": "CreateRouteTable",
+        "State": "active"
+      },
+      {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": "igw-01c51c4963afa87fb",
+        "Origin": "CreateRoute",
+        "State": "active"
+      },
+      {
+        "DestinationPrefixListId": "pl-6ea54007",
+        "GatewayId": "vpce-0ef83b62278737210",
+        "Origin": "CreateRoute",
+        "State": "active"
+      }
+    ],
+    "Tags": [
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-rt-public"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      }
+    ],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "OwnerId": "229251310592"
+  }
+]

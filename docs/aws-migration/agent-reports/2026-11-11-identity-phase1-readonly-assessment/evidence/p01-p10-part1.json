@@ -1,0 +1,378 @@
+{
+  "called_at_utc": "2026-11-11T09:18:08.132Z",
+  "script": "import json, re, datetime as dt\nR = \"eu-central-1\"; C = \"munaxa-nonprod\"\nPIN_I = \"ad02f18e-f3e7-41da-9959-f9b41e0b7e1a\"; PIN_M = \"a3cc6622-df66-4787-bae7-83ccfec56ff4\"\nD = {\"identity\": \"71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156\",\n     \"valkey\": \"757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e\",\n     \"migrate\": \"d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820\",\n     \"postgres\": \"5983db9a9c6ad225a48a46cfe2e03e6680b1826662befd0465eb05b34cb1c64e\"}\nout = []\ndef rec(cid, st, msg): out.append([cid, st, msg])\ndef exp(cid, label, actual, expected):\n    rec(cid, \"PASS\" if actual == expected else \"FAIL\", f\"{label} = {actual!r}\" + (\"\" if actual == expected else f\", expected {expected!r}\"))\nasync def call(svc, op, params=None, region=R):\n    return await call_boto3(service_name=svc, operation_name=op, region_name=region, params=params or {})\nasync def safe(cid, svc, op, params=None, region=R):\n    try:\n        return await call(svc, op, params, region)\n    except Exception as e:\n        rec(cid, \"ERROR\", f\"{svc}:{op} failed: {str(e)[:240]}\"); return None\nstarted = dt.datetime.now(dt.timezone.utc).isoformat()\nidn = await safe(\"P-1\", \"sts\", \"GetCallerIdentity\")\nif idn: rec(\"P-1\", \"PASS\" if idn[\"Account\"] == \"229251310592\" else \"FAIL\", f\"account {idn['Account']}, caller {idn['Arn']}, region {R}\")\nr = await safe(\"P-2\", \"rds\", \"DescribeDBInstances\", {\"DBInstanceIdentifier\": f\"{C}-pg\"})\nDB_VPC = None\nif r:\n    d = r[\"DBInstances\"][0]; DB_VPC = d[\"DBSubnetGroup\"][\"VpcId\"]\n    exp(\"P-2\",\"status\",d[\"DBInstanceStatus\"],\"stopped\"); exp(\"P-2\",\"class\",d[\"DBInstanceClass\"],\"db.t4g.micro\")\n    exp(\"P-2\",\"PubliclyAccessible\",d[\"PubliclyAccessible\"],False); exp(\"P-2\",\"DeletionProtection\",d[\"DeletionProtection\"],True)\n    exp(\"P-2\",\"MultiAZ\",d[\"MultiAZ\"],False); exp(\"P-2\",\"StorageEncrypted\",d[\"StorageEncrypted\"],True)\n    exp(\"P-2\",\"parameter group\",d[\"DBParameterGroups\"][0][\"DBParameterGroupName\"],f\"{C}-pg16\")\n    exp(\"P-2\",\"parameter apply status\",d[\"DBParameterGroups\"][0][\"ParameterApplyStatus\"],\"in-sync\")\n    exp(\"P-2\",\"master secret status\",d.get(\"MasterUserSecret\",{}).get(\"SecretStatus\"),\"active\")\n    rec(\"P-2\",\"PASS\" if DB_VPC.startswith(\"vpc-\") else \"FAIL\", f\"vpc {DB_VPC}, engine {d['EngineVersion']}\")\nr = await safe(\"P-3\",\"ecs\",\"DescribeClusters\",{\"clusters\":[C]})\nif r:\n    c = r[\"clusters\"][0]; exp(\"P-3\",\"cluster status running pending services\",(c[\"status\"],c[\"runningTasksCount\"],c[\"pendingTasksCount\"],c[\"activeServicesCount\"]),(\"ACTIVE\",0,0,0))\nr = await safe(\"P-3\",\"ecs\",\"ListTaskDefinitionFamilies\",{\"familyPrefix\":C,\"status\":\"ACTIVE\"})\nif r: exp(\"P-3\",\"families with an ACTIVE revision\",sorted(r[\"families\"]),[f\"{C}-db-admin\",f\"{C}-identity\",f\"{C}-identity-bootstrap\",f\"{C}-identity-migrate\"])\nTD = {}\nfor fam, digs in [(\"identity\",[D[\"identity\"],D[\"valkey\"]]),(\"identity-migrate\",[D[\"migrate\"]]),(\"identity-bootstrap\",[D[\"identity\"]]),(\"db-admin\",[D[\"postgres\"]])]:\n    l = await safe(\"P-3\",\"ecs\",\"ListTaskDefinitions\",{\"familyPrefix\":f\"{C}-{fam}\",\"status\":\"ACTIVE\"})\n    if l: exp(\"P-3\",f\"{C}-{fam} ACTIVE revisions\",sorted(a.split(\"task-definition/\")[1] for a in l[\"taskDefinitionArns\"]),[f\"{C}-{fam}:1\"])\n    t = await safe(\"P-3\",\"ecs\",\"DescribeTaskDefinition\",{\"taskDefinition\":f\"{C}-{fam}\"})\n    if t:\n        td = t[\"taskDefinition\"]; TD[fam] = td\n        exp(\"P-3\",f\"{C}-{fam} revision status\",(td[\"revision\"],td[\"status\"]),(1,\"ACTIVE\"))\n        imgs = \",\".join(cd[\"image\"] for cd in td[\"containerDefinitions\"])\n        for dg in digs: rec(\"P-3\",\"PASS\" if f\"@sha256:{dg}\" in imgs else \"FAIL\", f\"{C}-{fam} image @sha256:{dg[:8]}\")\ndef refs(fam): return [(s[\"name\"], s[\"valueFrom\"]) for cd in TD.get(fam,{}).get(\"containerDefinitions\",[]) for s in cd.get(\"secrets\",[])]\nri = refs(\"identity\"); bad = [n for n,v in ri if not re.search(rf\":secret:{C}/identity-[A-Za-z0-9]{{6}}:[A-Z_]+::{PIN_I}$\", v)]\nrec(\"P-4\",\"PASS\" if ri and not bad else \"FAIL\", f\"identity: {len(ri)} references, {len(bad)} not pinned to {PIN_I}\")\nrm = refs(\"identity-migrate\"); exp(\"P-4\",\"identity-migrate secret names\",sorted(n for n,_ in rm),[\"DATABASE_MIGRATION_URL\"])\ndef has(cid,label,lst,name_re,val_re):\n    rec(cid,\"PASS\" if any(re.search(name_re,n) and re.search(val_re,v) for n,v in lst) else \"FAIL\",label)\nhas(\"P-4\",f\"identity-migrate DATABASE_MIGRATION_URL pinned to {PIN_M}\",rm,\"^DATABASE_MIGRATION_URL$\",rf\":secret:{C}/identity-migrate-[A-Za-z0-9]{{6}}:DATABASE_MIGRATION_URL::{PIN_M}$\")\nrb = refs(\"identity-bootstrap\")\nhas(\"P-4\",f\"identity-bootstrap DIRECT_DATABASE_URL pinned to {PIN_M}\",rb,\"^DIRECT_DATABASE_URL$\",rf\":secret:{C}/identity-migrate-[A-Za-z0-9]{{6}}:DATABASE_MIGRATION_URL::{PIN_M}$\")\nhas(\"P-4\",\"bootstrap IDENTITY_OWNER_EMAIL reference\",rb,\".*\",rf\":secret:{C}/identity-bootstrap:IDENTITY_OWNER_EMAIL::$\")\nhas(\"P-4\",\"bootstrap IDENTITY_OWNER_PASSWORD reference\",rb,\".*\",rf\":secret:{C}/identity-bootstrap:IDENTITY_OWNER_PASSWORD::$\")\nrd = refs(\"db-admin\")\nhas(\"P-4\",\"db-admin master secret username\",rd,\"^PGUSER$\",r\":secret:rds!db-.*:username::$\")\nhas(\"P-4\",\"db-admin master secret password\",rd,\"^PGPASSWORD$\",r\":secret:rds!db-.*:password::$\")\nhas(\"P-4\",\"db-admin identity pin\",rd,\".*\",rf\":secret:{C}/identity-[A-Za-z0-9]{{6}}:DATABASE_URL::{PIN_I}$\")\nhas(\"P-4\",\"db-admin identity-migrate pin\",rd,\".*\",rf\":secret:{C}/identity-migrate-[A-Za-z0-9]{{6}}:DATABASE_MIGRATION_URL::{PIN_M}$\")\nk = await safe(\"P-5\",\"kms\",\"DescribeKey\",{\"KeyId\":f\"alias/{C}-data\"})\nKEY = k[\"KeyMetadata\"] if k else {}\nif k: exp(\"P-5\",\"data key state usage\",(KEY[\"KeyState\"],KEY[\"KeyUsage\"]),(\"Enabled\",\"ENCRYPT_DECRYPT\"))\nfor name,pin in [(f\"{C}/identity\",PIN_I),(f\"{C}/identity-migrate\",PIN_M)]:\n    s = await safe(\"P-5\",\"secretsmanager\",\"DescribeSecret\",{\"SecretId\":name})\n    if s:\n        exp(\"P-5\",f\"{name} DeletedDate\",s.get(\"DeletedDate\"),None)\n        kid = s.get(\"KmsKeyId\",\"\")\n        rec(\"P-5\",\"PASS\" if kid in (KEY.get(\"Arn\"),KEY.get(\"KeyId\"),f\"alias/{C}-data\") or kid.endswith(f\":alias/{C}-data\") else \"FAIL\",f\"{name} KmsKeyId uses the data key ({kid})\")\n    v = await safe(\"P-5\",\"secretsmanager\",\"ListSecretVersionIds\",{\"SecretId\":name})\n    if v:\n        st = [x.get(\"VersionStages\",[]) for x in v[\"Versions\"] if x[\"VersionId\"]==pin]\n        rec(\"P-5\",\"PASS\" if st and \"AWSCURRENT\" in st[0] else \"FAIL\",f\"{name} version {pin} stages {st}\")\ns = await safe(\"P-6\",\"secretsmanager\",\"ListSecrets\",{\"IncludePlannedDeletion\":True,\"Filters\":[{\"Key\":\"name\",\"Values\":[f\"{C}/identity-bootstrap\"]}]})\nif s: exp(\"P-6\",f\"secrets named {C}/identity-bootstrap\",len(s[\"SecretList\"]),0)\nfor label,svc,op,p,key in [(\"services\",\"ecs\",\"ListServices\",{\"cluster\":C},\"serviceArns\"),(\"tasks\",\"ecs\",\"ListTasks\",{\"cluster\":C},\"taskArns\"),\n    (\"load balancers\",\"elbv2\",\"DescribeLoadBalancers\",{},\"LoadBalancers\"),(\"target groups\",\"elbv2\",\"DescribeTargetGroups\",{},\"TargetGroups\"),\n    (\"NAT gateways\",\"ec2\",\"DescribeNatGateways\",{\"Filter\":[{\"Name\":\"state\",\"Values\":[\"available\",\"pending\"]}]},\"NatGateways\"),\n    (\"Elastic IPs\",\"ec2\",\"DescribeAddresses\",{},\"Addresses\"),\n    (\"EC2 instances\",\"ec2\",\"DescribeInstances\",{\"Filters\":[{\"Name\":\"instance-state-name\",\"Values\":[\"pending\",\"running\",\"stopping\",\"stopped\"]}]},\"Reservations\"),\n    (\"public ENIs\",\"ec2\",\"DescribeNetworkInterfaces\",{\"Filters\":[{\"Name\":\"association.public-ip\",\"Values\":[\"*\"]}]},\"NetworkInterfaces\")]:\n    x = await safe(\"P-7\",svc,op,p)\n    if x is not None:\n        n = sum(len(rr.get(\"Instances\",[])) for rr in x[key]) if key==\"Reservations\" else len(x[key])\n        exp(\"P-7\",label,n,0)\ns = await safe(\"P-8\",\"scheduler\",\"ListSchedules\",{\"NamePrefix\":f\"{C}-backstop\"})\nif s: exp(\"P-8\",\"backstop schedules total enabled\",(len(s[\"Schedules\"]),sum(1 for x in s[\"Schedules\"] if x[\"State\"]==\"ENABLED\")),(11,11))\ng = await safe(\"P-8\",\"scheduler\",\"GetSchedule\",{\"Name\":f\"{C}-backstop-database\"})\nif g:\n    exp(\"P-8\",\"database schedule\",(g[\"ScheduleExpression\"],g.get(\"ScheduleExpressionTimezone\"),g[\"State\"]),(\"cron(0 21 * * ? *)\",\"UTC\",\"ENABLED\"))\n    exp(\"P-8\",\"database target\",g[\"Target\"][\"Arn\"],\"arn:aws:scheduler:::aws-sdk:rds:stopDBInstance\")\n    rec(\"P-8\",\"PASS\" if re.search(rf'\"DbInstanceIdentifier\": ?\"{C}-pg\"',g[\"Target\"].get(\"Input\",\"\")) else \"FAIL\",\"database input names munaxa-nonprod-pg\")\nl = await safe(\"P-9\",\"acm\",\"ListCertificates\",{\"Includes\":{\"keyTypes\":[\"RSA_2048\",\"EC_prime256v1\",\"EC_secp384r1\"]}})\nif l:\n    arns = [c[\"CertificateArn\"] for c in l[\"CertificateSummaryList\"] if c.get(\"DomainName\")==\"*.test.munaxa.com\"]\n    exp(\"P-9\",\"certificates for *.test.munaxa.com\",len(arns),1)\n    if len(arns)==1:\n        c = (await call(\"acm\",\"DescribeCertificate\",{\"CertificateArn\":arns[0]}))[\"Certificate\"]\n        exp(\"P-9\",\"status\",c[\"Status\"],\"ISSUED\"); sans=c[\"SubjectAlternativeNames\"]\n        rec(\"P-9\",\"PASS\" if \"*.test.munaxa.com\" in sans and \"operator-test.munaxa.com\" in sans else \"FAIL\",f\"SANs {sans}\")\n        exp(\"P-9\",\"InUseBy\",len(c.get(\"InUseBy\",[])),0); rec(\"P-9\",\"INFO\",f\"NotAfter {c['NotAfter']}\")\nfor repo,dg in [(\"munaxa-identity/api\",D[\"identity\"]),(\"munaxa-identity/migrate\",D[\"migrate\"])]:\n    x = await safe(\"P-10\",\"ecr\",\"DescribeImages\",{\"repositoryName\":repo,\"imageIds\":[{\"imageDigest\":\"sha256:\"+dg}]})\n    if x:\n        tags = x[\"imageDetails\"][0].get(\"imageTags\",[])\n        rec(\"P-10\",\"PASS\" if any(t.startswith(\"5277d71\") for t in tags) else \"FAIL\",f\"{repo} @sha256:{dg[:8]} tags {tags}\")\nresult={\"part\":1,\"started\":started,\"finished\":dt.datetime.now(dt.timezone.utc).isoformat(),\"db_vpc\":DB_VPC,\"results\":out}\njson.loads(json.dumps(result,default=str))",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "part": 1,
+      "started": "2026-11-11T09:18:09.376199+00:00",
+      "finished": "2026-11-11T09:18:30.537812+00:00",
+      "db_vpc": "vpc-0824ebbff902d2980",
+      "results": [
+        [
+          "P-1",
+          "PASS",
+          "account 229251310592, caller arn:aws:iam::229251310592:root, region eu-central-1"
+        ],
+        ["P-2", "PASS", "status = 'stopped'"],
+        ["P-2", "PASS", "class = 'db.t4g.micro'"],
+        ["P-2", "PASS", "PubliclyAccessible = False"],
+        ["P-2", "PASS", "DeletionProtection = True"],
+        ["P-2", "PASS", "MultiAZ = False"],
+        ["P-2", "PASS", "StorageEncrypted = True"],
+        ["P-2", "PASS", "parameter group = 'munaxa-nonprod-pg16'"],
+        ["P-2", "PASS", "parameter apply status = 'in-sync'"],
+        ["P-2", "PASS", "master secret status = 'active'"],
+        ["P-2", "PASS", "vpc vpc-0824ebbff902d2980, engine 16.13"],
+        ["P-3", "PASS", "cluster status running pending services = ('ACTIVE', 0, 0, 0)"],
+        [
+          "P-3",
+          "PASS",
+          "families with an ACTIVE revision = ['munaxa-nonprod-db-admin', 'munaxa-nonprod-identity', 'munaxa-nonprod-identity-bootstrap', 'munaxa-nonprod-identity-migrate']"
+        ],
+        ["P-3", "PASS", "munaxa-nonprod-identity ACTIVE revisions = ['munaxa-nonprod-identity:1']"],
+        ["P-3", "PASS", "munaxa-nonprod-identity revision status = (1, 'ACTIVE')"],
+        ["P-3", "PASS", "munaxa-nonprod-identity image @sha256:71d01fdf"],
+        ["P-3", "PASS", "munaxa-nonprod-identity image @sha256:757b7e55"],
+        [
+          "P-3",
+          "PASS",
+          "munaxa-nonprod-identity-migrate ACTIVE revisions = ['munaxa-nonprod-identity-migrate:1']"
+        ],
+        ["P-3", "PASS", "munaxa-nonprod-identity-migrate revision status = (1, 'ACTIVE')"],
+        ["P-3", "PASS", "munaxa-nonprod-identity-migrate image @sha256:d175ef37"],
+        [
+          "P-3",
+          "PASS",
+          "munaxa-nonprod-identity-bootstrap ACTIVE revisions = ['munaxa-nonprod-identity-bootstrap:1']"
+        ],
+        ["P-3", "PASS", "munaxa-nonprod-identity-bootstrap revision status = (1, 'ACTIVE')"],
+        ["P-3", "PASS", "munaxa-nonprod-identity-bootstrap image @sha256:71d01fdf"],
+        ["P-3", "PASS", "munaxa-nonprod-db-admin ACTIVE revisions = ['munaxa-nonprod-db-admin:1']"],
+        ["P-3", "PASS", "munaxa-nonprod-db-admin revision status = (1, 'ACTIVE')"],
+        ["P-3", "PASS", "munaxa-nonprod-db-admin image @sha256:5983db9a"],
+        [
+          "P-4",
+          "PASS",
+          "identity: 6 references, 0 not pinned to ad02f18e-f3e7-41da-9959-f9b41e0b7e1a"
+        ],
+        ["P-4", "PASS", "identity-migrate secret names = ['DATABASE_MIGRATION_URL']"],
+        [
+          "P-4",
+          "PASS",
+          "identity-migrate DATABASE_MIGRATION_URL pinned to a3cc6622-df66-4787-bae7-83ccfec56ff4"
+        ],
+        [
+          "P-4",
+          "PASS",
+          "identity-bootstrap DIRECT_DATABASE_URL pinned to a3cc6622-df66-4787-bae7-83ccfec56ff4"
+        ],
+        ["P-4", "PASS", "bootstrap IDENTITY_OWNER_EMAIL reference"],
+        ["P-4", "PASS", "bootstrap IDENTITY_OWNER_PASSWORD reference"],
+        ["P-4", "PASS", "db-admin master secret username"],
+        ["P-4", "PASS", "db-admin master secret password"],
+        ["P-4", "PASS", "db-admin identity pin"],
+        ["P-4", "PASS", "db-admin identity-migrate pin"],
+        ["P-5", "PASS", "data key state usage = ('Enabled', 'ENCRYPT_DECRYPT')"],
+        ["P-5", "PASS", "munaxa-nonprod/identity DeletedDate = None"],
+        [
+          "P-5",
+          "PASS",
+          "munaxa-nonprod/identity KmsKeyId uses the data key (arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37)"
+        ],
+        [
+          "P-5",
+          "PASS",
+          "munaxa-nonprod/identity version ad02f18e-f3e7-41da-9959-f9b41e0b7e1a stages [['AWSCURRENT']]"
+        ],
+        ["P-5", "PASS", "munaxa-nonprod/identity-migrate DeletedDate = None"],
+        [
+          "P-5",
+          "PASS",
+          "munaxa-nonprod/identity-migrate KmsKeyId uses the data key (arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37)"
+        ],
+        [
+          "P-5",
+          "PASS",
+          "munaxa-nonprod/identity-migrate version a3cc6622-df66-4787-bae7-83ccfec56ff4 stages [['AWSCURRENT']]"
+        ],
+        ["P-6", "PASS", "secrets named munaxa-nonprod/identity-bootstrap = 0"],
+        ["P-7", "PASS", "services = 0"],
+        ["P-7", "PASS", "tasks = 0"],
+        ["P-7", "PASS", "load balancers = 0"],
+        ["P-7", "PASS", "target groups = 0"],
+        ["P-7", "PASS", "NAT gateways = 0"],
+        ["P-7", "PASS", "Elastic IPs = 0"],
+        ["P-7", "PASS", "EC2 instances = 0"],
+        ["P-7", "PASS", "public ENIs = 0"],
+        ["P-8", "PASS", "backstop schedules total enabled = (11, 11)"],
+        ["P-8", "PASS", "database schedule = ('cron(0 21 * * ? *)', 'UTC', 'ENABLED')"],
+        ["P-8", "PASS", "database target = 'arn:aws:scheduler:::aws-sdk:rds:stopDBInstance'"],
+        ["P-8", "PASS", "database input names munaxa-nonprod-pg"],
+        ["P-9", "PASS", "certificates for *.test.munaxa.com = 1"],
+        ["P-9", "PASS", "status = 'ISSUED'"],
+        ["P-9", "PASS", "SANs ['*.test.munaxa.com', 'operator-test.munaxa.com']"],
+        ["P-9", "PASS", "InUseBy = 0"],
+        ["P-9", "INFO", "NotAfter 2027-05-22T23:59:59+00:00"],
+        [
+          "P-10",
+          "PASS",
+          "munaxa-identity/api @sha256:71d01fdf tags ['sha-5277d7190b3dda496443c4bd7d80c78bd4d9174e', '5277d71']"
+        ],
+        [
+          "P-10",
+          "PASS",
+          "munaxa-identity/migrate @sha256:d175ef37 tags ['5277d71', 'sha-5277d7190b3dda496443c4bd7d80c78bd4d9174e']"
+        ]
+      ]
+    },
+    "api_calls": [
+      {
+        "service": "sts",
+        "operation": "GetCallerIdentity",
+        "status": "success"
+      },
+      {
+        "service": "rds",
+        "operation": "DescribeDBInstances",
+        "status": "success",
+        "n_items": {
+          "DBInstances": 1
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "DescribeClusters",
+        "status": "success",
+        "n_items": {
+          "clusters": 1,
+          "failures": 0
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "ListTaskDefinitionFamilies",
+        "status": "success",
+        "n_items": {
+          "families": 4
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "ListTaskDefinitions",
+        "status": "success",
+        "n_items": {
+          "taskDefinitionArns": 1
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "DescribeTaskDefinition",
+        "status": "success",
+        "n_items": {
+          "tags": 0
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "ListTaskDefinitions",
+        "status": "success",
+        "n_items": {
+          "taskDefinitionArns": 1
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "DescribeTaskDefinition",
+        "status": "success",
+        "n_items": {
+          "tags": 0
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "ListTaskDefinitions",
+        "status": "success",
+        "n_items": {
+          "taskDefinitionArns": 1
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "DescribeTaskDefinition",
+        "status": "success",
+        "n_items": {
+          "tags": 0
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "ListTaskDefinitions",
+        "status": "success",
+        "n_items": {
+          "taskDefinitionArns": 1
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "DescribeTaskDefinition",
+        "status": "success",
+        "n_items": {
+          "tags": 0
+        }
+      },
+      {
+        "service": "kms",
+        "operation": "DescribeKey",
+        "status": "success"
+      },
+      {
+        "service": "secretsmanager",
+        "operation": "DescribeSecret",
+        "status": "success",
+        "n_items": {
+          "Tags": 4
+        }
+      },
+      {
+        "service": "secretsmanager",
+        "operation": "ListSecretVersionIds",
+        "status": "success",
+        "n_items": {
+          "Versions": 1
+        }
+      },
+      {
+        "service": "secretsmanager",
+        "operation": "DescribeSecret",
+        "status": "success",
+        "n_items": {
+          "Tags": 4
+        }
+      },
+      {
+        "service": "secretsmanager",
+        "operation": "ListSecretVersionIds",
+        "status": "success",
+        "n_items": {
+          "Versions": 1
+        }
+      },
+      {
+        "service": "secretsmanager",
+        "operation": "ListSecrets",
+        "status": "success",
+        "n_items": {
+          "SecretList": 0
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "ListServices",
+        "status": "success",
+        "n_items": {
+          "serviceArns": 0
+        }
+      },
+      {
+        "service": "ecs",
+        "operation": "ListTasks",
+        "status": "success",
+        "n_items": {
+          "taskArns": 0
+        }
+      },
+      {
+        "service": "elbv2",
+        "operation": "DescribeLoadBalancers",
+        "status": "success",
+        "n_items": {
+          "LoadBalancers": 0
+        }
+      },
+      {
+        "service": "elbv2",
+        "operation": "DescribeTargetGroups",
+        "status": "success",
+        "n_items": {
+          "TargetGroups": 0
+        }
+      },
+      {
+        "service": "ec2",
+        "operation": "DescribeNatGateways",
+        "status": "success",
+        "n_items": {
+          "NatGateways": 0
+        }
+      },
+      {
+        "service": "ec2",
+        "operation": "DescribeAddresses",
+        "status": "success",
+        "n_items": {
+          "Addresses": 0
+        }
+      },
+      {
+        "service": "ec2",
+        "operation": "DescribeInstances",
+        "status": "success",
+        "n_items": {
+          "Reservations": 0
+        }
+      },
+      {
+        "service": "ec2",
+        "operation": "DescribeNetworkInterfaces",
+        "status": "success",
+        "n_items": {
+          "NetworkInterfaces": 0
+        }
+      },
+      {
+        "service": "scheduler",
+        "operation": "ListSchedules",
+        "status": "success",
+        "n_items": {
+          "Schedules": 11
+        }
+      },
+      {
+        "service": "scheduler",
+        "operation": "GetSchedule",
+        "status": "success"
+      },
+      {
+        "service": "acm",
+        "operation": "ListCertificates",
+        "status": "success",
+        "n_items": {
+          "CertificateSummaryList": 1
+        }
+      },
+      {
+        "service": "acm",
+        "operation": "DescribeCertificate",
+        "status": "success"
+      },
+      {
+        "service": "ecr",
+        "operation": "DescribeImages",
+        "status": "success",
+        "n_items": {
+          "imageDetails": 1
+        }
+      },
+      {
+        "service": "ecr",
+        "operation": "DescribeImages",
+        "status": "success",
+        "n_items": {
+          "imageDetails": 1
+        }
+      }
+    ]
+  }
+}

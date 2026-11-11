@@ -1,0 +1,371 @@
+[
+  {
+    "GroupId": "sg-085a17dd6f09f30cc",
+    "IpPermissionsEgress": [
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "UserIdGroupPairs": [
+          {
+            "Description": "PostgreSQL on the shared instance",
+            "UserId": "229251310592",
+            "GroupId": "sg-0cfcf01d1028d4205"
+          }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      },
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 443,
+        "ToPort": 443,
+        "UserIdGroupPairs": [],
+        "IpRanges": [
+          {
+            "Description": "HTTPS: ECR, Secrets Manager, KMS, logs, and Munaxa Identity and Control by their public names",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      }
+    ],
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-identity-migrate"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      }
+    ],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "SecurityGroupArn": "arn:aws:ec2:eu-central-1:229251310592:security-group/sg-085a17dd6f09f30cc",
+    "OwnerId": "229251310592",
+    "GroupName": "munaxa-nonprod-identity-migrate",
+    "Description": "Munaxa identity-migrate tasks",
+    "IpPermissions": []
+  },
+  {
+    "GroupId": "sg-04a1789e57b9aa193",
+    "IpPermissionsEgress": [
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "UserIdGroupPairs": [
+          {
+            "Description": "PostgreSQL",
+            "UserId": "229251310592",
+            "GroupId": "sg-0cfcf01d1028d4205"
+          }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      },
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 443,
+        "ToPort": 443,
+        "UserIdGroupPairs": [],
+        "IpRanges": [
+          {
+            "Description": "HTTPS: ECR Public, Secrets Manager, logs",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      }
+    ],
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-db-admin"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      }
+    ],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "SecurityGroupArn": "arn:aws:ec2:eu-central-1:229251310592:security-group/sg-04a1789e57b9aa193",
+    "OwnerId": "229251310592",
+    "GroupName": "munaxa-nonprod-db-admin",
+    "Description": "The db-admin task: 5432 to the database, 443 to AWS APIs, no inbound",
+    "IpPermissions": []
+  },
+  {
+    "GroupId": "sg-09f4c73e5cd0880c6",
+    "IpPermissionsEgress": [],
+    "Tags": [
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-default-unused"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      }
+    ],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "SecurityGroupArn": "arn:aws:ec2:eu-central-1:229251310592:security-group/sg-09f4c73e5cd0880c6",
+    "OwnerId": "229251310592",
+    "GroupName": "default",
+    "Description": "default VPC security group",
+    "IpPermissions": []
+  },
+  {
+    "GroupId": "sg-0cfcf01d1028d4205",
+    "IpPermissionsEgress": [],
+    "Tags": [
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-database"
+      }
+    ],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "SecurityGroupArn": "arn:aws:ec2:eu-central-1:229251310592:security-group/sg-0cfcf01d1028d4205",
+    "OwnerId": "229251310592",
+    "GroupName": "munaxa-nonprod-database",
+    "Description": "Shared PostgreSQL: admits the tasks of each service and the db-admin task on 5432, nothing else",
+    "IpPermissions": [
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "UserIdGroupPairs": [
+          {
+            "Description": "PostgreSQL from the db-admin task",
+            "UserId": "229251310592",
+            "GroupId": "sg-04a1789e57b9aa193"
+          },
+          {
+            "Description": "PostgreSQL from identity-migrate",
+            "UserId": "229251310592",
+            "GroupId": "sg-085a17dd6f09f30cc"
+          },
+          {
+            "Description": "PostgreSQL from identity",
+            "UserId": "229251310592",
+            "GroupId": "sg-04ffb6a5379a4f26f"
+          }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      }
+    ]
+  },
+  {
+    "GroupId": "sg-04ffb6a5379a4f26f",
+    "IpPermissionsEgress": [
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 5432,
+        "ToPort": 5432,
+        "UserIdGroupPairs": [
+          {
+            "Description": "PostgreSQL on the shared instance",
+            "UserId": "229251310592",
+            "GroupId": "sg-0cfcf01d1028d4205"
+          }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      },
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 443,
+        "ToPort": 443,
+        "UserIdGroupPairs": [],
+        "IpRanges": [
+          {
+            "Description": "HTTPS: ECR, Secrets Manager, KMS, logs, and Munaxa Identity and Control by their public names",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      }
+    ],
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-identity"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      }
+    ],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "SecurityGroupArn": "arn:aws:ec2:eu-central-1:229251310592:security-group/sg-04ffb6a5379a4f26f",
+    "OwnerId": "229251310592",
+    "GroupName": "munaxa-nonprod-identity",
+    "Description": "Munaxa identity tasks",
+    "IpPermissions": [
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 4001,
+        "ToPort": 4001,
+        "UserIdGroupPairs": [
+          {
+            "Description": "The shared ALB",
+            "UserId": "229251310592",
+            "GroupId": "sg-063a81c72c7f3239f"
+          }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      }
+    ]
+  },
+  {
+    "GroupId": "sg-063a81c72c7f3239f",
+    "IpPermissionsEgress": [
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 4001,
+        "ToPort": 4001,
+        "UserIdGroupPairs": [
+          {
+            "Description": "To identity",
+            "UserId": "229251310592",
+            "GroupId": "sg-04ffb6a5379a4f26f"
+          }
+        ],
+        "IpRanges": [],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      }
+    ],
+    "Tags": [
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-alb"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      }
+    ],
+    "VpcId": "vpc-0824ebbff902d2980",
+    "SecurityGroupArn": "arn:aws:ec2:eu-central-1:229251310592:security-group/sg-063a81c72c7f3239f",
+    "OwnerId": "229251310592",
+    "GroupName": "munaxa-nonprod-alb",
+    "Description": "The shared ALB: 80 and 443 from the internet; to tasks on their ports only",
+    "IpPermissions": [
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 80,
+        "ToPort": 80,
+        "UserIdGroupPairs": [],
+        "IpRanges": [
+          {
+            "Description": "HTTP (redirected) from the internet",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      },
+      {
+        "IpProtocol": "tcp",
+        "FromPort": 443,
+        "ToPort": 443,
+        "UserIdGroupPairs": [],
+        "IpRanges": [
+          {
+            "Description": "HTTPS from the internet",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Ipv6Ranges": [],
+        "PrefixListIds": []
+      }
+    ]
+  }
+]

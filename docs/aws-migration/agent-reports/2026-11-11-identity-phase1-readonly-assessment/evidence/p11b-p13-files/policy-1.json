@@ -1,0 +1,44 @@
+{
+  "Statement": [
+    {
+      "Action": [
+        "servicediscovery:List*",
+        "servicediscovery:Get*",
+        "secretsmanager:ListSecrets",
+        "scheduler:ListSchedules",
+        "scheduler:GetSchedule",
+        "route53:ListTagsForResource",
+        "route53:ListResourceRecordSets",
+        "route53:ListHostedZones*",
+        "route53:GetHostedZone",
+        "route53:GetChange",
+        "rds:ListTagsForResource",
+        "rds:Describe*",
+        "logs:ListTagsLogGroup",
+        "logs:ListTagsForResource",
+        "logs:DescribeLogGroups",
+        "kms:ListKeys",
+        "kms:ListAliases",
+        "elasticloadbalancing:Describe*",
+        "ecs:List*",
+        "ecs:Describe*",
+        "ec2:Describe*",
+        "cloudwatch:DescribeAlarms",
+        "acm:ListTagsForCertificate",
+        "acm:ListCertificates",
+        "acm:GetCertificate",
+        "acm:DescribeCertificate"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "ConfigurationReads"
+    },
+    {
+      "Action": ["ecr:DescribeRepositories", "ecr:DescribeImages"],
+      "Effect": "Allow",
+      "Resource": "arn:aws:ecr:eu-central-1:229251310592:repository/munaxa-*",
+      "Sid": "ImageMetadata"
+    }
+  ],
+  "Version": "2012-10-17"
+}

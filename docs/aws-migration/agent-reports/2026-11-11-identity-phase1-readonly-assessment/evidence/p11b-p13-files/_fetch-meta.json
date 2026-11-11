@@ -1,0 +1,138 @@
+{
+  "fetched_at": "2026-11-11T09:24:10.823656Z",
+  "api_calls": [
+    {
+      "service": "iam",
+      "operation": "ListRoles",
+      "status": "success",
+      "n_items": {
+        "Roles": 10
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 2
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    },
+    {
+      "service": "kms",
+      "operation": "DescribeKey",
+      "status": "success"
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeVpcs",
+      "status": "success",
+      "n_items": {
+        "Vpcs": 1
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeSubnets",
+      "status": "success",
+      "n_items": {
+        "Subnets": 5
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeRouteTables",
+      "status": "success",
+      "n_items": {
+        "RouteTables": 3
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeVpcEndpoints",
+      "status": "success",
+      "n_items": {
+        "VpcEndpoints": 1
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeSecurityGroups",
+      "status": "success",
+      "n_items": {
+        "SecurityGroups": 6
+      }
+    },
+    {
+      "service": "ec2",
+      "operation": "DescribeInternetGateways",
+      "status": "success",
+      "n_items": {
+        "InternetGateways": 1
+      }
+    }
+  ]
+}

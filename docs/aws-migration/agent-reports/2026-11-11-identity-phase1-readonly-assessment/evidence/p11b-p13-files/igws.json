@@ -1,0 +1,34 @@
+[
+  {
+    "Attachments": [
+      {
+        "State": "available",
+        "VpcId": "vpc-0824ebbff902d2980"
+      }
+    ],
+    "InternetGatewayId": "igw-01c51c4963afa87fb",
+    "OwnerId": "229251310592",
+    "Tags": [
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-igw"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      }
+    ]
+  }
+]
