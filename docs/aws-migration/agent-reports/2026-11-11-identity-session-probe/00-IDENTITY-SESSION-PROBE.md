@@ -16,7 +16,6 @@ was made or read. The probe has never met the real ALB or Identity.
 | --- | --- |
 | `infra/aws/stack/supporting/identity-session-probe.mjs` | The probe: one ES module, Node 22, `node:` built-ins only (`crypto`, `https`, `tls`, `url`) |
 | `infra/aws/stack/supporting/identity-session-probe.test.mjs` | 54 unit tests (`node --test`), offline |
-| `.github/workflows/aws-terraform.yml` | One new step in the PR job "Format, validate, mocked plan tests": Node 22, then the probe tests |
 | This report | |
 
 SHA256 of the probe: see section 7. **The pin for a session must be taken from
@@ -129,8 +128,10 @@ Mutation spot checks (each reverted): removing the replay check, the expiry chec
 field on login, sending the refresh cookie to logout, or adding `rejectUnauthorized: false` each
 makes at least one test fail.
 
-CI: the PR's "Format, validate, mocked plan tests" job now runs these tests on Node 22. Result: see
-the PR checks.
+CI: this PR adds no workflow step. PR #92's step in the "Format, validate, mocked plan tests" job
+(`node --test 'infra/aws/stack/**/*.test.mjs'`, Node 22) covers this file once #92 is merged, so
+#92 should merge before #93. Until then the tests are proven by the local run above (an earlier
+head of this PR also ran them in CI).
 
 ## 6. Risks and open items
 
@@ -140,7 +141,7 @@ the PR checks.
 | R-2 | Identity's Origin check, rate limiter and lockout are mocked, not exercised | A 403 or 429 on login would show as `FAIL login status-403` or `status-429-rate-limited` | Two logins and one wrong password per run; the codes are fixed and safe |
 | R-3 | The Amazon-issued ALB certificate must chain to Node 22's bundled roots | If not, every check fails `tls-untrusted` and nothing is sent | Expected to chain to Amazon Root CA 1, which Node bundles; never worked around by disabling checks |
 | R-4 | The pin changes with any edit | A stale SHA256 makes the loader stop with `checksum` | Take commit and SHA256 from the merged `main` commit; Workstream 4's runbook gives the procedure |
-| R-5 | PR #92 (Workstream 2) also edits `aws-terraform.yml` and adds a glob step `node --test 'infra/aws/stack/**/*.test.mjs'` that covers this file | A merge conflict, or the tests running twice | Whichever of #92 and #93 merges second drops this PR's single-file step |
+| R-5 | This PR's tests run in CI only through PR #92's glob step | If #93 merges first, nothing in CI runs the probe tests until #92 merges | Merge #92 before #93 (review X-1 removed #93's duplicate step) |
 | R-6 | The operator email is still pending | The probe cannot run until the bootstrap secret exists | Owner input; outside this workstream |
 | R-7 | One session row is created in Identity and then revoked; one failed-login audit event | Expected side effects in a non-production database | Recorded here so the reviewer is not surprised |
 
