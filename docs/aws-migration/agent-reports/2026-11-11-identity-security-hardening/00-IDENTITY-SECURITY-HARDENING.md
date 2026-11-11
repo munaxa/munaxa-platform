@@ -73,6 +73,8 @@ Agent 4 posted every review on its PR. The findings that blocked a merge or that
 | #7  | M-1 the active-view `save` accepted any record, which could overwrite the live factor                                                | `save` on the active view always throws; tested (`verifier().begin/confirm` refused, ciphertext unchanged)               |
 | #7  | M-2 a new production prerequisite (MFA key ring) was not documented as blocking                                                      | Documented in the MFA runbook, secrets inventory and the production readiness checklist                                  |
 | #8  | M-1 the docs claimed revocation joined an enclosing transaction; M-2 revocations were not audited                                      | Fixed in #10                                                                                                             |
+| #9  | M-1 reset links carry the token in the query string, so ALB and CDN access logs would hold live reset credentials | Resolved as a blocking prerequisite in #9: those logs off or treated as secret before reset is enabled anywhere |
+| #9  | M-2 production would start with the default `IDENTITY_PASSWORD_RESET=enabled` and no transport | Resolved in #9: production refuses to start unless reset is `disabled`; listed as a blocking prerequisite |
 | #11 | M-1 password change needed a step-up for accounts with a factor                                                                     | Fixed in #12 (403 `AUTH_REAUTHENTICATION_REQUIRED`, fails closed)                                                        |
 | #12 | **H-1** the MFA attempt limits were check-then-act, so concurrent guesses bypassed both limits                                      | Counters reserved before the check. Tests count real factor checks under concurrency (20 → ≤3, 12 → ≤6, 20 reauth → ≤6); all fail on the old head |
 | #12 | M-1 enrolling through the sign-in challenge did not end pre-enforcement sessions                                                     | Revokes every session first; runbook and `sessions-revoke-unsatisfied` cover accounts that do not sign in again          |
@@ -81,8 +83,9 @@ Agent 4 posted every review on its PR. The findings that blocked a merge or that
 
 **Process exception (#8).** #8 was merged at 12:56:25. Agent 4's review of that head (`75439e2`) was
 posted at 12:56:35, ten seconds later. The review approved that exact head with no critical or high
-findings, and its two medium findings were fixed and reviewed in #10. The merge was not made by
-the MFA agent, and the coordinator was told. Every later merge waited for the review of its exact
+findings, and its two medium findings were fixed and reviewed in #10. GitHub records the merge as
+made by `tam2om` (the account every agent acts through). The PR's author, Agent 3, reports that it
+did not merge it, and which session or person did is not identified. The coordinator was told. Every later merge waited for the review of its exact
 head.
 
 Informational items accepted, not changed:
