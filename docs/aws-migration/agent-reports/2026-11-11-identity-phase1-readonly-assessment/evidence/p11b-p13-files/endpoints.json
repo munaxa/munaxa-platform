@@ -1,0 +1,46 @@
+[
+  {
+    "VpcEndpointId": "vpce-0ef83b62278737210",
+    "VpcEndpointType": "Gateway",
+    "VpcId": "vpc-0824ebbff902d2980",
+    "ServiceName": "com.amazonaws.eu-central-1.s3",
+    "State": "available",
+    "PolicyDocument": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"EcrImageLayers\",\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":\"s3:GetObject\",\"Resource\":\"arn:aws:s3:::prod-eu-central-1-starport-layer-bucket/*\"},{\"Sid\":\"OwnFileBuckets\",\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\",\"s3:DeleteObject\",\"s3:AbortMultipartUpload\",\"s3:ListBucket\"],\"Resource\":[\"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\",\"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592/*\",\"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\",\"arn:aws:s3:::munaxa-nonprod-school-files-229251310592/*\"]}]}",
+    "RouteTableIds": ["rtb-04e784db42499a7f7"],
+    "SubnetIds": [],
+    "Groups": [],
+    "IpAddressType": "ipv4",
+    "DnsOptions": {
+      "DnsRecordIpType": "service-defined"
+    },
+    "PrivateDnsEnabled": false,
+    "RequesterManaged": false,
+    "NetworkInterfaceIds": [],
+    "DnsEntries": [],
+    "CreationTimestamp": "2026-11-06T14:05:44+00:00",
+    "Tags": [
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-s3"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      }
+    ],
+    "OwnerId": "229251310592",
+    "ServiceRegion": "eu-central-1"
+  }
+]

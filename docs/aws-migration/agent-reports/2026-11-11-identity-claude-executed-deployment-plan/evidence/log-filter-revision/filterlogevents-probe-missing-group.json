@@ -1,0 +1,89 @@
+{
+  "called_at_utc": "2026-11-11T09:43:04.259Z",
+  "script": "NEW='%eyJ|PRIVATE\\\\sKEY|[Pp]assword\\\\x5c?\\\\x22\\\\s*:\\\\s*\\\\x5c?\\\\x22[^\\\\x22\\\\x5c\\\\[]%'\nBROKEN_PAREN='%(eyJ)%'          # parentheses are documented as unsupported\nBROKEN_QUOTE='%\"password\"%'     # double quote is documented as unsupported inside regex\nOLD='?eyJ ?BEGIN ?PRIVATE ?\"password\\\\\":\\\\\"\"'\nG=\"/munaxa/synthetic/filter-syntax-probe-does-not-exist\"\nasync def probe(label,p):\n    t=datetime.datetime.utcnow().isoformat()+\"Z\"\n    req={\"logGroupName\":G,\"filterPattern\":p,\"startTime\":1700000000000,\"endTime\":1700000001000,\"limit\":1}\n    try:\n        r=await call_boto3(service_name=\"logs\",operation_name=\"FilterLogEvents\",region_name=\"eu-central-1\",params=req)\n        return {\"label\":label,\"at\":t,\"request\":req,\"outcome\":\"success\",\"events_count\":len(r.get(\"events\",[]))}\n    except Exception as e:\n        return {\"label\":label,\"at\":t,\"request\":req,\"outcome\":\"error\",\"error\":str(e)}\nout=[]\nfor l,p in [(\"revised\",NEW),(\"broken-parentheses\",BROKEN_PAREN),(\"broken-quote\",BROKEN_QUOTE),(\"old\",OLD)]:\n    out.append(await probe(l,p))\nresult=out\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "stderr": "Error calling function call_boto3 with arguments {'service_name': 'logs', 'operation_name': 'FilterLogEvents', 'region_name': 'eu-central-1', 'params': {'logGroupName': '/munaxa/synthetic/filter-syntax-probe-does-not-exist', 'filterPattern': '%eyJ|PRIVATE\\\\sKEY|[Pp]assword\\\\x5c?\\\\x22\\\\s*:\\\\s*\\\\x5c?\\\\x22[^\\\\x22\\\\x5c\\\\[]%', 'startTime': 1700000000000, 'endTime': 1700000001000, 'limit': 1}}: An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist.\nError calling function call_boto3 with arguments {'service_name': 'logs', 'operation_name': 'FilterLogEvents', 'region_name': 'eu-central-1', 'params': {'logGroupName': '/munaxa/synthetic/filter-syntax-probe-does-not-exist', 'filterPattern': '%(eyJ)%', 'startTime': 1700000000000, 'endTime': 1700000001000, 'limit': 1}}: An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist.\nError calling function call_boto3 with arguments {'service_name': 'logs', 'operation_name': 'FilterLogEvents', 'region_name': 'eu-central-1', 'params': {'logGroupName': '/munaxa/synthetic/filter-syntax-probe-does-not-exist', 'filterPattern': '%\"password\"%', 'startTime': 1700000000000, 'endTime': 1700000001000, 'limit': 1}}: An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist.\nError calling function call_boto3 with arguments {'service_name': 'logs', 'operation_name': 'FilterLogEvents', 'region_name': 'eu-central-1', 'params': {'logGroupName': '/munaxa/synthetic/filter-syntax-probe-does-not-exist', 'filterPattern': '?eyJ ?BEGIN ?PRIVATE ?\"password\\\\\":\\\\\"\"', 'startTime': 1700000000000, 'endTime': 1700000001000, 'limit': 1}}: An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist.\n",
+    "return_value": [
+      {
+        "label": "revised",
+        "at": "2026-11-11T09:43:06.032206Z",
+        "request": {
+          "logGroupName": "/munaxa/synthetic/filter-syntax-probe-does-not-exist",
+          "filterPattern": "%eyJ|PRIVATE\\sKEY|[Pp]assword\\x5c?\\x22\\s*:\\s*\\x5c?\\x22[^\\x22\\x5c\\[]%",
+          "startTime": 1700000000000,
+          "endTime": 1700000001000,
+          "limit": 1
+        },
+        "outcome": "error",
+        "error": "An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist."
+      },
+      {
+        "label": "broken-parentheses",
+        "at": "2026-11-11T09:43:06.892817Z",
+        "request": {
+          "logGroupName": "/munaxa/synthetic/filter-syntax-probe-does-not-exist",
+          "filterPattern": "%(eyJ)%",
+          "startTime": 1700000000000,
+          "endTime": 1700000001000,
+          "limit": 1
+        },
+        "outcome": "error",
+        "error": "An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist."
+      },
+      {
+        "label": "broken-quote",
+        "at": "2026-11-11T09:43:07.493588Z",
+        "request": {
+          "logGroupName": "/munaxa/synthetic/filter-syntax-probe-does-not-exist",
+          "filterPattern": "%\"password\"%",
+          "startTime": 1700000000000,
+          "endTime": 1700000001000,
+          "limit": 1
+        },
+        "outcome": "error",
+        "error": "An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist."
+      },
+      {
+        "label": "old",
+        "at": "2026-11-11T09:43:08.162784Z",
+        "request": {
+          "logGroupName": "/munaxa/synthetic/filter-syntax-probe-does-not-exist",
+          "filterPattern": "?eyJ ?BEGIN ?PRIVATE ?\"password\\\":\\\"\"",
+          "startTime": 1700000000000,
+          "endTime": 1700000001000,
+          "limit": 1
+        },
+        "outcome": "error",
+        "error": "An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist."
+      }
+    ],
+    "api_calls": [
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "error",
+        "error": "ResourceNotFoundException: An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist."
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "error",
+        "error": "ResourceNotFoundException: An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist."
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "error",
+        "error": "ResourceNotFoundException: An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist."
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "error",
+        "error": "ResourceNotFoundException: An error occurred (ResourceNotFoundException) when calling the FilterLogEvents operation: The specified log group does not exist."
+      }
+    ]
+  }
+}

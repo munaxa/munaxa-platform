@@ -1,0 +1,32 @@
+[
+  {
+    "RoleName": "munaxa-control-image-publisher"
+  },
+  {
+    "RoleName": "munaxa-identity-image-publisher"
+  },
+  {
+    "RoleName": "munaxa-school-image-publisher"
+  },
+  {
+    "RoleName": "munaxa-shared-ci-nonprod"
+  },
+  {
+    "RoleName": "munaxa-shared-ci-nonprod-session"
+  },
+  {
+    "RoleName": "munaxa-shared-ci-prod"
+  },
+  {
+    "RoleName": "munaxa-shared-deployer-nonprod"
+  },
+  {
+    "RoleName": "munaxa-shared-deployer-nonprod-session"
+  },
+  {
+    "RoleName": "munaxa-shared-deployer-prod"
+  },
+  {
+    "RoleName": "munaxa-work-image-publisher"
+  }
+]

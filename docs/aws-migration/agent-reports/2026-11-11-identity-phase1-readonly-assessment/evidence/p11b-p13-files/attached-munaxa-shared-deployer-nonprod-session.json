@@ -1,0 +1,10 @@
+[
+  {
+    "PolicyName": "munaxa-shared-deployer-read",
+    "PolicyArn": "arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-read"
+  },
+  {
+    "PolicyName": "munaxa-shared-deployer-nonprod-session-read",
+    "PolicyArn": "arn:aws:iam::229251310592:policy/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session-read"
+  }
+]

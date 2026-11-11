@@ -1,0 +1,45 @@
+[
+  {
+    "OwnerId": "229251310592",
+    "InstanceTenancy": "default",
+    "CidrBlockAssociationSet": [
+      {
+        "AssociationId": "vpc-cidr-assoc-021ecb0bfb24bcf91",
+        "CidrBlock": "10.130.0.0/16",
+        "CidrBlockState": {
+          "State": "associated"
+        }
+      }
+    ],
+    "IsDefault": false,
+    "Tags": [
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      }
+    ],
+    "BlockPublicAccessStates": {
+      "InternetGatewayBlockMode": "off"
+    },
+    "VpcId": "vpc-0824ebbff902d2980",
+    "State": "available",
+    "CidrBlock": "10.130.0.0/16",
+    "DhcpOptionsId": "dopt-0da51f75def310cc4"
+  }
+]

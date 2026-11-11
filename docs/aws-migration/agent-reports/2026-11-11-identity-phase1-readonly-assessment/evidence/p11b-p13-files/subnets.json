@@ -1,0 +1,262 @@
+[
+  {
+    "AvailabilityZoneId": "euc1-az3",
+    "MapCustomerOwnedIpOnLaunch": false,
+    "OwnerId": "229251310592",
+    "AssignIpv6AddressOnCreation": false,
+    "Ipv6CidrBlockAssociationSet": [],
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-public-b"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "Tier",
+        "Value": "public"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      }
+    ],
+    "SubnetArn": "arn:aws:ec2:eu-central-1:229251310592:subnet/subnet-04c7ea0f4e672ff8c",
+    "EnableDns64": false,
+    "Ipv6Native": false,
+    "PrivateDnsNameOptionsOnLaunch": {
+      "HostnameType": "ip-name",
+      "EnableResourceNameDnsARecord": false,
+      "EnableResourceNameDnsAAAARecord": false
+    },
+    "BlockPublicAccessStates": {
+      "InternetGatewayBlockMode": "off"
+    },
+    "SubnetId": "subnet-04c7ea0f4e672ff8c",
+    "State": "available",
+    "VpcId": "vpc-0824ebbff902d2980",
+    "CidrBlock": "10.130.1.0/24",
+    "AvailableIpAddressCount": 251,
+    "AvailabilityZone": "eu-central-1b",
+    "DefaultForAz": false,
+    "MapPublicIpOnLaunch": false
+  },
+  {
+    "AvailabilityZoneId": "euc1-az2",
+    "MapCustomerOwnedIpOnLaunch": false,
+    "OwnerId": "229251310592",
+    "AssignIpv6AddressOnCreation": false,
+    "Ipv6CidrBlockAssociationSet": [],
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-db-a"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "Tier",
+        "Value": "db"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      }
+    ],
+    "SubnetArn": "arn:aws:ec2:eu-central-1:229251310592:subnet/subnet-083f62b446501270e",
+    "EnableDns64": false,
+    "Ipv6Native": false,
+    "PrivateDnsNameOptionsOnLaunch": {
+      "HostnameType": "ip-name",
+      "EnableResourceNameDnsARecord": false,
+      "EnableResourceNameDnsAAAARecord": false
+    },
+    "BlockPublicAccessStates": {
+      "InternetGatewayBlockMode": "off"
+    },
+    "SubnetId": "subnet-083f62b446501270e",
+    "State": "available",
+    "VpcId": "vpc-0824ebbff902d2980",
+    "CidrBlock": "10.130.64.0/24",
+    "AvailableIpAddressCount": 251,
+    "AvailabilityZone": "eu-central-1a",
+    "DefaultForAz": false,
+    "MapPublicIpOnLaunch": false
+  },
+  {
+    "AvailabilityZoneId": "euc1-az1",
+    "MapCustomerOwnedIpOnLaunch": false,
+    "OwnerId": "229251310592",
+    "AssignIpv6AddressOnCreation": false,
+    "Ipv6CidrBlockAssociationSet": [],
+    "Tags": [
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Tier",
+        "Value": "db"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-db-c"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      }
+    ],
+    "SubnetArn": "arn:aws:ec2:eu-central-1:229251310592:subnet/subnet-0d19305f91c135c57",
+    "EnableDns64": false,
+    "Ipv6Native": false,
+    "PrivateDnsNameOptionsOnLaunch": {
+      "HostnameType": "ip-name",
+      "EnableResourceNameDnsARecord": false,
+      "EnableResourceNameDnsAAAARecord": false
+    },
+    "BlockPublicAccessStates": {
+      "InternetGatewayBlockMode": "off"
+    },
+    "SubnetId": "subnet-0d19305f91c135c57",
+    "State": "available",
+    "VpcId": "vpc-0824ebbff902d2980",
+    "CidrBlock": "10.130.66.0/24",
+    "AvailableIpAddressCount": 251,
+    "AvailabilityZone": "eu-central-1c",
+    "DefaultForAz": false,
+    "MapPublicIpOnLaunch": false
+  },
+  {
+    "AvailabilityZoneId": "euc1-az3",
+    "MapCustomerOwnedIpOnLaunch": false,
+    "OwnerId": "229251310592",
+    "AssignIpv6AddressOnCreation": false,
+    "Ipv6CidrBlockAssociationSet": [],
+    "Tags": [
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Tier",
+        "Value": "db"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-db-b"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      }
+    ],
+    "SubnetArn": "arn:aws:ec2:eu-central-1:229251310592:subnet/subnet-0c41bfbe889e71a46",
+    "EnableDns64": false,
+    "Ipv6Native": false,
+    "PrivateDnsNameOptionsOnLaunch": {
+      "HostnameType": "ip-name",
+      "EnableResourceNameDnsARecord": false,
+      "EnableResourceNameDnsAAAARecord": false
+    },
+    "BlockPublicAccessStates": {
+      "InternetGatewayBlockMode": "off"
+    },
+    "SubnetId": "subnet-0c41bfbe889e71a46",
+    "State": "available",
+    "VpcId": "vpc-0824ebbff902d2980",
+    "CidrBlock": "10.130.65.0/24",
+    "AvailableIpAddressCount": 250,
+    "AvailabilityZone": "eu-central-1b",
+    "DefaultForAz": false,
+    "MapPublicIpOnLaunch": false
+  },
+  {
+    "AvailabilityZoneId": "euc1-az2",
+    "MapCustomerOwnedIpOnLaunch": false,
+    "OwnerId": "229251310592",
+    "AssignIpv6AddressOnCreation": false,
+    "Ipv6CidrBlockAssociationSet": [],
+    "Tags": [
+      {
+        "Key": "Tier",
+        "Value": "public"
+      },
+      {
+        "Key": "Stack",
+        "Value": "shared"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform/munaxa-platform/infra/aws/stack"
+      },
+      {
+        "Key": "Environment",
+        "Value": "nonprod"
+      },
+      {
+        "Key": "Name",
+        "Value": "munaxa-nonprod-public-a"
+      },
+      {
+        "Key": "Project",
+        "Value": "munaxa"
+      }
+    ],
+    "SubnetArn": "arn:aws:ec2:eu-central-1:229251310592:subnet/subnet-03202d5663c3df1b0",
+    "EnableDns64": false,
+    "Ipv6Native": false,
+    "PrivateDnsNameOptionsOnLaunch": {
+      "HostnameType": "ip-name",
+      "EnableResourceNameDnsARecord": false,
+      "EnableResourceNameDnsAAAARecord": false
+    },
+    "BlockPublicAccessStates": {
+      "InternetGatewayBlockMode": "off"
+    },
+    "SubnetId": "subnet-03202d5663c3df1b0",
+    "State": "available",
+    "VpcId": "vpc-0824ebbff902d2980",
+    "CidrBlock": "10.130.0.0/24",
+    "AvailableIpAddressCount": 251,
+    "AvailabilityZone": "eu-central-1a",
+    "DefaultForAz": false,
+    "MapPublicIpOnLaunch": false
+  }
+]

@@ -1,5 +1,11 @@
 # First Identity-only Testing session: preparation (runbook steps 8 to 23)
 
+> **Cost correction, 11 Nov 2026 (PR #95 finding X-6).** Every US$0.35 figure in this report is a
+> conditional ceiling, not a guarantee. It holds only while Claude's session and the AWS connector
+> stay available and `down` runs by T0 + 3 h. If Claude loses control: about US$1.00 when a
+> scheduled `down` runs; **no fixed upper limit** (the ALB costs about US$0.89 a day) when both
+> scheduled runs are dropped. Current statement: final operator runbook, section 15.
+
 - Date: 10 Nov 2026, from 06:44 UTC
 - Repository: `munaxa/munaxa-platform`, `main` at `6050c2f` (PR #74). Environment `nonprod`, account
   `229251310592`, region `eu-central-1`.

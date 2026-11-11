@@ -1,0 +1,45 @@
+{
+  "Path": "/munaxa-shared/bootstrap/",
+  "RoleName": "munaxa-shared-ci-nonprod-session",
+  "RoleId": "AROATKYDRMQALFMQNRU7O",
+  "Arn": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod-session",
+  "CreateDate": "2026-11-05T05:12:52+00:00",
+  "AssumeRolePolicyDocument": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Federated": "arn:aws:iam::229251310592:oidc-provider/token.actions.githubusercontent.com"
+        },
+        "Action": "sts:AssumeRoleWithWebIdentity",
+        "Condition": {
+          "StringEquals": {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+            "token.actions.githubusercontent.com:ref": "refs/heads/main",
+            "token.actions.githubusercontent.com:sub": "repo:munaxa@311481412/munaxa-platform@1318353961:environment:aws-nonprod-session"
+          }
+        }
+      }
+    ]
+  },
+  "MaxSessionDuration": 3600,
+  "Tags": [
+    {
+      "Key": "ManagedBy",
+      "Value": "terraform/munaxa-platform/infra/aws/bootstrap"
+    },
+    {
+      "Key": "Project",
+      "Value": "munaxa"
+    },
+    {
+      "Key": "Stack",
+      "Value": "shared-bootstrap"
+    }
+  ],
+  "RoleLastUsed": {
+    "LastUsedDate": "2026-11-11T08:27:36+00:00",
+    "Region": "eu-central-1"
+  }
+}
