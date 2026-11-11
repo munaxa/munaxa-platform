@@ -62,7 +62,12 @@ belongs to the product.
   cannot be set by a subdomain.
 - Idle *and* absolute timeouts. A stolen session kept warm still dies at the absolute deadline.
 - `tokenVersion` invalidates every session and token minted before a credential change, without
-  having to find them.
+  having to find them — where the verifier can read the account's current version. A product that
+  verifies Identity's access tokens offline, with public keys only, cannot: `verifyAccessToken`
+  checks `ver` only when the caller passes `tokenVersion`, and there is no introspection or
+  revocation feed. For such a product a revoked session, a password change or a locked account
+  stops working only when the access token expires (`ACCESS_TOKEN_TTL`, 15 minutes by default,
+  plus the verifier's clock skew).
 - Optional IP binding, off by default because mobile networks rotate addresses.
 
 **Residual:** an XSS in a product can act as the user for as long as the page is open. `httpOnly`
