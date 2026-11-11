@@ -19,7 +19,7 @@ was made or read. The probe has never met the real ALB or Identity.
 | `.github/workflows/aws-terraform.yml` | One new step in the PR job "Format, validate, mocked plan tests": Node 22, then the probe tests |
 | This report | |
 
-SHA256 of the probe at this PR's head: see section 7. **The pin for a session must be taken from
+SHA256 of the probe: see section 7. **The pin for a session must be taken from
 the merged commit on `main`, not from this branch**, because the file's bytes decide the hash.
 
 `docs/aws-migration/agent-reports/README.md` is deliberately not edited: Workstream 4 adds every
@@ -140,14 +140,14 @@ the PR checks.
 | R-2 | Identity's Origin check, rate limiter and lockout are mocked, not exercised | A 403 or 429 on login would show as `FAIL login status-403` or `status-429-rate-limited` | Two logins and one wrong password per run; the codes are fixed and safe |
 | R-3 | The Amazon-issued ALB certificate must chain to Node 22's bundled roots | If not, every check fails `tls-untrusted` and nothing is sent | Expected to chain to Amazon Root CA 1, which Node bundles; never worked around by disabling checks |
 | R-4 | The pin changes with any edit | A stale SHA256 makes the loader stop with `checksum` | Take commit and SHA256 from the merged `main` commit; Workstream 4's runbook gives the procedure |
-| R-5 | `aws-terraform.yml` is also likely edited by Workstream 2 | A merge conflict in one workflow file | Resolve at merge time; the step is self-contained |
+| R-5 | PR #92 (Workstream 2) also edits `aws-terraform.yml` and adds a glob step `node --test 'infra/aws/stack/**/*.test.mjs'` that covers this file | A merge conflict, or the tests running twice | Whichever of #92 and #93 merges second drops this PR's single-file step |
 | R-6 | The operator email is still pending | The probe cannot run until the bootstrap secret exists | Owner input; outside this workstream |
 | R-7 | One session row is created in Identity and then revoked; one failed-login audit event | Expected side effects in a non-production database | Recorded here so the reviewer is not surprised |
 
 ## 7. Evidence
 
-- Branch `claude/project-thread-2omefu`, PR to `main` (link in the PR list; not merged).
-- Probe SHA256 at the PR head commit: recorded in the PR description after the final push.
+- Branch `claude/project-thread-2omefu`, PR #93 to `main`, not merged.
+- Probe SHA256 at commit `bc1d202`: `f7a15787362d2382d88f896192d169082c44020e5c6ac22831dce9a05e466b79` (this report's later edits do not touch the probe).
 - No AWS, GitHub environment, DNS or Cloudflare action was taken.
 
 Not merged. Merge needs the owner's word after ChatGPT's review, in the order Workstream 4 proposes.
