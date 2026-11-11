@@ -1,0 +1,305 @@
+{
+ "_source": "CloudTrail LookupEvents, eu-central-1, EventName=ListTagsForResource, 2026-11-10T06:00Z to 2026-11-11T06:00Z, read 11 Nov 2026 ~06:12 UTC via the AWS connector (root, read-only). 46 lookup results, 10 with eventSource s3.amazonaws.com, all listed. Fields copied from the events; additionalEventData (signature, TLS, byte counts, x-amz-id-2) omitted.",
+ "events": [
+  {
+   "eventTime": "2026-11-10T06:05:36Z",
+   "eventID": "d122840b-84ac-4197-a634-2b4e04893cb3",
+   "requestID": "ZE0B2BDWAMX2J77J",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+   "sourceIPAddress": "172.215.219.244",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-school-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-10T06:05:36Z",
+   "eventID": "81db45a5-bf71-45cc-bc4b-e2ba6e86895d",
+   "requestID": "ZE0FJ9TXACK1Q0JX",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+   "sourceIPAddress": "172.215.219.244",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766116306 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-docs-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-10T06:09:44Z",
+   "eventID": "1f430b53-c46f-4833-ab8e-c4ff55ce6d76",
+   "requestID": "K7TT1Q78XDX6808M",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+   "sourceIPAddress": "40.80.213.46",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-school-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-10T06:09:44Z",
+   "eventID": "d92160af-1d5a-4c54-9bf7-d4454a76bf9a",
+   "requestID": "K7TSFXA2BYYJKNB5",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+   "sourceIPAddress": "40.80.213.46",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766582624 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-docs-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-10T06:13:15Z",
+   "eventID": "940edfe3-668e-4c2d-a323-5781653d32f9",
+   "requestID": "2FGFV7NSZTX96ZY6",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+   "sourceIPAddress": "172.185.33.113",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-docs-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-10T06:13:16Z",
+   "eventID": "3586b283-7e6f-4122-a6fc-d72aabe78f13",
+   "requestID": "Y6MNZ9KSJSZSGZXD",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+   "sourceIPAddress": "172.185.33.113",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod/gha-run-42766964719 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-school-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-10T08:51:47Z",
+   "eventID": "4bade3f9-685f-4ee5-a9fe-c729b9729a0d",
+   "requestID": "XR5J2KQQY82FTSWE",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session",
+   "sourceIPAddress": "20.171.23.114",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-school-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-10T08:51:47Z",
+   "eventID": "211e2c0c-f05f-4116-a8dc-67e34d4fcb52",
+   "requestID": "XR5VGJX5JH5NZC01",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session",
+   "sourceIPAddress": "20.171.23.114",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42785877006 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-docs-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-11T00:05:23Z",
+   "eventID": "d4ef388a-aab0-4244-ab60-4e40bca22ac2",
+   "requestID": "XF8Y59T3ZPBKG6MV",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session",
+   "sourceIPAddress": "172.214.47.36",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-school-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-school-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-school-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  },
+  {
+   "eventTime": "2026-11-11T00:05:23Z",
+   "eventID": "f3226975-9342-4aed-8bc0-7080c863ec36",
+   "requestID": "XF8MDDYEQFGFJ3J2",
+   "eventSource": "s3.amazonaws.com",
+   "eventName": "ListTagsForResource",
+   "awsRegion": "eu-central-1",
+   "eventType": "AwsApiCall",
+   "readOnly": true,
+   "eventVersion": "1.11",
+   "userIdentity.arn": "arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147",
+   "sessionIssuer": "arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session",
+   "sourceIPAddress": "172.214.47.36",
+   "errorCode": "AccessDenied",
+   "errorMessage": "User: arn:aws:sts::229251310592:assumed-role/munaxa-shared-deployer-nonprod-session/gha-run-42928482147 is not authorized to perform: s3:ListTagsForResource on resource: \"arn:aws:s3:::munaxa-nonprod-docs-files-229251310592\" because no identity-based policy allows the s3:ListTagsForResource action",
+   "requestParameters": {
+    "bucketName": "munaxa-nonprod-docs-files-229251310592",
+    "Host": "229251310592.s3-control.eu-central-1.amazonaws.com",
+    "resource": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+   },
+   "resources": [
+    {
+     "accountId": "229251310592",
+     "type": "AWS::S3::Bucket",
+     "ARN": "arn:aws:s3:::munaxa-nonprod-docs-files-229251310592"
+    }
+   ],
+   "httpStatusCode": 403,
+   "userAgent": "[APN/1.0 HashiCorp/1.0 Terraform/1.16.5 (+https://www.terraform.io) terraform-provider-aws/6.67.0 (+https://registry.terraform.io/providers/hashicorp/aws) aws-sdk-go-v2/1.47.0 ua/2.1 os/linux lang/go#1.26.8 md/GOOS#linux md/GOARCH#amd64 api/s3control#1.79.0 m/i]"
+  }
+ ]
+}
