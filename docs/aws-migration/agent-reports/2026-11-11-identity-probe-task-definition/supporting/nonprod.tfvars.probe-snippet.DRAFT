@@ -1,0 +1,8 @@
+# DRAFT for the probe-enable PR only. Appended to infra/aws/stack/envs/nonprod.tfvars once the
+# probe PR (Workstream 1) is merged and reviewed. <commit> is the munaxa-platform main commit that
+# contains infra/aws/stack/supporting/identity-session-probe.mjs; <sha256> is
+#   git show <commit>:infra/aws/stack/supporting/identity-session-probe.mjs | sha256sum
+identity_probe_source = {
+  commit = "<40 lowercase hex>"
+  sha256 = "<64 lowercase hex>"
+}

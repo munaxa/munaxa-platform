@@ -84,6 +84,15 @@ jobs:
           terraform -chdir=infra/aws/bootstrap test
           terraform -chdir=infra/aws/stack test
 
+      # The identity-probe task's loader (identity-probe.tf) and any probe tests beside it: Node 22,
+      # built-in modules only, no network (fetch is stubbed).
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+
+      - name: Identity probe unit tests
+        run: node --test 'infra/aws/stack/**/*.test.mjs'
+
       # docs-cluster-roles.sql is Docs' infra/sql/cluster/01-roles.sql below a 4-line header that
       # records the original's sha256. The copy must still hash to it; Docs CI pins the same hash on
       # its side, so a change there fails until this copy is refreshed (finding F-3).

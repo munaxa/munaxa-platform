@@ -624,4 +624,140 @@ run "identity_only_config_a1_registers_identity_and_nothing_of_another_product" 
     condition     = keys(local.routed_ports) == ["identity"] && module.identity[0].service_name == null
     error_message = "Only Identity is routed, and with services off no ECS service exists."
   }
+  assert {
+    condition     = length(aws_ecs_task_definition.identity_probe) == 0
+    error_message = "Without a pinned probe (identity_probe_source) Config A1 registers no probe task definition."
+  }
+}
+
+# The Identity session probe (identity-probe.tf, report 2026-11-11-identity-probe-task-definition):
+# Config A1 plus a pinned probe adds exactly one task definition, which holds only the two operator
+# fields of the one-run secret and no database credential, and adds no role, policy or group.
+run "identity_probe_is_isolated_from_database_credentials" {
+  command = plan
+
+  override_resource {
+    target          = aws_iam_role.identity_bootstrap_execution[0]
+    override_during = plan
+    values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution" }
+  }
+  override_resource {
+    target          = module.identity[0].aws_security_group.this
+    override_during = plan
+    values          = { id = "sg-0123456789abcdef0" }
+  }
+
+  variables {
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator-test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+      docs        = "docs.test.munaxa.com"
+    }
+    postgres_image        = "public.ecr.aws/docker/library/postgres@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    docs_redis_image      = "public.ecr.aws/docker/library/redis@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    db_bootstrap_products = ["identity"]
+    images = {
+      identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+    identity_probe_source = {
+      commit = "0123456789abcdef0123456789abcdef01234567"
+      sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  }
+
+  assert {
+    condition     = length(aws_ecs_task_definition.identity_probe) == 1 && aws_ecs_task_definition.identity_probe[0].family == "munaxa-nonprod-identity-probe"
+    error_message = "A pinned probe registers one task definition, munaxa-nonprod-identity-probe."
+  }
+  assert {
+    condition     = aws_ecs_task_definition.identity_probe[0].execution_role_arn == aws_iam_role.identity_bootstrap_execution[0].arn
+    error_message = "The probe reuses the identity-bootstrap execution role."
+  }
+  assert {
+    condition     = aws_ecs_task_definition.identity_probe[0].task_role_arn == null || aws_ecs_task_definition.identity_probe[0].task_role_arn == ""
+    error_message = "The probe has no task role, so it holds no AWS credentials."
+  }
+  assert {
+    condition     = length(aws_iam_role.identity_bootstrap_execution) == 1 && length(aws_iam_role_policy.identity_bootstrap_execution) == 1 && length(module.identity) == 1
+    error_message = "The probe adds no role, policy or security group of its own."
+  }
+  assert {
+    condition = (
+      [for s in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].secrets : s.name] == ["IDENTITY_OWNER_EMAIL", "IDENTITY_OWNER_PASSWORD"] &&
+      alltrue([for s in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].secrets : startswith(s.valueFrom, "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-bootstrap:IDENTITY_OWNER_")])
+    )
+    error_message = "The probe's only secrets are the two operator fields of munaxa-nonprod/identity-bootstrap."
+  }
+  assert {
+    condition = alltrue([
+      for k in ["DATABASE_URL", "DIRECT_DATABASE_URL", "DATABASE_MIGRATION_URL", "MIGRATION", "rds!", "identity-migrate", "REDIS_PASSWORD", "PRIVATE KEY"] :
+      !strcontains(aws_ecs_task_definition.identity_probe[0].container_definitions, k)
+    ])
+    error_message = "The probe's container definition names no database URL, migrate bundle, RDS master secret, Redis password or private key."
+  }
+  assert {
+    condition = (
+      jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].readonlyRootFilesystem == true &&
+      jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].image == var.images.identity_api &&
+      jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].linuxParameters.capabilities.drop == ["ALL"]
+    )
+    error_message = "The probe runs the identity_api digest, with a read-only root filesystem and no capabilities."
+  }
+  assert {
+    condition = (
+      jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].logConfiguration.options["awslogs-group"] == "/munaxa/nonprod/ops" &&
+      jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].logConfiguration.options["awslogs-stream-prefix"] == "identity-probe"
+    )
+    error_message = "The probe logs to the ops log group under the identity-probe prefix."
+  }
+  assert {
+    condition = (
+      { for e in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment : e.name => e.value } == {
+        NODE_ENV               = "production"
+        PROBE_COMMIT           = "0123456789abcdef0123456789abcdef01234567"
+        PROBE_SHA256           = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        PROBE_HOST             = "id.test.munaxa.com"
+        PROBE_ISSUER           = "https://id.test.munaxa.com"
+        PROBE_AUDIENCES        = "munaxa-work,munaxa-control"
+        PROBE_ORGANISATION     = "munaxa-group"
+        PROBE_SIGNING_KID      = "identity-test-2026-11"
+        PROBE_PUBLIC_KEYS      = var.identity_public_keys
+        PROBE_OPERATOR_HOST    = "operator-test.munaxa.com"
+        PROBE_CONTROL_API_HOST = "control-api.test.munaxa.com"
+        PROBE_UNKNOWN_HOST     = "unknown.test.munaxa.com"
+      }
+    )
+    error_message = "The probe's environment is the public set only."
+  }
+  assert {
+    condition = (
+      slice(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command, 0, 3) == ["node", "--input-type=module", "-e"] &&
+      strcontains(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command[3], "const COMMIT = '0123456789abcdef0123456789abcdef01234567';") &&
+      strcontains(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command[3], "const SHA256 = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';") &&
+      !strcontains(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command[3], "__PROBE_") &&
+      !strcontains(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command[3], "rejectUnauthorized")
+    )
+    error_message = "The probe command is the loader with the pin written in, and never turns certificate checking off."
+  }
+  assert {
+    condition     = output.run_task_network.identity_probe_definition == "munaxa-nonprod-identity-probe" && output.run_task_network.identity_group == module.identity[0].security_group_id
+    error_message = "run_task_network names the probe definition and the identity group it runs with."
+  }
+}
+
+run "identity_probe_pin_must_be_a_full_commit_and_sha256" {
+  command = plan
+
+  variables {
+    identity_probe_source = {
+      commit = "0123456"
+      sha256 = ""
+    }
+  }
+
+  expect_failures = [var.identity_probe_source]
 }

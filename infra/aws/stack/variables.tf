@@ -416,3 +416,20 @@ variable "session_backstop_schedule" {
     error_message = "An EventBridge Scheduler cron() or rate() expression, or empty."
   }
 }
+
+variable "identity_probe_source" {
+  description = "The reviewed Identity session probe (identity-probe.tf): a munaxa-platform commit and the SHA-256 of infra/aws/stack/supporting/identity-session-probe.mjs at it. Empty: no probe task definition."
+  type = object({
+    commit = string
+    sha256 = string
+  })
+  default = { commit = "", sha256 = "" }
+
+  validation {
+    condition = (
+      (var.identity_probe_source.commit == "" && var.identity_probe_source.sha256 == "") ||
+      (can(regex("^[0-9a-f]{40}$", var.identity_probe_source.commit)) && can(regex("^[0-9a-f]{64}$", var.identity_probe_source.sha256)))
+    )
+    error_message = "identity_probe_source is both empty, or a full 40-character lowercase commit and a 64-character lowercase SHA-256."
+  }
+}
