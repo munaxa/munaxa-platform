@@ -134,6 +134,14 @@ write one JSON secret version with the keys listed in `stack/data.tf`.
   existing staging key only if Work tokens signed by it must keep verifying, which nothing needs
   in Testing), `IDENTITY_SIGNING_SECRET`, `REDIS_PASSWORD` and `REDIS_URL`
   (`redis://:<password>@127.0.0.1:6379`). Its public half goes into `identity_public_keys`.
+- **Identity, hardened images only (AW-01):** an Identity image built from munaxa-identity main
+  after the security hardening (identity#7 to #14) refuses to start without `MFA_ENCRYPTION_KEYS`
+  in the bundle: its own key ring, `kid=key` with 32 random bytes per entry in base64url, generated
+  where it is stored and never the signing key or `IDENTITY_SIGNING_SECRET` (munaxa-identity
+  `docs/runbooks/mfa.md`). Adding it creates a new bundle version, so `secret_version_ids.identity`
+  moves to that version in the same PR that sets `identity_security_config` (the key's kid, an
+  explicit `mfa_policy`) and pins the hardened image. Its migration `20261111130000_identity_mfa`
+  runs before the new image starts. Release `5277d71` keeps `identity_security_config` unset.
 - **Work:** `PII_MATCH_SECRET` (not the development default), `CONTROL_PLANE_TOKEN` (G7 step 4).
 - **`CONTROL_PLANE_TOKEN` before the first start:** ECS refuses to start a task whose bundle lacks a
   key it injects, and Work and School refuse a token under 20 characters, Docs under 32. Until G7

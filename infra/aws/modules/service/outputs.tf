@@ -22,3 +22,8 @@ output "listener_rule_paths" {
   description = "Path patterns per listener rule priority (for plan tests)."
   value       = { for k, r in local.route_map : k => r.paths }
 }
+
+output "task_definition_container_definitions" {
+  description = "The rendered container definitions (for plan tests). Names and secret ARNs only; never a secret value."
+  value       = aws_ecs_task_definition.this.container_definitions
+}
