@@ -27,19 +27,19 @@ All five PRs target `main` at `49c51f36fb53d1e450c9cf8af58a969897d00623`. All ar
 
 | WS | PR | Branch head (full SHA) | Files changed |
 | --- | --- | --- | --- |
-| 1 probe | [#93](https://github.com/munaxa/munaxa-platform/pull/93) | `1277d9bc57ee4b22eb073e45f4c00a152eb00ee8` (3 commits: `bc1d202`, `7d65fb1`, `1277d9b`) | `infra/aws/stack/supporting/identity-session-probe.mjs`, `…/identity-session-probe.test.mjs`, `.github/workflows/aws-terraform.yml`, report `2026-11-11-identity-session-probe/` |
+| 1 probe | [#93](https://github.com/munaxa/munaxa-platform/pull/93) | `81805374fa15fca5c4a190132175ee841ede5851` (4 commits: `bc1d202`, `7d65fb1`, `1277d9b`, `8180537`) | `infra/aws/stack/supporting/identity-session-probe.mjs`, `…/identity-session-probe.test.mjs`, report `2026-11-11-identity-session-probe/` |
 | 2 task definition | [#92](https://github.com/munaxa/munaxa-platform/pull/92) | `4c632ab9c8bbbd56389c76433d322419e0610b5f` | `infra/aws/stack/identity-probe.tf`, `variables.tf` (+`identity_probe_source`), `outputs.tf` (+2 outputs), `scripts/identity-probe-loader.mjs` and its test, `tests/stack.tftest.hcl`, `.github/workflows/aws-terraform.yml`, report `2026-11-11-identity-probe-task-definition/` |
 | 3 cleanup design | [#90](https://github.com/munaxa/munaxa-platform/pull/90) | `79ec7be30e0081b1a5bc11035414aa792eedb04a` | report `2026-11-11-identity-independent-cleanup-design/` only |
 | 4 runbook and index | [#94](https://github.com/munaxa/munaxa-platform/pull/94) | `3d84609f0782fe696f83a0195d98ab6658ac5e1d` | runbook `2026-11-11-identity-final-operator-runbook/`, the #87, #88 and #89 report folders (cherry-picked byte-identical), a banner on the operator checklist, and the **only** README index change |
 | 5 Option A review | [#91](https://github.com/munaxa/munaxa-platform/pull/91) | `d74f3172c2958189a60bf20726e10fc640551905` | report `2026-11-11-identity-option-a-custody-cost-review/` with an offline harness and DRAFT connector scripts |
 
-**Note.** The coordinator gave #93 as `bc1d202` and `7d65fb1`. The real head is `1277d9b`, a third commit that turns off setup-node's pnpm cache for the probe step. The pin procedure uses #93's squash commit on `main`, so this does not affect it.
+**Note.** The coordinator gave #93 as `bc1d202` and `7d65fb1`. The head is now `8180537`. Two later commits first turned off setup-node's pnpm cache and then (10:24 UTC, after this review's first version) removed #93's own CI step entirely (X-1 fix), so #93 no longer changes `aws-terraform.yml`. The probe file is unchanged by both (blob `4cdb018`). The pin procedure uses #93's squash commit on `main`, so neither affects it.
 
 ## C. Integration checks (the owner's list, items 1 to 9)
 
 | # | Check | Result | Evidence |
 | --- | --- | --- | --- |
-| 1 | Overlap and conflicts | **No textual conflict.** All five merged cleanly onto `49c51f3` in the proposed order #91, #90, #93, #92, #94 (local `git merge` simulation). **One functional overlap, finding X-1:** #92 and #93 each add a setup-node step and a probe test step to `aws-terraform.yml`. Because the steps sit at different lines, git merges both without a conflict, so CI would run the probe tests twice. #94 section 4 says the second PR "is updated to drop #93's single-file test step". Nothing forces that edit, so it has to be done deliberately | `aws-terraform.yml` after the simulated merge: steps at lines 89/93 (#92, glob `infra/aws/stack/**/*.test.mjs`, setup-node pinned to `249970…` v6.5.0) and 127/133 (#93, `actions/setup-node@v5`, `package-manager-cache: false`) |
+| 1 | Overlap and conflicts | **No textual conflict.** All five merged cleanly onto `49c51f3` in the order #91, #90, #92, #93, #94 (local `git merge` simulation, re-run at #93 head `8180537`). **Finding X-1, now fixed on #93:** #92 and #93 each added a probe test step to `aws-terraform.yml`; the steps merged without a conflict, so CI would have run the probe tests twice. #93 `8180537` drops its own step; #92's glob step runs both test files. Consequence: #93 has no CI step of its own, so **#92 must merge before #93**, or the probe tests would not run on `main` | `aws-terraform.yml` after the re-run simulation: one setup-node step (line 89, pinned `249970…` v6.5.0) and one test step (line 94, glob `infra/aws/stack/**/*.test.mjs`); 72/72 pass |
 | 2 | Probe code and task definition agree on every environment variable | **Yes.** Of the 12 environment names the task definition sets, 11 are read by the probe or loader (`NODE_ENV` is not read), both secret names are read, and every non-secret value equals the probe's reviewed constant. The probe refuses a mismatch with a fixed code (`PINNED_ENV`). `PROBE_ALB_DNS` is the only run-time override, as the runbook (4.2) says | Table C.1 |
 | 3 | No database-owner credentials reach the probe | **Yes.** `identity-probe.tf` names exactly two secrets, `IDENTITY_OWNER_EMAIL` and `IDENTITY_OWNER_PASSWORD`, from `munaxa-nonprod/identity-bootstrap`. It does not set `DIRECT_DATABASE_URL`, the migrate or service bundle, or the RDS master secret. There is no `task_role_arn`, so the container has no AWS credentials. As defence in depth, the probe also deletes `DIRECT_DATABASE_URL`, `DATABASE_URL` and `DATABASE_MIGRATION_URL` from its environment without reading them. The execution role is the bootstrap role, unchanged. It *could* read the identity-migrate secret, but ECS resolves only the secrets a container definition names | `identity-probe.tf` secrets block; `ops.tf` lines 217-244 (execution role policy) |
 | 4 | Loader commit SHA and checksum instructions are exact | **Yes**, findings X-3 and X-4 below. The commit and SHA-256 come from Terraform `identity_probe_source`, which a validation check holds to a 40-character and a 64-character lowercase hex value. The loader re-checks the format, downloads only from `raw.githubusercontent.com/munaxa/munaxa-platform/<C>/…` with `redirect: 'error'`, caps the size at 256 KiB, compares the SHA-256, and imports the module from a `data:` URL. Runbook 3.2 computes `H` twice, from `git show` and from the raw URL, and requires the blob at `C` to equal the PR head's blob | The repository is public: the raw URL returned HTTP 200 for a file at `49c51f3`. Probe at #93 head: 32,603 bytes (cap 262,144), blob `4cdb018`, SHA-256 `f7a15787…6b79`. **This is not the pin.** `C` is #93's squash commit, which exists only after the merge |
@@ -134,7 +134,7 @@ Building it needs new IAM roles, a state machine and a schedule, which is a sepa
 | RB-4 | Medium | Cleanup resilience: accept or build | Without #90 option 3, losing Claude leaves the secret, and the ALB cost may have no bound (X-6) | Owner chooses: accept R-1 and X-6 in writing for the first session, or authorize building #90 option 3 first | **Yes** |
 | RB-5 | Medium | L-A0 acceptance in writing | Option A relies on the connector not exposing the generated value server-side, which cannot be verified | Owner states acceptance in the session authorization | **Yes** |
 | RB-6 | — | The session authorization itself (I-8) | Required by every prior instruction | After ChatGPT's review of this report | **Yes** |
-| X-1 | Low | Duplicate probe CI steps (#92 and #93) merge without a conflict | Tests run twice; #93's step uses an unpinned `@v5` tag while #92 pins v6.5.0 by SHA | When the second of #92 or #93 is merged, drop #93's step (#92's glob covers both test files). This is a documented edit, as #94 section 4 already plans | No |
+| X-1 | Low, **fixed** | Duplicate probe CI steps (#92 and #93) merged without a conflict | Tests would run twice; #93's step used an unpinned `@v5` tag | Fixed on #93 at `8180537` (its step removed). Merge #92 before #93 so the glob step is on `main` first | No |
 | X-2 | Low | Runbook 4.2 hard-codes `munaxa-nonprod-identity-probe:1` | A second apply of the definition would move the revision, and `:1` would run a stale definition | Use the revision read back at step 0-6 (`family:revision`); fold into #94 or the enable PR | No |
 | X-3 | Info | The pin cannot be computed until #93 is squash-merged | — | Runbook 3.2 steps 1 to 4 | No |
 | X-4 | Info | The probe is downloaded at run time from GitHub | If GitHub is unreachable, the probe fails closed (`FAIL probe-source download`), so nothing insecure runs | None | No |
@@ -151,12 +151,12 @@ The pre-authorization blockers from #89 are now:
 
 ## I. Recommended merge sequence (for the owner to approve later)
 
-This agrees with #94 section 4, with X-1 made explicit:
+This updates #94 section 4 for the X-1 fix (#92 now before #93):
 
 1. #91 (Option A review, docs).
 2. #90 (cleanup design, docs).
-3. #93 (probe). This gives commit `C`.
-4. #92 (task definition, disabled by default). Before this merge, remove #93's duplicate test step from `aws-terraform.yml` on #92's branch, as a documented edit (X-1).
+3. #92 (task definition, disabled by default, no plan change). It brings the one probe test step to `main`.
+4. #93 (probe). Its squash commit is `C`. Merging after #92 means CI on `main` runs the probe tests at `C`.
 5. #94 (runbook, #87, #88 and #89 content, and the single README index change). Fold in X-2 and the X-6 wording, and add this report's index row in the same single index change.
 6. Close #87, #88 and #89 as superseded by #94. This report's PR can also be closed once #94 carries its row and content, or merged after #94.
 7. The enable PR (I-3, `C` and `H`, 1 create).
