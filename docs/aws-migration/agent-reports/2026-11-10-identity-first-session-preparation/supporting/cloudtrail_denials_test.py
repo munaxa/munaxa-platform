@@ -68,6 +68,14 @@ class Denials(unittest.TestCase):
         self.assertIn("CreateService", r.stdout)
         self.assertEqual(self._cli("not json").returncode, 2)
 
+    def test_unread_or_malformed_input_is_exit_2_never_clean(self):
+        for payload in ("{}", '{"Events": null}', "null", "5", '"x"', '{"Events": [5]}',
+                        '{"Events": [{"CloudTrailEvent": "7"}]}', '{"NextToken": "x", "Events": []}'):
+            r = self._cli(payload)
+            self.assertEqual(r.returncode, 2, payload)
+            self.assertFalse(r.stdout.startswith("events "), payload)
+            self.assertNotIn("Traceback", r.stdout + r.stderr, payload)
+
 
 if __name__ == "__main__":
     unittest.main()
