@@ -1,5 +1,17 @@
 # Claude-executed first Identity non-production deployment: plan for review (11 Nov 2026)
 
+> **Superseded, 11 Nov 2026.** This report arrived on `main` through the Workstream 4 PR (#94),
+> not through its own PR #87, which stays open but is superseded and should not be merged on
+> its own. The current procedure is the final operator runbook
+> (`../2026-11-11-identity-final-operator-runbook/`) and the approval package in
+> `../2026-11-11-identity-consolidated-readiness/`.
+>
+> **Cost correction, 11 Nov 2026 (PR #95 finding X-6).** Every US$0.35 figure in this report is a
+> conditional ceiling, not a guarantee. It holds only while Claude's session and the AWS connector
+> stay available and `down` runs by T0 + 3 h. If Claude loses control: about US$1.00 when a
+> scheduled `down` runs; **no fixed upper limit** (the ALB costs about US$0.89 a day) when both
+> scheduled runs are dropped. Current statement: final operator runbook, section 15.
+
 - **Owner direction, 11 Nov 09:01 UTC.** Claude prepares and carries out the first Identity
   non-production session. ChatGPT reviews the plans and the results. The owner keeps only the
   steps that truly need the account owner.
@@ -202,7 +214,7 @@ password was written." And Identity has no password reset (U-9).
 
 ## 6. Cost, time, resources, rollback and shutdown
 
-- **Cost ceiling: US$0.35 for the session** (US$0.20 expected for 2 hours).
+- **Cost ceiling: US$0.35 for the session, conditional (see the cost correction at the top)** (US$0.20 expected for 2 hours).
   - Per hour, about US$0.10: Fargate, the ALB, 3 public IPv4 addresses and the database, at the
     list prices of first-session §8.
   - Tasks cost under US$0.02.

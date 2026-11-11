@@ -75,3 +75,21 @@ folders.
 `2026-11-11-identity-first-session-operator-checklist/00-IDENTITY-FIRST-SESSION-OPERATOR-CHECKLIST.md`
 gets one dated note under its title, pointing to the runbook for the Claude-executed session and
 naming K-6, K-7 and K-8. Its commands, expected results and hard stops are unchanged.
+
+## 6. Banners added in the fast-track package (11 Nov 2026, PR #95)
+
+Dated banners were added at the top of these files, with no other change to their text, except one
+word in #87's plan (its cost bullet now says "conditional"), and three README summaries now say
+"conditional, not guaranteed":
+
+| File | Banner |
+| --- | --- |
+| #87 `2026-11-11-identity-claude-executed-deployment-plan/00-…PLAN.md` | Superseded (PR #87 stays open, not merged on its own) + cost correction X-6 |
+| #88 `2026-11-11-identity-phase1-readonly-assessment/00-…ASSESSMENT.md` | Superseded (PR #88) |
+| #89 `2026-11-11-identity-pre-authorization-review/00-…REVIEW.md` | Superseded (PR #89) + cost correction X-6 |
+| `main` `2026-11-11-identity-first-session-operator-checklist/00-…CHECKLIST.md` | Cost correction X-6 (above the existing Workstream 4 note) |
+| `main` `2026-11-11-identity-final-deployment-readiness-review/00-…READINESS.md` | Cost correction X-6 |
+| `main` `2026-11-10-identity-first-session-preparation/00-…PREPARATION.md` | Cost correction X-6 |
+
+So the #87, #88 and #89 report files are no longer byte-identical to their PR heads: they differ by
+the banner (and #87 by one word). Evidence files are unchanged and still byte-identical.

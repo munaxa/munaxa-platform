@@ -1,5 +1,11 @@
 # First Identity non-production session: operator checklist (11 Nov 2026)
 
+> **Cost correction, 11 Nov 2026 (PR #95 finding X-6).** Every US$0.35 figure in this report is a
+> conditional ceiling, not a guarantee. It holds only while Claude's session and the AWS connector
+> stay available and `down` runs by T0 + 3 h. If Claude loses control: about US$1.00 when a
+> scheduled `down` runs; **no fixed upper limit** (the ALB costs about US$0.89 a day) when both
+> scheduled runs are dropped. Current statement: final operator runbook, section 15.
+>
 > **Note, 11 Nov 2026 (Workstream 4).** For the Claude-executed session, follow
 > `../2026-11-11-identity-final-operator-runbook/00-IDENTITY-FINAL-OPERATOR-RUNBOOK.md`. It replaces
 > this checklist's CloudShell commands with connector and probe steps, does not use step 9 (DNS),

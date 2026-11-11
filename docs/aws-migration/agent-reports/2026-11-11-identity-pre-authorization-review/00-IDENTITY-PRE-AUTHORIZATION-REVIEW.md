@@ -1,5 +1,17 @@
 # Identity non-production: final review before a deployment authorization request
 
+> **Superseded, 11 Nov 2026.** This report arrived on `main` through the Workstream 4 PR (#94),
+> not through its own PR #89, which stays open but is superseded and should not be merged on
+> its own. The current procedure is the final operator runbook
+> (`../2026-11-11-identity-final-operator-runbook/`) and the approval package in
+> `../2026-11-11-identity-consolidated-readiness/`.
+>
+> **Cost correction, 11 Nov 2026 (PR #95 finding X-6).** Every US$0.35 figure in this report is a
+> conditional ceiling, not a guarantee. It holds only while Claude's session and the AWS connector
+> stay available and `down` runs by T0 + 3 h. If Claude loses control: about US$1.00 when a
+> scheduled `down` runs; **no fixed upper limit** (the ALB costs about US$0.89 a day) when both
+> scheduled runs are dropped. Current statement: final operator runbook, section 15.
+
 - Date: 11 Nov 2026, 09:55 to 10:20 UTC
 - Account `229251310592`, region `eu-central-1`, target Munaxa Identity non-production
 - Scope: read-only review and preparation, on the owner's request of 09:54 UTC.

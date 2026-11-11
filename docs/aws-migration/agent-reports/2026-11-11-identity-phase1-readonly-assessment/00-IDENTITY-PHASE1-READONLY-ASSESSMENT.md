@@ -1,5 +1,11 @@
 # Identity non-production: Phase 1 read-only readiness assessment
 
+> **Superseded, 11 Nov 2026.** This report arrived on `main` through the Workstream 4 PR (#94),
+> not through its own PR #88, which stays open but is superseded and should not be merged on
+> its own. The current procedure is the final operator runbook
+> (`../2026-11-11-identity-final-operator-runbook/`) and the approval package in
+> `../2026-11-11-identity-consolidated-readiness/`.
+
 - Date: 11 Nov 2026, AWS calls 09:14 to 09:26 UTC
 - Account `229251310592`, region `eu-central-1` (IAM and CloudTrail also read in `us-east-1`)
 - Scope: the owner's 09:14 UTC approval of **Phase 1 only**. That covers read-only AWS and GitHub
