@@ -4,7 +4,8 @@
 # Each block is one separate `run_script` call through the AWS connector (root, eu-central-1).
 #
 # NONE OF THESE MAY RUN until:
-#   - the owner has supplied the Testing operator email (pending input O-2), and
+#   - the Testing operator email is set (O-2: confirmed by the owner on 11 Nov 2026 as
+#     admin.tamer@munaxa.com; see the report, section K), and
 #   - the owner has given the separate, written deployment authorization.
 #
 # Rules every block follows (report section D):
@@ -17,8 +18,13 @@
 #   - the return value holds names, ARNs, version ids, counts and booleans only. The operator
 #     email is personal data and is never returned either.
 #
-# The placeholder below is the only value the operator edits. It must be replaced with the
-# owner-supplied address in the session, never committed.
+# The placeholder below is the only value the operator edits. Claude sets it to the confirmed
+# address (O-2, report section K) in the session's copy of the script only; the committed draft
+# keeps the placeholder so that an unedited copy aborts with EMAIL_NOT_SET.
+#
+# The persistent secret munaxa-nonprod/identity-operator is NEVER force-deleted, by any script or
+# recovery path (owner rule, 11 Nov 2026). If C-8 leaves the persistent secret without a matching
+# bootstrap secret, recovery is C-8R below, which rotates the persistent value in place.
 
 # =================================================================================================
 # C-8  Create the persistent operator secret and the temporary bootstrap secret (ONE call)
@@ -27,7 +33,7 @@
 # read back with GetSecretValue, which Claude must never call. A second call could not create the
 # bootstrap secret from the persistent one.
 
-OPERATOR_EMAIL = "<OWNER-SUPPLIED-TESTING-EMAIL>"  # O-2, pending. Do not invent.
+OPERATOR_EMAIL = "<OWNER-SUPPLIED-TESTING-EMAIL>"  # O-2: set to the confirmed address in the session copy only.
 REGION = "eu-central-1"
 KMS_KEY = "alias/munaxa-nonprod-data"
 PERSISTENT = "munaxa-nonprod/identity-operator"
@@ -139,14 +145,11 @@ async def c8():
         out["bootstrap"] = {"name": b.get("Name"), "arn": b.get("ARN"), "version": b.get("VersionId")}
     except Exception as e:
         pw = None
-        # Roll back: no account exists yet, so the persistent copy has no use and cannot be
-        # paired with a later bootstrap secret without GetSecretValue.
-        try:
-            await sm("DeleteSecret", {"SecretId": PERSISTENT, "ForceDeleteWithoutRecovery": True})
-            rolled = True
-        except Exception:
-            rolled = False
-        return {"result": "ABORT", "code": "CREATE_BOOTSTRAP_" + _code(e), "persistent_rolled_back": rolled}
+        # No roll-back delete: the persistent secret is never force-deleted. No account exists
+        # yet, so its value is unused; recovery is C-8R (rotate it in place and create the
+        # bootstrap secret in one call).
+        return {"result": "ABORT", "code": "CREATE_BOOTSTRAP_" + _code(e), "persistent_kept": True,
+                "recovery": "C-8R"}
 
     pw = None
     out["result"] = "CREATED"
@@ -154,6 +157,90 @@ async def c8():
 
 
 result = await c8()
+result
+
+# =================================================================================================
+# C-8R  Recovery: persistent secret present, bootstrap secret absent, NO account created yet
+# =================================================================================================
+# Used only when C-8 stopped after the persistent secret was created (CREATE_BOOTSTRAP_* abort,
+# a timeout after the first CreateSecret, or section F row 5 after C-16 removed the bootstrap
+# secret). Precondition the operator confirms from the bootstrap task's allow-listed log: the
+# bootstrap task has NOT printed "Created ... in organisation munaxa-group." for this account. If
+# it has, C-8R must not run: rotating the persistent value would leave nobody holding the live
+# password (OA-3). One call: generate in AWS, PutSecretValue on the persistent secret (the old,
+# never-used value becomes AWSPREVIOUS), CreateSecret for the bootstrap secret. Metadata only.
+
+async def c8r():
+    if "@" not in OPERATOR_EMAIL or OPERATOR_EMAIL.startswith("<"):
+        return {"result": "ABORT", "code": "EMAIL_NOT_SET"}
+    try:
+        d = await sm("DescribeSecret", {"SecretId": PERSISTENT})
+        if d.get("Name") != PERSISTENT or "DeletedDate" in d:
+            return {"result": "ABORT", "code": "PERSISTENT_NOT_USABLE"}
+    except Exception as e:
+        return {"result": "ABORT", "code": "PERSISTENT_" + _code(e)}
+    try:
+        await sm("DescribeSecret", {"SecretId": BOOTSTRAP})
+        return {"result": "ABORT", "code": "BOOTSTRAP_EXISTS"}
+    except Exception as e:
+        if _code(e) != "AWS_ResourceNotFoundException":
+            return {"result": "ABORT", "code": "PRECHECK_" + _code(e)}
+
+    pw = None
+    for _ in range(3):
+        try:
+            r = await sm("GetRandomPassword", {
+                "PasswordLength": 40,
+                "ExcludeCharacters": "\"'`\\",
+                "RequireEachIncludedType": True,
+            })
+            candidate = r["RandomPassword"]
+            r = None
+        except Exception as e:
+            return {"result": "ABORT", "code": "GENERATE_" + _code(e)}
+        if _acceptable(candidate, OPERATOR_EMAIL):
+            pw = candidate
+            break
+        candidate = None
+    if pw is None:
+        return {"result": "ABORT", "code": "GENERATE_POLICY_RETRIES"}
+
+    out = {"result": "FAIL"}
+    try:
+        p = await sm("PutSecretValue", {
+            "SecretId": d["ARN"],
+            "SecretString": json.dumps({
+                "IDENTITY_OWNER_EMAIL": OPERATOR_EMAIL,
+                "IDENTITY_OWNER_PASSWORD": pw,
+                "IDENTITY_ORGANISATION": ORG,
+            }),
+        })
+        out["persistent"] = {"name": p.get("Name"), "arn": p.get("ARN"), "version": p.get("VersionId")}
+    except Exception as e:
+        pw = None
+        return {"result": "ABORT", "code": "ROTATE_PERSISTENT_" + _code(e)}
+    try:
+        b = await sm("CreateSecret", {
+            "Name": BOOTSTRAP,
+            "Description": "One-run Identity bootstrap secret. Delete after the probe (force, no recovery).",
+            "KmsKeyId": KMS_KEY,
+            "SecretString": json.dumps({
+                "IDENTITY_OWNER_EMAIL": OPERATOR_EMAIL,
+                "IDENTITY_OWNER_PASSWORD": pw,
+            }),
+            "Tags": TAGS,
+        })
+        out["bootstrap"] = {"name": b.get("Name"), "arn": b.get("ARN"), "version": b.get("VersionId")}
+    except Exception as e:
+        pw = None
+        return {"result": "ABORT", "code": "CREATE_BOOTSTRAP_" + _code(e), "persistent_kept": True,
+                "recovery": "C-8R"}
+    pw = None
+    out["result"] = "CREATED"
+    return out
+
+
+result = await c8r()
 result
 
 # =================================================================================================

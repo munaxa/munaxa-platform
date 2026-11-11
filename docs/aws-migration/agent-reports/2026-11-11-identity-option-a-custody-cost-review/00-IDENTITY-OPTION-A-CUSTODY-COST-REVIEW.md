@@ -32,7 +32,7 @@ Option A works as the owner chose it:
 
 It cannot run until two things exist:
 
-- the Testing operator email (O-2, pending);
+- the Testing operator email (O-2: **confirmed by the owner on 11 Nov 2026 as `admin.tamer@munaxa.com`**);
 - the separate deployment authorization.
 
 Five findings change how the session must be run. Each is a condition on the runbook, not a
@@ -125,8 +125,9 @@ anything. The policy comes from `@munaxa/auth` `password-policy.ts`:
 C-8 screens the generated value against the first five rules before it creates anything. In
 200,000 offline draws of 40 characters from the same character set, 1 was refused. Three
 attempts make a refusal at bootstrap effectively impossible. If bootstrap refuses the password
-anyway, nothing has been written to the database: delete both secrets with C-16 (extended to
-both names, see section F row 5) and run C-8 again.
+anyway, nothing has been written to the database: delete the bootstrap secret with C-16, then
+run C-8R, which rotates the persistent secret's value in place and creates a new bootstrap secret
+(section F row 5). The persistent secret is never force-deleted.
 
 Excluding `"`, `'`, `` ` `` and `\` keeps the value safe to paste from the console into a
 login form. It changes nothing for JSON (the script uses `json.dumps`) or for ECS (it injects the
@@ -180,8 +181,8 @@ their environment.
 | 1 | Normal | Bootstrap secret deleted by C-16 after the probe | C-16 `PASS`; C-24 later | About US$0.002 for 3 hours |
 | 2 | `DeleteSecret` throttled or failing | Secret still present | C-16 retries; then OA-5: `down` anyway at the hard stop and report R-1 | About US$0.013 a day |
 | 3 | **Claude's session ends, or the connector signs out, after C-8** | Bootstrap secret stays. `down`, the scheduled runs and the EventBridge backstop never touch secrets (R-1, PR #89) | Owner deletes it in the console (exact name). The next preflight P-6 finds it. Workstream 3 designs an independent clean-up | US$0.40 a month until deleted |
-| 4 | Script times out after the first `CreateSecret` (the connector timed out at 60 s on 11 Nov) | State unknown to Claude | C-8v reads metadata. Persistent only: force-delete it (no account exists yet), run C-8 again. Both present: carry on | None |
-| 5 | Bootstrap task refuses the password (policy) | Nothing written to the database | Force-delete **both** secrets by exact name, run C-8 again. This is the only time the persistent secret may be force-deleted | None |
+| 4 | Script times out after the first `CreateSecret` (the connector timed out at 60 s on 11 Nov) | State unknown to Claude | C-8v reads metadata. Persistent only: run **C-8R** (rotate the persistent value in place with `PutSecretValue`, create the bootstrap secret, one call). Both present: carry on. The persistent secret is never force-deleted | None |
+| 5 | Bootstrap task refuses the password (policy) | Nothing written to the database | C-16 deletes the bootstrap secret (exact name and ARN), then **C-8R** rotates the persistent value in place and creates a new bootstrap secret. The persistent secret is **never** force-deleted (owner rule, 11 Nov 2026) | None |
 | 6 | Bootstrap succeeded, then the persistent secret is deleted or lost | The account works, but nobody can learn its password. There is no reset route (F-L2). Bootstrap never rewrites a password (OA-3) | Restore within the recovery window (`RestoreSecret`). After the window, a reviewed database repair | — |
 | 7 | Wrong secret deleted by a wildcard clean-up | As in row 6 | OA-4: exact name and ARN only, and C-16 checks that the persistent secret is still present afterwards | — |
 | 8 | Bootstrap secret deleted **before** the probe | The probe task fails to start (`ResourceInitializationError`); no value is exposed | The session's sign-in tests do not run. Re-creating the secret needs the password, which only `GetSecretValue` gives, so **the sign-in tests are lost for this session**. Order: probe, then C-16 | — |
@@ -291,9 +292,21 @@ These are in Identity `5277d71` and are not changed by any custody option.
 | 4 (runbook) | Step 12 becomes C-8 plus C-8v. Step 16 becomes C-16, after the probe. Add C-24 to the shutdown verification. OA-5 changes the step 16 rule |
 | Integration | Resource count: Option A adds 1 persistent secret (kept) and 1 temporary secret (deleted). Neither is a Terraform address, so the 11 session addresses and the `down` plan do not change |
 
+## J.1 Update, 11 Nov 2026 (fast-track package, PR #95)
+
+- **O-2 resolved:** operator email `admin.tamer@munaxa.com` (owner, 10:30 UTC).
+- **Owner rule: the persistent secret is never force-deleted.** C-8 no longer rolls back by
+  force-deleting `munaxa-nonprod/identity-operator` when the bootstrap create fails. The new
+  recovery script **C-8R** (one call: `GetRandomPassword`, `PutSecretValue` on the persistent
+  secret, `CreateSecret` for the bootstrap secret, metadata only) replaces every force-delete of
+  the persistent secret (section F rows 4 and 5, section D.2). C-8R may run only while no account
+  has been created (OA-3).
+- The offline harness covers C-8R (4 new cases) and checks that no script before C-16 contains a
+  force delete. Output: `supporting/option-a-c8-offline-harness-output.txt`, all cases leak=False.
+
 ## K. Outstanding owner inputs
 
-1. **O-2: the Testing operator email.** C-8 cannot run without it. Do not invent one.
+1. **O-2: the Testing operator email. Confirmed by the owner on 11 Nov 2026: `admin.tamer@munaxa.com`.** Claude sets it in the session copy of C-8 only; the committed draft keeps the placeholder, so an unedited copy aborts with `EMAIL_NOT_SET`. (The repository is public, so this address is now public.)
 2. **The separate deployment authorization.** It must name C-8 and C-16, the residual risks
    L-A0, R-1 and R-2, and the conditional US$0.35 ceiling.
 3. A ruling on **OA-5**: `down` at the hard stop even if the secret delete has failed.
@@ -305,7 +318,7 @@ These are in Identity `5277d71` and are not changed by any custody option.
 | File | What |
 | --- | --- |
 | `00-IDENTITY-OPTION-A-CUSTODY-COST-REVIEW.md` | This report |
-| `supporting/option-a-connector-scripts.DRAFT.py` | C-8, C-8v, C-16 and C-24 as drafts. **Not run** |
+| `supporting/option-a-connector-scripts.DRAFT.py` | C-8, C-8R, C-8v, C-16 and C-24 as drafts. **Not run** |
 | `supporting/option-a-c8-offline-harness.py` | Offline harness for C-8 with a mocked `call_boto3` and a synthetic value |
 | `supporting/option-a-c8-offline-harness-output.txt` | Its output, 11 Nov 2026 |
 
