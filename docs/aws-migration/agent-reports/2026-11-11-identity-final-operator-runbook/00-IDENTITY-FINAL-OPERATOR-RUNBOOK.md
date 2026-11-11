@@ -133,7 +133,7 @@ The real loader and probe are tested in PRs #92 and #93 [P].
 
 | Attribute | Value |
 | --- | --- |
-| Family | `munaxa-nonprod-identity-probe` (first revision `:1`) |
+| Family | `munaxa-nonprod-identity-probe`. The revision is **not assumed**: step 0-6 reads the ACTIVE revision back and records `PROBE_TD` = `family:revision` (PR #95 X-2) |
 | Container | `identity-probe`, essential |
 | Image | The Identity API digest already in `munaxa-nonprod-identity-bootstrap:1`: `munaxa-identity/api@sha256:71d01fdf…` (`node:22-alpine` runtime) [R] |
 | Root filesystem | read-only; Linux capabilities: drop `ALL` |
@@ -157,7 +157,7 @@ not fetch it and the container never receives it.
 # Inputs resolved earlier in the session (section 8, step S-0): SUBNETS (2 ids), SG_IDENTITY, ALB_DNS.
 params = {
     "cluster": "munaxa-nonprod",
-    "taskDefinition": "munaxa-nonprod-identity-probe:1",
+    "taskDefinition": PROBE_TD,             # family:revision recorded at step 0-6, never a hard-coded :1
     "launchType": "FARGATE",
     "count": 1,
     "startedBy": "first-identity-session-probe",
@@ -264,8 +264,9 @@ bootstrap and probe tasks. Nothing reads `munaxa-nonprod/identity-operator` duri
 Step 0-6 connector script (read-only; returns booleans and names only):
 
 ```python
+# The family name alone resolves to the latest ACTIVE revision; the result records it.
 r = await call_boto3(service_name="ecs", operation_name="DescribeTaskDefinition", region_name="eu-central-1",
-                     params={"taskDefinition": "munaxa-nonprod-identity-probe:1"})
+                     params={"taskDefinition": "munaxa-nonprod-identity-probe"})
 b = await call_boto3(service_name="ecs", operation_name="DescribeTaskDefinition", region_name="eu-central-1",
                      params={"taskDefinition": "munaxa-nonprod-identity-bootstrap:1"})
 td, bt = r["taskDefinition"], b["taskDefinition"]
@@ -290,11 +291,14 @@ result = {
   "log_group": c[0]["logConfiguration"]["options"].get("awslogs-group"),
   "command_has_loader": cmd.startswith("node --input-type=module -e"),
   "cpu_mem": [td.get("cpu"), td.get("memory")],
+  "probe_td": f'{td["family"]}:{td["revision"]}',   # recorded as PROBE_TD for 4.2
 }
 result
 ```
 
 Every boolean must be `true`, `log_prefix` `identity-probe`, `log_group` `/munaxa/nonprod/ops`.
+Record `probe_td` as `PROBE_TD`. Phase 1 repeats this check on session day; if `probe_td` changed
+since 0-6, stop and re-run the full check before any `RunTask`.
 The returned data has no secret: task definitions hold secret ARNs, never values.
 
 ## 7. Phase 1: session-day read-only checks
@@ -621,9 +625,15 @@ in the session. No IAM, security-group, Terraform or DNS change in the session.
 - Running cost about US$0.09 to 0.10 an hour (list prices, first-session §8; not re-priced
   today). Expected about US$0.20 for 2 hours.
 - **US$0.35 is a conditional ceiling, not a guarantee.** It holds only if Claude's session and the
-  connector stay available and `down` is dispatched by T0 + 3 h. If Claude loses control after
-  `up`, the cost until the independent layers act can reach about **US$1.00** (PR #89 section G):
-  full running cost to 21:00 UTC, then the ALB until the next working scheduled `down`.
+  connector stay available and `down` is dispatched by T0 + 3 h.
+- **If Claude loses control after `up`** and a scheduled `down` runs (19:17 or 01:47 UTC, possibly
+  hours late), the cost reaches about **US$1.00** (PR #89 section G): full running cost to 21:00
+  UTC, then the ALB until that `down`.
+- **If Claude loses control and both scheduled `down` runs are dropped, the cost has no fixed
+  upper limit** (PR #95 X-6). The 21:00 UTC backstop stops the database and scales the service to
+  0, but it cannot delete the ALB, which keeps costing about US$0.89 a day (about US$27 a month)
+  until someone runs `down`. Only PR #90's independent cleanup, if the owner authorizes building
+  it, would bound this case; otherwise it is a residual risk the owner accepts in writing.
 - Option A adds about **US$0.40 a month** for `munaxa-nonprod/identity-operator`, outside the
   session ceiling.
 - The probe task (0.25 vCPU, 512 MB, minutes) and the one-off tasks cost under US$0.02.

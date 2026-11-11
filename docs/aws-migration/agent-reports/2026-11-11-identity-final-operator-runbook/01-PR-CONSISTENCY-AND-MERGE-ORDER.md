@@ -18,9 +18,9 @@ This PR is **the one integration PR**:
    `49c51f3`, in that order. Every report and evidence file is **byte-identical** to the PR heads
    (checked with `git diff pr<N> HEAD -- <files>`: empty for all three). Only their README edits
    were dropped.
-2. It adds this runbook folder.
-3. It rewrites the README index **once**: one **Latest** row (this runbook), plain rows for #87,
-   #88, #89, for workstreams 2, 3 and 5 (PR #92, PR #90, PR #91), without re-padding the table.
+2. It adds this runbook folder, including PR #95's corrections X-2 (no hard-coded probe revision) and X-6 (no fixed cost bound when both scheduled `down` runs are dropped).
+3. It rewrites the README index **once**: one **Latest** row (the consolidated readiness report, PR #95), plain rows for this runbook, for #87,
+   #88, #89, for workstreams 2, 3 and 5 (PR #92, PR #90, PR #91) and the consolidated readiness report (PR #95, the Latest row), without re-padding the table.
    and workstream 1 (PR #93), all in the same single index change.
 4. Workstreams 1, 2, 3 and 5 agreed **not** to edit the README.
 5. One file of the #87 content gets a dated banner here, documented below: the operator checklist
@@ -40,7 +40,7 @@ This PR is **the one integration PR**:
 | K-8 | Checklist step 9 | DNS record for `id.test` | Not used for the first session (#87 U-3). Runbook section 1 |
 | K-9 | #88 section 6 | "Ruling on F-1 and F-2 … No change was made" | Superseded by #87 `02-LOG-FILTER-CORRECTION.md` (corrected pattern, 47 of 47) |
 | K-10 | #87 A-0 / U-2 vs #88 section 3 | #87: if the connector log echoes parameters, do not run C-8. #88: the throwaway test was not run; L-A0 cannot be checked | L-A0 stays open and is accepted with Option A; stated in the authorization request. Runbook 5.2 |
-| K-11 | #87 section 6, checklist section 9 | US$0.35 stated as the session ceiling | **Conditional**, not guaranteed: about US$1.00 if Claude loses control (#89 G, PR #90, PR #91). Runbook section 15 |
+| K-11 | #87 section 6, checklist section 9 | US$0.35 stated as the session ceiling | **Conditional**, not guaranteed: about US$1.00 if Claude loses control and a scheduled `down` runs; **no fixed upper limit** (ALB about US$0.89 a day) if both scheduled runs are dropped (PR #95 X-6). Runbook section 15 |
 | K-12 | #89 BL-5 | Merge order "#88, then #87, then the probe PR" | Replaced by section 4 below |
 | K-13 | #87 C-17, #89 G | One wake at T0 + 2 h 45 min | Two wakes (2 h 30 warning, 2 h 45 shutdown), hard stop at T0 + 3 h or 18:30 UTC. Runbook section 14 |
 | K-14 | #89 heading vs README | #89 file is titled "final review before a deployment authorization request"; its row says "Final non-production deployment readiness review" | Row text kept, "Latest" removed |
@@ -54,6 +54,7 @@ allows squash merges only.
 | --- | --- | --- | --- |
 | 1 | PR #91, Option A custody review (workstream 5) | Docs only; cited by the runbook | none (new folder, no README) |
 | 2 | PR #90, independent cleanup design (workstream 3) | Docs only; cited by the runbook | none |
+| 2b | PR #95, consolidated readiness report | Docs only; its folder is the Latest row of this PR's index change | none (new folder, no README) |
 | 3 | PR #93, workstream 1 probe | The pin `C` is its squash commit, so it must be on `main` first | #93 and #92 both edit `.github/workflows/aws-terraform.yml`; whichever merges second is updated to drop #93's single-file test step (#92's glob covers it). That update is a documented edit of the second PR's branch |
 | 4 | PR #92, workstream 2 task definition (disabled by default, no plan change) | Needs nothing from 3 at merge time | see row 3 |
 | 5 | **This PR** | Carries #87, #88, #89 and the single README update | none, if 1 to 4 do not touch the README |
