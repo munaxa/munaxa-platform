@@ -58,7 +58,7 @@ State at 10:55 UTC. Base `main` `49c51f36fb53d1e450c9cf8af58a969897d00623` (unch
 | [#92](https://github.com/munaxa/munaxa-platform/pull/92) | Probe task definition, disabled by default (WS2) | `4c632ab` | open | all success, including Accessibility | none |
 | [#93](https://github.com/munaxa/munaxa-platform/pull/93) | Probe and offline tests (WS1); X-1 fix | `8180537` | open | all success, including Accessibility | depends on #92 for its CI step |
 | [#95](https://github.com/munaxa/munaxa-platform/pull/95) | Consolidated readiness and this package | see PR | open | Lint/Test success on `f54c6e4`; re-runs on this commit | none |
-| [#94](https://github.com/munaxa/munaxa-platform/pull/94) | Final runbook, the #87/#88/#89 content, the single README index | `d8f061e` | open | Terraform, Façades: success; Lint/Test and Accessibility running | waits for all of the above |
+| [#94](https://github.com/munaxa/munaxa-platform/pull/94) | Final runbook, the #87/#88/#89 content, the single README index | `0beda40` | open | Terraform, Façades: success; Lint/Test and Accessibility running | waits for all of the above |
 | [#87](https://github.com/munaxa/munaxa-platform/pull/87), [#88](https://github.com/munaxa/munaxa-platform/pull/88), [#89](https://github.com/munaxa/munaxa-platform/pull/89) | Superseded by #94 | `3b2e088`, `9e3cf41`, `d9d6865` | open, titled `[Superseded by #94]` | green earlier | not to be merged on their own; the owner closes them after #94 |
 
 **Merge sequence (squash, each on the owner's word):**
@@ -71,7 +71,7 @@ State at 10:55 UTC. Base `main` `49c51f36fb53d1e450c9cf8af58a969897d00623` (unch
 6. #94 (last, because its README rows link to every folder above)
 7. Close #87, #88 and #89 after #94 is merged.
 
-Merge-conflict check [R]: the latest heads merge cleanly onto `49c51f3` in the order #91, #90, #92, #93, #95, #94 (local `git merge` simulation at 10:50 UTC).
+Merge-conflict check [R]: the latest heads merge cleanly onto `49c51f3` in the order #91, #90, #92, #93, #95, #94 (local `git merge` simulation, re-run on these exact heads, #95 at `c1a9811`; probe and loader tests 72/72 on the result).
 
 After the merges, outside Stage A:
 
@@ -107,7 +107,7 @@ After the merges, outside Stage A:
 | `terraform init` / `validate` / `test` locally | **Not run:** the session's network proxy refuses `registry.terraform.io`, so providers cannot be installed. No test result is claimed | — |
 | `terraform test` (stack, mocked provider) on #92 | 28 passed, 0 failed (#92 report); job "Format, validate, mocked plan tests" success | [CI], [M] |
 | "Format, validate, mocked plan tests" on #90, #91, #92, #93, #94, #95 heads | success on all six | [CI] |
-| "Lint · Typecheck · Test · Build" | success on #90, #91, #92, #93, #95 (`f54c6e4`); running on #94 `d8f061e` | [CI] |
+| "Lint · Typecheck · Test · Build" | success on #90, #91, #92, #93, #95 (`f54c6e4`); running on #94 (head `0beda40`) | [CI] |
 | Accessibility (Storybook) | success on #92 and #93; running on the rest. No PR touches UI code | [CI] |
 | Earlier #95 failure (`e097d89`) | `@munaxa/auth` timing test "spends comparable work on both paths" (7.18 vs < 5), in a package no PR touches. Passed on the next commit | [CI] |
 
