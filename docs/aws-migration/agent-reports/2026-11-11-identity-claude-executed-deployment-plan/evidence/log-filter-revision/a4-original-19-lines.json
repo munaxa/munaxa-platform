@@ -1,0 +1,208 @@
+{
+  "called_at_utc": "2026-11-11T09:26:23.055Z",
+  "script": "PAT='?eyJ ?BEGIN ?PRIVATE ?\"password\\\\\":\\\\\"\"'\nJ=\"eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw\"\nsamples=[\n (\"SECRET\",\"jwt-json\",'{\"level\":30,\"msg\":\"issued\",\"token\":\"%s\"}'%J),\n (\"SECRET\",\"jwt-bearer\",\"authorization: Bearer %s\"%J),\n (\"SECRET\",\"jwt-bare\",J),\n (\"SECRET\",\"pem-private\",\"-----BEGIN PRIVATE KEY-----\"),\n (\"SECRET\",\"pem-ec\",\"-----BEGIN EC PRIVATE KEY-----\"),\n (\"SECRET\",\"pem-rsa\",\"-----BEGIN RSA PRIVATE KEY-----\"),\n (\"SECRET\",\"password-json\",'{\"level\":30,\"body\":{\"email\":\"x@example.invalid\",\"password\":\"FAKE-not-a-password\"}}'),\n (\"SECRET\",\"password-json-space\",'{\"body\": {\"password\": \"FAKE-not-a-password\"}}'),\n (\"SECRET\",\"jwt-in-url\",\"GET /callback?token=%s 200\"%J),\n (\"CLEAN\",\"request-log\",'{\"level\":30,\"req\":{\"method\":\"POST\",\"url\":\"/auth/login\"},\"res\":{\"statusCode\":200},\"responseTime\":12}'),\n (\"CLEAN\",\"startup\",'{\"level\":30,\"msg\":\"Nest application successfully started\"}'),\n (\"CLEAN\",\"health\",'{\"level\":30,\"req\":{\"method\":\"GET\",\"url\":\"/health\"},\"res\":{\"statusCode\":200}}'),\n (\"CLEAN\",\"redacted\",'{\"level\":30,\"body\":{\"email\":\"[REDACTED]\",\"password\":\"[REDACTED]\"}}'),\n (\"CLEAN\",\"passwordhash-word\",'{\"level\":30,\"msg\":\"passwordHash column migrated\"}'),\n (\"CLEAN\",\"migration\",'All migrations have been successfully applied.'),\n (\"CLEAN\",\"lowercase-words\",'begin transaction; private schema ok'),\n (\"CLEAN\",\"public-key\",'-----BEGIN PUBLIC KEY-----'),\n (\"CLEAN\",\"eye-word\",\"eyeJ test eyj lowercase\"),\n (\"CLEAN\",\"401\",'{\"level\":40,\"msg\":\"Unauthorized\",\"res\":{\"statusCode\":401}}'),\n]\nr=await call_boto3(service_name=\"logs\",operation_name=\"TestMetricFilter\",region_name=\"eu-central-1\",\n   params={\"filterPattern\":PAT,\"logEventMessages\":[s[2] for s in samples]})\nmatched={m[\"eventNumber\"] for m in r.get(\"matches\",[])}\nrows=[]\nfor i,(kind,name,_) in enumerate(samples,1):\n    hit=i in matched\n    rows.append({\"n\":i,\"kind\":kind,\"name\":name,\"matched\":hit,\"as_expected\":hit==(kind==\"SECRET\")})\nresult={\"pattern\":PAT,\"matches_raw\":r.get(\"matches\",[]),\"rows\":rows}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": {
+      "pattern": "?eyJ ?BEGIN ?PRIVATE ?\"password\\\":\\\"\"",
+      "matches_raw": [
+        {
+          "eventNumber": 1,
+          "eventMessage": "{\"level\":30,\"msg\":\"issued\",\"token\":\"eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw\"}",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 2,
+          "eventMessage": "authorization: Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 3,
+          "eventMessage": "eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 4,
+          "eventMessage": "-----BEGIN PRIVATE KEY-----",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 5,
+          "eventMessage": "-----BEGIN EC PRIVATE KEY-----",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 6,
+          "eventMessage": "-----BEGIN RSA PRIVATE KEY-----",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 7,
+          "eventMessage": "{\"level\":30,\"body\":{\"email\":\"x@example.invalid\",\"password\":\"FAKE-not-a-password\"}}",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 9,
+          "eventMessage": "GET /callback?token=eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw 200",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 13,
+          "eventMessage": "{\"level\":30,\"body\":{\"email\":\"[REDACTED]\",\"password\":\"[REDACTED]\"}}",
+          "extractedValues": {}
+        },
+        {
+          "eventNumber": 17,
+          "eventMessage": "-----BEGIN PUBLIC KEY-----",
+          "extractedValues": {}
+        }
+      ],
+      "rows": [
+        {
+          "n": 1,
+          "kind": "SECRET",
+          "name": "jwt-json",
+          "matched": true,
+          "as_expected": true
+        },
+        {
+          "n": 2,
+          "kind": "SECRET",
+          "name": "jwt-bearer",
+          "matched": true,
+          "as_expected": true
+        },
+        {
+          "n": 3,
+          "kind": "SECRET",
+          "name": "jwt-bare",
+          "matched": true,
+          "as_expected": true
+        },
+        {
+          "n": 4,
+          "kind": "SECRET",
+          "name": "pem-private",
+          "matched": true,
+          "as_expected": true
+        },
+        {
+          "n": 5,
+          "kind": "SECRET",
+          "name": "pem-ec",
+          "matched": true,
+          "as_expected": true
+        },
+        {
+          "n": 6,
+          "kind": "SECRET",
+          "name": "pem-rsa",
+          "matched": true,
+          "as_expected": true
+        },
+        {
+          "n": 7,
+          "kind": "SECRET",
+          "name": "password-json",
+          "matched": true,
+          "as_expected": true
+        },
+        {
+          "n": 8,
+          "kind": "SECRET",
+          "name": "password-json-space",
+          "matched": false,
+          "as_expected": false
+        },
+        {
+          "n": 9,
+          "kind": "SECRET",
+          "name": "jwt-in-url",
+          "matched": true,
+          "as_expected": true
+        },
+        {
+          "n": 10,
+          "kind": "CLEAN",
+          "name": "request-log",
+          "matched": false,
+          "as_expected": true
+        },
+        {
+          "n": 11,
+          "kind": "CLEAN",
+          "name": "startup",
+          "matched": false,
+          "as_expected": true
+        },
+        {
+          "n": 12,
+          "kind": "CLEAN",
+          "name": "health",
+          "matched": false,
+          "as_expected": true
+        },
+        {
+          "n": 13,
+          "kind": "CLEAN",
+          "name": "redacted",
+          "matched": true,
+          "as_expected": false
+        },
+        {
+          "n": 14,
+          "kind": "CLEAN",
+          "name": "passwordhash-word",
+          "matched": false,
+          "as_expected": true
+        },
+        {
+          "n": 15,
+          "kind": "CLEAN",
+          "name": "migration",
+          "matched": false,
+          "as_expected": true
+        },
+        {
+          "n": 16,
+          "kind": "CLEAN",
+          "name": "lowercase-words",
+          "matched": false,
+          "as_expected": true
+        },
+        {
+          "n": 17,
+          "kind": "CLEAN",
+          "name": "public-key",
+          "matched": true,
+          "as_expected": false
+        },
+        {
+          "n": 18,
+          "kind": "CLEAN",
+          "name": "eye-word",
+          "matched": false,
+          "as_expected": true
+        },
+        {
+          "n": 19,
+          "kind": "CLEAN",
+          "name": "401",
+          "matched": false,
+          "as_expected": true
+        }
+      ]
+    },
+    "api_calls": [
+      {
+        "service": "logs",
+        "operation": "TestMetricFilter",
+        "status": "success",
+        "n_items": {
+          "matches": 10
+        }
+      }
+    ]
+  }
+}
