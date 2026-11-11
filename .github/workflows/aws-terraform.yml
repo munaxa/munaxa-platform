@@ -118,6 +118,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+          # No pnpm here and no dependencies: the probe uses node: built-ins only.
+          package-manager-cache: false
 
       - name: The Identity session probe's unit tests pass
         run: node --test infra/aws/stack/supporting/identity-session-probe.test.mjs
