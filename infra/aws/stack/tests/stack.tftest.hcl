@@ -761,3 +761,246 @@ run "identity_probe_pin_must_be_a_full_commit_and_sha256" {
 
   expect_failures = [var.identity_probe_source]
 }
+
+# --- AW-01: the hardened Identity contract (report 2026-11-11-identity-aw01-remediation) ---------
+#
+# Identity main after identity#7 to #14 refuses NODE_ENV=production without MFA_ENCRYPTION_KEYS,
+# a MFA_ENCRYPTION_PRIMARY_KID that names one of its entries, and IDENTITY_PASSWORD_RESET=disabled.
+# identity_security_config switches that contract on with the image; null keeps release 5277d71's
+# task definition exactly as Config A1 registered it.
+
+run "aw01_without_security_config_identity_keeps_the_5277d71_contract" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
+  }
+
+  variables {
+    db_bootstrap_products = ["identity"]
+    secret_version_ids    = { identity = "00000000-0000-4000-8000-000000000001" }
+    images = {
+      identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+
+  assert {
+    condition = sort([for e in jsondecode(module.identity[0].task_definition_container_definitions)[0].environment : e.name]) == sort([
+      "CSRF_TRUSTED_ORIGINS", "IDENTITY_AUTH_AUDIENCE", "IDENTITY_BASE_URL", "IDENTITY_DEFAULT_ORGANISATION", "IDENTITY_SIGNING_ALGORITHM",
+      "IDENTITY_SIGNING_KID", "LOG_PRETTY", "NODE_ENV", "PORT", "TRUST_PROXY_HOPS",
+    ])
+    error_message = "Without identity_security_config the Identity environment is exactly the ten names release 5277d71 reads."
+  }
+  assert {
+    condition = jsonencode(jsondecode(module.identity[0].task_definition_container_definitions)[0].environment) == jsonencode([
+      { name = "CSRF_TRUSTED_ORIGINS", value = "https://id.test.munaxa.com,https://work.test.munaxa.com,https://operator.test.munaxa.com" },
+      { name = "IDENTITY_AUTH_AUDIENCE", value = "munaxa-work,munaxa-control" },
+      { name = "IDENTITY_BASE_URL", value = "https://id.test.munaxa.com" },
+      { name = "IDENTITY_DEFAULT_ORGANISATION", value = "" },
+      { name = "IDENTITY_SIGNING_ALGORITHM", value = "ES256" },
+      { name = "IDENTITY_SIGNING_KID", value = "identity-test-2026-11" },
+      { name = "LOG_PRETTY", value = "false" },
+      { name = "NODE_ENV", value = "production" },
+      { name = "PORT", value = "4001" },
+      { name = "TRUST_PROXY_HOPS", value = "1" },
+    ])
+    error_message = "Without identity_security_config every Identity environment value is the one release 5277d71 runs with."
+  }
+  assert {
+    condition     = jsondecode(module.identity[0].task_definition_container_definitions)[0].image == var.images.identity_api && length(jsondecode(module.identity[0].task_definition_container_definitions)) == 2 && jsondecode(module.identity[0].task_definition_container_definitions)[1].name == "valkey"
+    error_message = "Without identity_security_config Identity keeps its digest and its single Valkey sidecar."
+  }
+  assert {
+    condition = [for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.valueFrom] == [
+      for k in ["DATABASE_URL", "IDENTITY_SIGNING_PRIVATE_KEY", "IDENTITY_SIGNING_SECRET", "REDIS_URL", "REDIS_PASSWORD"] :
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:${k}::00000000-0000-4000-8000-000000000001"
+    ]
+    error_message = "Without identity_security_config Identity reads exactly its five bundle keys, pinned, and no MFA_ENCRYPTION_KEYS (5277d71 does not read it and a missing JSON key stops the task)."
+  }
+  assert {
+    condition     = !strcontains(module.identity[0].task_definition_container_definitions, "MFA_") && !strcontains(module.identity[0].task_definition_container_definitions, "IDENTITY_PASSWORD_RESET")
+    error_message = "Release 5277d71's task definition carries no MFA or password-reset setting."
+  }
+}
+
+run "aw01_hardened_identity_reads_the_mfa_key_ring_and_disables_reset" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-migrate-GhIjKl" }
+  }
+
+  variables {
+    db_bootstrap_products = ["identity"]
+    secret_version_ids    = { identity = "00000000-0000-4000-8000-000000000002" }
+    images = {
+      identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+    identity_security_config = {
+      mfa_primary_kid = "nonprod-2026-11"
+      mfa_policy      = "off"
+    }
+  }
+
+  # 1, 2: the bundle contract has the key, and the task reads it from the identity bundle, pinned.
+  assert {
+    condition     = local.secret_keys["identity"] == ["DATABASE_URL", "IDENTITY_SIGNING_PRIVATE_KEY", "IDENTITY_SIGNING_SECRET", "REDIS_URL", "REDIS_PASSWORD", "MFA_ENCRYPTION_KEYS"]
+    error_message = "The identity bundle contract gains MFA_ENCRYPTION_KEYS and nothing else."
+  }
+  assert {
+    condition = {
+      for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.name => s.valueFrom
+    }["MFA_ENCRYPTION_KEYS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:MFA_ENCRYPTION_KEYS::00000000-0000-4000-8000-000000000002"
+    error_message = "MFA_ENCRYPTION_KEYS comes from its own JSON key of the identity bundle, at the pinned version: never another key, bundle or version."
+  }
+  assert {
+    condition     = length(jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets) == 6 && alltrue([for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.valueFrom == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:${s.name}::00000000-0000-4000-8000-000000000002"])
+    error_message = "Every Identity secret is the JSON key of its own name in the identity bundle; no alias maps MFA_ENCRYPTION_KEYS to the signing key or the pepper."
+  }
+
+  # 3, 4, 5: the plain settings.
+  assert {
+    condition = {
+      for e in jsondecode(module.identity[0].task_definition_container_definitions)[0].environment : e.name => e.value
+      if contains(["MFA_ENCRYPTION_PRIMARY_KID", "MFA_POLICY", "MFA_PRIVILEGED_ROLES", "IDENTITY_PASSWORD_RESET"], e.name)
+      } == {
+      MFA_ENCRYPTION_PRIMARY_KID = "nonprod-2026-11"
+      MFA_POLICY                 = "off"
+      IDENTITY_PASSWORD_RESET    = "disabled"
+    }
+    error_message = "The hardened image gets its primary kid, an explicit MFA_POLICY=off, password reset disabled, and no MFA_PRIVILEGED_ROLES with policy off."
+  }
+  assert {
+    condition     = length(jsondecode(module.identity[0].task_definition_container_definitions)[0].environment) == 13
+    error_message = "The hardened environment is the ten 5277d71 names plus exactly three."
+  }
+
+  # 6: no secret in the plain environment, and no name is both.
+  assert {
+    condition = length(setintersection(
+      [for e in jsondecode(module.identity[0].task_definition_container_definitions)[0].environment : e.name],
+      [for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.name],
+    )) == 0
+    error_message = "No variable is both a plain value and a secret (a plain MFA_ENCRYPTION_KEYS would override nothing and leak everything)."
+  }
+  assert {
+    condition = !anytrue([
+      for e in jsondecode(module.identity[0].task_definition_container_definitions)[0].environment :
+      can(regex("[A-Za-z0-9_-]+=[A-Za-z0-9+/_-]{43}", e.value)) || strcontains(e.value, "PRIVATE KEY")
+    ])
+    error_message = "No plain value has the shape of an MFA key entry or a private key."
+  }
+
+  # 7: other bundles are unchanged.
+  assert {
+    condition = (
+      local.secret_keys["control-api"] == ["DATABASE_URL"] &&
+      local.secret_keys["work-api"] == ["DATABASE_URL", "PII_MATCH_SECRET", "CONTROL_PLANE_TOKEN"] &&
+      local.secret_keys["school-api"] == ["DATABASE_URL", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "CONTROL_PLANE_TOKEN", "RESEND_API_KEY"] &&
+      alltrue([for k in ["identity-migrate", "control-migrate", "work-migrate", "school-migrate"] : local.secret_keys[k] == ["DATABASE_MIGRATION_URL"]]) &&
+      length(aws_secretsmanager_secret.service) == 8
+    )
+    error_message = "Only the identity bundle contract changes; no bundle is added or removed."
+  }
+  assert {
+    condition = (
+      !strcontains(aws_ecs_task_definition.identity_bootstrap[0].container_definitions, "MFA_") &&
+      !strcontains(module.migrate["identity"].task_definition_container_definitions, "MFA_")
+    )
+    error_message = "The migration and bootstrap tasks do not read the MFA key ring: only the API seals and opens TOTP secrets."
+  }
+
+  # 9: the execution/task role split holds: Identity still has no task role.
+  assert {
+    condition     = module.identity[0].task_role_arn == null
+    error_message = "Identity runs without a task role; only its execution role reads the bundle."
+  }
+
+  # 10: still the pinned digest.
+  assert {
+    condition     = jsondecode(module.identity[0].task_definition_container_definitions)[0].image == var.images.identity_api && can(regex("@sha256:[0-9a-f]{64}$", jsondecode(module.identity[0].task_definition_container_definitions)[0].image))
+    error_message = "The Identity task definition runs the digest-pinned identity_api image."
+  }
+}
+
+run "aw01_privileged_policy_passes_its_role_keys" {
+  command = plan
+
+  variables {
+    environment = "prod"
+    vpc_cidr    = "10.131.0.0/16"
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+    identity_security_config = {
+      mfa_primary_kid      = "prod-2026-12"
+      mfa_policy           = "privileged"
+      mfa_privileged_roles = ["role-a", "role-b"]
+    }
+  }
+
+  assert {
+    condition     = tomap(local.identity_security_environment) == tomap({ MFA_ENCRYPTION_PRIMARY_KID = "prod-2026-12", MFA_POLICY = "privileged", MFA_PRIVILEGED_ROLES = "role-a,role-b", IDENTITY_PASSWORD_RESET = "disabled" })
+    error_message = "With privileged, MFA_PRIVILEGED_ROLES is the comma-joined role keys Identity's list() parses back."
+  }
+}
+
+run "aw01_privileged_without_roles_is_refused" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "privileged" }
+  }
+  expect_failures = [var.identity_security_config]
+}
+
+run "aw01_roles_without_privileged_are_refused" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off", mfa_privileged_roles = ["role-a"] }
+  }
+  expect_failures = [var.identity_security_config]
+}
+
+run "aw01_an_unknown_policy_is_refused" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "required" }
+  }
+  expect_failures = [var.identity_security_config]
+}
+
+run "aw01_a_kid_with_a_key_entry_is_refused" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "k1=not-a-real-key", mfa_policy = "off" }
+  }
+  expect_failures = [var.identity_security_config]
+}
+
+run "aw01_a_key_shaped_kid_is_refused" {
+  command = plan
+  variables {
+    # 43 characters, the length of 32 bytes in base64url. Not key material: a fixed test string.
+    identity_security_config = { mfa_primary_kid = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", mfa_policy = "off" }
+  }
+  expect_failures = [var.identity_security_config]
+}
+
+run "aw01_a_role_key_with_a_comma_is_refused" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "privileged", mfa_privileged_roles = ["role-a,role-b"] }
+  }
+  expect_failures = [var.identity_security_config]
+}

@@ -87,6 +87,27 @@ resource "aws_service_discovery_private_dns_namespace" "main" {
 
 # --- Identity ----------------------------------------------------------------------------------
 
+# The hardened image's plain settings (AW-01; munaxa-identity packages/config). Nothing here is a
+# secret: the key ring is MFA_ENCRYPTION_KEYS from the bundle, and Identity refuses to start if
+# MFA_ENCRYPTION_PRIMARY_KID does not name an entry of it, if the ring is missing in production, or
+# if an entry is the signing key or IDENTITY_SIGNING_SECRET.
+#
+# IDENTITY_PASSWORD_RESET is fixed at disabled, not a variable: Identity has no production email
+# transport, refuses `enabled` in production without one, and its default is `enabled`. Enabling it
+# is a code change in Identity (a transport adapter) first, then a reviewed change here.
+locals {
+  identity_security_environment = var.identity_security_config == null ? {} : merge(
+    {
+      MFA_ENCRYPTION_PRIMARY_KID = var.identity_security_config.mfa_primary_kid
+      MFA_POLICY                 = var.identity_security_config.mfa_policy
+      IDENTITY_PASSWORD_RESET    = "disabled"
+    },
+    length(var.identity_security_config.mfa_privileged_roles) == 0 ? {} : {
+      MFA_PRIVILEGED_ROLES = join(",", var.identity_security_config.mfa_privileged_roles)
+    },
+  )
+}
+
 module "identity" {
   source = "../modules/service"
   count  = local.defined.identity_api ? 1 : 0
@@ -109,7 +130,9 @@ module "identity" {
   memory = 1024
   port   = 4001
 
-  environment = {
+  # The release 5277d71 environment, plus the hardened image's settings (AW-01) only when
+  # identity_security_config is set; null leaves this map exactly as 5277d71 runs it.
+  environment = merge({
     NODE_ENV                      = "production"
     PORT                          = "4001"
     IDENTITY_BASE_URL             = local.https.identity
@@ -123,8 +146,9 @@ module "identity" {
     # The ALB is the one proxy in front of Identity; without it every client shares the ALB's
     # address and so one per-IP login limiter (identity#2).
     TRUST_PROXY_HOPS = "1"
-  }
-  secret_arn        = aws_secretsmanager_secret.service["identity"].arn
+  }, local.identity_security_environment)
+  secret_arn = aws_secretsmanager_secret.service["identity"].arn
+  # local.identity_secret_keys (data.tf): MFA_ENCRYPTION_KEYS joins only with identity_security_config.
   secret_keys       = local.secret_keys["identity"]
   secret_version_id = lookup(var.secret_version_ids, "identity", "")
 

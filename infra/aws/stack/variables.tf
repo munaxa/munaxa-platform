@@ -260,6 +260,69 @@ variable "identity_signing_kid" {
   }
 }
 
+# AW-01 (report 2026-11-11-cross-repository-deployment-readiness; remediation report
+# 2026-11-11-identity-aw01-remediation). An Identity image built from munaxa-identity main after the
+# security hardening (identity#7 to #14) refuses to start with NODE_ENV=production unless it has the
+# MFA key ring, the primary key id and IDENTITY_PASSWORD_RESET=disabled. Release 5277d71 knows none
+# of them. So the hardened contract is switched on together with the image, never before:
+#
+#   null (default)  the task definition release 5277d71 runs, byte for byte as before;
+#   set             the identity bundle gains MFA_ENCRYPTION_KEYS (a secret reference, never a
+#                   value), and the plain environment gains MFA_ENCRYPTION_PRIMARY_KID, MFA_POLICY,
+#                   MFA_PRIVILEGED_ROLES (only with privileged) and IDENTITY_PASSWORD_RESET=disabled.
+#
+# Set it in the same reviewed PR that pins a hardened image, after the key has been added to the
+# bundle and secret_version_ids.identity names the version that holds it.
+variable "identity_security_config" {
+  description = "Hardened Identity (munaxa-identity main after identity#7 to #14) only: the non-secret MFA settings. Null keeps the release 5277d71 task definition unchanged. The MFA key ring is never here; it is MFA_ENCRYPTION_KEYS in the <env>/identity bundle."
+  type = object({
+    mfa_primary_kid      = string
+    mfa_policy           = string
+    mfa_privileged_roles = optional(list(string), [])
+  })
+  default = null
+
+  # Identity's own rule for a kid (packages/config/src/mfa-keys.ts): it is written into every
+  # ciphertext envelope, which is '.'-separated.
+  validation {
+    condition     = var.identity_security_config == null || can(regex("^[A-Za-z0-9_-]{1,64}$", var.identity_security_config.mfa_primary_kid))
+    error_message = "identity_security_config.mfa_primary_kid is 1-64 characters of [A-Za-z0-9_-] (Identity's rule for an MFA key id)."
+  }
+
+  # Stricter than Identity on purpose: 32 bytes encode to 43 characters of base64url (44 with
+  # padding). A kid of exactly that shape is far more likely the key pasted into the wrong field,
+  # and this file is in a public repository.
+  validation {
+    condition     = var.identity_security_config == null || !can(regex("^[A-Za-z0-9_-]{43}$", var.identity_security_config.mfa_primary_kid))
+    error_message = "identity_security_config.mfa_primary_kid has the shape of an encoded 32-byte key. The kid is a short name (e.g. nonprod-2026-11); the key itself belongs only in the <env>/identity bundle."
+  }
+
+  validation {
+    condition     = var.identity_security_config == null || contains(["off", "privileged", "all"], var.identity_security_config.mfa_policy)
+    error_message = "identity_security_config.mfa_policy is off, privileged or all (Identity's MFA_POLICY)."
+  }
+
+  # Identity refuses privileged with no roles. Roles with off or all would be ignored by Identity
+  # and read as if they enforced something, so they are refused here too.
+  validation {
+    condition = var.identity_security_config == null || (
+      var.identity_security_config.mfa_policy == "privileged"
+      ? length(var.identity_security_config.mfa_privileged_roles) > 0
+      : length(var.identity_security_config.mfa_privileged_roles) == 0
+    )
+    error_message = "identity_security_config.mfa_privileged_roles names at least one role key with mfa_policy = privileged, and none otherwise."
+  }
+
+  # MFA_PRIVILEGED_ROLES is one comma-separated variable: a role key holding a comma or a space
+  # would be split or trimmed into a different key.
+  validation {
+    condition = var.identity_security_config == null || alltrue([
+      for r in var.identity_security_config.mfa_privileged_roles : can(regex("^[A-Za-z0-9:._-]{1,128}$", r))
+    ])
+    error_message = "Each identity_security_config.mfa_privileged_roles entry is an existing Identity role key: 1-128 characters, no comma or whitespace."
+  }
+}
+
 variable "identity_public_keys" {
   description = "Identity's public signing keys as JSON [{kid, publicKey}], for Work (PLATFORM_AUTH_PUBLIC_KEYS) and Control (OPERATOR_AUTH_PUBLIC_KEYS). Public."
   type        = string

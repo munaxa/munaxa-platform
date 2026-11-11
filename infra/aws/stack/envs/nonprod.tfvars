@@ -62,6 +62,17 @@ images = {
   identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820"
 }
 
+# Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Unset while images.identity_api
+# is release 5277d71: that release reads none of it, and the bundle version pinned below holds no
+# MFA_ENCRYPTION_KEYS. Uncomment only in the reviewed PR that pins an Identity image built from main
+# after identity#7 to #14, together with its migrate image and the new secret_version_ids.identity.
+# mfa_policy stays "off" until the privileged accounts' enrolment and recovery procedure exists
+# (munaxa-identity docs/production-readiness.md section 6).
+# identity_security_config = {
+#   mfa_primary_kid = "<the kid of the MFA_ENCRYPTION_KEYS entry, not the key>"
+#   mfa_policy      = "off"
+# }
+
 # Identity's cache sidecar: Valkey 8.1.11, linux/amd64 manifest.
 valkey_image = "public.ecr.aws/valkey/valkey@sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e"
 

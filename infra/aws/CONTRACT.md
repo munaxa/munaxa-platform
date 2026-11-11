@@ -106,7 +106,7 @@ products goes over HTTPS by the public host (an on-premises installation does th
 
 | Bundle            | Keys                                                                                   |
 | ----------------- | -------------------------------------------------------------------------------------- |
-| `identity`        | `DATABASE_URL`, `IDENTITY_SIGNING_PRIVATE_KEY`, `IDENTITY_SIGNING_SECRET`, `REDIS_URL`, `REDIS_PASSWORD` |
+| `identity`        | `DATABASE_URL`, `IDENTITY_SIGNING_PRIVATE_KEY`, `IDENTITY_SIGNING_SECRET`, `REDIS_URL`, `REDIS_PASSWORD`; plus `MFA_ENCRYPTION_KEYS` when `identity_security_config` is set (hardened Identity images, AW-01) |
 | `control-api`     | `DATABASE_URL`                                                                         |
 | `work-api`        | `DATABASE_URL`, `PII_MATCH_SECRET`, `CONTROL_PLANE_TOKEN`                              |
 | `school-api`      | `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CONTROL_PLANE_TOKEN`, `RESEND_API_KEY` |

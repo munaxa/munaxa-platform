@@ -134,6 +134,7 @@ resource "aws_db_instance" "main" {
 # | ------------------------ | ------------------------------------------------------------------- |
 # | <env>/identity           | DATABASE_URL, IDENTITY_SIGNING_PRIVATE_KEY, IDENTITY_SIGNING_SECRET, |
 # |                          | REDIS_URL, REDIS_PASSWORD                                           |
+# |                          | + MFA_ENCRYPTION_KEYS (only with identity_security_config, AW-01)   |
 # | <env>/control-api        | DATABASE_URL                                                        |
 # | <env>/work-api           | DATABASE_URL, PII_MATCH_SECRET, CONTROL_PLANE_TOKEN                 |
 # | <env>/school-api         | DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,                |
@@ -143,11 +144,21 @@ resource "aws_db_instance" "main" {
 # | <env>/docs-operator      | EDMS_OWNER/APP/BACKUP_PASSWORD (only with hosts.docs)               |
 
 locals {
+  # Identity's bundle. MFA_ENCRYPTION_KEYS is the hardened image's dedicated key ring (Identity
+  # packages/config: `kid=base64key[,kid=base64key...]`, 32 random bytes each, never the signing key
+  # or IDENTITY_SIGNING_SECRET). It is referenced only when identity_security_config is set: release
+  # 5277d71 does not read it, and ECS refuses to start a task whose secret names a JSON key the
+  # bundle version does not hold, so referencing it early would break that release.
+  identity_secret_keys = concat(
+    ["DATABASE_URL", "IDENTITY_SIGNING_PRIVATE_KEY", "IDENTITY_SIGNING_SECRET", "REDIS_URL", "REDIS_PASSWORD"],
+    var.identity_security_config == null ? [] : ["MFA_ENCRYPTION_KEYS"],
+  )
+
   secret_keys = merge(local.docs_enabled ? {
     docs-api      = local.docs_app_keys      # docs.tf; the Docs API and docs-provision
     docs-operator = local.docs_operator_keys # docs-db-admin only, never the API
     } : {}, {
-    identity         = ["DATABASE_URL", "IDENTITY_SIGNING_PRIVATE_KEY", "IDENTITY_SIGNING_SECRET", "REDIS_URL", "REDIS_PASSWORD"]
+    identity         = local.identity_secret_keys
     control-api      = ["DATABASE_URL"]
     identity-migrate = ["DATABASE_MIGRATION_URL"]
     control-migrate  = ["DATABASE_MIGRATION_URL"]
