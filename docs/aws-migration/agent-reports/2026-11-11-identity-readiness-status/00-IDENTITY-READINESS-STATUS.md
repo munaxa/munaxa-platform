@@ -139,31 +139,55 @@ script into `tee` without `pipefail`, so the shell reported `tee`'s status (0) r
 script's. The script itself is unchanged.
 
 **Command.** Fresh CloudShell tab, region `eu-central-1`, signed in as root, mode B
-(`ALLOW_ROOT_READONLY=yes`). Run it only while main still holds the expected script.
+(`ALLOW_ROOT_READONLY=yes`). Paste the whole block at once. It runs in a subshell `( … )`, so a
+stop ends only the block and not the CloudShell session.
 
 ```bash
-set -o pipefail
-mkdir -p ~/identity-preflight && cd ~/identity-preflight
-rm -f preflight-readonly.sh
-curl -sSfO https://raw.githubusercontent.com/munaxa/munaxa-platform/main/docs/aws-migration/agent-reports/2026-11-10-identity-preflight-and-session-readiness/supporting/preflight-readonly.sh
-echo "21ae3205aa867df610bb27ee59f08325bf1adca1e8dabef5f147b8c21c159f7c  preflight-readonly.sh" | sha256sum -c - \
-  && { ALLOW_ROOT_READONLY=yes bash preflight-readonly.sh 2>&1 | tee "preflight-$(date -u +%Y%m%dT%H%MZ).txt"; echo "preflight exit status: $?"; }
+(
+  set -o pipefail
+  EXPECTED_SHA256=21ae3205aa867df610bb27ee59f08325bf1adca1e8dabef5f147b8c21c159f7c
+  SCRIPT_URL=https://raw.githubusercontent.com/munaxa/munaxa-platform/main/docs/aws-migration/agent-reports/2026-11-10-identity-preflight-and-session-readiness/supporting/preflight-readonly.sh
+
+  mkdir -p ~/identity-preflight && cd ~/identity-preflight || { echo "STOP: cannot enter ~/identity-preflight"; exit 10; }
+  rm -f preflight-readonly.sh
+  curl -sSf -o preflight-readonly.sh "$SCRIPT_URL" || { echo "STOP: download from main failed; nothing was run"; exit 10; }
+
+  ACTUAL_SHA256=$(sha256sum preflight-readonly.sh | cut -d' ' -f1)
+  echo "expected SHA256: $EXPECTED_SHA256"
+  echo "actual SHA256:   $ACTUAL_SHA256"
+  if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+    echo "STOP: SHA256 mismatch; the script was NOT run"
+    exit 11
+  fi
+
+  OUT="preflight-$(date -u +%Y%m%dT%H%MZ).txt"
+  ALLOW_ROOT_READONLY=yes bash preflight-readonly.sh 2>&1 | tee "$OUT"
+  STATUS=$?
+  echo "preflight exit status: $STATUS (output saved in ~/identity-preflight/$OUT)"
+  exit "$STATUS"
+)
 ```
 
 **How it behaves:**
 
-- **SHA check.** `sha256sum -c` prints `preflight-readonly.sh: OK` and only then runs the script.
-  On any other value it prints `FAILED` and nothing runs. In that case stop: main has changed and
-  the expected SHA must be reviewed first.
-- **Exit status.** With `pipefail`, `preflight exit status:` is the script's own status:
+- **Download.** The script is fetched from `main` only. If the download fails, the block prints
+  `STOP` and ends with status 10. Nothing is run.
+- **SHA256 gate.** The block prints the expected and the actual SHA256 and compares them exactly.
+  - On a mismatch it prints `STOP: SHA256 mismatch; the script was NOT run` and ends with status 11.
+    The script is not run.
+  - In that case `main` has changed, and the new SHA256 must be reviewed before any run.
+- **Exit status.** `set -o pipefail` makes the `tee` pipeline return the script's own status. The
+  status is captured on the very next line as `STATUS=$?`. It is printed immediately as
+  `preflight exit status: N`:
   - 0 = `OVERALL: PASS`;
   - 1 = `OVERALL: FAIL`;
   - 2 = `OVERALL: INCOMPLETE`;
   - 3 = `OVERALL: NOT RUN`.
+  - 10 and 11 come from the block itself and mean the script never ran.
 - **Read-only.** The script uses only its read-only allowlist. It changes no AWS resource.
 - **No overrides.** Do not set `PREFLIGHT_SINCE` and do not edit the script. The default window
   still starts at 10 Nov 06:00 UTC, so the original 10 events appear again.
-- **Paste back:** the whole output from the caller line to `preflight exit status:`.
+- **Paste back:** the whole output, from `expected SHA256:` to `preflight exit status:`.
 
 **What to expect:**
 
@@ -182,40 +206,101 @@ denials. Never write P-12 as PASS.
 > P-12: N denials, all matching the accepted provider-fallback signature (RESOLVED — EXPECTED
 > BEHAVIOUR, investigation 2026-11-11); 0 unexplained denials.
 
-**The accepted signature.** Every listed denial must match all of these:
+**The accepted signature.** A denial is accepted only if it matches all eight conditions:
 
-1. `eventSource` is `s3.amazonaws.com`, `eventName` is `ListTagsForResource` and `errorCode` is
-   `AccessDenied`, in `eu-central-1`.
-2. The caller is `munaxa-shared-deployer-nonprod` or `munaxa-shared-deployer-nonprod-session`. The
-   session name is `gha-run-<id>`, and that GitHub Actions run concluded `success`.
-3. The resource is `munaxa-nonprod-school-files-229251310592` or
-   `munaxa-nonprod-docs-files-229251310592`. The message says "no identity-based policy allows":
-   an implicit deny.
+| #   | Condition                                                      | Required value                                                                                                                                                   |
+| --- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S-1 | Service, action and error code                                 | `eventSource` `s3.amazonaws.com`, `eventName` `ListTagsForResource`, `errorCode` `AccessDenied`                                                                   |
+| S-2 | Region                                                         | `awsRegion` `eu-central-1`                                                                                                                                       |
+| S-3 | Caller role                                                    | session issuer `munaxa-shared-deployer-nonprod` or `munaxa-shared-deployer-nonprod-session`, with session name `gha-run-<run id>`                                  |
+| S-4 | Bucket                                                         | `munaxa-nonprod-school-files-229251310592` or `munaxa-nonprod-docs-files-229251310592`                                                                             |
+| S-5 | Implicit deny, not explicit                                    | `errorMessage` contains "because no identity-based policy allows" and does not contain "explicit deny"                                                         |
+| S-6 | Provider version                                               | `userAgent` contains `terraform-provider-aws/6.67.0`                                                                                                             |
+| S-7 | Fallback succeeded                                             | a `GetBucketTagging` event with no `errorCode`, for the same bucket, by the same session ARN, with the same `eventTime` (same second)                              |
+| S-8 | Run succeeded                                                  | the GitHub Actions run `<run id>` from S-3, in `munaxa/munaxa-platform`, has conclusion `success`                                                                 |
 
-**How to verify points 2 and 3.** The preflight lines show the caller but not the bucket. Get both
-from the same read-only lookup the investigation used. Run it only with the owner's read
-authorization for that review, as a CloudShell command or through the root connector.
+A P-12 denial for any other action, service, region or caller does not match. The number of
+denials checked must equal the P-12 eu-central-1 count.
+
+**How to verify S-1 to S-7.** The preflight lines show the caller but not the bucket, the message,
+the user agent or the fallback. Use this read-only CloudShell block. It makes two
+`cloudtrail lookup-events` calls and changes nothing.
+
+Run it only with the owner's read authorization for that review. It can be run in CloudShell, or
+the same reads can be made through the root connector.
 
 ```bash
-aws cloudtrail lookup-events --region eu-central-1 \
-  --lookup-attributes AttributeKey=EventName,AttributeValue=ListTagsForResource \
-  --start-time 2026-11-10T06:00:00Z --output json --query 'Events[].CloudTrailEvent' |
-  python3 -I -c 'import json,sys
-for s in json.load(sys.stdin):
-    e = json.loads(s)
-    if e.get("eventSource") == "s3.amazonaws.com" and e.get("errorCode"):
-        implicit = "no identity-based policy allows" in (e.get("errorMessage") or "")
-        print(e["eventTime"], e["userIdentity"].get("arn"), (e.get("requestParameters") or {}).get("bucketName"),
-              e["errorCode"], "implicit" if implicit else "NOT-IMPLICIT")'
+(
+  set -o pipefail
+  cd "$(mktemp -d)" || exit 10
+  for n in ListTagsForResource GetBucketTagging; do
+    aws cloudtrail lookup-events --region eu-central-1 \
+      --lookup-attributes AttributeKey=EventName,AttributeValue=$n \
+      --start-time 2026-11-10T06:00:00Z --output json --query 'Events[].CloudTrailEvent' > "$n.json" ||
+      { echo "STOP: lookup of $n failed"; exit 10; }
+  done
+  python3 -I - ListTagsForResource.json GetBucketTagging.json <<'PY'
+import json, sys
+ROLES = {"munaxa-shared-deployer-nonprod", "munaxa-shared-deployer-nonprod-session"}
+BUCKETS = {"munaxa-nonprod-school-files-229251310592", "munaxa-nonprod-docs-files-229251310592"}
+def load(path):
+    return [json.loads(s) for s in json.load(open(path))]
+def bucket(e):
+    return (e.get("requestParameters") or {}).get("bucketName")
+fallback_ok = {(e.get("userIdentity", {}).get("arn"), bucket(e), e.get("eventTime"))
+               for e in load(sys.argv[2])
+               if e.get("eventSource") == "s3.amazonaws.com" and e.get("awsRegion") == "eu-central-1"
+               and not e.get("errorCode")}
+denials = sorted((e for e in load(sys.argv[1]) if e.get("errorCode")), key=lambda e: e.get("eventTime", ""))
+bad, runs = 0, set()
+for e in denials:
+    ui = e.get("userIdentity", {})
+    arn = ui.get("arn", "")
+    role = ui.get("sessionContext", {}).get("sessionIssuer", {}).get("userName")
+    session = arn.rsplit("/", 1)[-1]
+    msg = e.get("errorMessage") or ""
+    checks = {
+        "S-1 service/action/code": (e.get("eventSource"), e.get("eventName"), e.get("errorCode"))
+                                   == ("s3.amazonaws.com", "ListTagsForResource", "AccessDenied"),
+        "S-2 region": e.get("awsRegion") == "eu-central-1",
+        "S-3 role and session": role in ROLES and session.startswith("gha-run-") and session[8:].isdigit(),
+        "S-4 bucket": bucket(e) in BUCKETS,
+        "S-5 implicit deny": "because no identity-based policy allows" in msg and "explicit deny" not in msg,
+        "S-6 provider 6.67.0": "terraform-provider-aws/6.67.0 " in (e.get("userAgent") or ""),
+        "S-7 GetBucketTagging success same second": (arn, bucket(e), e.get("eventTime")) in fallback_ok,
+    }
+    failed = [k for k, v in checks.items() if not v]
+    bad += bool(failed)
+    if session.startswith("gha-run-"):
+        runs.add(session[8:])
+    print(e.get("eventTime"), e.get("eventSource"), role, bucket(e), session,
+          "MATCH S-1..S-7" if not failed else "NO MATCH: " + ", ".join(failed))
+print(f"ListTagsForResource denials: {len(denials)}; matching S-1..S-7: {len(denials) - bad}; not matching: {bad}")
+print("S-8: confirm each run concluded 'success':", " ".join(sorted(runs)) or "none")
+sys.exit(1 if bad else 0)
+PY
+  echo "signature check exit status: $?"
+)
 ```
+
+- **Exit status.** The block ends with `signature check exit status: 0` only when every
+  `ListTagsForResource` denial matches S-1 to S-7. Status 1 means at least one does not.
+- **S-8.** Check each listed run ID in GitHub (Actions, or the run metadata) and confirm its
+  conclusion is `success`.
+- **Count.** Compare the number of denials with the P-12 eu-central-1 count. If P-12 lists any
+  denial that is not a `ListTagsForResource` denial, that denial does not match.
 
 **Readiness rule:**
 
-- **All N match the signature and every other check PASSes:** the assessment may state
+- **All N match S-1 to S-8 and every other check PASSes:** the assessment may state
   "READY FOR OWNER APPROVAL (raw OVERALL: FAIL, P-12 accepted provider fallback only)". It must
   never say "OVERALL: PASS".
-- **Any denial does not match, or any other check is FAIL, ERROR or INCOMPLETE:** stop. Report it
-  for review.
+- **Any denial does not match, the counts differ, or any other check is FAIL, ERROR or
+  INCOMPLETE:** stop. Report it for review.
+
+**READY FOR OWNER APPROVAL is a technical readiness assessment only. It is not deployment
+authorization and does not permit workflow dispatch, ECS execution, migration, bootstrap, or secret
+operations.**
 
 ## 7. Deployment approval
 
