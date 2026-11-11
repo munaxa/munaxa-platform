@@ -535,6 +535,11 @@ No lockfile, workflow or Terraform file changed. The diff contains only the file
 
 ### 13.8 Owner CloudShell procedure (replaces section 10)
 
+> **Note added 11 Nov 2026:** for reruns, use the command in
+> [`2026-11-11-identity-readiness-status` section 5](../2026-11-11-identity-readiness-status/00-IDENTITY-READINESS-STATUS.md).
+> It adds `set -o pipefail`, so the script's exit status survives `tee`, and an automatic SHA256
+> check. The block below is kept as the procedure the 11 Nov run followed.
+
 Only after this PR is merged. Account `229251310592`, region `eu-central-1`, mode B (root with
 `ALLOW_ROOT_READONLY=yes`), your decision of 11:33 UTC. The procedure creates nothing.
 
