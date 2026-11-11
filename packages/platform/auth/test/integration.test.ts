@@ -227,6 +227,31 @@ describe('MFA enrollment and challenge', () => {
     expect(mfaStore.remaining(ROOT_TENANT_ID, USER)).toBe(9);
   });
 
+  it('refuses a recovery code once no confirmed factor remains', async () => {
+    const { mfa, mfaStore, clock } = await fixture();
+    const start = await mfa.beginTotpEnrollment(ROOT_TENANT_ID, USER, {
+      issuer: 'Munaxa',
+      account: 'ada@example.com',
+    });
+    const codes = await mfa.confirmTotpEnrollment(
+      ROOT_TENANT_ID,
+      USER,
+      totpCode(start.secret, clock.now()),
+    );
+
+    await mfa.remove(ROOT_TENANT_ID, USER, 'totp');
+
+    // The store still holds the codes (the port cannot delete them); the service must not honour
+    // them, and must not spend one trying.
+    expect(mfaStore.remaining(ROOT_TENANT_ID, USER)).toBe(10);
+    expect(await mfa.verifyRecoveryCode(ROOT_TENANT_ID, USER, codes[0] as string)).toBe(false);
+    expect(mfaStore.remaining(ROOT_TENANT_ID, USER)).toBe(10);
+
+    // Nor while a replacement enrollment is only begun, not confirmed.
+    await mfa.beginTotpEnrollment(ROOT_TENANT_ID, USER, { issuer: 'M', account: 'a' });
+    expect(await mfa.verifyRecoveryCode(ROOT_TENANT_ID, USER, codes[1] as string)).toBe(false);
+  });
+
   it('refuses to confirm with a wrong code', async () => {
     const { mfa } = await fixture();
     await mfa.beginTotpEnrollment(ROOT_TENANT_ID, USER, { issuer: 'M', account: 'a' });
