@@ -1,5 +1,9 @@
 # Identity non-production: independent shutdown and cleanup design (Workstream 3)
 
+> **Revision note, 11 Nov 2026 11:18 UTC.** Option 3's timing, sequence and cost below are superseded by
+> `01-CLEANUP-IMPLEMENTATION-PROPOSAL.md` revision 2 (sections 1, 3, 9). No design here or there enforces a
+> guaranteed cost ceiling.
+
 - Date: 11 Nov 2026, from 10:08 UTC
 - Account `229251310592`, region `eu-central-1`, Munaxa Identity non-production (Testing)
 - Requested by the owner on 11 Nov 2026 ("Execute Five Parallel Preparation Workstreams",
@@ -52,8 +56,16 @@ does that by T0 + 3 h is L1. No design below makes the ceiling a guarantee: each
 condition from "Claude stays connected" to "an AWS-side or separately controlled mechanism fires
 and succeeds". Section 7 states the residual cost in each failure case.
 
-**Implementation proposal (11 Nov 2026, fast-track package):** option 3 is worked out in detail,
-still as a proposal only, in `01-CLEANUP-IMPLEMENTATION-PROPOSAL.md` in this folder.
+**Implementation proposal, revision 2 (11 Nov 2026, owner corrections at 11:18 UTC):** option 3
+is worked out in detail, still as a proposal only, in `01-CLEANUP-IMPLEMENTATION-PROPOSAL.md` in
+this folder. **Where they differ, revision 2 supersedes this design:**
+
+- timing: primary run at the hard stop H, a retry at H + 30 min, and a daily run at 21:05 UTC;
+- execution: four parallel branches, so the ALB never waits for the database;
+- duration: at most 15 min;
+- RDS retries: at most 10 min;
+- failure alarm by email;
+- the cost cases in section 7 below, recalculated in revision 2 section 9.
 
 ## 2. Requirements for an independent cleanup
 
@@ -261,6 +273,9 @@ at the hard stop.
   `infra/aws/stack/tests` does for `backstop.tf`.
 
 ## 7. Cost and the US$0.35 ceiling under each failure case [E]
+
+> Superseded by revision 2, section 9 (`01-CLEANUP-IMPLEMENTATION-PROPOSAL.md`), which recalculates these
+> cases from the actual cleanup timing. The table below is kept as written for the record.
 
 Rates from PR #89 section G (about US$0.09 to 0.10 an hour while running; not re-priced today).
 ALB and IPv4 charges are per hour or partial hour [U], so a cleanup at 3 h 05 min may bill a fourth
