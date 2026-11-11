@@ -19,17 +19,25 @@ jobs:
   publish:
     name: Publish @munaxa/* to GitHub Packages
     runs-on: ubuntu-latest
+    # The server-side control. workflow_dispatch runs the workflow file as it exists on the chosen
+    # ref, so a branch can carry a copy of this file without the step below. The package-release
+    # environment must be configured in the repository settings with a deployment branch policy of
+    # main only and a required reviewer; GitHub then refuses the job from any other ref whatever the
+    # file says. Until it is configured, GitHub creates it unprotected and only the step below applies.
+    environment: package-release
     permissions:
       contents: read
       packages: write
     steps:
       # A publish replaces nothing (a version is published once), so the version a consumer gets
-      # must be the one reviewed on main. workflow_dispatch lets the caller pick any branch or tag;
-      # a dry run may use any ref, a real publish only main.
+      # must be the one reviewed on main. This step stops an accidental publish from another ref
+      # (a dry run may use any ref); it is not a control on its own, see the environment above.
       - name: Refuse to publish from a ref other than main
         if: ${{ !inputs.dry_run && github.ref != 'refs/heads/main' }}
+        env:
+          REF: ${{ github.ref }}
         run: |
-          echo "::error::Publishing is only allowed from refs/heads/main (got ${{ github.ref }}). Re-run with dry_run, or dispatch on main."
+          echo "::error::Publishing is only allowed from refs/heads/main (got $REF). Re-run with dry_run, or dispatch on main."
           exit 1
 
       - uses: actions/checkout@v6
