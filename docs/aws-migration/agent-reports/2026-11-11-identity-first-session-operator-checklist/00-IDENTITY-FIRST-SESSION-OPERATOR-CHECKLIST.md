@@ -405,15 +405,20 @@ the hash for comparison by eye.
 
 ### 6.4 Step 19b: refresh and logout (added here)
 
+> **Corrected 11 Nov, after merge (PR #86).** The refresh body must name the organisation. Identity
+> resolves the tenant from `organisation` or `IDENTITY_DEFAULT_ORGANISATION`, which is empty in
+> Config A1 (`auth.service.ts` lines 103 to 106, `attemptRefresh` line 177). The original `{}` body
+> would have answered 401 for a valid cookie: a false H-12 stop.
+
 ```bash
 curl -sS -b /tmp/id.jar -c /tmp/id.jar -o /dev/null -w 'refresh %{http_code}\n' -X POST \
-  -H 'Content-Type: application/json' -H 'Origin: https://id.test.munaxa.com' --data '{}' \
+  -H 'Content-Type: application/json' -H 'Origin: https://id.test.munaxa.com' --data '{"organisation":"munaxa-group"}' \
   https://id.test.munaxa.com/api/auth/refresh                                          # 200
 cp /tmp/id.jar /tmp/id.before-logout
 curl -sS -b /tmp/id.jar -c /tmp/id.jar -o /dev/null -w 'logout %{http_code}\n' -X POST \
   -H 'Origin: https://id.test.munaxa.com' https://id.test.munaxa.com/api/auth/logout  # 200
 curl -sS -b /tmp/id.before-logout -o /dev/null -w 'refresh-after-logout %{http_code}\n' -X POST \
-  -H 'Content-Type: application/json' -H 'Origin: https://id.test.munaxa.com' --data '{}' \
+  -H 'Content-Type: application/json' -H 'Origin: https://id.test.munaxa.com' --data '{"organisation":"munaxa-group"}' \
   https://id.test.munaxa.com/api/auth/refresh                                          # expected 401
 rm -f /tmp/id.jar /tmp/id.before-logout verify-identity-jwt.mjs; unset ID
 ```
