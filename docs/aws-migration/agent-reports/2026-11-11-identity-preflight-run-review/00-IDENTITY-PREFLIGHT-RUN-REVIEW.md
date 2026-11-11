@@ -134,3 +134,25 @@ This review made no AWS call and did not use the AWS connector. It read GitHub A
 only. It did not run Terraform, dispatch a workflow, change any AWS, DNS, Cloudflare or GitHub
 setting, or merge anything. The only changes are this report, its evidence file and the README
 index line.
+
+## 8. Update after the investigation (11 Nov 2026, appended)
+
+Sections 1 to 7 are kept as written. This section adds what happened after them.
+
+- **Investigation completed.** The 10 denials were investigated read-only. Verdict: **EXPECTED — no
+  permission change required.** See
+  [`2026-11-11-s3-listtags-denial-investigation`](../2026-11-11-s3-listtags-denial-investigation/00-S3-LISTTAGS-DENIAL-INVESTIGATION.md).
+  - The provider fallback that section 4 called "inferred" is now confirmed by the provider
+    changelog.
+  - It is also confirmed by 10 successful `GetBucketTagging` calls in CloudTrail, one per denial.
+  - The 10 events are 5 runs × 2 buckets (`school-files` and `docs-files`).
+- **Raw result unchanged.** This run's raw result stays **`OVERALL: FAIL`**, with **P-12 FAIL**. The
+  evidence file is unchanged. D-1's "counts as passed" is an acceptance of the 10 explained events,
+  not a change to the raw result. P-12's investigation status is **RESOLVED — EXPECTED BEHAVIOUR**.
+- **Open items.** The open-items list in section 6 is replaced by
+  [`2026-11-11-identity-readiness-status`](../2026-11-11-identity-readiness-status/00-IDENTITY-READINESS-STATUS.md):
+  - G-4;
+  - the read-only rerun with `set -o pipefail` and a SHA check;
+  - the owner's explicit deployment approval.
+- **Deployment.** The Identity deployment remains unauthorized.
+
