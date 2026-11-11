@@ -1,0 +1,38 @@
+{
+  "called_at_utc": "2026-11-11T09:43:14.663Z",
+  "script": "r=await call_boto3(service_name=\"logs\",operation_name=\"DescribeLogGroups\",region_name=\"eu-central-1\",params={})\nresult=[{\"name\":g[\"logGroupName\"],\"created\":datetime.datetime.utcfromtimestamp(g[\"creationTime\"]/1000).isoformat()+\"Z\",\"storedBytes\":g.get(\"storedBytes\"),\"class\":g.get(\"logGroupClass\")} for g in r.get(\"logGroups\",[])]\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "return_value": [
+      {
+        "name": "/munaxa/nonprod/identity",
+        "created": "2026-11-10T06:10:47.244000Z",
+        "storedBytes": 0,
+        "class": "STANDARD"
+      },
+      {
+        "name": "/munaxa/nonprod/identity-migrate",
+        "created": "2026-11-10T06:10:47.232000Z",
+        "storedBytes": 0,
+        "class": "STANDARD"
+      },
+      {
+        "name": "/munaxa/nonprod/ops",
+        "created": "2026-11-05T22:46:18.219000Z",
+        "storedBytes": 0,
+        "class": "STANDARD"
+      }
+    ],
+    "api_calls": [
+      {
+        "service": "logs",
+        "operation": "DescribeLogGroups",
+        "status": "success",
+        "n_items": {
+          "logGroups": 3
+        }
+      }
+    ]
+  }
+}
