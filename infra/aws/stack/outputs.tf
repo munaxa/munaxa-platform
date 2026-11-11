@@ -55,5 +55,8 @@ output "run_task_network" {
     identity_bootstrap_definition = length(aws_ecs_task_definition.identity_bootstrap) > 0 ? aws_ecs_task_definition.identity_bootstrap[0].family : null
     # school-bootstrap runs with db_admin_group, after school-migrate.
     school_bootstrap_definition = length(aws_ecs_task_definition.school_bootstrap) > 0 ? aws_ecs_task_definition.school_bootstrap[0].family : null
+    # identity-probe runs with identity_group (identity-probe.tf), assignPublicIp ENABLED.
+    identity_probe_definition = length(aws_ecs_task_definition.identity_probe) > 0 ? aws_ecs_task_definition.identity_probe[0].family : null
+    identity_group            = length(module.identity) > 0 ? module.identity[0].security_group_id : null
   }
 }
