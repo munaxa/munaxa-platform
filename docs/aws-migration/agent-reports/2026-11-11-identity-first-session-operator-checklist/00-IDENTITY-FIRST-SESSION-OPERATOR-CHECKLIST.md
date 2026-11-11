@@ -446,6 +446,13 @@ aws logs filter-log-events --log-group-name /munaxa/nonprod/identity --start-tim
   with `TestMetricFilter`, and all 47 were classified correctly. It has **not** been run on live
   logs. Details and limits:
   `2026-11-11-identity-claude-executed-deployment-plan/02-LOG-FILTER-CORRECTION.md`.
+- **`FilterLogEvents` verified (11 Nov 2026, 09:45 UTC):**
+  - the exact pattern above was accepted on a temporary synthetic log group;
+  - it returned the expected 24 of 47 synthetic lines as a count only;
+  - the group was deleted afterwards.
+    A broken pattern gives `InvalidParameterException`. Any error from this command is a stop
+    (H-17), never a 0. The known limits L-F1 to L-F10 and L-FV1 to L-FV3 are listed in section 4
+    and section 6 of that file.
 - **Correction (11 Nov 2026, PR #87):** the first pattern was
   `?eyJ ?BEGIN ?PRIVATE ?"password\":\""`. It missed `"password": "…"` written with a space
   (F-1). It also counted redacted password values and public-key or certificate PEM headers (F-2),

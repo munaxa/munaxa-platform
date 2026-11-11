@@ -153,9 +153,77 @@ Syntax and test limits:
 - **L-F10. Counts only.** On the session day the result is a count. A non-zero count needs a
   reviewed follow-up that reports field names only, never line contents.
 
+## 6. FilterLogEvents verification (11 Nov 2026, 09:43 to 09:46 UTC)
+
+The owner asked for one more check: does the session-day API, `FilterLogEvents`, accept the
+revised pattern, and can its result be reported as a count only? Only synthetic data was used. No
+real Identity, Valkey or bootstrap log was read, and no metric or subscription filter was created.
+
+### 6.1 First attempt: a log group that does not exist (no change made)
+
+- Evidence: `evidence/log-filter-revision/filterlogevents-probe-missing-group.json`
+- Four patterns were sent to `/munaxa/synthetic/filter-syntax-probe-does-not-exist`: the revised
+  pattern, the old pattern and two deliberately broken ones.
+- All four returned `ResourceNotFoundException`. AWS checks the log group before the pattern, so
+  this method tests nothing about the pattern.
+- A metadata-only `DescribeLogGroups` call (`describe-log-groups-metadata.json`) showed three log
+  groups: `/munaxa/nonprod/identity`, `/munaxa/nonprod/identity-migrate` and `/munaxa/nonprod/ops`.
+  All three had 0 bytes stored. None was queried.
+
+### 6.2 Test on a temporary synthetic log group (owner choice, 09:44 UTC)
+
+Evidence: `evidence/log-filter-revision/filterlogevents-synthetic-group.json`. It holds the exact
+script and every request, plus each response with a timestamp.
+
+| Time (UTC) | Step                                                                                                                                                 | Result                                                                      |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 09:44:45   | `CreateLogGroup` `/munaxa/synthetic/filter-test-20261111T094444Z`, tags Project=munaxa, Environment=nonprod, Purpose=synthetic-filter-test-temporary | ok                                                                          |
+| 09:44:46   | `PutRetentionPolicy` 1 day, a safety net in case the delete failed                                                                                   | ok                                                                          |
+| 09:44:46   | `CreateLogStream` `synthetic`                                                                                                                        | ok                                                                          |
+| 09:44:47   | `PutLogEvents`: the 47 synthetic lines from section 3, in the same order, timestamps t0 to t0+46 ms                                                  | ok, none rejected                                                           |
+| 09:45:32   | `FilterLogEvents` with `" "`. This counts lines that contain a space; it is a count only, used to check ingestion                                    | 29. Exactly 29 of the 47 lines contain a space                              |
+| 09:45:36   | `FilterLogEvents` **revised pattern**                                                                                                                | **accepted; count 24**                                                      |
+| 09:45:37   | `FilterLogEvents` old pattern                                                                                                                        | accepted; count 22                                                          |
+| 09:45:38   | `FilterLogEvents` `%(eyJ)%` (deliberately broken)                                                                                                    | **refused**: `InvalidParameterException: Invalid character(s) in term '%('` |
+| 09:45:39   | `DeleteLogGroup`                                                                                                                                     | ok                                                                          |
+| 09:45:39   | `DescribeLogGroups` prefix `/munaxa/synthetic/`                                                                                                      | **0 remaining**                                                             |
+
+Results:
+
+- **FilterLogEvents accepts the exact revised pattern.** It is the same string as in checklist
+  step 19c. A pattern that breaks the documented rules is refused with
+  `InvalidParameterException`, so on the session day a syntax problem shows up as an error. Under
+  H-17 that error is a stop; it is never a silent 0.
+- **Matching is the same as `TestMetricFilter`.**
+  - Revised: lines 1 to 9, 20 to 28, 37 to 40, 45 and 46. That is the 24 synthetic secrets
+    exactly, and no clean line.
+  - Old: lines 1 to 7, 9, 13, 17, 28, 29, 32, 33, 37 to 42, 45 and 46. That is the same set
+    `TestMetricFilter` gave for the old pattern.
+- **Count only.** The script returned only counts, and line numbers worked out from each event's
+  timestamp. It never returned the message text. The session-day equivalent is the checklist's
+  `--query 'length(events)'`. No `nextToken` was present in any response.
+- **Nothing persists.** The group was deleted, and the follow-up listing shows none left. Tagging
+  and the 1-day retention were safeguards only.
+
+Limits of this verification:
+
+- **L-FV1. Ingestion of some clean lines is not directly proven.** Every line that appears in at
+  least one match set, plus the 29-line space count, shows those lines were searched. Six clean
+  lines have no space and matched nothing, so nothing directly shows they were searched: 10, 12,
+  19, 34, 35 and 47. `PutLogEvents` rejected no event, and the batch was accepted as a whole.
+- **L-FV2. Small result.** The session-day window is up to 3 hours. `FilterLogEvents` returns at
+  most 10,000 events or 1 MB per page. A non-zero count is already a stop, so a large result
+  only adds to an existing stop, as long as the CLI is left to page (no `--max-items`).
+- **L-FV3. One region, one API.** The test ran in `eu-central-1` with `FilterLogEvents`. It did
+  not cover Logs Insights, Live Tail or the console.
+- L-F1 to L-F10 (section 4) still apply unchanged.
+
 ## 5. Files
 
-| File                                                     | Content                                                         |
-| -------------------------------------------------------- | --------------------------------------------------------------- |
-| `evidence/log-filter-revision/a4-original-19-lines.json` | Phase 1 evidence from PR #88, byte-for-byte                     |
-| `evidence/log-filter-revision/a4-revised-47-lines.json`  | The exact script, both patterns, all 47 inputs and both results |
+| File                                                                    | Content                                                              |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `evidence/log-filter-revision/a4-original-19-lines.json`                | Phase 1 evidence from PR #88, byte-for-byte                          |
+| `evidence/log-filter-revision/a4-revised-47-lines.json`                 | The exact script, both patterns, all 47 inputs and both results      |
+| `evidence/log-filter-revision/filterlogevents-probe-missing-group.json` | FilterLogEvents on a missing group: no syntax check (6.1)            |
+| `evidence/log-filter-revision/describe-log-groups-metadata.json`        | Log group names and sizes only (6.1)                                 |
+| `evidence/log-filter-revision/filterlogevents-synthetic-group.json`     | Temporary synthetic group: create, put, filter, delete, verify (6.2) |

@@ -1,0 +1,291 @@
+{
+  "called_at_utc": "2026-11-11T09:44:40.330Z",
+  "script": "NEW='%eyJ|PRIVATE\\\\sKEY|[Pp]assword\\\\x5c?\\\\x22\\\\s*:\\\\s*\\\\x5c?\\\\x22[^\\\\x22\\\\x5c\\\\[]%'\nOLD='?eyJ ?BEGIN ?PRIVATE ?\"password\\\\\":\\\\\"\"'\nBROKEN='%(eyJ)%'\nJ=\"eyJhbGciOiJFUzI1NiIsImtpZCI6InRlc3QifQ.eyJzdWIiOiJGQUtFIn0.ZmFrZXNpZw\"\nF=\"FAKE-not-a-password\"\nT=[(\"S\",'{\"level\":30,\"msg\":\"issued\",\"token\":\"%s\"}'%J),(\"S\",\"authorization: Bearer %s\"%J),(\"S\",J),(\"S\",\"-----BEGIN PRIVATE KEY-----\"),(\"S\",\"-----BEGIN EC PRIVATE KEY-----\"),(\"S\",\"-----BEGIN RSA PRIVATE KEY-----\"),\n(\"S\",'{\"level\":30,\"body\":{\"email\":\"x@example.invalid\",\"password\":\"%s\"}}'%F),(\"S\",'{\"body\": {\"password\": \"%s\"}}'%F),(\"S\",\"GET /callback?token=%s 200\"%J),\n(\"C\",'{\"level\":30,\"req\":{\"method\":\"POST\",\"url\":\"/auth/login\"},\"res\":{\"statusCode\":200},\"responseTime\":12}'),(\"C\",'{\"level\":30,\"msg\":\"Nest application successfully started\"}'),(\"C\",'{\"level\":30,\"req\":{\"method\":\"GET\",\"url\":\"/health\"},\"res\":{\"statusCode\":200}}'),\n(\"C\",'{\"level\":30,\"body\":{\"email\":\"[REDACTED]\",\"password\":\"[REDACTED]\"}}'),(\"C\",'{\"level\":30,\"msg\":\"passwordHash column migrated\"}'),(\"C\",'All migrations have been successfully applied.'),(\"C\",'begin transaction; private schema ok'),(\"C\",'-----BEGIN PUBLIC KEY-----'),(\"C\",\"eyeJ test eyj lowercase\"),(\"C\",'{\"level\":40,\"msg\":\"Unauthorized\",\"res\":{\"statusCode\":401}}'),\n(\"S\",'{\"password\": \"%s\"}'%F),(\"S\",'{\"password\" :\"%s\"}'%F),(\"S\",'{\"password\" : \"%s\"}'%F),(\"S\",'{\"password\":\\t\"%s\"}'%F),(\"S\",'{\"password\":  \"%s\"}'%F),(\"S\",'{\"msg\":\"payload {\\\\\"password\\\\\":\\\\\"%s\\\\\"}\"}'%F),(\"S\",'{\"Password\":\"%s\"}'%F),(\"S\",'{\"body\":{\"newPassword\":\"%s\"}}'%F),(\"S\",'{\"password\":\"x\"}'),\n(\"C\",'{\"password\":\"[redacted]\"}'),(\"C\",'{\"password\": \"[redacted]\"}'),(\"C\",'{\"password\" : \"[REDACTED]\"}'),(\"C\",'{\"req\":{\"body\":{\"identifier\":\"[redacted]\",\"password\":\"[redacted]\"}}}'),(\"C\",'{\"password\":\"\"}'),(\"C\",'{\"password\":null}'),(\"C\",'{\"passwordHash\":\"[redacted]\"}'),(\"C\",'password reset is not implemented'),\n(\"S\",\"-----BEGIN OPENSSH PRIVATE KEY-----\"),(\"S\",\"-----BEGIN ENCRYPTED PRIVATE KEY-----\"),(\"S\",'{\"privateKey\":\"-----BEGIN PRIVATE KEY-----\\\\nMIIFAKE\\\\n-----END PRIVATE KEY-----\"}'),(\"S\",\"-----END PRIVATE KEY-----\"),\n(\"C\",\"-----BEGIN RSA PUBLIC KEY-----\"),(\"C\",\"-----BEGIN CERTIFICATE-----\"),(\"C\",\"-----END PUBLIC KEY-----\"),(\"C\",'{\"msg\":\"Cache-Control: private, no-store\"}'),\n(\"S\",\"set-cookie: munaxa_rt=%s; HttpOnly; Secure\"%J),(\"S\",'{\"partial\":\"eyJhbGciOiJFUzI1NiJ9\"}'),(\"C\",'{\"keys\":[{\"kty\":\"EC\",\"crv\":\"P-256\",\"kid\":\"test\",\"x\":\"FAKEX\",\"y\":\"FAKEY\"}]}')]\nassert len(T)==47\nL=lambda op,p: call_boto3(service_name=\"logs\",operation_name=op,region_name=\"eu-central-1\",params=p)\nnow=lambda: datetime.datetime.utcnow().isoformat()+\"Z\"\nstamp=datetime.datetime.utcnow().strftime(\"%Y%m%dT%H%M%SZ\")\nG=f\"/munaxa/synthetic/filter-test-{stamp}\"; S=\"synthetic\"\nlog=[]\ndef rec(step,req,resp): log.append({\"at\":now(),\"step\":step,\"request\":req,\"response\":resp})\ncreated=False\ntry:\n    req={\"logGroupName\":G,\"tags\":{\"Project\":\"munaxa\",\"Environment\":\"nonprod\",\"Purpose\":\"synthetic-filter-test-temporary\"}}\n    await L(\"CreateLogGroup\",req); created=True; rec(\"CreateLogGroup\",req,\"ok\")\n    req={\"logGroupName\":G,\"retentionInDays\":1}; await L(\"PutRetentionPolicy\",req); rec(\"PutRetentionPolicy\",req,\"ok\")\n    req={\"logGroupName\":G,\"logStreamName\":S}; await L(\"CreateLogStream\",req); rec(\"CreateLogStream\",req,\"ok\")\n    t0=int(time.time()*1000)\n    ev=[{\"timestamp\":t0+i,\"message\":m} for i,(_,m) in enumerate(T)]\n    r=await L(\"PutLogEvents\",{\"logGroupName\":G,\"logStreamName\":S,\"logEvents\":ev})\n    rec(\"PutLogEvents\",{\"logGroupName\":G,\"logStreamName\":S,\"events\":len(ev),\"timestamps\":[t0,t0+46]},{\"rejectedLogEventsInfo\":r.get(\"rejectedLogEventsInfo\")})\n    win={\"startTime\":t0-1000,\"endTime\":t0+60000}\n    async def fle(label,p):\n        req={\"logGroupName\":G,\"filterPattern\":p,**win}\n        try:\n            r=await L(\"FilterLogEvents\",req)\n            idx=sorted(e[\"timestamp\"]-t0+1 for e in r.get(\"events\",[]))  # line numbers only, never messages\n            resp={\"outcome\":\"accepted\",\"count\":len(r.get(\"events\",[])),\"matched_line_numbers\":idx,\"nextToken_present\":bool(r.get(\"nextToken\"))}\n        except Exception as e:\n            resp={\"outcome\":\"error\",\"error\":str(e)}\n        rec(\"FilterLogEvents \"+label,req,resp); return resp\n    # wait for ingestion: an all-events pattern until 47 are visible (count only)\n    seen=None\n    for k in range(10):\n        r=await L(\"FilterLogEvents\",{\"logGroupName\":G,\"filterPattern\":'\" \"',**win})\n        seen=len(r.get(\"events\",[]))\n        if seen>=47: break\n        await asyncio.sleep(3)\n    rec(\"FilterLogEvents ingestion-check (count only)\",{\"logGroupName\":G,\"filterPattern\":'\" \"',**win},{\"count\":seen,\"polls\":k+1})\n    rn=await fle(\"revised\",NEW); ro=await fle(\"old\",OLD); rb=await fle(\"broken-parentheses\",BROKEN)\nfinally:\n    if created:\n        await L(\"DeleteLogGroup\",{\"logGroupName\":G}); rec(\"DeleteLogGroup\",{\"logGroupName\":G},\"ok\")\n        d=await L(\"DescribeLogGroups\",{\"logGroupNamePrefix\":\"/munaxa/synthetic/\"})\n        rec(\"DescribeLogGroups after delete\",{\"logGroupNamePrefix\":\"/munaxa/synthetic/\"},{\"remaining\":[g[\"logGroupName\"] for g in d.get(\"logGroups\",[])]})\nexp=[i+1 for i,(k,_) in enumerate(T) if k==\"S\"]\nresult={\"group\":G,\"expected_secret_lines\":exp,\"revised_equals_expected\":rn.get(\"matched_line_numbers\")==exp,\"log\":log}\nresult",
+  "result": {
+    "status": "success",
+    "stdout": "",
+    "stderr": "Error calling function call_boto3 with arguments {'service_name': 'logs', 'operation_name': 'FilterLogEvents', 'region_name': 'eu-central-1', 'params': {'logGroupName': '/munaxa/synthetic/filter-test-20261111T094444Z', 'filterPattern': '%(eyJ)%', 'startTime': 1794390285729, 'endTime': 1794390346729}}: An error occurred (InvalidParameterException) when calling the FilterLogEvents operation: Invalid character(s) in term '%('\n",
+    "return_value": {
+      "group": "/munaxa/synthetic/filter-test-20261111T094444Z",
+      "expected_secret_lines": [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 37, 38, 39, 40, 45, 46
+      ],
+      "revised_equals_expected": true,
+      "log": [
+        {
+          "at": "2026-11-11T09:44:45.525553Z",
+          "step": "CreateLogGroup",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z",
+            "tags": {
+              "Project": "munaxa",
+              "Environment": "nonprod",
+              "Purpose": "synthetic-filter-test-temporary"
+            }
+          },
+          "response": "ok"
+        },
+        {
+          "at": "2026-11-11T09:44:46.136212Z",
+          "step": "PutRetentionPolicy",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z",
+            "retentionInDays": 1
+          },
+          "response": "ok"
+        },
+        {
+          "at": "2026-11-11T09:44:46.729085Z",
+          "step": "CreateLogStream",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z",
+            "logStreamName": "synthetic"
+          },
+          "response": "ok"
+        },
+        {
+          "at": "2026-11-11T09:44:47.339672Z",
+          "step": "PutLogEvents",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z",
+            "logStreamName": "synthetic",
+            "events": 47,
+            "timestamps": [1794390286729, 1794390286775]
+          },
+          "response": {}
+        },
+        {
+          "at": "2026-11-11T09:45:32.829459Z",
+          "step": "FilterLogEvents ingestion-check (count only)",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z",
+            "filterPattern": "\" \"",
+            "startTime": 1794390285729,
+            "endTime": 1794390346729
+          },
+          "response": {
+            "count": 29,
+            "polls": 10
+          }
+        },
+        {
+          "at": "2026-11-11T09:45:36.821445Z",
+          "step": "FilterLogEvents revised",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z",
+            "filterPattern": "%eyJ|PRIVATE\\sKEY|[Pp]assword\\x5c?\\x22\\s*:\\s*\\x5c?\\x22[^\\x22\\x5c\\[]%",
+            "startTime": 1794390285729,
+            "endTime": 1794390346729
+          },
+          "response": {
+            "outcome": "accepted",
+            "count": 24,
+            "matched_line_numbers": [
+              1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 37, 38, 39, 40, 45, 46
+            ],
+            "nextToken_present": false
+          }
+        },
+        {
+          "at": "2026-11-11T09:45:37.872176Z",
+          "step": "FilterLogEvents old",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z",
+            "filterPattern": "?eyJ ?BEGIN ?PRIVATE ?\"password\\\":\\\"\"",
+            "startTime": 1794390285729,
+            "endTime": 1794390346729
+          },
+          "response": {
+            "outcome": "accepted",
+            "count": 22,
+            "matched_line_numbers": [
+              1, 2, 3, 4, 5, 6, 7, 9, 13, 17, 28, 29, 32, 33, 37, 38, 39, 40, 41, 42, 45, 46
+            ],
+            "nextToken_present": false
+          }
+        },
+        {
+          "at": "2026-11-11T09:45:38.478600Z",
+          "step": "FilterLogEvents broken-parentheses",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z",
+            "filterPattern": "%(eyJ)%",
+            "startTime": 1794390285729,
+            "endTime": 1794390346729
+          },
+          "response": {
+            "outcome": "error",
+            "error": "An error occurred (InvalidParameterException) when calling the FilterLogEvents operation: Invalid character(s) in term '%('"
+          }
+        },
+        {
+          "at": "2026-11-11T09:45:39.144542Z",
+          "step": "DeleteLogGroup",
+          "request": {
+            "logGroupName": "/munaxa/synthetic/filter-test-20261111T094444Z"
+          },
+          "response": "ok"
+        },
+        {
+          "at": "2026-11-11T09:45:39.767764Z",
+          "step": "DescribeLogGroups after delete",
+          "request": {
+            "logGroupNamePrefix": "/munaxa/synthetic/"
+          },
+          "response": {
+            "remaining": []
+          }
+        }
+      ]
+    },
+    "api_calls": [
+      {
+        "service": "logs",
+        "operation": "CreateLogGroup",
+        "status": "success"
+      },
+      {
+        "service": "logs",
+        "operation": "PutRetentionPolicy",
+        "status": "success"
+      },
+      {
+        "service": "logs",
+        "operation": "CreateLogStream",
+        "status": "success"
+      },
+      {
+        "service": "logs",
+        "operation": "PutLogEvents",
+        "status": "success"
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 29,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 24,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "success",
+        "n_items": {
+          "events": 22,
+          "searchedLogStreams": 0
+        }
+      },
+      {
+        "service": "logs",
+        "operation": "FilterLogEvents",
+        "status": "error",
+        "error": "InvalidParameterException: An error occurred (InvalidParameterException) when calling the FilterLogEvents operation: Invalid character(s) in term '%('"
+      },
+      {
+        "service": "logs",
+        "operation": "DeleteLogGroup",
+        "status": "success"
+      },
+      {
+        "service": "logs",
+        "operation": "DescribeLogGroups",
+        "status": "success",
+        "n_items": {
+          "logGroups": 0
+        }
+      }
+    ]
+  }
+}
