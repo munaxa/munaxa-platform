@@ -54,20 +54,21 @@ allows squash merges only.
 | --- | --- | --- | --- |
 | 1 | PR #91, Option A custody review (workstream 5) | Docs only; cited by the runbook | none (new folder, no README) |
 | 2 | PR #90, independent cleanup design (workstream 3) | Docs only; cited by the runbook | none |
-| 2b | PR #95, consolidated readiness report | Docs only; its folder is the Latest row of this PR's index change | none (new folder, no README) |
-| 3 | PR #93, workstream 1 probe | The pin `C` is its squash commit, so it must be on `main` first | #93 and #92 both edit `.github/workflows/aws-terraform.yml`; whichever merges second is updated to drop #93's single-file test step (#92's glob covers it). That update is a documented edit of the second PR's branch |
-| 4 | PR #92, workstream 2 task definition (disabled by default, no plan change) | Needs nothing from 3 at merge time | see row 3 |
+| 3 | PR #92, workstream 2 task definition (disabled by default, no plan change) | Must be on `main` before #93: after #93's X-1 fix (head `8180537`), #93's tests run in CI only through #92's workflow step | none expected |
+| 4 | PR #93, workstream 1 probe | The pin `C` is its squash commit, so it must be on `main` before the enable PR | none expected once #92 is merged |
+| — | PR #95, consolidated readiness report | Docs only; any time before 5, because its folder is the Latest row of this PR's index change | none (new folder, no README) |
 | 5 | **This PR** | Carries #87, #88, #89 and the single README update | none, if 1 to 4 do not touch the README |
 | — | Close #87, #88, #89 as superseded by this PR | Their content is on `main` after 5 | — |
-| 6 | Enable PR (`identity_probe_source` = `C`, `H`; expected changes = 1 create) | Needs `C` from 3 | — |
+| 6 | Enable PR (`identity_probe_source` = `C`, `H`; expected changes = 1 create) | Needs `C` from 4 | — |
 | 7 | Then, separately: the owner's Terraform plan/apply authorization (runbook I-4), and the session authorization (I-8) | Not merges | — |
 
 **If the owner prefers to merge #87, #88 or #89 on its own first:** Claude rebases this PR; the
 cherry-picked commits for that PR drop out and the README is resolved in this PR only. The other
 two should then **not** be merged on their own, because each would conflict with the README again.
 
-Steps 1 to 4 can be merged in any order among themselves, and 5 can wait until all four are done
-(its README rows link to their folders).
+Order in short: **#91, #90, #92, #93, #94** (with #95 any time before #94). Steps 1 and 2 can swap;
+#92 must precede #93; #94 waits until all of them are merged, because its README rows link to their
+folders.
 
 ## 5. Banner added in this PR
 
