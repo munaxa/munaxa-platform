@@ -78,7 +78,8 @@ Run-only tasks: `db-admin` (shared databases), `<product>-migrate` (identity, co
 school; owner role), `identity-bootstrap` (Identity's operator organisation, first operator and
 Control roles, as `identity_owner`), `school-bootstrap` (School's seeds and first platform owner,
 as `school_owner`), `docs-db-admin` (Docs cluster roles and the tenant database),
-`docs-provision` (Docs migrate and first administrator).
+`docs-migrate` (Docs migrations, the `munaxa-docs/migrate` image, as `edms_owner`; DC-01) and
+`docs-provision` (Docs first administrator; it migrates nothing and refuses an unmigrated database).
 
 Private calls (Cloud Map, plain HTTP inside the VPC, security group to security group):
 control-portal → `control-api.<env>.munaxa.internal:3100`; work-admin →
@@ -113,6 +114,7 @@ products goes over HTTPS by the public host (an on-premises installation does th
 | `<product>-migrate` | `DATABASE_MIGRATION_URL` (the owner role)                                            |
 | `docs-api`        | `DATABASE_URL`, `TENANT_CATALOGUE`, `REDIS_URL`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET`, `SIGNATURE_WITNESS_SECRET`, `AUDIT_CHECKPOINT_SECRET`, `MFA_TOTP_SEALING_KEY`, `METRICS_SCRAPE_TOKEN`, `MAIL_RESEND_API_KEY`, `CONTROL_PLANE_TOKEN` |
 | `docs-operator`   | `EDMS_OWNER_PASSWORD`, `EDMS_APP_PASSWORD`, `EDMS_BACKUP_PASSWORD` (docs-db-admin only) |
+| `docs-migrate`    | `DATABASE_MIGRATION_URL`: `edms_owner` on the Docs tenant database (docs-migrate only; exists once every Docs image is set, DC-01) |
 | `identity-bootstrap` | `IDENTITY_OWNER_EMAIL`, `IDENTITY_OWNER_PASSWORD`; created by the owner for the first-operator runs, then deleted |
 | `school-bootstrap` | `PLATFORM_OWNER_EMAIL`, `PLATFORM_OWNER_PASSWORD`; created by the owner for the first-owner run, then deleted |
 | `docs-provision/<tenant slug>` | `TENANT_ID`, `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD`; created by the owner for one run, then deleted |
@@ -139,7 +141,8 @@ role (`NOBYPASSRLS`, `CONNECT` revoked from `PUBLIC`), created by `db-admin` fro
 
 Order in a session: `db-admin` → `docs-db-admin` → `identity-migrate` → `identity-bootstrap`
 (steps 1 to 3 of Identity's runbook) → `control-migrate` →
-`work-migrate` → `school-migrate` → `school-bootstrap` → `docs-provision`. Clean databases; no data is copied from
+`work-migrate` → `school-migrate` → `school-bootstrap` → `docs-migrate` → `docs-provision`, then the
+`docs-api` rollout (it refuses to start before `docs-migrate` has finished). Clean databases; no data is copied from
 Supabase, Render or Docs Production.
 
 ## 7. Identity (issuer and audience)

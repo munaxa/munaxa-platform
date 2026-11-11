@@ -27,3 +27,12 @@ output "task_definition_container_definitions" {
   description = "The rendered container definitions (for plan tests). Names and secret ARNs only; never a secret value."
   value       = aws_ecs_task_definition.this.container_definitions
 }
+
+output "execution_role_grants" {
+  description = "What the execution role's policy names (for plan tests): its one ECR repository, its one log group and its one secret bundle (null without one). The policy JSON itself is rendered by the provider."
+  value = {
+    image_repository_arn = local.image_repository_arn
+    log_group            = aws_cloudwatch_log_group.this.name
+    secret_arn           = local.reads_secret ? var.secret_arn : null
+  }
+}

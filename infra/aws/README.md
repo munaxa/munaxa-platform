@@ -216,7 +216,9 @@ operator host as the one proxied record behind Cloudflare Access.
    `deploy/aws/README.md`, "The first tenant on a fresh database");
    then Docs: `docs-db-admin` (db-admin's network; its cluster
    roles, `edms_backup` and the tenant database; it stops if `edms_backup` could reach a non-Docs
-   database), then `docs-provision` (docs-api's security group, after the owner creates
+   database), then `docs-migrate` (its own security group; exit code 0 required, read from
+   `aws ecs describe-tasks`; the `munaxa-docs/migrate` digest from the same release as
+   `images.docs_api`), then `docs-provision` (docs-api's security group, after the owner creates
    `munaxa-nonprod/docs-provision/<slug>` and before deleting it). They create clean databases and
    apply the full migration history; no data is copied from Supabase, Render or Docs Production.
 4. Control (the licence key's public half is already set, step 0). In the operator portal create the

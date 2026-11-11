@@ -171,6 +171,7 @@ variable "images" {
     docs_api         = optional(string, "") # the existing munaxa-docs/* repositories (Docs bootstrap)
     docs_web         = optional(string, "")
     docs_antivirus   = optional(string, "")
+    docs_migrate     = optional(string, "") # the `migrate` target of munaxa-docs, same commit as docs_api (DC-01)
   })
   default = {}
 
