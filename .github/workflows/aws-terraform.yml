@@ -113,6 +113,15 @@ jobs:
           shellcheck scripts/aws/stop-database.sh scripts/aws/stop-database.test.sh
           scripts/aws/stop-database.test.sh
 
+      # The in-AWS Identity session probe (one self-contained Node 22 module, loaded from a pinned
+      # commit by its task definition). Offline: a local HTTPS mock, a throwaway test CA, no AWS call.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: The Identity session probe's unit tests pass
+        run: node --test infra/aws/stack/supporting/identity-session-probe.test.mjs
+
   plan:
     name: Plan ${{ inputs.environment }} (${{ inputs.action }})
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
