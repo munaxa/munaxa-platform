@@ -118,9 +118,13 @@ denial, or this one from a different caller or for a different action, is still 
 
 If you do not accept it, the preflight stays FAIL and the session should not start.
 
+> **Decided 11 Nov 2026, 05:54 UTC: accepted.** The owner chose "Accept as known" on the decision card
+> in the project thread. P-12 counts as passed for this run for the 10 events in section 4. No IAM or
+> script change follows. Any other denial remains a stop condition.
+
 ## 6. Owner actions still open [O]
 
-1. **D-1** above.
+1. ~~**D-1** above.~~ Done: accepted 11 Nov 05:54 UTC.
 2. **G-4:** verify the GitHub environment protection in the GitHub UI (Claude cannot read it).
 3. **Session approval:** the Identity session needs your separate explicit approval.
 
