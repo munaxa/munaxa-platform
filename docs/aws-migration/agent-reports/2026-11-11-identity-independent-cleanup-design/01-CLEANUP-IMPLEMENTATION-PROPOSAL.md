@@ -175,7 +175,7 @@ params = {
 # CreateSchedule, then GetSchedule: State == "ENABLED", Target.Arn and ScheduleExpression exact.
 ```
 
-**The gate.** `up` is not dispatched unless the schedule's `GetSchedule` returns `ENABLED` with the exact target and time. This is a hard stop in the runbook (new H-18).
+**The gate.** `up` is not dispatched unless the schedule's `GetSchedule` returns `ENABLED` with the exact target and time. This is a hard stop in the runbook (new H-20).
 
 Two further rules:
 
@@ -261,11 +261,11 @@ The effect on the session cost model:
 
 None of these is given today.
 
-1. **B-1:** approval to open and merge the build PR (Terraform, tests, runbook H-18 gate). This is a code merge.
+1. **B-1:** approval to open and merge the build PR (Terraform, tests, runbook H-20 gate). This is a code merge.
 2. **B-2:** approval for the **bootstrap** apply by root (boundary and deployer policy, 2 in-place updates). This is an IAM change.
 3. **B-3:** approval for the **stack** plan and apply that enables it (3 creates, 1 update). These are IAM and Step Functions resources.
 4. **B-4:** approval for the read-only simulation and the one dry run of section 8.
-5. **Per session (part of Stage D):** creating the one-time schedule before `up`, with the H-18 gate.
+5. **Per session (part of Stage D):** creating the one-time schedule before `up`, with the H-20 gate.
 
 ## 12. Limitations
 
