@@ -220,6 +220,14 @@ run "an_image_tag_is_refused" {
   expect_failures = [var.images]
 }
 
+run "the_api_image_is_refused_as_the_docs_migration_image" {
+  command = plan
+  variables {
+    images = { docs_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:7777777777777777777777777777777777777777777777777777777777777777" }
+  }
+  expect_failures = [var.images]
+}
+
 run "the_whole_internet_is_not_an_operator_network" {
   command = plan
   variables {

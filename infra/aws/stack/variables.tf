@@ -181,6 +181,13 @@ variable "images" {
     ])
     error_message = "Every image is <account>.dkr.ecr.eu-central-1.amazonaws.com/munaxa-<product>/<name>@sha256:<64 hex>."
   }
+
+  # The migration task runs the migration image, never the API's (which has no OpenSSL 3 schema
+  # engine and would fail every run). DC-01.
+  validation {
+    condition     = var.images.docs_migrate == "" || can(regex("/munaxa-docs/migrate@sha256:", var.images.docs_migrate))
+    error_message = "images.docs_migrate is the munaxa-docs/migrate repository, by digest."
+  }
 }
 
 variable "valkey_image" {
