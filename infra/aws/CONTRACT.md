@@ -142,7 +142,9 @@ role (`NOBYPASSRLS`, `CONNECT` revoked from `PUBLIC`), created by `db-admin` fro
 Order in a session: `db-admin` → `docs-db-admin` → `identity-migrate` → `identity-bootstrap`
 (steps 1 to 3 of Identity's runbook) → `control-migrate` →
 `work-migrate` → `school-migrate` → `school-bootstrap` → `docs-migrate` → `docs-provision`, then the
-`docs-api` rollout (it refuses to start before `docs-migrate` has finished). Clean databases; no data is copied from
+`docs-api` rollout (it refuses to start before `docs-migrate` has finished). On a release the
+rollout is its own apply: pin `images.docs_migrate` first and run `docs-migrate`, then pin
+`images.docs_api`, because an apply that changes `images.docs_api` rolls the service at once. Clean databases; no data is copied from
 Supabase, Render or Docs Production.
 
 ## 7. Identity (issuer and audience)

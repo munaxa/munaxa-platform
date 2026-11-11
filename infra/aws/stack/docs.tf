@@ -15,11 +15,18 @@
 #
 # The run-only tasks run in that order, once each, by the operator (DC-01): docs-db-admin makes the
 # roles and the tenant database; docs-migrate applies the per-database SQL, every Prisma migration
-# and the post-migration row-level security as edms_owner, and exits non-zero on any failure;
+# and the post-migration SQL as edms_owner (recording each file it applied), and exits non-zero on
+# any failure;
 # docs-provision refuses (exit 3, nothing written) unless the database is fully migrated; and the
 # docs-api service refuses to start against an unmigrated database, so it never becomes healthy
 # before the migration has finished. docs-migrate runs the `migrate` image published from the same
 # munaxa-docs commit as docs-api (images.docs_migrate and images.docs_api are a pair).
+#
+# A release is therefore two applies (munaxa-docs docs/operations/deployment.md §2a): the first pins
+# only images.docs_migrate, which registers the task and changes no service; docs-migrate runs and
+# must exit 0; the second pins images.docs_api, and that apply is the API rollout, because the
+# docs-api service follows its task definition. Pinning both at once rolls the API before the
+# migration (on a first deployment that is safe only while no docs-api task can start).
 #
 # Docs keeps its own sign-in (Identity has no OIDC, ADR-0004) and a database per tenant (Docs
 # ADR-0015), so its database bootstrap is its own task, not db-bootstrap.sh. Everything here exists
