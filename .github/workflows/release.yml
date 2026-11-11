@@ -19,12 +19,11 @@ jobs:
   publish:
     name: Publish @munaxa/* to GitHub Packages
     runs-on: ubuntu-latest
-    # The server-side control. workflow_dispatch runs the workflow file as it exists on the chosen
-    # ref, so a branch can carry a copy of this file without the step below. The package-release
-    # environment must be configured in the repository settings with a deployment branch policy of
-    # main only and a required reviewer; GitHub then refuses the job from any other ref whatever the
-    # file says. Until it is configured, GitHub creates it unprotected and only the step below applies.
-    environment: package-release
+    # Not a server-side control: workflow_dispatch runs the workflow file as it exists on the chosen
+    # ref, and any workflow with packages: write can publish with GITHUB_TOKEN. Who can publish is
+    # therefore who can push to this repository. A real control needs the publish token held only as
+    # an environment secret (environment limited to main, with a reviewer) and each package's Actions
+    # access for this repository reduced to Read; that is a settings change for the owner.
     permissions:
       contents: read
       packages: write
