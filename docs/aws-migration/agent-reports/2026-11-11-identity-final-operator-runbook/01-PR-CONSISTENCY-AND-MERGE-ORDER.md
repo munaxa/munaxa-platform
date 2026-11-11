@@ -66,7 +66,7 @@ allows squash merges only.
 cherry-picked commits for that PR drop out and the README is resolved in this PR only. The other
 two should then **not** be merged on their own, because each would conflict with the README again.
 
-Order in short: **#91, #90, #92, #93, #94** (with #95 any time before #94). Steps 1 and 2 can swap;
+Order in short: **#91, #90, #92, #93, #95, #94** (the approval package in #95, section 2, uses exactly this order; #95 may move anywhere before #94). Steps 1 and 2 can swap;
 #92 must precede #93; #94 waits until all of them are merged, because its README rows link to their
 folders.
 
