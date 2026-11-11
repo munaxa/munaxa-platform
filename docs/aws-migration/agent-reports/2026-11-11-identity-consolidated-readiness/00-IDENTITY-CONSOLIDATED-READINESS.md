@@ -1,5 +1,11 @@
 # Identity non-production: consolidated readiness after the five preparation workstreams (11 Nov 2026)
 
+> **Updated, 11 Nov 2026 (fast-track request, 10:30 UTC).** The current decision, PR heads, merge order,
+> corrections and the four approval stages are in `01-FINAL-APPROVAL-PACKAGE.md` in this folder,
+> which supersedes this report where they differ. In particular: the operator email is confirmed
+> (RB-1 resolved), X-1, X-2 and X-6 are fixed, the merge order is #91, #90, #92, #93, #95, #94, and
+> the owner requires the independent cleanup (Stage B) before the first session.
+
 **Scope.** This report covers the cross-workstream integration that the owner asked for at 10:07 UTC, 11 Nov 2026 ("Execute Five Parallel Preparation Workstreams").
 The review was read-only. Nothing in this report was done in AWS: no Terraform plan or apply, no dispatch, no ECS task, no secret, no IAM, DNS, Cloudflare or production change.
 No PR was merged.
