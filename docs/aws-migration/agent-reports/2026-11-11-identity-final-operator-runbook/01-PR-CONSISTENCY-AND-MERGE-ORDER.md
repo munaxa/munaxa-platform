@@ -56,19 +56,20 @@ allows squash merges only.
 | 2 | PR #90, independent cleanup design (workstream 3) | Docs only; cited by the runbook | none |
 | 3 | PR #92, workstream 2 task definition (disabled by default, no plan change) | Must be on `main` before #93: after #93's X-1 fix (head `8180537`), #93's tests run in CI only through #92's workflow step | none expected |
 | 4 | PR #93, workstream 1 probe | The pin `C` is its squash commit, so it must be on `main` before the enable PR | none expected once #92 is merged |
-| — | PR #95, consolidated readiness report | Docs only; any time before 5, because its folder is the Latest row of this PR's index change | none (new folder, no README) |
-| 5 | **This PR** | Carries #87, #88, #89 and the single README update | none, if 1 to 4 do not touch the README |
-| — | Close #87, #88, #89 as superseded by this PR | Their content is on `main` after 5 | — |
-| 6 | Enable PR (`identity_probe_source` = `C`, `H`; expected changes = 1 create) | Needs `C` from 4 | — |
-| 7 | Then, separately: the owner's Terraform plan/apply authorization (runbook I-4), and the session authorization (I-8) | Not merges | — |
+| 5 | PR #95, consolidated readiness and the final approval package | Docs only; before this PR, because its folder is the Latest row of this PR's index change | none (new folder, no README) |
+| 6 | **This PR (#94)** | Carries #87, #88, #89 and the single README update | none, if 1 to 5 do not touch the README |
+| 7 | Close #87, #88, #89 as superseded by this PR, **only after this PR is merged** | Their content is on `main` after 6 | — |
 
-**If the owner prefers to merge #87, #88 or #89 on its own first:** Claude rebases this PR; the
-cherry-picked commits for that PR drop out and the README is resolved in this PR only. The other
-two should then **not** be merged on their own, because each would conflict with the README again.
+**Final Stage A merge sequence: #91, #90, #92, #93, #95, #94, then close #87, #88 and #89.** #91 and
+#90 may swap; #92 must precede #93; #94 is last. #87, #88 and #89 are **not merged**, neither before
+nor after; they stay open, marked superseded, until #94 is merged.
 
-Order in short: **#91, #90, #92, #93, #95, #94** (the approval package in #95, section 2, uses exactly this order; #95 may move anywhere before #94). Steps 1 and 2 can swap;
-#92 must precede #93; #94 waits until all of them are merged, because its README rows link to their
-folders.
+**Stage A authorizes merges only.** It authorizes no AWS change of any kind: no Terraform plan or
+apply, no workflow dispatch, no ECS task, no secret operation, no IAM, KMS, network, DNS,
+Cloudflare or production change. Merging any of these PRs changes no Terraform plan (#92's probe
+task definition is disabled by default). The later steps are separate stages in the approval
+package (#95, section 11): **Stage B** (independent cleanup build), **Stage C** (probe task
+definition: enable PR, plan, 1-create apply), **Stage D** (the session and its secret operations).
 
 ## 5. Banner added in this PR
 

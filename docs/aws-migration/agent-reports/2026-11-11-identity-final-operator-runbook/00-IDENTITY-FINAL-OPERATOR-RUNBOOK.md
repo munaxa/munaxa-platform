@@ -59,8 +59,8 @@ items in section 2 marked **blocking** are closed.
 | I-3 | Enable PR: `identity_probe_source = { commit, sha256 }` in `envs/nonprod.tfvars` and `nonprod.expected-changes.json` = exactly 1 create | Claude, after I-1 is merged | **Yes** | Not started (needs I-1's merge commit) |
 | I-4 | Terraform plan and apply of I-3 (1 create, `aws_ecs_task_definition.identity_probe[0]`) | **[OWNER]** separate authorization; Claude dispatches | **Yes** | Not authorized |
 | I-5 | Option A connector scripts and their review (workstream 5, PR #91, `supporting/option-a-connector-scripts.DRAFT.py`: C-8, C-8v, C-16, C-24) | Claude, ChatGPT review | **Yes** | [P] draft in PR #91 |
-| I-6 | **Testing operator email address** | **[OWNER]** | **Yes** | **Confirmed by the owner, 11 Nov 2026 10:30 UTC: `admin.tamer@munaxa.com`.** Claude sets it in the session copy of C-8 only; the committed draft keeps the placeholder |
-| I-7 | Independent cleanup (workstream 3, PR #90; implementation proposal `01-CLEANUP-IMPLEMENTATION-PROPOSAL.md`): one-shot schedule at T0 + 2 h 55 min plus cleanup state machine | Proposal only; building it is **[OWNER]** Stage B (PR #95 package) | **Yes.** Owner, 11 Nov 10:30 UTC: the first session should not proceed with an unbounded ALB cost risk | [P] proposal in PR #90, not built |
+| I-6 | **Testing operator email address** | **[OWNER]** | **Yes** | **Confirmed by the owner, 11 Nov 2026 10:30 UTC.** Named `IDENTITY_OPERATOR_EMAIL` here. The value is authorized for the operator account only, not for publication (owner, 11:18 UTC), so it is kept only in the project's private runtime input, never in this repository. Claude sets it in the session copy of C-8 only; the committed draft keeps the placeholder `<IDENTITY_OPERATOR_EMAIL>` |
+| I-7 | Independent cleanup (workstream 3, PR #90; implementation proposal `01-CLEANUP-IMPLEMENTATION-PROPOSAL.md`): revision 2: cleanup state machine started at the hard stop H, again at H + 30 min, and daily at 21:05 UTC | Proposal only; building it is **[OWNER]** Stage B (PR #95 package) | **Yes.** Owner, 11 Nov 10:30 UTC: the first session should not proceed with an unbounded ALB cost risk | [P] proposal in PR #90, not built |
 | I-8 | Session deployment authorization naming the date, start window (start by 15:30 UTC), this runbook's commit, the probe pin and the cost statement in section 15 | **[OWNER]** | **Yes** | Not requested yet |
 | I-9 | Read-only pre-checks of the new log patterns with `TestMetricFilter` (section 10.4) | Claude, under the session-day read-only approval | Yes (part of phase 1) | NOT VERIFIED |
 
@@ -310,7 +310,7 @@ The same as PR #87 phase A and PR #88, repeated on the day (A-1, A-2), plus:
   `IncludePlannedDeletion=True`;
 - the probe definition check of step 0-6, again;
 - the `TestMetricFilter` pre-checks of section 10.4;
-- the one-shot cleanup schedule (I-7) is ENABLED for T0 + 2 h 55 min, with the exact target (H-20; PR #90 proposal section 4);
+- gate H-20 (PR #90 proposal revision 2, section 7): schedules P (at H) and S (at H + 30 min) `ENABLED` with the exact times, target and role; the daily schedule R `ENABLED`; the state machine `ACTIVE`; the last R execution `SUCCEEDED`; the failure alarm `OK` with a confirmed subscription;
 - GitHub: no `aws-terraform.yml` nonprod run pending (F-10), `main` head equals the authorized
   runbook commit.
 
@@ -570,7 +570,7 @@ Use PR #91 script **C-16** [P], unchanged once reviewed. What it does:
 | `cloudtrail LookupEvents` from T0, both regions, denials | only S-1 to S-8 signatures (4 expected: 2 from `up`, 2 from `down`) |
 | PR #91 **C-24** CloudTrail custody check, from the time before C-8 | only the expected secret events and readers (PR #91 section D) |
 
-3. Confirm the one-shot cleanup execution for this session ended `SUCCEEDED` (or `FAILED` naming what remains) and the schedule is gone, as PR #90's proposal section 6 specifies.
+3. After H + 15 min: confirm the cleanup execution started by P ended `SUCCEEDED` (or `FAILED` / `TIMED_OUT` naming what remains, which the alarm also emails) and that P deleted itself; after H + 45 min the same for S (PR #90 proposal revision 2, sections 6 and 7).
 4. Record T0, the `down` completion time (must be ≤ T0 + 3 h) and the counts.
 5. Next day: Cost Explorer for the session date (PR #87 C-18).
 
@@ -594,11 +594,11 @@ in the session. No IAM, security-group, Terraform or DNS change in the session.
 | H-13 | Probe `operator-host` not 403 | `down` **immediately**, then the secret, then section 12 |
 | H-14 | Probe `control-admin-path`, `control-other-path` not 403, `unknown-host` not 404, or S-8 rule set different | general rule |
 | H-18 (new) | Probe exit 3 (`FAIL probe-source <code>`: checksum or download) or exit 2 (`FAIL config`) | Checksum or config: general rule; never change the pin in the session. Download error before any check: one retry; a second failure follows the general rule |
-| H-20 (new) | The one-shot cleanup schedule is not `ENABLED` with the exact target and time before `up` (I-7) | `up` is not dispatched. Report; no AWS change |
+| H-20 (new) | Any item of the cleanup gate fails before `up` (P or S not `ENABLED` with the exact time, target and role; R not `ENABLED`; state machine not `ACTIVE`; last R execution not `SUCCEEDED`; alarm not `OK` or subscription unconfirmed) (I-7) | `up` is not dispatched. Report; no AWS change |
 | H-19 (new) | `other_line_count` > 0 on the probe stream | Treat as possible exposure: do not read the lines; general rule; the operator credential is treated as possibly exposed and is replaced later by a reviewed procedure (there is no reset route); report the count only |
 | H-20 (new) | Probe task does not reach STOPPED in 10 min | `StopTask` (as root), then the general rule |
 | C-1 | Connector sign-in expired or the connector fails | Claude posts a Reconnect card. **[OWNER]** presses it and signs in with MFA. If it is not back within 15 minutes, or by T0 + 2 h 45 min, Claude dispatches `down` through GitHub (no connector needed) and asks the owner for one console action: delete **exactly** `munaxa-nonprod/identity-bootstrap` (Secrets Manager → that secret → Actions → Delete secret; a 7-day waiting period is acceptable). **Never** `munaxa-nonprod/identity-operator`. Residual R-1 |
-| C-2 | Claude's session ends mid-session | Nothing in this session can act. Layers 2 and 3 apply (section 14); R-1 and R-2. With I-7 built, PR #90's one-shot cleanup runs at T0 + 2 h 55 min and deletes the ALB and the bootstrap secret |
+| C-2 | Claude's session ends mid-session | Nothing in this session can act. Layers 2 and 3 apply (section 14); R-1 and R-2. With I-7 built, PR #90's cleanup starts at the hard stop H (and again at H + 30 min and 21:05 UTC), deletes the ALB and the bootstrap secret in parallel with the database stop, and ends within 15 min |
 | C-3 | GitHub dispatch refused or the integration fails | For `up`: nothing started, no action. For `down`: retry once after 2 minutes; then the owner presses Run workflow in the Actions tab (`AWS Testing session`, `main`, `down`) |
 | C-4 | `down` run red | Dispatch again (the database job is separate). Then report; layer 3 stops the DB and the service at 21:00 UTC; the ALB remains until the next good `down` |
 | C-5 | C-16 fails twice | `down` first (PR #91 OA-5), retry C-16 after, report R-1 |
@@ -611,6 +611,10 @@ in the session. No IAM, security-group, Terraform or DNS change in the session.
 | S-1 (T0) | Claude schedules two wakes through this session's scheduler: **T0 + 2 h 30 min** (wrap-up warning: no new step that changes data starts after this) and **T0 + 2 h 45 min** (shutdown) |
 | T0 + 2 h 45 min | Whatever the state: delete the bootstrap secret (section 11), dispatch `down` |
 | **T0 + 3 h, or 18:30 UTC, whichever is earlier** | **Hard stop (H-15):** `down` must have been dispatched. If not, dispatch now, before anything else |
+| **H** (that hard stop) | With I-7 built: AWS starts the cleanup (schedule P) whether or not Claude is connected. The ALB and the bootstrap secret are removed in parallel with the database stop |
+| H + 15 min | Cleanup deadline: P's execution has ended `SUCCEEDED`, or `FAILED` / `TIMED_OUT` with an alarm email |
+| H + 30 min | Retry schedule S runs the same cleanup |
+| 21:05 UTC daily | Recurring schedule R runs the same cleanup (after the unchanged 21:00 backstop) |
 
 - The wakes exist only while this Claude session exists. They are not an independent control.
 - Independent layers, and what they cannot do:
@@ -618,7 +622,7 @@ in the session. No IAM, security-group, Terraform or DNS change in the session.
      observed on 11 Nov, run 42987103535) or drop it;
   2. the AWS backstop at 21:00 UTC (`backstop.tf`): stops the database and scales services to
      0; **it cannot delete the ALB and does not delete the secret**;
-  3. PR #90's one-shot cleanup at T0 + 3 h, **only if built** under a separate authorization.
+  3. PR #90's cleanup (revision 2) at H, H + 30 min and 21:05 UTC daily, **only once built** under Stage B; required before the first session.
 
 ## 15. Cost statement
 
@@ -634,9 +638,13 @@ in the session. No IAM, security-group, Terraform or DNS change in the session.
   0, but it cannot delete the ALB, which keeps costing about US$0.89 a day (about US$27 a month)
   until someone runs `down`. Only PR #90's independent cleanup bounds this case. **Owner position,
   11 Nov 10:30 UTC: the first session should not proceed with this unbounded risk**, so I-7 is
-  built first (Stage B). With it built and working, a lost Claude session costs about US$0.30 to
-  0.35 (cleanup at T0 + 2 h 55 min); if the cleanup itself fails, the cases above apply again and
-  the execution shows `FAILED`.
+  built first (Stage B). With it built: a lost Claude session costs about US$0.31 to 0.35 when the
+  run at H succeeds, about US$0.33 to 0.40 when only the retry at H + 30 min succeeds, and about
+  US$0.09 to 0.10 for each hour from T0 to 21:05 UTC when only the daily run succeeds (about
+  US$0.50 to 0.56 for a 15:30 start). If the mechanism is persistently broken, the ALB still has
+  no fixed upper limit, but the owner is emailed after each failed run and H-20 blocks the next
+  `up`. **No design enforces a guaranteed ceiling** (PR #90 proposal revision 2, sections 8
+  and 9).
 - Option A adds about **US$0.40 a month** for `munaxa-nonprod/identity-operator`, outside the
   session ceiling.
 - The probe task (0.25 vCPU, 512 MB, minutes) and the one-off tasks cost under US$0.02.
