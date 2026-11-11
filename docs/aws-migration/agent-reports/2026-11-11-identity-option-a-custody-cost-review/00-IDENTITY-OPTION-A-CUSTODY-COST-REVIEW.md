@@ -32,7 +32,7 @@ Option A works as the owner chose it:
 
 It cannot run until two things exist:
 
-- the Testing operator email (O-2: **confirmed by the owner on 11 Nov 2026 as `admin.tamer@munaxa.com`**);
+- the Testing operator email (O-2: **confirmed by the owner on 11 Nov 2026**; referred to here as `IDENTITY_OPERATOR_EMAIL`, value kept out of this repository);
 - the separate deployment authorization.
 
 Five findings change how the session must be run. Each is a condition on the runbook, not a
@@ -294,7 +294,7 @@ These are in Identity `5277d71` and are not changed by any custody option.
 
 ## J.1 Update, 11 Nov 2026 (fast-track package, PR #95)
 
-- **O-2 resolved:** operator email `admin.tamer@munaxa.com` (owner, 10:30 UTC).
+- **O-2 resolved:** the owner confirmed the operator email at 10:30 UTC. It is authorized for the Identity non-production operator account only, not for publication (owner, 11:18 UTC), so this repository calls it `IDENTITY_OPERATOR_EMAIL` and holds no literal value.
 - **Owner rule: the persistent secret is never force-deleted.** C-8 no longer rolls back by
   force-deleting `munaxa-nonprod/identity-operator` when the bootstrap create fails. The new
   recovery script **C-8R** (one call: `GetRandomPassword`, `PutSecretValue` on the persistent
@@ -306,7 +306,7 @@ These are in Identity `5277d71` and are not changed by any custody option.
 
 ## K. Outstanding owner inputs
 
-1. **O-2: the Testing operator email. Confirmed by the owner on 11 Nov 2026: `admin.tamer@munaxa.com`.** Claude sets it in the session copy of C-8 only; the committed draft keeps the placeholder, so an unedited copy aborts with `EMAIL_NOT_SET`. (The repository is public, so this address is now public.)
+1. **O-2: the Testing operator email (`IDENTITY_OPERATOR_EMAIL`). Confirmed by the owner on 11 Nov 2026.** The value is kept only in the project's private runtime input, never in this public repository, a PR or a committed script. Claude sets it in the session copy of C-8 (and C-8R) only; the committed draft keeps the placeholder `<IDENTITY_OPERATOR_EMAIL>`, so an unedited copy aborts with `EMAIL_NOT_SET`.
 2. **The separate deployment authorization.** It must name C-8 and C-16, the residual risks
    L-A0, R-1 and R-2, and the conditional US$0.35 ceiling.
 3. A ruling on **OA-5**: `down` at the hard stop even if the secret delete has failed.

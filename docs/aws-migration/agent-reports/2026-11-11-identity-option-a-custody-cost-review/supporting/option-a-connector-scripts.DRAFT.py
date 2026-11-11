@@ -4,8 +4,9 @@
 # Each block is one separate `run_script` call through the AWS connector (root, eu-central-1).
 #
 # NONE OF THESE MAY RUN until:
-#   - the Testing operator email is set (O-2: confirmed by the owner on 11 Nov 2026 as
-#     admin.tamer@munaxa.com; see the report, section K), and
+#   - the Testing operator email IDENTITY_OPERATOR_EMAIL is set (O-2: confirmed by the owner on
+#     11 Nov 2026; the value is kept only in the project's private runtime input, never in this
+#     public repository), and
 #   - the owner has given the separate, written deployment authorization.
 #
 # Rules every block follows (report section D):
@@ -19,7 +20,7 @@
 #     email is personal data and is never returned either.
 #
 # The placeholder below is the only value the operator edits. Claude sets it to the confirmed
-# address (O-2, report section K) in the session's copy of the script only; the committed draft
+# address (O-2, from the private runtime input) in the session's copy of the script only; the committed draft
 # keeps the placeholder so that an unedited copy aborts with EMAIL_NOT_SET.
 #
 # The persistent secret munaxa-nonprod/identity-operator is NEVER force-deleted, by any script or
@@ -33,7 +34,7 @@
 # read back with GetSecretValue, which Claude must never call. A second call could not create the
 # bootstrap secret from the persistent one.
 
-OPERATOR_EMAIL = "<OWNER-SUPPLIED-TESTING-EMAIL>"  # O-2: set to the confirmed address in the session copy only.
+OPERATOR_EMAIL = "<IDENTITY_OPERATOR_EMAIL>"  # O-2: set to the confirmed address in the session copy only.
 REGION = "eu-central-1"
 KMS_KEY = "alias/munaxa-nonprod-data"
 PERSISTENT = "munaxa-nonprod/identity-operator"

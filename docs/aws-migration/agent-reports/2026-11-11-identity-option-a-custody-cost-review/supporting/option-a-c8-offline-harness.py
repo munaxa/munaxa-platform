@@ -1,6 +1,6 @@
 import asyncio, json, re, sys, ast, time, datetime, collections
 src=open(sys.argv[1]).read()
-c8_src=src[src.index('OPERATOR_EMAIL = "<OWNER'):src.index('result = await c8()')]
+c8_src=src[src.index('OPERATOR_EMAIL = "<IDENTITY_OPERATOR_EMAIL>"'):src.index('result = await c8()')]
 c8r_src=src[src.index('async def c8r():'):src.index('result = await c8r()')]
 class ClientError(Exception):
     def __init__(s,code,msg): super().__init__(msg); s.response={"Error":{"Code":code,"Message":msg}}
@@ -26,7 +26,7 @@ def make(fail=None, exists=False, gen_bad=0, present=()):
     return call_boto3, st
 async def run(fn="c8", **kw):
     cb,st=make(**kw); g={"json":json,"ClientError":ClientError,"call_boto3":cb}
-    exec((c8_src+c8r_src).replace('"<OWNER-SUPPLIED-TESTING-EMAIL>"','"operator.test@example.com"'), g)
+    exec((c8_src+c8r_src).replace('"<IDENTITY_OPERATOR_EMAIL>"','"operator.test@example.com"'), g)
     r=await g[fn](); out=json.dumps(r)
     leak = PW in out or PW[6:] in out or "example.com" in out
     return r, leak, st
