@@ -13,7 +13,7 @@ independently of the lockstep group: [ADR-0022](../../../docs/security-platform/
 
 ```jsonc
 "dependencies": {
-  "@munaxa/licensing": "^0.1.0"
+  "@munaxa/licensing": "^0.2.0"
 }
 ```
 

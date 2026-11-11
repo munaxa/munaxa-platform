@@ -437,8 +437,16 @@ export class MfaService {
     return true;
   }
 
-  /** Consume a recovery code. Single use, by construction — the store removes it. */
+  /**
+   * Consume a recovery code. Single use, by construction — the store removes it.
+   *
+   * Only while a confirmed factor exists: recovery codes are a fallback for a factor, not a factor
+   * of their own. `remove` cannot delete them (the store port has no method for it), and a
+   * replacement enrollment in progress leaves the previous set in place, so without this check a
+   * code from a factor the user switched off would still pass as a second factor.
+   */
   async verifyRecoveryCode(tenantId: TenantId, userId: UserId, code: string): Promise<boolean> {
+    if (!(await this.isEnrolled(tenantId, userId))) return false;
     return this.#store.consumeRecoveryCode(tenantId, userId, sha256Hex(code.trim().toUpperCase()));
   }
 

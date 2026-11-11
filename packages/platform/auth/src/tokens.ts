@@ -165,6 +165,21 @@ export class TokenService {
       throw new PlatformError('Token signature is not valid', { code: 'AUTH_TOKEN_INVALID' });
     }
 
+    // A signed token is still only as good as its claims' shapes. A missing or non-numeric `exp`
+    // made both comparisons below `NaN`, which is never `<` anything, so such a token never expired.
+    if (claims === null || typeof claims !== 'object') {
+      throw new PlatformError('Malformed token', { code: 'AUTH_TOKEN_INVALID' });
+    }
+    if (typeof claims.exp !== 'number' || !Number.isFinite(claims.exp)) {
+      throw new PlatformError('Token has no valid expiry', { code: 'AUTH_TOKEN_INVALID' });
+    }
+    if (
+      claims.iat !== undefined &&
+      (typeof claims.iat !== 'number' || !Number.isFinite(claims.iat))
+    ) {
+      throw new PlatformError('Token has an invalid issue time', { code: 'AUTH_TOKEN_INVALID' });
+    }
+
     const now = this.#clock.now();
     if (claims.exp * 1_000 + this.#skew < now) {
       throw new PlatformError('Token expired', { code: 'AUTH_TOKEN_EXPIRED' });
@@ -178,7 +193,11 @@ export class TokenService {
 
     const expectedAudience = options.audience ?? this.#audience;
     if (expectedAudience?.length) {
-      const actual = claims.aud ?? [];
+      // RFC 7519 allows `aud` as one string. Read it as a one-element list: `String.includes`
+      // would otherwise accept any audience that is a substring of it.
+      const raw: unknown = claims.aud;
+      const actual: readonly unknown[] =
+        typeof raw === 'string' ? [raw] : Array.isArray(raw) ? raw : [];
       if (!expectedAudience.some((entry) => actual.includes(entry))) {
         throw new PlatformError('Token audience mismatch', { code: 'AUTH_TOKEN_INVALID' });
       }

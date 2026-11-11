@@ -19,10 +19,26 @@ jobs:
   publish:
     name: Publish @munaxa/* to GitHub Packages
     runs-on: ubuntu-latest
+    # Not a server-side control: workflow_dispatch runs the workflow file as it exists on the chosen
+    # ref, and any workflow with packages: write can publish with GITHUB_TOKEN. Who can publish is
+    # therefore who can push to this repository. A real control needs the publish token held only as
+    # an environment secret (environment limited to main, with a reviewer) and each package's Actions
+    # access for this repository reduced to Read; that is a settings change for the owner.
     permissions:
       contents: read
       packages: write
     steps:
+      # A publish replaces nothing (a version is published once), so the version a consumer gets
+      # must be the one reviewed on main. This step stops an accidental publish from another ref
+      # (a dry run may use any ref); it is not a control on its own, see the environment above.
+      - name: Refuse to publish from a ref other than main
+        if: ${{ !inputs.dry_run && github.ref != 'refs/heads/main' }}
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          echo "::error::Publishing is only allowed from refs/heads/main (got $REF). Re-run with dry_run, or dispatch on main."
+          exit 1
+
       - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v4
@@ -44,6 +60,12 @@ jobs:
 
       - name: Verify
         run: pnpm test && pnpm validate
+
+      # The manifest gate (`pnpm release:check`): exports targets exist, lockstep versions agree,
+      # no build-time package in runtime dependencies. `pnpm release` runs it before publishing;
+      # this workflow publishes with `pnpm -r publish`, so it has to run it itself.
+      - name: Release manifest check
+        run: pnpm release:check
 
       - name: Publish
         if: ${{ !inputs.dry_run }}
