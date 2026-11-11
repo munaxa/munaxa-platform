@@ -1,6 +1,6 @@
 # munaxa-docs deployment readiness audit (11 Nov 2026)
 
-Auditor scope: `/home/claude/munaxa-docs` on branch `claude/project-thread-8chfj0` (== origin/main `b8c7e25`), plus a
+Auditor scope: `munaxa-docs` (local clone) on branch `claude/project-thread-8chfj0` (== origin/main `b8c7e25`), plus a
 read-only look at `munaxa-platform/infra/aws`. No AWS calls, no Terraform runs, no pushes, no GitHub writes.
 
 ## 0. Repo facts

@@ -1,6 +1,6 @@
 # munaxa-identity: deployment readiness audit (11 Nov 2026)
 
-Auditor scope: /home/claude/munaxa-identity, branch `claude/project-thread-8chfj0` == origin/main `c3928e8`.
+Auditor scope: `munaxa-identity` (local clone), branch `claude/project-thread-8chfj0` == origin/main `c3928e8`.
 Findings prefix `ID-`. Local commits on top of `c3928e8` (not pushed): `9701bc0`, `99a3ebf`, `a2ec0db`.
 
 ## 0. Repo facts

@@ -1,6 +1,6 @@
 # munaxa-work: deployment readiness audit (11 Nov 2026)
 
-Auditor scope: `/home/claude/munaxa-work`, branch `claude/project-thread-8chfj0` at `b490b25` (== origin/main). Backend and frontend were both audited. All checks ran in a scratch copy (`<audit-scratch>/work-audit/work`) with `@munaxa/*` packed from munaxa-platform `0ae17f9`, because GitHub Packages answers 401 here. Postgres 16 ran on :55433 and Redis on :56383. Both are now stopped.
+Auditor scope: `munaxa-work` (local clone), branch `claude/project-thread-8chfj0` at `b490b25` (== origin/main). Backend and frontend were both audited. All checks ran in a scratch copy (`<audit-scratch>/work-audit/work`) with `@munaxa/*` packed from munaxa-platform `0ae17f9`, because GitHub Packages answers 401 here. Postgres 16 ran on :55433 and Redis on :56383. Both are now stopped.
 
 ## 0. Repo facts
 

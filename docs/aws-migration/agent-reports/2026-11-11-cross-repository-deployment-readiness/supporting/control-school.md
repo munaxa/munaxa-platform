@@ -1,7 +1,7 @@
 # Audit: munaxa-control and munaxa-school, focused on licensing (11 Nov 2026)
 
-Auditor scope: munaxa-control (`/home/claude/munaxa-control`, main a24c568) and munaxa-school
-(`/home/claude/munaxa-school`, main 9671bcb). I read the shared contract `@munaxa/licensing` 0.2.0
+Auditor scope: munaxa-control (`munaxa-control` (local clone), main a24c568) and munaxa-school
+(`munaxa-school` (local clone), main 9671bcb). I read the shared contract `@munaxa/licensing` 0.2.0
 (munaxa-platform 0ae17f9, `packages/platform/licensing`) without changing it, and grepped munaxa-work (b490b25) and
 munaxa-docs (b8c7e25) without changing them. I made no AWS calls, dispatched no workflows and pushed nothing. Migrations ran only against
 disposable local Postgres 16 clusters on ports 55435 and 55436. Local commits are on branch
