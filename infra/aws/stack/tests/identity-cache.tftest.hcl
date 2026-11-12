@@ -372,6 +372,24 @@ run "a_token_that_is_not_url_safe_stops_the_plan" {
   expect_failures = [aws_elasticache_replication_group.identity]
 }
 
+# URL-safe, but `_`, `~` and `.` are outside the AUTH guide's allowed characters, so ElastiCache may
+# refuse it at apply time; the plan stops first.
+run "a_url_safe_token_elasticache_may_refuse_stops_the_plan" {
+  command = plan
+  variables {
+    environment        = "prod"
+    vpc_cidr           = "10.131.0.0/16"
+    valkey_image       = ""
+    secret_version_ids = { identity = "00000000-0000-4000-8000-000000000001" }
+    identity_cache     = { node_type = "cache.t4g.micro", replicas = 0, engine_version = "8.1", auth_token_version = 1 }
+  }
+  override_module {
+    target  = module.identity_cache_auth
+    outputs = { value = "placeholder_with.dots~and_underscores-0123456789" }
+  }
+  expect_failures = [aws_elasticache_replication_group.identity]
+}
+
 run "a_short_token_stops_the_plan" {
   command = plan
   variables {

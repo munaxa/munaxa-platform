@@ -125,8 +125,9 @@ Testing session with a forced deployment (ECS events); see the Testing runbook i
 The token is the `REDIS_PASSWORD` key of the `munaxa-prod/identity` bundle. Terraform reads it
 through `modules/secret-key-ephemeral` (an ephemeral resource) into the write-only `auth_token_wo`,
 so it is in no variable, plan file, state or log. The read names `secret_version_ids.identity`
-(required by validation), and the token must be 32 to 128 characters of `[A-Za-z0-9_~.-]`
-(URL-safe, so `REDIS_URL` needs no encoding); the plan stops otherwise, without quoting the bundle.
+(required by validation), and the token must be 32 to 128 characters of `[A-Za-z0-9-]` (what
+both ElastiCache's API reference and its AUTH guide accept, and URL-safe, so `REDIS_URL` needs no
+encoding); the plan stops otherwise, without quoting the bundle.
 
 1. The operator writes a bundle version with `REDIS_PASSWORD` and pins it in `secret_version_ids.identity`.
 2. A reviewed PR sets `identity_cache` in `prod.tfvars` (`auth_token_version = 1`); the apply creates the cache.
