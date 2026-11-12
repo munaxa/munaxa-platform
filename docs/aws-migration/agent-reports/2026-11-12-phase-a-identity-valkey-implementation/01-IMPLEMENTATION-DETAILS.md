@@ -63,7 +63,7 @@ Output `identity_cache` = `{primary_endpoint, port, ops_topic_arn}`, null withou
 The ten strict validations requested are all present and each has a failing-case test **[L]**:
 production only; exclusive with the sidecar; prod image needs the cache; pinned bundle version;
 node type; replicas 0 or 1; engine 8.x; token version a whole number from 1; strategy ROTATE or SET;
-token shape (precondition, 32 to 128 of `[A-Za-z0-9_~.-]`, message never quotes it).
+token shape (precondition, 32 to 128 of `[A-Za-z0-9-]`; corrected in platform#114, see 2026-11-12-phase-c-d-preparation/05, message never quotes it).
 
 **[V]** Provider check: the pinned `hashicorp/aws` 6.67.0 schema lists `auth_token_wo` as `write_only`
 and `sensitive`, `auth_token_wo_version`, and the ephemeral `aws_secretsmanager_secret_version`.

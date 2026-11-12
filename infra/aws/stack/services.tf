@@ -201,7 +201,9 @@ module "identity" {
 
   # With the sidecar every task has its own store. ECS's default rolling deployment (100 % / 200 %)
   # starts the new task before it stops the old one, so for a few minutes two tasks would serve
-  # from two independent stores. 0 % / 100 % stops the old task first: about a minute of Identity
+  # from two independent stores. 0 % / 100 % takes the old task out of the target group before a
+  # new one can serve (the old one may still be draining when the new one starts; only the ALB,
+  # Identity's one way in, keeps them from serving together): about one to two minutes of Identity
   # downtime per deployment in Testing (README, "Identity in Testing: deployments"). The circuit
   # breaker still rolls a failed deployment back. The shared cache needs neither: ECS's defaults.
   single_task_store                  = var.valkey_image != ""

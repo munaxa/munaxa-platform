@@ -25,7 +25,7 @@ Every step below is **[O]**: it needs the owner's explicit authorization. Nothin
 0. Repository PR: a dedicated KMS key for the ops topic (T-11), and a CI check that the alias provider matches the default (T-4).
 1. Owner decision on the deployer IAM: narrow exception to `NoSecretValuesNoUsersNoKeys` for
    `munaxa-prod/identity` (prod plan and apply roles), or the operator-set token alternative.
-2. Operator writes `munaxa-prod/identity` with `REDIS_PASSWORD` (32 to 128 of `[A-Za-z0-9_~.-]`), pins
+2. Operator writes `munaxa-prod/identity` with `REDIS_PASSWORD` (32 to 128 of `[A-Za-z0-9-]`; corrected in platform#114, see 2026-11-12-phase-c-d-preparation/05), pins
    the version.
 3. PR setting `identity_cache` in `prod.tfvars` (`cache.t4g.micro`, `replicas = 0`, `8.1`,
    `auth_token_version = 1`); plan reviewed (check the plan shows no token); apply.

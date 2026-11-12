@@ -166,11 +166,14 @@ resource "aws_elasticache_replication_group" "identity" {
   apply_immediately          = false
 
   lifecycle {
-    # ElastiCache's own AUTH rules (16-128 printable characters, no " / @) narrowed to what is safe
-    # inside REDIS_URL without encoding, and to at least 32 characters. The message never quotes it.
+    # ElastiCache's AUTH rules disagree between its pages: the API reference refuses / " @ % among
+    # printable ASCII, the AUTH guide allows only ! & # $ ^ < > - besides letters and digits. This is
+    # what both accept and what is safe inside REDIS_URL without encoding: letters, digits and the
+    # hyphen, at least 32 of them (a random 32+ character alphanumeric token is well over 128 bits).
+    # The message never quotes it.
     precondition {
-      condition     = can(regex("^[A-Za-z0-9_~.-]{32,128}$", local.identity_cache_auth_token))
-      error_message = "REDIS_PASSWORD in the pinned munaxa-<env>/identity bundle version is missing or is not 32-128 URL-safe characters ([A-Za-z0-9_~.-]). Write a new bundle version and pin it."
+      condition     = can(regex("^[A-Za-z0-9-]{32,128}$", local.identity_cache_auth_token))
+      error_message = "REDIS_PASSWORD in the pinned munaxa-<env>/identity bundle version is missing or is not 32-128 characters of letters, digits and hyphens ([A-Za-z0-9-]). Write a new bundle version and pin it."
     }
 
     postcondition {

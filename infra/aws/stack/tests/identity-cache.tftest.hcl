@@ -112,7 +112,7 @@ variables {
 
 # --- Testing: one task, one sidecar, stop before start ------------------------------------------
 
-run "testing_identity_sidecar_stops_the_old_task_before_starting_the_new_one" {
+run "testing_identity_deploys_one_task_at_zero_and_one_hundred_percent" {
   command = plan
 
   variables {
@@ -124,7 +124,7 @@ run "testing_identity_sidecar_stops_the_old_task_before_starting_the_new_one" {
 
   assert {
     condition     = module.identity[0].service_deployment.minimum_healthy_percent == 0 && module.identity[0].service_deployment.maximum_percent == 100
-    error_message = "With the sidecar store Identity deploys at 0 % / 100 %: the old task stops before the new one starts, so two stores never serve together."
+    error_message = "With the sidecar store Identity deploys at 0 % / 100 %: the old task is deregistered from the load balancer before a new one can serve, so one store receives new requests at a time."
   }
   assert {
     condition     = module.identity[0].service_deployment.desired_count == 1
@@ -368,6 +368,24 @@ run "a_token_that_is_not_url_safe_stops_the_plan" {
   override_module {
     target  = module.identity_cache_auth
     outputs = { value = "placeholder/with@characters:that-break-a-url-0123" }
+  }
+  expect_failures = [aws_elasticache_replication_group.identity]
+}
+
+# URL-safe, but `_`, `~` and `.` are outside the AUTH guide's allowed characters, so ElastiCache may
+# refuse it at apply time; the plan stops first.
+run "a_url_safe_token_elasticache_may_refuse_stops_the_plan" {
+  command = plan
+  variables {
+    environment        = "prod"
+    vpc_cidr           = "10.131.0.0/16"
+    valkey_image       = ""
+    secret_version_ids = { identity = "00000000-0000-4000-8000-000000000001" }
+    identity_cache     = { node_type = "cache.t4g.micro", replicas = 0, engine_version = "8.1", auth_token_version = 1 }
+  }
+  override_module {
+    target  = module.identity_cache_auth
+    outputs = { value = "placeholder_with.dots~and_underscores-0123456789" }
   }
   expect_failures = [aws_elasticache_replication_group.identity]
 }
