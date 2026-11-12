@@ -1,0 +1,38 @@
+== Image checks
+OK   I-1 the migration image runs the Prisma CLI the lockfile pins (6.19.3)
+OK   I-2 the migration image carries the schema engine its own OpenSSL 3 runtime asks for
+OK   I-3 prisma/ (32 migrations) and infra/sql/ in the image are byte-identical to this commit
+OK   I-4 the migration image runs as 'node' (uid 1000), not root
+OK   I-5 no shell, no .npmrc, no .env and no database variable baked into the migration image
+OK   I-6 the API image is unchanged by the migration target (no extra schema engine, no shell)
+== Disposable PostgreSQL (postgres:16-alpine) and Redis (redis:7-alpine)
+== Migrations (the migration image, read-only root, no capabilities)
+OK   M-1 a fresh database migrates (exit 0)
+OK   M-2 all 32 migrations recorded as finished, in order
+OK   M-3 a re-run on a migrated database is a no-op (exit 0, no pending migrations)
+OK   M-4 a failing migration exits 1 (P3018) and says MIGRATION FAILED
+OK   M-5 the re-run refuses too (P3009): the failed migration is never skipped, reset or rewritten
+OK   M-6 wrong credentials exit 1 (P1000)
+OK   M-7 no migration URL exits 2 (configuration), touching nothing
+OK   M-8 two concurrent runs (exit 0 and 0): at least one succeeded, no migration applied twice, a third run finds nothing to do
+OK   M-10 the application role cannot write the Prisma migration history the gate trusts
+OK   M-9 every migration ran on a read-only root filesystem with no capabilities
+== Provisioning gate
+OK   P-1 provisioning refused on an unmigrated database (exit 3, nothing written)
+OK   P-2 provisioning refused on a database with a failed migration (exit 3, nothing written)
+OK   P-3 provisioning refused on a database whose post-migration SQL did not run (exit 3, nothing written)
+OK   P-6 provisioning refused on a database where only the row-level security file applied (exit 3, nothing written)
+OK   P-7 the refusal says the post-migration SQL did not finish, though row-level security is in place
+OK   P-8 provisioning refused when a migration was applied after the last post-migration run (exit 3)
+OK   P-9 provisioning refused while a newer post-migration run is unfinished (exit 3)
+OK   P-10 provisioning refused while another build's version of a post-migration file is in effect (exit 3)
+OK   P-4 provisioning succeeds after the migration (exit 0, one tenant)
+OK   P-5 a re-run changes nothing (exit 4, still one tenant)
+== API start-up gate
+OK   A-1 the API refuses to start on an unmigrated database (exit 1, before listening)
+OK   A-3 the API refuses to start when only the row-level security file applied (exit 1)
+OK   A-2 the API starts and is live on the migrated database
+== Credentials in output
+OK   C-1 no password and no connection string in any of 25 logs
+
+All migration-path checks passed.

@@ -10,7 +10,23 @@
 # |                |  + Redis sidecar on 127.0.0.1:6379                                              |
 # | docs-scanner   | 0.25 vCPU, 2 GB| docs-api (ICAP, Cloud Map)    | nothing                                |
 # | docs-db-admin  | run-only       | -                             | RDS master, docs-operator bundle       |
+# | docs-migrate   | run-only       | -                             | docs-migrate bundle (owner URL) only   |
 # | docs-provision | run-only       | -                             | docs-api bundle, docs-provision/<slug> |
+#
+# The run-only tasks run in that order, once each, by the operator (DC-01): docs-db-admin makes the
+# roles and the tenant database; docs-migrate applies the per-database SQL, every Prisma migration
+# and the post-migration SQL as edms_owner (recording each file it applied), and exits non-zero on
+# any failure;
+# docs-provision refuses (exit 3, nothing written) unless the database is fully migrated; and the
+# docs-api service refuses to start against an unmigrated database, so it never becomes healthy
+# before the migration has finished. docs-migrate runs the `migrate` image published from the same
+# munaxa-docs commit as docs-api (images.docs_migrate and images.docs_api are a pair).
+#
+# A release is therefore two applies (munaxa-docs docs/operations/deployment.md §2a): the first pins
+# only images.docs_migrate, which registers the task and changes no service; docs-migrate runs and
+# must exit 0; the second pins images.docs_api, and that apply is the API rollout, because the
+# docs-api service follows its task definition. Pinning both at once rolls the API before the
+# migration (on a first deployment that is safe only while no docs-api task can start).
 #
 # Docs keeps its own sign-in (Identity has no OIDC, ADR-0004) and a database per tenant (Docs
 # ADR-0015), so its database bootstrap is its own task, not db-bootstrap.sh. Everything here exists
@@ -19,8 +35,10 @@
 
 locals {
   docs_enabled = var.hosts.docs != null
+  # Docs is defined only with its migration image: an API with no way to migrate its database is the
+  # DC-01 gap this closes, so the API is never registered without docs-migrate beside it.
   docs_defined = local.docs_enabled && alltrue([
-    for v in [var.images.docs_api, var.images.docs_web, var.images.docs_antivirus, var.docs_redis_image] : v != ""
+    for v in [var.images.docs_api, var.images.docs_web, var.images.docs_antivirus, var.images.docs_migrate, var.docs_redis_image] : v != ""
   ])
 
   docs_origin      = local.docs_enabled ? "https://${var.hosts.docs}" : ""
@@ -35,6 +53,7 @@ locals {
     "METRICS_SCRAPE_TOKEN", "MAIL_RESEND_API_KEY", "CONTROL_PLANE_TOKEN",
   ]
   docs_operator_keys  = ["EDMS_OWNER_PASSWORD", "EDMS_APP_PASSWORD", "EDMS_BACKUP_PASSWORD"]
+  docs_migrate_keys   = ["DATABASE_MIGRATION_URL"] # edms_owner on the tenant database
   docs_provision_keys = ["TENANT_ID", "ADMIN_EMAIL", "ADMIN_NAME", "ADMIN_PASSWORD"]
 
   docs_secret_ref = {
@@ -251,7 +270,7 @@ module "docs_scanner" {
 # As the RDS master user: the cluster roles (Docs infra/sql/cluster/01-roles.sql, vendored in
 # scripts/), their passwords from the docs-operator bundle, edms_backup, and the tenant database
 # owned by edms_owner. Idempotent. Passwords reach psql through \getenv only. The per-database
-# grants, migrations and post-migrate SQL are docs-provision's job (Docs ops-provision).
+# grants, migrations and post-migrate SQL are docs-migrate's job (below, DC-01).
 
 locals {
   docs_dbadmin_sql = join("\n", [
@@ -379,10 +398,59 @@ resource "aws_ecs_task_definition" "docs_db_admin" {
   }])
 }
 
+# --- Migrations (run-only, DC-01) ---------------------------------------------------------------
+#
+# The munaxa-docs `migrate` image (Dockerfile target `migrate`): scripts/migrate-tenants.mjs for the
+# one tenant database, as edms_owner — the per-database SQL, `prisma migrate deploy`, the
+# post-migration SQL (row-level security, audit immutability), then `prisma migrate status`. Exit 0
+# only when all four passed; 1 when a migration failed (it stays failed: the image never resets,
+# pushes or resolves); 2 on a configuration error. Run once with `aws ecs run-task` after
+# docs-db-admin and before docs-provision or any docs-api rollout, with this module's own security
+# group (5432 to the database, 443 out); never a service.
+#
+# Like the other products' <product>-migrate tasks (ops.tf): its own execution role pulls only
+# munaxa-docs/migrate, writes only /munaxa/<env>/docs-migrate and reads only the docs-migrate bundle,
+# whose one key reaches the container through ECS secrets, never as plain environment. No task role:
+# migrating calls no AWS API. Read-only root filesystem, every capability dropped.
+
+module "docs_migrate" {
+  source = "../modules/service"
+  count  = local.docs_defined ? 1 : 0
+
+  prefix                     = local.common.prefix
+  region                     = local.common.region
+  account_id                 = var.account_id
+  cluster_arn                = local.common.cluster_arn
+  vpc_id                     = local.common.vpc_id
+  subnet_ids                 = local.common.subnet_ids
+  database_security_group_id = local.common.database_security_group_id
+  secrets_kms_key_arn        = local.common.secrets_kms_key_arn
+  log_retention_days         = local.common.log_retention_days
+
+  name   = "docs-migrate"
+  image  = var.images.docs_migrate
+  cpu    = 256
+  memory = 1024
+
+  # The single-tenant shape of migrate-tenants.mjs: DATABASE_MIGRATION_URL plus the slug it reports.
+  environment = {
+    NODE_ENV    = "production"
+    TENANT_SLUG = var.docs_tenant.slug
+  }
+  secret_arn        = aws_secretsmanager_secret.service["docs-migrate"].arn
+  secret_keys       = local.docs_migrate_keys
+  secret_version_id = lookup(var.secret_version_ids, "docs-migrate", "")
+
+  create_service   = false
+  connect_database = true
+}
+
 # --- Tenant provisioning (run-only) ------------------------------------------------------------
 #
 # The API image running provision.js for the one tenant (Docs ops-provision): single-tenant
-# profile, queue consumers off, the API's task role (the bucket). Its temporary secret
+# profile, queue consumers off, the API's task role (the bucket). It migrates nothing: it checks the
+# database first and exits 3, writing nothing, unless docs-migrate has finished (DC-01); exit 4 means
+# the tenant was already provisioned and nothing changed. Its temporary secret
 # munaxa-<env>/docs-provision/<slug> is created by the owner for one run and deleted afterwards;
 # its random suffix is unknown, so it is read by name. Run it with the docs-api security group.
 

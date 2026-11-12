@@ -220,6 +220,14 @@ run "an_image_tag_is_refused" {
   expect_failures = [var.images]
 }
 
+run "the_api_image_is_refused_as_the_docs_migration_image" {
+  command = plan
+  variables {
+    images = { docs_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:7777777777777777777777777777777777777777777777777777777777777777" }
+  }
+  expect_failures = [var.images]
+}
+
 run "the_whole_internet_is_not_an_operator_network" {
   command = plan
   variables {
@@ -272,6 +280,7 @@ run "docs_runs_in_a_session_with_its_bucket_bundles_and_tasks" {
       docs_api       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:4444444444444444444444444444444444444444444444444444444444444444"
       docs_web       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:5555555555555555555555555555555555555555555555555555555555555555"
       docs_antivirus = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/antivirus@sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      docs_migrate   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/migrate@sha256:7777777777777777777777777777777777777777777777777777777777777777"
     }
   }
 
@@ -280,8 +289,12 @@ run "docs_runs_in_a_session_with_its_bucket_bundles_and_tasks" {
     error_message = "Docs runs its API, web and scanner in a session."
   }
   assert {
-    condition     = length(aws_secretsmanager_secret.service) == 10 && contains(keys(aws_secretsmanager_secret.service), "docs-operator")
-    error_message = "Docs gets its app and operator bundles."
+    condition     = length(aws_secretsmanager_secret.service) == 11 && contains(keys(aws_secretsmanager_secret.service), "docs-operator") && contains(keys(aws_secretsmanager_secret.service), "docs-migrate")
+    error_message = "Docs gets its app, operator and migration bundles."
+  }
+  assert {
+    condition     = length(module.docs_migrate) == 1 && module.docs_migrate[0].service_name == null
+    error_message = "docs-migrate is registered as a one-off task definition, never a service, even in a session."
   }
   assert {
     condition     = length(aws_s3_bucket.files) == 2 && aws_s3_bucket.files["docs"].bucket == "munaxa-nonprod-docs-files-229251310592"
@@ -301,7 +314,7 @@ run "without_a_docs_host_there_is_no_docs" {
   command = plan
 
   assert {
-    condition     = length(module.docs_api) == 0 && length(aws_s3_bucket.files) == 1 && length(aws_iam_role.docs_db_admin_execution) == 0
+    condition     = length(module.docs_api) == 0 && length(module.docs_migrate) == 0 && length(aws_s3_bucket.files) == 1 && length(aws_iam_role.docs_db_admin_execution) == 0
     error_message = "Docs exists only where hosts.docs is set (not in prod)."
   }
 }
@@ -579,6 +592,170 @@ run "prod_never_gets_the_backstop" {
 # Config A1 (2026-11-09 report identity-config-a1-preparation): the first Testing deployment is
 # Identity only, in an environment that sets hosts.docs. postgres_image is set for the products'
 # db-admin, which must not also register Docs' db-admin task definition.
+# DC-01: the Docs migration path (report 2026-11-11-docs-migration-path). docs-migrate is the
+# munaxa-docs `migrate` image as a one-off task: its own execution role, log group and security
+# group; DATABASE_MIGRATION_URL only through ECS secrets from <env>/docs-migrate; no task role.
+run "docs_migrate_runs_the_migration_image_with_only_its_owner_url" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["docs-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-migrate-AbCdEf" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["docs-api"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-api-GhIjKl" }
+  }
+  override_resource {
+    target          = module.docs_migrate[0].aws_iam_role.execution
+    override_during = plan
+    values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-docs-migrate-execution" }
+  }
+  override_resource {
+    target          = module.docs_api[0].aws_iam_role.execution
+    override_during = plan
+    values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-docs-api-execution" }
+  }
+  override_resource {
+    target          = module.docs_migrate[0].aws_security_group.this
+    override_during = plan
+    values          = { id = "sg-0d0c5d0c5d0c5d0c5" }
+  }
+
+  variables {
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator.test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+      docs        = "docs.test.munaxa.com"
+    }
+    postgres_image     = "public.ecr.aws/docker/library/postgres@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    docs_redis_image   = "public.ecr.aws/docker/library/redis@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    secret_version_ids = { docs-migrate = "11111111-2222-3333-4444-555555555555" }
+    images = {
+      docs_api       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      docs_web       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      docs_antivirus = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/antivirus@sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      docs_migrate   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/migrate@sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    }
+  }
+
+  assert {
+    condition     = length(module.docs_migrate) == 1 && module.docs_migrate[0].service_name == null
+    error_message = "docs-migrate is a task definition only: no ECS service, so it never runs on its own."
+  }
+  assert {
+    condition = (
+      jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].image == var.images.docs_migrate &&
+      jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].image != var.images.docs_api
+    )
+    error_message = "docs-migrate runs the images.docs_migrate digest, not the API image."
+  }
+  assert {
+    condition = jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].secrets == [{
+      name      = "DATABASE_MIGRATION_URL"
+      valueFrom = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-migrate-AbCdEf:DATABASE_MIGRATION_URL::11111111-2222-3333-4444-555555555555"
+    }]
+    error_message = "DATABASE_MIGRATION_URL is the one secret, from the docs-migrate bundle at its pinned version."
+  }
+  assert {
+    condition = (
+      { for e in jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].environment : e.name => e.value } == { NODE_ENV = "production", TENANT_SLUG = "munaxa-internal" } &&
+      !strcontains(jsonencode(jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].environment), "postgres")
+    )
+    error_message = "The plain environment is NODE_ENV and the tenant slug: no URL, never the migration URL as plaintext."
+  }
+  assert {
+    condition = alltrue([
+      for k in ["docs-api", "docs-operator", "rds!", "DATABASE_URL\"", "TENANT_CATALOGUE", "EDMS_", "REDIS", "JWT_"] :
+      !strcontains(module.docs_migrate[0].task_definition_container_definitions, k)
+    ])
+    error_message = "docs-migrate names no other bundle, no RDS master secret, no application role URL and no API secret."
+  }
+  assert {
+    condition = (
+      jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].readonlyRootFilesystem == true &&
+      jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].linuxParameters.capabilities.drop == ["ALL"] &&
+      !can(jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].portMappings) &&
+      !can(jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].healthCheck) &&
+      !can(jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].command)
+    )
+    error_message = "docs-migrate runs read-only with no capabilities, no port and no health check, with the image's own command."
+  }
+  assert {
+    condition = module.docs_migrate[0].execution_role_grants == {
+      image_repository_arn = "arn:aws:ecr:eu-central-1:229251310592:repository/munaxa-docs/migrate"
+      log_group            = "/munaxa/nonprod/docs-migrate"
+      secret_arn           = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-migrate-AbCdEf"
+    }
+    error_message = "The execution role pulls only munaxa-docs/migrate, writes only its own log group and reads only docs-migrate."
+  }
+  assert {
+    condition     = module.docs_migrate[0].task_role_arn == null
+    error_message = "docs-migrate has no task role: migrating calls no AWS API."
+  }
+  assert {
+    condition = (
+      module.docs_migrate[0].execution_role_arn != module.docs_api[0].execution_role_arn &&
+      module.docs_api[0].execution_role_grants.secret_arn == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-api-GhIjKl"
+    )
+    error_message = "docs-migrate and docs-api have separate execution roles; the API's still reads only docs-api, never docs-migrate."
+  }
+  assert {
+    condition     = !strcontains(module.docs_api[0].task_definition_container_definitions, "docs-migrate") && !strcontains(module.docs_api[0].task_definition_container_definitions, "DATABASE_MIGRATION_URL") && !strcontains(aws_ecs_task_definition.docs_provision[0].container_definitions, "docs-migrate")
+    error_message = "Neither the API nor docs-provision can read the migration URL."
+  }
+  assert {
+    condition     = output.run_task_network.docs_migrate_definition == "munaxa-nonprod-docs-migrate" && output.run_task_network.docs_migrate_group == module.docs_migrate[0].security_group_id
+    error_message = "run_task_network names the docs-migrate definition and the group it runs with."
+  }
+  assert {
+    condition     = length(module.docs_api) == 1 && module.docs_api[0].service_name == null && length(aws_ecs_task_definition.docs_provision) == 1
+    error_message = "With services off, the API is registered but not running: nothing starts before the operator has run docs-migrate."
+  }
+}
+
+run "docs_without_its_migration_image_is_not_defined" {
+  command = plan
+
+  variables {
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator.test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+      docs        = "docs.test.munaxa.com"
+    }
+    edge_enabled     = true
+    services_enabled = true
+    postgres_image   = "public.ecr.aws/docker/library/postgres@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    images = {
+      docs_api       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      docs_web       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      docs_antivirus = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/antivirus@sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  }
+
+  assert {
+    condition = (
+      length(module.docs_api) == 0 && length(module.docs_web) == 0 && length(module.docs_migrate) == 0 &&
+      length(aws_ecs_task_definition.docs_provision) == 0 && length(aws_ecs_task_definition.docs_db_admin) == 0 &&
+      !contains(keys(aws_secretsmanager_secret.service), "docs-migrate")
+    )
+    error_message = "Without images.docs_migrate no Docs service or task is registered: the API never exists without its migration path."
+  }
+  assert {
+    condition     = length(aws_iam_role.docs_db_admin_execution) == 1 && contains(keys(aws_secretsmanager_secret.service), "docs-operator") && contains(keys(aws_secretsmanager_secret.service), "docs-api")
+    error_message = "What follows hosts.docs alone (applied in G3) is unchanged."
+  }
+}
+
 run "identity_only_config_a1_registers_identity_and_nothing_of_another_product" {
   command = plan
 
@@ -605,8 +782,12 @@ run "identity_only_config_a1_registers_identity_and_nothing_of_another_product" 
     error_message = "Config A1 registers Identity, its migration, its bootstrap and db-admin."
   }
   assert {
-    condition     = length(aws_ecs_task_definition.docs_db_admin) == 0 && length(aws_ecs_task_definition.docs_provision) == 0 && length(module.docs_api) == 0
+    condition     = length(aws_ecs_task_definition.docs_db_admin) == 0 && length(aws_ecs_task_definition.docs_provision) == 0 && length(module.docs_api) == 0 && length(module.docs_migrate) == 0
     error_message = "Config A1 registers no Docs task definition, although postgres_image and hosts.docs are set."
+  }
+  assert {
+    condition     = sort(keys(aws_secretsmanager_secret.service)) == sort(["docs-api", "docs-operator", "identity", "control-api", "identity-migrate", "control-migrate", "work-migrate", "school-migrate", "work-api", "school-api"])
+    error_message = "Config A1's ten bundles are unchanged by DC-01: no docs-migrate bundle until Docs is defined."
   }
   assert {
     condition     = length(aws_iam_role.docs_db_admin_execution) == 1

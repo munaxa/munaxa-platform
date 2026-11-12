@@ -47,8 +47,11 @@ output "run_task_network" {
     db_admin_group      = aws_security_group.db_admin.id
     migrate_groups      = merge({ for k, m in module.migrate : k => m.security_group_id }, length(module.control_migrate) > 0 ? { control = module.control_migrate[0].security_group_id } : {})
     db_admin_definition = length(aws_ecs_task_definition.db_admin) > 0 ? aws_ecs_task_definition.db_admin[0].family : null
-    # Docs: docs-db-admin runs with db_admin_group; docs-provision with docs_api_group.
+    # Docs, in this order: docs-db-admin with db_admin_group; docs-migrate with docs_migrate_group
+    # (exit code 0 required, DC-01); docs-provision with docs_api_group.
     docs_db_admin_definition  = length(aws_ecs_task_definition.docs_db_admin) > 0 ? aws_ecs_task_definition.docs_db_admin[0].family : null
+    docs_migrate_definition   = length(module.docs_migrate) > 0 ? "${local.prefix}-docs-migrate" : null
+    docs_migrate_group        = length(module.docs_migrate) > 0 ? module.docs_migrate[0].security_group_id : null
     docs_provision_definition = length(aws_ecs_task_definition.docs_provision) > 0 ? aws_ecs_task_definition.docs_provision[0].family : null
     docs_api_group            = length(module.docs_api) > 0 ? module.docs_api[0].security_group_id : null
     # identity-bootstrap runs with db_admin_group, after identity-migrate.

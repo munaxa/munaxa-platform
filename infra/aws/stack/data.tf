@@ -142,6 +142,8 @@ resource "aws_db_instance" "main" {
 # | <env>/<product>-migrate  | DATABASE_MIGRATION_URL (the owner role)                             |
 # | <env>/docs-api           | docs.tf local.docs_app_keys (only with hosts.docs)                  |
 # | <env>/docs-operator      | EDMS_OWNER/APP/BACKUP_PASSWORD (only with hosts.docs)               |
+# | <env>/docs-migrate       | DATABASE_MIGRATION_URL, edms_owner on the tenant database (only     |
+# |                          | once every Docs image, docs_migrate included, is set; DC-01)        |
 
 locals {
   # Identity's bundle. MFA_ENCRYPTION_KEYS is the hardened image's dedicated key ring (Identity
@@ -157,6 +159,11 @@ locals {
   secret_keys = merge(local.docs_enabled ? {
     docs-api      = local.docs_app_keys      # docs.tf; the Docs API and docs-provision
     docs-operator = local.docs_operator_keys # docs-db-admin only, never the API
+    } : {}, local.docs_defined ? {
+    # docs-migrate only (DC-01). Created with the Docs task definitions rather than with hosts.docs,
+    # so no current environment's plan changes until Docs is enabled; the owner writes its one value
+    # before the first docs-migrate run.
+    docs-migrate = local.docs_migrate_keys
     } : {}, {
     identity         = local.identity_secret_keys
     control-api      = ["DATABASE_URL"]
