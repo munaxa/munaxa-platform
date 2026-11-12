@@ -1,0 +1,293 @@
+ × src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > limits one address to its allowance, then 429 with Retry-After, and keeps refusing
+ ✓ src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > counts every spelling of the route against the same counter, and refuses every spelling
+ ✓ src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > counts a form post the same as JSON
+ ✓ src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > does not apply to another method or another route
+ ✓ src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > limits one identifier from any number of addresses, whatever its case or whitespace
+ ✓ src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > does not charge a shared address for an identifier refused on its own count
+ ✓ src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > lets a whole shared address sign in: many people, one address, within the allowance
+ ✓ src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > shares one count between two application instances on one store
+ ✓ src/auth-edge-limits.http.integration.test.ts > sign-in: POST /api/auth/login > keeps one lockout per account whatever the spelling (no respelling around it)
+ ✓ src/auth-edge-limits.http.integration.test.ts > review round 1 > counts the default organisation once: leaving it out, blank or naming it is one budget
+ ✓ src/auth-edge-limits.http.integration.test.ts > review round 1 > scopes the identifier limit by organisation: a made-up organisation cannot hold a real sign-in
+ ✓ src/auth-edge-limits.http.integration.test.ts > review round 1 > counts an IPv6 client by its /64: rotating the interface identifier does not escape
+ ✓ src/auth-edge-limits.http.integration.test.ts > review round 1 > keeps a percent-encoded introspection spelling (a 404) under the browser address limit
+ ✓ src/auth-edge-limits.http.integration.test.ts > password reset: POST /api/auth/password/forgot and /reset > shares one per-address limit across request and completion and their spellings
+ ✓ src/auth-edge-limits.http.integration.test.ts > second factor and reauthentication > limits one challenge, and leaves another challenge on the same address alone
+ ✓ src/auth-edge-limits.http.integration.test.ts > second factor and reauthentication > limits one session by its sid on the session routes
+ ✓ src/auth-edge-limits.http.integration.test.ts > second factor and reauthentication > with no usable identity (none, or a forged cookie per request), the address limit still holds
+ ✓ src/auth-edge-limits.http.integration.test.ts > introspection keeps its own limits > is not refused because sign-in is exhausted on the same address, and does not count toward it
+ ✓ src/auth-edge-limits.http.integration.test.ts > when the counter store cannot be read > refuses credential routes with 503 and leaves other routes working
+ ✓ src/auth-edge-limits.http.integration.test.ts > when the counter store hangs > turns a hung command into a refusal within the command timeout, not a held request
+ ✓ src/auth-edge-limits.http.integration.test.ts > the edge limiter on a real Redis, under a controlled clock > admits again once the window has passed, and not before
+ ✓ src/auth-edge-limits.http.integration.test.ts > the edge limiter on a real Redis, under a controlled clock > admits exactly the allowance from concurrent requests on two connections
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > /api/auth/login is /api/auth/login
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > /API/AUTH/LOGIN/ is /api/auth/login
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > //api//auth//login// is /api/auth/login
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > /api/auth/%6Cogin?x=1#y is /api/auth/login
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > https://identity.munaxa.com:443/api/auth/login is /api/auth/login
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > /api/auth/a/../login is /api/auth/login
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > /api/auth/introspect is /api/auth/introspect
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > / is /
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > matches only the intended method and route for each policy
+ ✓ src/auth-edge-limits.http.integration.test.ts > route identity > never carries an identifier or a credential in a counter key
+ ✓ src/cache-connection.integration.test.ts > the cache connection after a failover > recognises only READONLY as a replica refusal
+ ✓ src/cache-connection.integration.test.ts > the cache connection after a failover > reconnects on READONLY and applies the write once on the new primary
+ ✓ src/cache-connection.integration.test.ts > the cache connection after a failover > fails closed while the store is gone and recovers without a restart
+ ✓ src/cache-connection.integration.test.ts > the cache connection after a failover > refuses a wrong password rather than running unauthenticated
+ ✓ src/cache-connection.integration.test.ts > the cache connection over TLS > builds TLS options with verification on for rediss:// and none for redis://
+ ✓ src/cache-connection.integration.test.ts > the cache connection over TLS > connects with rediss://, the password and the trusted CA
+ ✓ src/cache-connection.integration.test.ts > the cache connection over TLS > refuses a certificate from another CA
+ ✓ src/cache-connection.integration.test.ts > the cache connection over TLS > refuses a certificate for another host name
+ ✓ src/cache-connection.integration.test.ts > the cache connection over TLS > cannot talk plaintext to a TLS-only store
+ ✓ src/cache-connection.integration.test.ts > the cache connection over TLS > refuses the wrong password over TLS
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > creates no session and no token until the second factor is proven
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > never accepts the challenge as an access token
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > signs in with a valid code, recording the methods used and mfaSatisfied
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > spends the challenge exactly once
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > lets exactly one of many concurrent redemptions across replicas through
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > refuses a replayed code on a fresh challenge, from another replica
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > refuses the code that confirmed enrollment
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > destroys the challenge after its attempt limit
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > checks at most MFA_CHALLENGE_MAX_ATTEMPTS answers to one challenge, however many arrive at once
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > checks at most MFA_ACCOUNT_MAX_FAILURES answers for the account across concurrent challenges
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > locks second-factor checks for the account across challenges
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > is bound to the browser it was issued to
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > dies when the account’s token version moves (password change or reset)
+ ✓ src/mfa-flow.integration.test.ts > signing in to an account with MFA > accepts a recovery code once, however it is typed
+ ✓ src/mfa-flow.integration.test.ts > policy-required enrollment at sign-in > admits a privileged account without MFA only to enrollment, then signs it in
+ ✓ src/mfa-flow.integration.test.ts > policy-required enrollment at sign-in > ends sessions from before enforcement when the account enrolls at sign-in
+ ✓ src/mfa-flow.integration.test.ts > policy-required enrollment at sign-in > does not let an enrollment challenge replace an existing factor
+ ✓ src/mfa-flow.integration.test.ts > policy-required enrollment at sign-in > refuses to start without MFA keys when policy is enforced
+ ✓ src/mfa-flow.integration.test.ts > policy-required enrollment at sign-in > does not challenge an account that policy does not cover
+ ✓ src/mfa-flow.integration.test.ts > sensitive changes require recent reauthentication > refuses enrollment, replacement, regeneration and removal from a stale session
+ ✓ src/mfa-flow.integration.test.ts > sensitive changes require recent reauthentication > checks at most MFA_ACCOUNT_MAX_FAILURES factors when reauthentications arrive at once
+ ✓ src/mfa-flow.integration.test.ts > sensitive changes require recent reauthentication > requires the second factor, not just the password, to reauthenticate an enrolled account
+ ✓ src/mfa-flow.integration.test.ts > sensitive changes require recent reauthentication > refuses a password change from an enrolled account until it reauthenticates
+ ✓ src/mfa-flow.integration.test.ts > sensitive changes require recent reauthentication > replaces the factor only once confirmed, and signs out every other session
+ ✓ src/mfa-flow.integration.test.ts > sensitive changes require recent reauthentication > removes the factor when policy allows, and refuses when it requires it
+ ✓ src/session-management.integration.test.ts > listing your own sessions > returns only the caller’s live sessions, marking the current one
+ ✓ src/session-management.integration.test.ts > listing your own sessions > returns an allow-listed shape: no token version, attributes, auth methods, raw agent or full address
+ ✓ src/session-management.integration.test.ts > listing your own sessions > omits the network entirely when the deployment policy hides it
+ ✓ src/session-management.integration.test.ts > listing your own sessions > leaves out sessions past their idle or absolute deadline, and refuses their tokens
+ ✓ src/session-management.integration.test.ts > listing your own sessions > keeps the configured idle and absolute timeouts, unchanged
+ ✓ src/session-management.integration.test.ts > who counts as the caller > refuses no token, a malformed token and a token signed with another key
+ ✓ src/session-management.integration.test.ts > who counts as the caller > refuses a genuine token without a session id
+ ✓ src/session-management.integration.test.ts > who counts as the caller > refuses a genuine token whose subject does not own the session it names
+ ✓ src/session-management.integration.test.ts > revoking one session > ends that session and its refresh lineage, and leaves the current one alone
+ ✓ src/session-management.integration.test.ts > revoking one session > may end the current session, which is a logout
+ ✓ src/session-management.integration.test.ts > revoking one session > answers not-found for another person’s session, and revokes nothing
+ ✓ src/session-management.integration.test.ts > revoking one session > answers not-found for a session in another organisation, and revokes nothing
+ ✓ src/session-management.integration.test.ts > revoking one session > answers the same not-found for an unknown, a malformed and an already-revoked id
+ ✓ src/session-management.integration.test.ts > revoking one session > is decided once when two requests revoke the same session at the same moment
+ ✓ src/session-management.integration.test.ts > revoking every other session > keeps exactly the current session and ends the rest with their lineages
+ ✓ src/session-management.integration.test.ts > refresh never restores a revoked session > refuses a still-unexpired refresh token whose session was revoked
+ ✓ src/session-management.integration.test.ts > refresh never restores a revoked session > cannot un-revoke a session through a stale whole-record write
+ ✓ src/session-management.integration.test.ts > refresh never restores a revoked session > ends revoked under concurrent refreshes and revocation, every time
+ ✓ src/session-management.integration.test.ts > refresh never restores a revoked session > revokes the session when a rotated refresh token is presented again
+ ✓ src/session-management.integration.test.ts > refresh never restores a revoked session > refuses every token minted before a token-version bump
+ ✓ src/session-management.integration.test.ts > account-wide revocation > revokes every session and lineage for a password reset
+ ✓ src/session-management.integration.test.ts > account-wide revocation > keeps the named session when asked to, for an MFA change made from it
+ ✓ src/session-management.integration.test.ts > account-wide revocation > ends everything on suspected compromise, and the person can sign in again
+ ✓ src/session-management.integration.test.ts > account-wide revocation > ends everything when the account is disabled, and sign-in is refused
+ ✓ src/session-management.integration.test.ts > account-wide revocation > refuses a refresh for a disabled account even before revocation ran
+ ✓ src/session-management.integration.test.ts > logout > is idempotent
+ ✓ src/session-management.integration.test.ts > logout > still works with an expired access token Identity issued
+ ✓ src/session-management.integration.test.ts > logout > does nothing for a forged token naming somebody else’s session
+ ✓ src/session-management.integration.test.ts > the HTTP surface > answers 401 without a session, 404 for a foreign id, and never caches
+ ✓ src/session-management.integration.test.ts > the HTTP surface > clears the cookies when the current session is the one revoked
+ ✓ src/session-management.integration.test.ts > the HTTP surface > answers 503, not 500 or 401, when the database is unavailable
+ ✓ src/session-management.integration.test.ts > the audit trail of a revocation > records revoking one session and revoking the others, with no secrets in it
+ ✓ src/session-management.integration.test.ts > the audit trail of a revocation > records nothing for a refused revocation of somebody else’s session
+ ✓ src/session-management.integration.test.ts > the audit trail of a revocation > records account disablement and suspected compromise with their actor
+ ✓ src/session-management.integration.test.ts > the audit trail of a revocation > does not undo a revocation when the audit sink fails
+ ✓ src/token-introspection.http.integration.test.ts > GET /api/auth/introspect through the application > is mounted under /api and answers a live token with its own claims, never cached
+ ✓ src/token-introspection.http.integration.test.ts > GET /api/auth/introspect through the application > answers inactive once every session of the account is revoked
+ ✓ src/token-introspection.http.integration.test.ts > GET /api/auth/introspect through the application > answers inactive, not an error, without a bearer token
+ ✓ src/token-introspection.http.integration.test.ts > GET /api/auth/introspect through the application > is not held to the browser per-address limit, which a product NAT address would exhaust
+ ✓ src/token-introspection.http.integration.test.ts > GET /api/auth/introspect through the application > limits answers per account, refusing that account with 429 and leaving others alone
+ ✓ src/token-introspection.http.integration.test.ts > GET /api/auth/introspect through the application > carves out every spelling Express routes to introspection
+ ✓ src/token-introspection.integration.test.ts > a live session > is active, and the answer names the token’s own subject, organisation and session only
+ ✓ src/token-introspection.integration.test.ts > a live session > stays active across refresh, for the new token and the one it replaced
+ ✓ src/token-introspection.integration.test.ts > every revocation route ends introspection > logout
+ ✓ src/token-introspection.integration.test.ts > every revocation route ends introspection > revoking one session leaves the others active
+ ✓ src/token-introspection.integration.test.ts > every revocation route ends introspection > revoking the other sessions keeps exactly the current one
+ ✓ src/token-introspection.integration.test.ts > every revocation route ends introspection > a password change ends every session, the one it was made from included
+ ✓ src/token-introspection.integration.test.ts > every revocation route ends introspection > password recovery ends every session, through the real mailed link
+ ✓ src/token-introspection.integration.test.ts > every revocation route ends introspection > suspected-compromise lockdown
+ ✓ src/token-introspection.integration.test.ts > every revocation route ends introspection > account disablement, including before the session revocation step has run
+ ✓ src/token-introspection.integration.test.ts > every revocation route ends introspection > a token-version bump alone, as an MFA removal or an operator reset performs it
+ ✓ src/token-introspection.integration.test.ts > nothing brings a revoked session back > a refresh after revocation is refused, and mints nothing that introspects active
+ ✓ src/token-introspection.integration.test.ts > nothing brings a revoked session back > a replayed refresh token revokes the session, and both lineages’ access tokens go inactive
+ ✓ src/token-introspection.integration.test.ts > nothing brings a revoked session back > every access token minted while a refresh races a revocation is inactive afterwards
+ ✓ src/token-introspection.integration.test.ts > tokens that never stood > no token, a malformed one, another key’s, a sessionless one and an expired one are inactive
+ ✓ src/token-introspection.integration.test.ts > tokens that never stood > a token naming a session of another organisation, or of another person, is inactive
+ ✓ src/token-introspection.integration.test.ts > when Identity cannot tell > answers unavailable, never active and never inactive
+ ✓ src/token-introspection.integration.test.ts > the HTTP surface > reads only a Bearer header, answers no-store, and never echoes or logs the token
+ ✓ src/token-introspection.integration.test.ts > the HTTP surface > answers 503 with Retry-After when a dependency fails, and logs no token
+ ✓ src/password-recovery.integration.test.ts > the request > answers identically for a known, an unknown and a disabled account and an unknown organisation
+ ✓ src/password-recovery.integration.test.ts > the request > answers before any account is looked up, so latency cannot depend on the account
+ ✓ src/password-recovery.integration.test.ts > the request > builds the link from configuration only, never from the request
+ ✓ src/password-recovery.integration.test.ts > the request > keeps only the newest of several outstanding links usable
+ ✓ src/password-recovery.integration.test.ts > the request > stores only a hash of the token
+ ✓ src/password-recovery.integration.test.ts > the request > revokes the token when delivery fails, so no live credential is left behind
+ ✓ src/password-recovery.integration.test.ts > the request > creates nothing and says so when no transport is configured
+ ✓ src/password-recovery.integration.test.ts > the request > is off entirely when disabled
+ ✓ src/password-recovery.integration.test.ts > the request > limits requests per identifier and per address, whether or not the account exists
+ ✓ src/password-recovery.integration.test.ts > the request > does not charge the address for a refused identifier: one person cannot spend a school’s allowance
+ ✓ src/password-recovery.integration.test.ts > the request > keeps one count after a refusal (the address limit is not adaptive)
+ ✓ src/password-recovery.integration.test.ts > the request > fails closed when the shared limiter store is unreachable
+ ✓ src/password-recovery.integration.test.ts > the request > never logs a token, an address or a link
+ ✓ src/password-recovery.integration.test.ts > inspecting a link > never consumes it, however many times it is fetched
+ ✓ src/password-recovery.integration.test.ts > inspecting a link > refuses a token from another organisation
+ ✓ src/password-recovery.integration.test.ts > completing a reset > changes the password, bumps the token version and revokes every session and refresh lineage
+ ✓ src/password-recovery.integration.test.ts > completing a reset > is single use
+ ✓ src/password-recovery.integration.test.ts > completing a reset > lets exactly one of many concurrent uses win
+ ✓ src/password-recovery.integration.test.ts > completing a reset > refuses an expired link
+ ✓ src/password-recovery.integration.test.ts > completing a reset > refuses a link for an account disabled after it was issued
+ ✓ src/password-recovery.integration.test.ts > completing a reset > enforces the password policy and the breach check without spending the link
+ ✓ src/password-recovery.integration.test.ts > completion is atomic > rolls everything back when the session and refresh revocation fails
+ ✓ src/password-recovery.integration.test.ts > completion is atomic > rolls everything back when the token-version bump fails
+ ✓ src/password-recovery.integration.test.ts > completion is atomic > rolls everything back when hashing the new password fails
+ ✓ src/password-recovery.integration.test.ts > completion is atomic > rolls everything back when the database connection dies mid-way (a crashed process)
+ ✓ src/password-recovery.integration.test.ts > the unit of work > refuses to touch another organisation, and does not nest
+ ✓ src/password-recovery.integration.test.ts > the HTTP surface > returns byte-identical responses for a known and an unknown address, whatever the Host header says
+ ✓ src/password-recovery.integration.test.ts > the HTTP surface > serves the reset form on GET without consuming the link, and completes on POST
+ ✓ src/password-recovery.integration.test.ts > the HTTP surface > answers 404 everywhere when recovery is disabled and 503 when it cannot deliver
+ ✓ src/password-recovery.integration.test.ts > the outbox transport > writes each message to its own owner-only file and never overwrites
+ ✓ src/operator.integration.test.ts > mfa-reset (lost device) > changes nothing without --apply, and names the account only by id
+ ✓ src/operator.integration.test.ts > mfa-reset (lost device) > requires a reference to apply, and refuses one that is not a plain ticket id
+ ✓ src/operator.integration.test.ts > mfa-reset (lost device) > removes the factor and its codes, ends every session, and audits the reference
+ ✓ src/operator.integration.test.ts > mfa-reset (lost device) > ends the sessions before removing the factor, so a failure between them is safe and a re-run completes
+ ✓ src/operator.integration.test.ts > mfa-reset (lost device) > takes exactly one of --account-id or --account
+ ✓ src/operator.integration.test.ts > mfa-reset (lost device) > sends a policy-covered account straight to enrollment after a reset
+ ✓ src/operator.integration.test.ts > mfa-reset (lost device) > refuses an unknown organisation or account without saying which exists
+ ✓ src/operator.integration.test.ts > account-disable (containment) > disables the account, ends every session and refuses the next sign-in
+ ✓ src/operator.integration.test.ts > sessions-revoke-unsatisfied (turning enforcement on) > ends only password-only sessions of accounts the policy covers
+ ✓ src/operator.integration.test.ts > mfa-reencrypt (key rotation) > re-seals secrets under a new primary key, and every factor still verifies
+ ✓ src/operator.integration.test.ts > the command line > parses flags and refuses stray arguments
+ ✓ src/password-change.integration.test.ts > changing a password while signed in > changes it and ends every session, refresh lineage and reset link, the current one included
+ ✓ src/password-change.integration.test.ts > changing a password while signed in > requires the current password and changes nothing without it
+ ✓ src/password-change.integration.test.ts > changing a password while signed in > refuses before touching anything when the second-factor step-up is missing or unavailable
+ ✓ src/password-change.integration.test.ts > changing a password while signed in > refuses without a valid session
+ ✓ src/password-change.integration.test.ts > changing a password while signed in > enforces the password policy and the breach check
+ ✓ src/password-change.integration.test.ts > changing a password while signed in > limits guesses at the current password per account, and fails closed without the cache
+ ✓ src/password-change.integration.test.ts > changing a password while signed in > rolls everything back when the revocation fails part-way
+ ✓ src/mfa-store.integration.test.ts > the TOTP algorithm in use is Platform’s, and it is RFC 6238 > at T=59 the code is 94287082
+ ✓ src/mfa-store.integration.test.ts > the TOTP algorithm in use is Platform’s, and it is RFC 6238 > at T=1111111109 the code is 07081804
+ ✓ src/mfa-store.integration.test.ts > the TOTP algorithm in use is Platform’s, and it is RFC 6238 > at T=1111111111 the code is 14050471
+ ✓ src/mfa-store.integration.test.ts > the TOTP algorithm in use is Platform’s, and it is RFC 6238 > at T=1234567890 the code is 89005924
+ ✓ src/mfa-store.integration.test.ts > the TOTP algorithm in use is Platform’s, and it is RFC 6238 > at T=2000000000 the code is 69279037
+ ✓ src/mfa-store.integration.test.ts > the TOTP algorithm in use is Platform’s, and it is RFC 6238 > at T=20000000000 the code is 65353130
+ ✓ src/mfa-store.integration.test.ts > the TOTP algorithm in use is Platform’s, and it is RFC 6238 > accepts one step of drift either side and no more
+ ✓ src/mfa-store.integration.test.ts > enrollment > does not count until it is confirmed with a valid code
+ ✓ src/mfa-store.integration.test.ts > enrollment > expires a pending enrollment that is not confirmed in time
+ ✓ src/mfa-store.integration.test.ts > enrollment > refuses to activate a secret replaced while it was being confirmed
+ ✓ src/mfa-store.integration.test.ts > enrollment > keeps the current factor in force while a replacement is pending, then replaces it whole
+ ✓ src/mfa-store.integration.test.ts > the active view > cannot start an enrollment over the live factor, nor confirm one
+ ✓ src/mfa-store.integration.test.ts > the secret at rest > is an AES-256-GCM envelope under the primary key, never the secret itself
+ ✓ src/mfa-store.integration.test.ts > the secret at rest > is refused by the store if it arrives unsealed
+ ✓ src/mfa-store.integration.test.ts > the secret at rest > is refused by the database if it is not an envelope
+ ✓ src/mfa-store.integration.test.ts > the secret at rest > does not open for another account: the envelope is bound to tenant, account and method
+ ✓ src/mfa-store.integration.test.ts > the secret at rest > does not open under a different key with the same id
+ ✓ src/mfa-store.integration.test.ts > the secret at rest > does not open when the key it names has been dropped from the ring
+ ✓ src/mfa-store.integration.test.ts > key rotation > keeps old secrets and recovery codes working, then re-seals under the new primary
+ ✓ src/mfa-store.integration.test.ts > replay > refuses the same code twice on one replica
+ ✓ src/mfa-store.integration.test.ts > replay > refuses a code on one replica that another replica has accepted
+ ✓ src/mfa-store.integration.test.ts > replay > accepts exactly one of many concurrent submissions of one code
+ ✓ src/mfa-store.integration.test.ts > replay > refuses an invalid code
+ ✓ src/mfa-store.integration.test.ts > recovery codes > are stored only as keyed hashes
+ ✓ src/mfa-store.integration.test.ts > recovery codes > are single use
+ ✓ src/mfa-store.integration.test.ts > recovery codes > are spent exactly once under concurrent presentation across replicas
+ ✓ src/mfa-store.integration.test.ts > recovery codes > accept the code however it is cased, and refuse anything else
+ ✓ src/mfa-store.integration.test.ts > recovery codes > are replaced, not added to, when a new set is saved
+ ✓ src/mfa-store.integration.test.ts > recovery codes > cannot be saved or spent without an active factor
+ ✓ src/mfa-store.integration.test.ts > recovery codes > are not spendable through the enrollment view
+ ✓ src/mfa-store.integration.test.ts > tenant isolation > does not show one organisation’s factor to another, even for the same account id
+ ✓ src/mfa-store.integration.test.ts > tenant isolation > shows nothing at all without a tenant context
+ ✓ src/mfa-store.integration.test.ts > tenant isolation > cannot write a factor into another organisation
+ ✓ src/mfa-store.integration.test.ts > tenant isolation > carries the same tenant_isolation policy as every other tenant table
+ ✓ src/mfa-store.integration.test.ts > production startup > refuses to run without MFA
+ ✓ src/mfa-store.integration.test.ts > production startup > refuses process-local replay protection
+ ✓ src/mfa-store.integration.test.ts > production startup > runs with a Redis replay guard
+ ✓ src/mfa-store.integration.test.ts > production startup > allows development to run without MFA
+ ✓ src/mfa-http.integration.test.ts > the MFA routes over HTTP > enrolls from a signed-in session, returning the secret and the codes once, no-store
+ ✓ src/mfa-http.integration.test.ts > the MFA routes over HTTP > answers sign-in with a strict, short-lived challenge cookie and no session cookie
+ ✓ src/mfa-http.integration.test.ts > the MFA routes over HTTP > does not let the challenge cookie stand in for a session anywhere
+ ✓ src/mfa-http.integration.test.ts > the MFA routes over HTTP > redeems the challenge into session cookies and clears it
+ ✓ src/mfa-http.integration.test.ts > the MFA routes over HTTP > never writes a code, a secret, a recovery code or a challenge to the log
+ ✓ src/conformance.integration.test.ts > the session store > SessionStorePort conformance > round-trips a session
+ ✓ src/conformance.integration.test.ts > the session store > SessionStorePort conformance > does not return a session to another tenant
+ ✓ src/conformance.integration.test.ts > the session store > SessionStorePort conformance > does not list another user’s sessions
+ ✓ src/conformance.integration.test.ts > the session store > SessionStorePort conformance > refuses to delete another tenant’s session
+ ✓ src/conformance.integration.test.ts > the session store > SessionStorePort conformance > removes sessions past either deadline
+ ✓ src/conformance.integration.test.ts > the session store > SessionStorePort conformance > createWithinLimit, when implemented, never exceeds the limit under concurrency
+ ✓ src/conformance.integration.test.ts > the session store > SessionStorePort conformance > createWithinLimit refuses rather than evicting when told to deny
+ ✓ src/conformance.integration.test.ts > the refresh-token store > RefreshTokenStorePort conformance > finds a saved record by hash, scoped to its tenant
+ ✓ src/conformance.integration.test.ts > the refresh-token store > RefreshTokenStorePort conformance > markRotated has exactly one winner under concurrency
+ ✓ src/conformance.integration.test.ts > the refresh-token store > RefreshTokenStorePort conformance > markRotated records the winner’s replacement, not a loser’s
+ ✓ src/conformance.integration.test.ts > the refresh-token store > RefreshTokenStorePort conformance > markRotated refuses a record from another tenant
+ ✓ src/conformance.integration.test.ts > the refresh-token store > RefreshTokenStorePort conformance > markRotated returns false for an unknown record
+ ✓ src/conformance.integration.test.ts > the refresh-token store > RefreshTokenStorePort conformance > revokeFamily revokes every live token once and is idempotent
+ ✓ src/conformance.integration.test.ts > the refresh-token store > RefreshTokenStorePort conformance > revokeFamily under concurrency revokes each token exactly once in total
+ ✓ src/conformance.integration.test.ts > the refresh-token store > RefreshTokenStorePort conformance > revokeForUser leaves other users alone
+ ✓ src/conformance.integration.test.ts > the reset-token store > ResetTokenStorePort conformance > finds a saved token by hash, scoped to its tenant
+ ✓ src/conformance.integration.test.ts > the reset-token store > ResetTokenStorePort conformance > markConsumed has exactly one winner under concurrency
+ ✓ src/conformance.integration.test.ts > the reset-token store > ResetTokenStorePort conformance > markConsumed refuses a revoked token
+ ✓ src/conformance.integration.test.ts > the reset-token store > ResetTokenStorePort conformance > markConsumed refuses another tenant, and an unknown token
+ ✓ src/conformance.integration.test.ts > the reset-token store > ResetTokenStorePort conformance > revokeForUser leaves a consumed token alone and reports only what it revoked
+ ✓ src/row-level-security.integration.test.ts > the role the service connects as > is not a superuser and cannot bypass row-level security
+ ✓ src/row-level-security.integration.test.ts > the role the service connects as > cannot grant itself the bypass
+ ✓ src/row-level-security.integration.test.ts > the role the service connects as > cannot write an organisation, because provisioning is not the application’s to do
+ ✓ src/row-level-security.integration.test.ts > the role the service connects as > cannot rewrite or erase the audit trail
+ ✓ src/row-level-security.integration.test.ts > every table that carries a tenant > has row-level security enabled and forced
+ ✓ src/row-level-security.integration.test.ts > what a query can see > sees nothing at all with no tenant context
+ ✓ src/row-level-security.integration.test.ts > what a query can see > sees its own organisation’s accounts
+ ✓ src/row-level-security.integration.test.ts > what a query can see > sees the other organisation’s accounts when acting as it, and only those
+ ✓ src/row-level-security.integration.test.ts > what a query can see > cannot read another organisation by naming its rows explicitly
+ ✓ src/row-level-security.integration.test.ts > what a query can see > cannot write into another organisation
+ ✓ src/row-level-security.integration.test.ts > what a query can see > cannot move a row into another organisation by updating its tenant
+ ✓ src/row-level-security.integration.test.ts > what a query can see > cannot delete another organisation’s rows
+ ✓ src/row-level-security.integration.test.ts > the owner, whom FORCE also applies to > reads nothing without a tenant context either
+ ✓ src/row-level-security.integration.test.ts > the owner, whom FORCE also applies to > is not a superuser, so this suite is testing what a deployment has
+ ✓ src/row-level-security.integration.test.ts > what Identity deliberately does not copy from Munaxa Work > has no SECURITY DEFINER function, because it has no cross-tenant read to make
+ ✓ src/row-level-security.integration.test.ts > the connection the service actually opens > is the one the configuration names, not whatever DATABASE_URL happens to be
+ ✓ src/readiness.integration.test.ts > readiness > is ready when every dependency answers
+ ✓ src/readiness.integration.test.ts > readiness > is not ready when the database is unreachable
+ ✓ src/readiness.integration.test.ts > readiness > is not ready when a required table is missing
+ ✓ src/readiness.integration.test.ts > readiness > is not ready on a schema that predates the MFA migration
+ ✓ src/readiness.integration.test.ts > readiness > is not ready when the cache is unreachable
+ ✓ src/readiness.integration.test.ts > readiness > is not ready when the signing key cannot produce a verifiable signature
+ ✓ src/readiness.integration.test.ts > readiness > finds every required table in a provisioned database
+ ✓ src/readiness.integration.test.ts > the harness refuses to destroy a database that is in use > accepts a name that identifies a throwaway
+ ✓ src/readiness.integration.test.ts > the harness refuses to destroy a database that is in use > refuses a name that does not
+ ✓ src/token-size.integration.test.ts > the staging role > is composed of exactly the grants the seed script provisions
+ ✓ src/token-size.integration.test.ts > the staging role > fits in a cookie, with room left for a claim somebody adds later
+ ✓ src/token-size.integration.test.ts > the staging role > holds no wildcard and no scope, which Munaxa Work would drop
+ ✓ src/token-size.integration.test.ts > the ceiling this imposes on role design > refuses a role holding every Work permission, three times over
+ ✓ src/token-size.integration.test.ts > the ceiling this imposes on role design > finds the measured maximum, so a role can be designed against a number rather than a guess
+ ✓ src/rds-certificate-trust.test.ts > Amazon RDS certificate trust > vendors exactly the eu-central-1 roots, unchanged
+ ✓ src/rds-certificate-trust.test.ts > Amazon RDS certificate trust > holds self-signed CA certificates that are in date
+ ✓ src/rds-certificate-trust.test.ts > Amazon RDS certificate trust > is needed: Node does not already trust these roots
+ ✓ src/rds-certificate-trust.test.ts > Amazon RDS certificate trust > is appended to Node trust in the runtime image
+ ✓ src/auth-failure-semantics.integration.test.ts > sign-in failure semantics > answers invalid-credentials for a wrong password
+ ✓ src/auth-failure-semantics.integration.test.ts > sign-in failure semantics > answers invalid-credentials for a disabled account, disclosing nothing extra
+ ✓ src/auth-failure-semantics.integration.test.ts > sign-in failure semantics > still reports lockout separately
+ ✓ src/auth-failure-semantics.integration.test.ts > sign-in failure semantics > answers dependency-unavailable when the cache is down
+ ✓ src/auth-failure-semantics.integration.test.ts > sign-in failure semantics > answers dependency-unavailable when the database is down
+ ✓ src/auth-failure-semantics.integration.test.ts > sign-in failure semantics > fails closed when the error is unrecognised but every dependency is healthy
+ ✓ src/auth-failure-semantics.integration.test.ts > sign-in failure semantics > never returns a token on any failure path
+ ✓ src/auth-failure-semantics.integration.test.ts > a failure before authentication is classified too > answers dependency-unavailable when the database is down
+ ✓ src/auth-failure-semantics.integration.test.ts > a failure before authentication is classified too > still refuses generically, never openly, when every dependency answers
+ ✓ src/session-view.test.ts > maskIp > keeps the /24 of an IPv4 address and drops the host
+ ✓ src/session-view.test.ts > maskIp > keeps the /48 of an IPv6 address, including compressed forms
+ ✓ src/session-view.test.ts > maskIp > returns nothing for anything that is not an address, rather than echoing it
+ ✓ src/session-view.test.ts > describeUserAgent > names common browsers and systems
+ ✓ src/session-view.test.ts > describeUserAgent > never returns any part of the header it was given
+ ✓ src/session-view.test.ts > describeUserAgent > reads only a bounded prefix of a very long header
+ ✓ src/return-to.test.ts > safeReturnTo > keeps a path on this origin
+ ✓ src/return-to.test.ts > safeReturnTo > falls back to / for nothing, an absolute URL or a scheme-relative URL
+ ✓ src/return-to.test.ts > safeReturnTo > refuses a backslash, which browsers read as a slash
+ ✓ src/return-to.test.ts > safeReturnTo > refuses control characters, which browsers strip before parsing
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed | 18 passed (19)
+      Tests  1 failed | 289 passed (290)
