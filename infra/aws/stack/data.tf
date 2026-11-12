@@ -19,7 +19,7 @@ resource "aws_kms_key" "data" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Sid       = "AccountAdministration"
         Effect    = "Allow"
@@ -37,7 +37,21 @@ resource "aws_kms_key" "data" {
           ArnLike = { "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.region}:${var.account_id}:log-group:/munaxa/${var.environment}/*" }
         }
       },
-    ]
+      ],
+      # Only with the Identity cache (identity-cache.tf): its alarms publish to the ops topic, which
+      # this key encrypts, so CloudWatch must be able to use the key for that topic. Testing never
+      # has the cache, so its key policy is unchanged.
+      var.identity_cache == null ? [] : [{
+        Sid       = "CloudWatchAlarmsToOpsTopic"
+        Effect    = "Allow"
+        Principal = { Service = "cloudwatch.amazonaws.com" }
+        Action    = ["kms:Decrypt", "kms:GenerateDataKey*"]
+        Resource  = "*"
+        Condition = {
+          StringEquals = { "aws:SourceAccount" = var.account_id }
+          ArnLike      = { "aws:SourceArn" = "arn:aws:cloudwatch:${var.region}:${var.account_id}:alarm:*" }
+        }
+    }])
   })
 }
 
@@ -133,7 +147,9 @@ resource "aws_db_instance" "main" {
 # | Bundle                   | Keys (JSON)                                                         |
 # | ------------------------ | ------------------------------------------------------------------- |
 # | <env>/identity           | DATABASE_URL, IDENTITY_SIGNING_PRIVATE_KEY, IDENTITY_SIGNING_SECRET, |
-# |                          | REDIS_URL, REDIS_PASSWORD                                           |
+# |                          | REDIS_URL, REDIS_PASSWORD (Testing: redis://:<pw>@127.0.0.1:6379,   |
+# |                          | the sidecar's password; production: rediss://:<token>@<cache        |
+# |                          | primary endpoint>:6379, the cache's AUTH token, identity-cache.tf)  |
 # |                          | + MFA_ENCRYPTION_KEYS (only with identity_security_config, AW-01)   |
 # | <env>/control-api        | DATABASE_URL                                                        |
 # | <env>/work-api           | DATABASE_URL, PII_MATCH_SECRET, CONTROL_PLANE_TOKEN                 |

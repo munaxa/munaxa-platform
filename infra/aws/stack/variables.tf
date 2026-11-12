@@ -202,10 +202,99 @@ variable "valkey_image" {
     error_message = "valkey_image is public.ecr.aws/valkey/valkey@sha256:<64 hex> (or the docker/library path)."
   }
 
-  # Identity's REDIS_URL points at 127.0.0.1:6379: without the sidecar nothing listens there.
+  # Production never registers a sidecar task definition, even with services off or no image:
+  # task definitions are kept (skip_destroy), so a registered revision would stay a rollback target
+  # that brings back one independent store per task (report 2026-11-12-identity-shared-valkey-platform-release, 01 section 6).
   validation {
-    condition     = var.valkey_image != "" || var.images.identity_api == "" || !var.services_enabled
-    error_message = "Identity runs only with its Valkey sidecar: set valkey_image before a session with images.identity_api."
+    condition     = var.environment != "prod" || var.valkey_image == ""
+    error_message = "Production Identity never runs a Valkey sidecar: leave valkey_image empty and use identity_cache."
+  }
+
+  # One task per sidecar store: two tasks would count rate limits, lockouts, MFA attempts and
+  # replay markers in two independent stores.
+  validation {
+    condition     = var.valkey_image == "" || lookup(var.desired_counts, "identity", 1) <= 1
+    error_message = "With the Valkey sidecar Identity runs at most one task (desired_counts.identity <= 1). Several tasks need the shared cache (identity_cache)."
+  }
+}
+
+# Production Identity's shared security state: ElastiCache for Valkey, node-based, cluster mode
+# disabled (identity-cache.tf; design in report 2026-11-12-identity-shared-valkey-platform-release,
+# 01 sections 5 to 7). Null creates nothing. There is no TLS, encryption or public-access switch:
+# those are fixed in identity-cache.tf.
+#
+# The AUTH token is never a variable. It is REDIS_PASSWORD of the <env>/identity bundle version
+# pinned in secret_version_ids.identity, read by an ephemeral resource into the write-only
+# auth_token_wo, so it is in no plan, state or log. Bump auth_token_version only to rotate it.
+variable "identity_cache" {
+  description = "Production only: Identity's shared ElastiCache for Valkey. node_type (cache.t4g.micro), replicas (0, or 1 for a Multi-AZ replica added in place), engine_version (8.x), auth_token_version (bump to rotate), auth_token_update_strategy (ROTATE, then SET to drop the old token). Null: no cache."
+  type = object({
+    node_type                  = string
+    replicas                   = number
+    engine_version             = string
+    auth_token_version         = number
+    auth_token_update_strategy = optional(string, "ROTATE")
+  })
+  default = null
+
+  validation {
+    condition     = var.identity_cache == null || can(regex("^cache\\.[a-z0-9]+\\.[a-z0-9]+$", var.identity_cache.node_type))
+    error_message = "identity_cache.node_type is an ElastiCache node type, e.g. cache.t4g.micro."
+  }
+
+  # 0: one node (P1). 1: primary and one replica with Multi-AZ automatic failover (P2), an in-place change.
+  validation {
+    condition     = var.identity_cache == null || contains([0, 1], var.identity_cache.replicas)
+    error_message = "identity_cache.replicas is 0 (one node) or 1 (one Multi-AZ replica)."
+  }
+
+  # The parameter group family is valkey8.
+  validation {
+    condition     = var.identity_cache == null || can(regex("^8\\.[0-9]+$", var.identity_cache.engine_version))
+    error_message = "identity_cache.engine_version is a Valkey 8 minor version, e.g. 8.1 (the parameter group family is valkey8)."
+  }
+
+  validation {
+    condition     = var.identity_cache == null || (floor(var.identity_cache.auth_token_version) == var.identity_cache.auth_token_version && var.identity_cache.auth_token_version >= 1)
+    error_message = "identity_cache.auth_token_version is a whole number, 1 or more."
+  }
+
+  validation {
+    condition     = var.identity_cache == null || contains(["ROTATE", "SET"], var.identity_cache.auth_token_update_strategy)
+    error_message = "identity_cache.auth_token_update_strategy is ROTATE (old and new token both accepted) or SET (only the new one). DELETE would leave the cache without authentication."
+  }
+
+  # Identity's security state needs a store: the sidecar (REDIS_URL at 127.0.0.1:6379) or the
+  # shared ElastiCache group (identity_cache). Without either nothing listens where REDIS_URL points.
+  # (Declared here, not on valkey_image, because validations may not refer to each other in a cycle.)
+  validation {
+    condition     = var.valkey_image != "" || var.identity_cache != null || var.images.identity_api == "" || !var.services_enabled
+    error_message = "Identity runs only with a cache: set valkey_image (Testing) or identity_cache (production) before a session with images.identity_api."
+  }
+
+  # Testing keeps its approved topology: one Identity task, one Valkey sidecar.
+  validation {
+    condition     = var.identity_cache == null || var.environment == "prod"
+    error_message = "identity_cache is production only. Testing runs one Identity task with its Valkey sidecar (owner decision, 12 Nov 2026)."
+  }
+
+  validation {
+    condition     = var.identity_cache == null || var.valkey_image == ""
+    error_message = "identity_cache and valkey_image are exclusive: Identity uses one store."
+  }
+
+  # Production Identity runs several tasks, so it always uses the shared cache, whether or not
+  # services are on (the task definition is the rollback target either way).
+  validation {
+    condition     = var.environment != "prod" || var.images.identity_api == "" || var.identity_cache != null
+    error_message = "Production Identity needs the shared cache: set identity_cache before pinning images.identity_api."
+  }
+
+  # The ephemeral read of the AUTH token always names a pinned bundle version, never AWSCURRENT,
+  # so what the cache gets is reviewed like every other pin.
+  validation {
+    condition     = var.identity_cache == null || lookup(var.secret_version_ids, "identity", "") != ""
+    error_message = "identity_cache needs secret_version_ids.identity: the pinned bundle version that holds REDIS_PASSWORD (the AUTH token)."
   }
 }
 

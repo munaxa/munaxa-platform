@@ -33,6 +33,31 @@ mock_provider "aws" {
   }
 }
 
+# The ephemeral read of the Identity cache's AUTH token (identity-cache.tf). Terraform's provider
+# mocks reject ephemeral resources, so its provider alias is a real provider that cannot reach AWS
+# (fake keys, no account lookup, every endpoint used by the module on 127.0.0.1), and the module is
+# replaced, so it never opens the secret. The value is a public placeholder, never a real token.
+provider "aws" {
+  alias                       = "ephemeral_secrets"
+  region                      = "eu-central-1"
+  access_key                  = "mock-access-key"
+  secret_key                  = "mock-secret-key"
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+  skip_metadata_api_check     = true
+  skip_region_validation      = true
+  endpoints {
+    secretsmanager = "http://127.0.0.1:9"
+    sts            = "http://127.0.0.1:9"
+    iam            = "http://127.0.0.1:9"
+  }
+}
+
+override_module {
+  target  = module.identity_cache_auth
+  outputs = { value = "mock-placeholder-not-a-token-0123456789" }
+}
+
 variables {
   environment = "nonprod"
   account_id  = "229251310592"
