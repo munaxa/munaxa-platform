@@ -1,0 +1,12 @@
+PASS munaxa-identity/.github/workflows/ci.yml
+PASS munaxa-identity/.github/workflows/publish-images-ecr.yml
+PASS munaxa-identity/.github/workflows/publish-images.yml
+PASS munaxa-work/.github/workflows/ci.yml
+PASS munaxa-work/.github/workflows/publish-images-ecr.yml
+PASS munaxa-work/.github/workflows/publish-images.yml
+PASS munaxa-control/.github/workflows/ci.yml
+PASS munaxa-control/.github/workflows/publish-images.yml
+PASS munaxa-platform/.github/workflows/aws-session.yml
+PASS munaxa-platform/.github/workflows/aws-terraform.yml
+PASS munaxa-platform/.github/workflows/ci.yml
+PASS munaxa-platform/.github/workflows/release.yml

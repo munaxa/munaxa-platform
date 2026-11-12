@@ -1,0 +1,65 @@
+FAIL munaxa-identity(main)/.github/workflows/ci.yml
+   - no workflow-level permissions
+   - references PLATFORM_PACKAGES_TOKEN
+   - verify[0]: checkout persists credentials
+FAIL munaxa-identity(main)/.github/workflows/publish-images-ecr.yml
+   - references PLATFORM_PACKAGES_TOKEN
+FAIL munaxa-identity(main)/.github/workflows/publish-images.yml
+   - workflow-level write permission {'contents': 'read', 'packages': 'write'}
+   - references PLATFORM_PACKAGES_TOKEN
+   - publish[0]: checkout persists credentials
+FAIL munaxa-work(main)/.github/workflows/ci.yml
+   - no workflow-level permissions
+   - references PLATFORM_PACKAGES_TOKEN
+   - standards[0]: unpinned actions/checkout@v6
+   - standards[0]: checkout persists credentials
+   - node[0]: unpinned actions/checkout@v6
+   - node[0]: checkout persists credentials
+   - node[1]: unpinned pnpm/action-setup@v6
+   - node[2]: unpinned actions/setup-node@v6
+   - mobile[0]: unpinned actions/checkout@v6
+   - mobile[0]: checkout persists credentials
+   - mobile[1]: unpinned actions/setup-java@v4
+   - mobile[2]: unpinned subosito/flutter-action@v2
+   - boundaries[0]: unpinned actions/checkout@v6
+   - boundaries[0]: checkout persists credentials
+FAIL munaxa-work(main)/.github/workflows/publish-images-ecr.yml
+   - references PLATFORM_PACKAGES_TOKEN
+   - publish[5]: package token without packages permission
+FAIL munaxa-work(main)/.github/workflows/publish-images.yml
+   - workflow-level write permission {'contents': 'read', 'packages': 'write'}
+   - references PLATFORM_PACKAGES_TOKEN
+   - publish[0]: unpinned actions/checkout@v6
+   - publish[0]: checkout persists credentials
+   - publish[2]: unpinned docker/setup-buildx-action@v3
+   - publish[3]: unpinned docker/login-action@v3
+   - publish[4]: unpinned docker/build-push-action@v6
+FAIL munaxa-control(main)/.github/workflows/ci.yml
+   - references PLATFORM_PACKAGES_TOKEN
+   - verify[0]: unpinned actions/checkout@v6
+   - verify[0]: checkout persists credentials
+   - verify[1]: unpinned pnpm/action-setup@v6
+   - verify[2]: unpinned actions/setup-node@v6
+   - image[0]: unpinned actions/checkout@v6
+   - image[0]: checkout persists credentials
+   - image[1]: unpinned docker/setup-buildx-action@v3
+FAIL munaxa-control(main)/.github/workflows/publish-images.yml
+   - references PLATFORM_PACKAGES_TOKEN
+PASS munaxa-platform(main)/.github/workflows/aws-session.yml
+PASS munaxa-platform(main)/.github/workflows/aws-terraform.yml
+FAIL munaxa-platform(main)/.github/workflows/ci.yml
+   - no workflow-level permissions
+   - verify[0]: unpinned actions/checkout@v6
+   - verify[0]: checkout persists credentials
+   - verify[1]: unpinned pnpm/action-setup@v4
+   - verify[2]: unpinned actions/setup-node@v5
+   - accessibility[0]: unpinned actions/checkout@v6
+   - accessibility[0]: checkout persists credentials
+   - accessibility[1]: unpinned pnpm/action-setup@v4
+   - accessibility[2]: unpinned actions/setup-node@v5
+   - accessibility[8]: unpinned actions/upload-artifact@v4
+   - facades[0]: unpinned actions/checkout@v6
+   - facades[0]: checkout persists credentials
+   - facades[1]: unpinned pnpm/action-setup@v4
+   - facades[2]: unpinned actions/setup-node@v5
+PASS munaxa-platform(main)/.github/workflows/release.yml
