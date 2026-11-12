@@ -132,15 +132,29 @@ authorization; nothing here changes IAM): `elasticache:CreateReplicationGroup`,
 `Create/Modify/Delete/DescribeCacheParameterGroups` and `DescribeCacheParameters`,
 `Create/Modify/Delete/DescribeCacheSubnetGroups`, `AddTagsToResource`, `ListTagsForResource`,
 `RemoveTagsFromResource`; `iam:CreateServiceLinkedRole` for `elasticache.amazonaws.com`;
-`kms:CreateGrant` and `kms:DescribeKey` on the data key; `logs:CreateLogDelivery`,
-`GetLogDelivery`, `UpdateLogDelivery`, `DeleteLogDelivery`, `ListLogDeliveries`,
-`PutResourcePolicy`, `DescribeResourcePolicies` and `DescribeLogGroups` for the slow log;
+`kms:CreateGrant` and `kms:DescribeKey` on the data key;
 `sns:CreateTopic`, `SetTopicAttributes`, `GetTopicAttributes`, `DeleteTopic`, `TagResource`;
 `cloudwatch:PutMetricAlarm`, `DescribeAlarms`, `DeleteAlarms`, `TagResource`,
 `ListTagsForResource`; and, **for both the plan and the apply role** (the ephemeral read runs while
 planning too), `secretsmanager:GetSecretValue` on `munaxa-prod/identity` with `kms:Decrypt` on the
 data key via Secrets Manager. The exact list is verified against the service authorization reference
 when the deployer policy is written.
+
+That last grant is not a small widening. The deployer policy (`bootstrap/iam.tf`) carries an explicit
+Deny, `NoSecretValuesNoUsersNoKeys`, on `secretsmanager:GetSecretValue` for every resource, and an
+explicit Deny wins over any Allow: until it changes, every production plan with `identity_cache` set
+fails AccessDenied in the ephemeral read. The change is a deliberate, narrow exception to the
+"deployers never read secret values" guardrail: only `munaxa-prod/identity`, only the production
+plan and apply roles, owner decision at the deployment-IAM stage. If the owner declines it, the
+alternative is a token Terraform never reads (the operator sets it on the cache with
+`ModifyReplicationGroup` and Terraform ignores it), recorded as a separate design change.
+
+`auth_token_update_strategy` defaults to `ROTATE` so a first change never cuts off running tasks.
+A rotation is finished only by the second, `SET`, apply: until then the old token stays valid. The
+Phase E checklist carries that step.
+
+No engine log is delivered: Valkey's slow log records command arguments, values included, and
+Identity's values hold MFA and session state.
 
 ## Runbook
 

@@ -101,15 +101,10 @@ resource "aws_elasticache_parameter_group" "identity" {
   }
 }
 
-# The slow log only (commands over the engine's threshold): key names, never values, and Identity's
-# keys hold no secret in their names (digests and ids). KMS-encrypted like every /munaxa/<env>/ group.
-resource "aws_cloudwatch_log_group" "identity_cache" {
-  count = local.identity_cache ? 1 : 0
-
-  name              = "/munaxa/${var.environment}/identity-cache"
-  retention_in_days = var.log_retention_days
-  kms_key_id        = aws_kms_key.data.arn
-}
+# No engine log delivery: Valkey's slow log records command arguments (values included, up to 32 of
+# 128 bytes each), and Identity's values include MFA and session state. The cache is watched by the
+# alarms below; adding a slow log is a separate, reviewed change that must first show it carries no
+# security state.
 
 # The AUTH token, read while planning and applying and never stored (modules/secret-key-ephemeral).
 # The version is pinned by the identity_cache validation in variables.tf.
@@ -169,13 +164,6 @@ resource "aws_elasticache_replication_group" "identity" {
   maintenance_window         = "sun:03:30-sun:04:30" # after the database's sun:02:30-03:30
   auto_minor_version_upgrade = true
   apply_immediately          = false
-
-  log_delivery_configuration {
-    destination      = aws_cloudwatch_log_group.identity_cache[0].name
-    destination_type = "cloudwatch-logs"
-    log_format       = "json"
-    log_type         = "slow-log"
-  }
 
   lifecycle {
     # ElastiCache's own AUTH rules (16-128 printable characters, no " / @) narrowed to what is safe

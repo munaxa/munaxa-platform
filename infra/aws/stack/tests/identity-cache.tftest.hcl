@@ -482,12 +482,8 @@ run "production_cache_is_private_encrypted_authenticated_and_never_evicts" {
     error_message = "The ops topic is encrypted with the data key, which admits CloudWatch alarms of this account."
   }
   assert {
-    condition = (
-      one(aws_elasticache_replication_group.identity[0].log_delivery_configuration).destination == aws_cloudwatch_log_group.identity_cache[0].name &&
-      aws_cloudwatch_log_group.identity_cache[0].name == "/munaxa/prod/identity-cache" &&
-      aws_cloudwatch_log_group.identity_cache[0].kms_key_id == aws_kms_key.data.arn
-    )
-    error_message = "The slow log goes to /munaxa/prod/identity-cache, encrypted with the data key."
+    condition     = length(aws_elasticache_replication_group.identity[0].log_delivery_configuration) == 0
+    error_message = "No engine log delivery: the slow log would copy command values (MFA and session state) to CloudWatch."
   }
   assert {
     condition     = output.identity_cache.primary_endpoint == aws_elasticache_replication_group.identity[0].primary_endpoint_address && output.identity_cache.port == 6379

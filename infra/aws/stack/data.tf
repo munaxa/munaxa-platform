@@ -47,9 +47,10 @@ resource "aws_kms_key" "data" {
         Principal = { Service = "cloudwatch.amazonaws.com" }
         Action    = ["kms:Decrypt", "kms:GenerateDataKey*"]
         Resource  = "*"
+        # Only the account condition: whether CloudWatch's KMS request carries the alarm as
+        # aws:SourceArn is not verified, and a condition it fails would silently drop every alarm.
         Condition = {
           StringEquals = { "aws:SourceAccount" = var.account_id }
-          ArnLike      = { "aws:SourceArn" = "arn:aws:cloudwatch:${var.region}:${var.account_id}:alarm:*" }
         }
     }])
   })
