@@ -215,8 +215,9 @@ operator host as the one proxied record behind Cloudflare Access.
    linked in Control as the customer's `tenantRef` with a subscription (munaxa-work
    `deploy/aws/README.md`, "The first tenant on a fresh database");
    then Docs: `docs-db-admin` (db-admin's network; its cluster
-   roles, `edms_backup` and the tenant database; it stops if `edms_backup` could reach a non-Docs
-   database), then `docs-migrate` (its own security group; exit code 0 required, read from
+   roles, `edms_backup` and the tenant database; `edms_owner`'s password comes from the
+   `docs-migrate` bundle's `DATABASE_MIGRATION_URL`, the one copy of it, so write that bundle first
+   (CONTRACT.md, L-5); it stops if `edms_backup` could reach a non-Docs database), then `docs-migrate` (its own security group; exit code 0 required, read from
    `aws ecs describe-tasks`; the `munaxa-docs/migrate` digest from the same release as
    `images.docs_api`), then `docs-provision` (docs-api's security group, after the owner creates
    `munaxa-nonprod/docs-provision/<slug>` and before deleting it). The `docs-api` service stays off

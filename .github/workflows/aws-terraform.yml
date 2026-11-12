@@ -90,8 +90,13 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Identity probe unit tests
+      # Also docs-owner-password.test.mjs (L-5), which runs docs-db-admin's owner-password SQL in psql
+      # against a throwaway local PostgreSQL cluster (the runner image's server binaries, a Unix
+      # socket, no network); the variable makes it fail rather than skip if they are missing.
+      - name: Identity probe and docs-db-admin SQL unit tests
         run: node --test 'infra/aws/stack/**/*.test.mjs'
+        env:
+          DOCS_OWNER_PASSWORD_TEST_REQUIRE_POSTGRES: '1'
 
       # docs-cluster-roles.sql is Docs' infra/sql/cluster/01-roles.sql below a 4-line header that
       # records the original's sha256. The copy must still hash to it; Docs CI pins the same hash on

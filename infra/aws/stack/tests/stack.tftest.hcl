@@ -317,6 +317,10 @@ run "without_a_docs_host_there_is_no_docs" {
     condition     = length(module.docs_api) == 0 && length(module.docs_migrate) == 0 && length(aws_s3_bucket.files) == 1 && length(aws_iam_role.docs_db_admin_execution) == 0
     error_message = "Docs exists only where hosts.docs is set (not in prod)."
   }
+  assert {
+    condition     = length([for k in keys(aws_secretsmanager_secret.service) : k if startswith(k, "docs")]) == 0
+    error_message = "L-5: without hosts.docs there is no Docs bundle at all, docs-migrate included: nothing migration-only is left behind."
+  }
 }
 
 run "the_control_api_host_forwards_only_its_public_surface" {
@@ -719,6 +723,112 @@ run "docs_migrate_runs_the_migration_image_with_only_its_owner_url" {
   }
 }
 
+# L-5 (report 2026-11-12-docs-migration-security-hardening): the owner credential is kept once, as
+# docs-migrate's DATABASE_MIGRATION_URL. docs-db-admin sets edms_owner's password from that URL
+# (scripts/docs-owner-password.sql, tested against PostgreSQL by docs-owner-password.test.mjs), at the
+# same pinned version docs-migrate reads, and docs-operator no longer holds an owner password.
+run "docs_db_admin_takes_the_owner_password_only_from_the_migration_url" {
+  command = plan
+
+  override_resource {
+    target          = aws_db_instance.main
+    override_during = plan
+    values = {
+      address            = "munaxa-test-pg.example.eu-central-1.rds.amazonaws.com"
+      port               = 5432
+      master_user_secret = [{ secret_arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-mock", kms_key_id = "mock", secret_status = "active" }]
+    }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["docs-api"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-api-GhIjKl" }
+  }
+  override_resource {
+    target          = aws_iam_role.docs_db_admin_execution[0]
+    override_during = plan
+    values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-docs-db-admin-execution", id = "munaxa-nonprod-docs-db-admin-execution" }
+  }
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["docs-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-migrate-AbCdEf" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["docs-operator"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-operator-MnOpQr" }
+  }
+  override_resource {
+    target          = aws_kms_key.data
+    override_during = plan
+    values          = { arn = "arn:aws:kms:eu-central-1:229251310592:key/00000000-0000-0000-0000-00000000da7a" }
+  }
+  override_resource {
+    target          = aws_cloudwatch_log_group.ops
+    override_during = plan
+    values          = { arn = "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/ops" }
+  }
+
+  variables {
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator.test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+      docs        = "docs.test.munaxa.com"
+    }
+    postgres_image     = "public.ecr.aws/docker/library/postgres@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    docs_redis_image   = "public.ecr.aws/docker/library/redis@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    secret_version_ids = { docs-migrate = "11111111-2222-3333-4444-555555555555", docs-operator = "66666666-7777-8888-9999-000000000000" }
+    images = {
+      docs_api       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      docs_web       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      docs_antivirus = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/antivirus@sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      docs_migrate   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/migrate@sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    }
+  }
+
+  assert {
+    condition = { for s in jsondecode(aws_ecs_task_definition.docs_db_admin[0].container_definitions)[0].secrets : s.name => s.valueFrom if !startswith(s.name, "PG") } == {
+      EDMS_APP_PASSWORD      = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-operator-MnOpQr:EDMS_APP_PASSWORD::66666666-7777-8888-9999-000000000000"
+      EDMS_BACKUP_PASSWORD   = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-operator-MnOpQr:EDMS_BACKUP_PASSWORD::66666666-7777-8888-9999-000000000000"
+      DATABASE_MIGRATION_URL = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-migrate-AbCdEf:DATABASE_MIGRATION_URL::11111111-2222-3333-4444-555555555555"
+    }
+    error_message = "docs-db-admin reads the app and backup passwords from docs-operator and the owner credential only as docs-migrate's URL, at the version docs-migrate is pinned to."
+  }
+  assert {
+    condition = (
+      !strcontains(aws_ecs_task_definition.docs_db_admin[0].container_definitions, "EDMS_OWNER_PASSWORD") &&
+      strcontains(local.docs_dbadmin_sql, "\\getenv migration_url DATABASE_MIGRATION_URL") &&
+      strcontains(local.docs_dbadmin_sql, "ALTER ROLE edms_owner PASSWORD :'owner_pw';") &&
+      strcontains(local.docs_dbadmin_sql, "\\if :owner_url_ok") &&
+      local.docs_operator_keys == ["EDMS_APP_PASSWORD", "EDMS_BACKUP_PASSWORD"]
+    )
+    error_message = "No second copy of the owner password: docs-operator has none, and db-admin derives it from the URL, refusing anything but edms_owner on the tenant database."
+  }
+  assert {
+    condition = jsondecode(aws_iam_role_policy.docs_db_admin_execution[0].policy).Statement[0].Resource == [
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-mock",
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-operator-MnOpQr",
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-migrate-AbCdEf",
+    ]
+    error_message = "docs-db-admin's execution role reads exactly the RDS master secret, docs-operator and docs-migrate."
+  }
+  assert {
+    condition = (
+      !strcontains(module.docs_api[0].task_definition_container_definitions, "docs-migrate") &&
+      !strcontains(aws_ecs_task_definition.docs_provision[0].container_definitions, "docs-migrate") &&
+      !strcontains(aws_ecs_task_definition.docs_provision[0].container_definitions, "docs-operator") &&
+      jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].secrets[0].name == "DATABASE_MIGRATION_URL" &&
+      length(jsondecode(module.docs_migrate[0].task_definition_container_definitions)[0].secrets) == 1
+    )
+    error_message = "The migration connection stays separate: the API and docs-provision never read docs-migrate or docs-operator; docs-migrate reads only its URL."
+  }
+}
+
 run "docs_without_its_migration_image_is_not_defined" {
   command = plan
 
@@ -745,14 +855,17 @@ run "docs_without_its_migration_image_is_not_defined" {
   assert {
     condition = (
       length(module.docs_api) == 0 && length(module.docs_web) == 0 && length(module.docs_migrate) == 0 &&
-      length(aws_ecs_task_definition.docs_provision) == 0 && length(aws_ecs_task_definition.docs_db_admin) == 0 &&
-      !contains(keys(aws_secretsmanager_secret.service), "docs-migrate")
+      length(aws_ecs_task_definition.docs_provision) == 0 && length(aws_ecs_task_definition.docs_db_admin) == 0
     )
     error_message = "Without images.docs_migrate no Docs service or task is registered: the API never exists without its migration path."
   }
   assert {
     condition     = length(aws_iam_role.docs_db_admin_execution) == 1 && contains(keys(aws_secretsmanager_secret.service), "docs-operator") && contains(keys(aws_secretsmanager_secret.service), "docs-api")
     error_message = "What follows hosts.docs alone (applied in G3) is unchanged."
+  }
+  assert {
+    condition     = contains(keys(aws_secretsmanager_secret.service), "docs-migrate")
+    error_message = "L-5: the docs-migrate bundle (the owner credential) follows hosts.docs, not the Docs images, so a missing or cleared image never deletes it."
   }
 }
 
@@ -786,8 +899,8 @@ run "identity_only_config_a1_registers_identity_and_nothing_of_another_product" 
     error_message = "Config A1 registers no Docs task definition, although postgres_image and hosts.docs are set."
   }
   assert {
-    condition     = sort(keys(aws_secretsmanager_secret.service)) == sort(["docs-api", "docs-operator", "identity", "control-api", "identity-migrate", "control-migrate", "work-migrate", "school-migrate", "work-api", "school-api"])
-    error_message = "Config A1's ten bundles are unchanged by DC-01: no docs-migrate bundle until Docs is defined."
+    condition     = sort(keys(aws_secretsmanager_secret.service)) == sort(["docs-api", "docs-operator", "docs-migrate", "identity", "control-api", "identity-migrate", "control-migrate", "work-migrate", "school-migrate", "work-api", "school-api"])
+    error_message = "Config A1's ten bundles, plus docs-migrate, which follows hosts.docs since L-5 (the one nonprod create of that change)."
   }
   assert {
     condition     = length(aws_iam_role.docs_db_admin_execution) == 1

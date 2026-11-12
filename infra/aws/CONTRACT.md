@@ -113,8 +113,8 @@ products goes over HTTPS by the public host (an on-premises installation does th
 | `school-api`      | `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `CONTROL_PLANE_TOKEN`, `RESEND_API_KEY` |
 | `<product>-migrate` | `DATABASE_MIGRATION_URL` (the owner role)                                            |
 | `docs-api`        | `DATABASE_URL`, `TENANT_CATALOGUE`, `REDIS_URL`, `REDIS_PASSWORD`, `JWT_ACCESS_SECRET`, `SIGNATURE_WITNESS_SECRET`, `AUDIT_CHECKPOINT_SECRET`, `MFA_TOTP_SEALING_KEY`, `METRICS_SCRAPE_TOKEN`, `MAIL_RESEND_API_KEY`, `CONTROL_PLANE_TOKEN` |
-| `docs-operator`   | `EDMS_OWNER_PASSWORD`, `EDMS_APP_PASSWORD`, `EDMS_BACKUP_PASSWORD` (docs-db-admin only) |
-| `docs-migrate`    | `DATABASE_MIGRATION_URL`: `edms_owner` on the Docs tenant database (docs-migrate only; exists once every Docs image is set, DC-01) |
+| `docs-operator`   | `EDMS_APP_PASSWORD`, `EDMS_BACKUP_PASSWORD` (docs-db-admin only) |
+| `docs-migrate`    | `DATABASE_MIGRATION_URL`: `edms_owner` on the Docs tenant database — the only copy of the owner credential. Read by docs-migrate (to connect) and docs-db-admin (to set `edms_owner`'s password from it). Exists whenever `hosts.docs` is set (DC-01, L-5) |
 | `identity-bootstrap` | `IDENTITY_OWNER_EMAIL`, `IDENTITY_OWNER_PASSWORD`; created by the owner for the first-operator runs, then deleted |
 | `school-bootstrap` | `PLATFORM_OWNER_EMAIL`, `PLATFORM_OWNER_PASSWORD`; created by the owner for the first-owner run, then deleted |
 | `docs-provision/<tenant slug>` | `TENANT_ID`, `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD`; created by the owner for one run, then deleted |
@@ -197,3 +197,13 @@ persistent layer (stopped RDS, keys, bundles, empty buckets); every service foll
 `services_enabled`; every routed service follows `edge_enabled`; a budget alerts at 80 % and
 100 % (bootstrap). The idle Docs Production stack (about US$48 a month) is in the same account and
 counts against it until its retirement is approved.
+
+**Docs owner credential: one copy, one rotation (L-5).** `edms_owner`'s password is kept only inside
+`DATABASE_MIGRATION_URL` in `<env>/docs-migrate`; `docs-operator` holds no owner password. To rotate
+it: write a new version of `docs-migrate` (the URL with the new percent-encoded password), pin that
+version in `secret_version_ids["docs-migrate"]` (both tasks read that pin) and apply, run
+`docs-db-admin` (it decodes the password from the URL and refuses a URL that is not `edms_owner` on
+the tenant database, before changing any role), then run `docs-migrate` to confirm it connects. Both
+tasks read the same pinned version, so the role's password and the migration URL cannot drift. The
+bundle follows `hosts.docs` like `docs-api` and `docs-operator`: changing or clearing a Docs image
+never schedules it for deletion; removing `hosts.docs` removes all three.
