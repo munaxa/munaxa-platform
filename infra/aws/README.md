@@ -24,7 +24,9 @@ permission sets, break-glass) is prepared but deferred. Policy: [ACCESS-POLICY.m
 | `bootstrap/`             | State bucket and key, ECR repositories, workload boundary, a deployer and a CI role per environment, image publishers | Root, in AWS CloudShell (as Docs' bootstrap) |
 | `stack/`                 | One environment: network, RDS, keys, secret bundles, cluster, ALB, services, operator tasks    | GitHub Actions (`aws-terraform.yml`)       |
 | `stack/envs/<env>.*`     | `nonprod` (on-demand Testing) and `prod`: variables, backend key, declared intent              |                                            |
-| `modules/service/`       | One ECS Fargate service or run-only task, with its roles, security group and routing           |                                            |
+| `modules/service/`       | One ECS Fargate service or run-only task, with its roles, security group and routing; its own mocked tests in `tests/` | CI, on every PR |
+| `modules/secret-key-ephemeral/` | One JSON key of one pinned secret version as an ephemeral value (the Identity cache's AUTH token) |                                  |
+| `stack/identity-cache.tf` | Production Identity's shared ElastiCache for Valkey (only with `identity_cache`)               | GitHub Actions, production only            |
 | `stack/scripts/`         | `db-bootstrap.sh`, the db-admin task's script (databases and roles per product)                |                                            |
 | `stack/tests/`           | Plan-only tests with a mocked provider (`terraform test`)                                      | CI, on every PR                            |
 
@@ -35,7 +37,7 @@ permission sets, break-glass) is prepared but deferred. Policy: [ACCESS-POLICY.m
                                          │                                     │
         ┌────────────────────────────────▼─────────────────────────────────────▼──────────┐
         │ ALB  munaxa-<env>   HTTPS (TLS 1.2+), HTTP→HTTPS, default 404                       │
-        │  id.*          ─────────────────────────────────────────► identity  (+ Valkey sidecar)
+        │  id.*          ─────────────────────────────────────────► identity  (Testing: + Valkey sidecar)
         │  work.*        /api/auth/* ► identity · /api/v1/* ► work-api · /* ► work-admin       │
         │  school.*      /api/v1/* ► school-api · /* ► school-admin                               │
         │  control-api.* /api/v1/{products,licensing}/*, /health/* ► control-api · rest ► 403  │
@@ -78,6 +80,81 @@ bundle. Runtime roles are `NOBYPASSRLS`, so each product's RLS policies apply.
 | G7   | Testing session up; db-admin; migrations; smoke tests                                    | Owner dispatches                  | Session down                        |
 | G8   | Production: the same as G3 to G7 for `prod`                                              | Owner approves `aws-prod`         | Previous digest; database restore   |
 | G9   | Retire Render, Supabase and the old Docs stack                                           | Owner, one by one                 | **No**                              |
+
+## Identity's security-state store
+
+Identity keeps rate limits, lockouts, MFA challenges and attempts, TOTP replay markers,
+reauthentication markers and the permission cache in one Redis-protocol store. Which store is chosen
+by inputs, and `stack/variables.tf` refuses every other combination:
+
+| | Testing (`nonprod`) | Production (`prod`) |
+| --- | --- | --- |
+| Store | Valkey sidecar in the task (`valkey_image`), 127.0.0.1 only, no port mapping, password, `noeviction`, no persistence | `identity_cache`: ElastiCache for Valkey 8.1, node-based, cluster mode disabled |
+| Identity tasks | exactly one (`desired_counts.identity <= 1`) | several (2 in `prod.tfvars`) |
+| Deployment | 0 % minimum healthy, 100 % maximum: the old task stops before the new one starts | ECS defaults (100 % / 200 %): overlapping tasks share the one store |
+| `REDIS_URL` (bundle) | `redis://:<password>@127.0.0.1:6379` | `rediss://:<token>@<primary endpoint>:6379` (output `identity_cache`) |
+| Refused | `identity_cache`, two tasks | `valkey_image` (even with services off), an Identity image without `identity_cache` |
+
+### Identity in Testing: deployments
+
+With 0 % / 100 % a deployment (new image, new bundle pin, a forced new deployment) stops the running
+Identity task, then starts the new one. **Expect about one to two minutes without Identity** per
+deployment: ECS stops the task (ALB deregistration delay 15 s, then SIGTERM), starts the new task
+(image pull, Valkey healthy, Identity's own health check) and the ALB needs two healthy checks 15 s
+apart. Sign-in, token refresh and Work's `/api/auth/*` answer 502/503 meanwhile; sessions and
+refresh tokens are in PostgreSQL and survive; the sidecar's state (counters, lockouts, pending MFA
+challenges, replay markers) starts empty, as on any replacement. The circuit breaker still rolls a
+failed deployment back, also stop-first. Whether ECS counts a draining task towards the 100 % is
+checked in the first Testing session with a forced deployment (ECS events): until then "never two
+stores" is verified in the plan only.
+
+### Identity cache: AUTH token
+
+The token is the `REDIS_PASSWORD` key of the `munaxa-prod/identity` bundle. Terraform reads it
+through `modules/secret-key-ephemeral` (an ephemeral resource) into the write-only `auth_token_wo`,
+so it is in no variable, plan file, state or log. The read names `secret_version_ids.identity`
+(required by validation), and the token must be 32 to 128 characters of `[A-Za-z0-9_~.-]`
+(URL-safe, so `REDIS_URL` needs no encoding); the plan stops otherwise, without quoting the bundle.
+
+1. The operator writes a bundle version with `REDIS_PASSWORD` and pins it in `secret_version_ids.identity`.
+2. A reviewed PR sets `identity_cache` in `prod.tfvars` (`auth_token_version = 1`); the apply creates the cache.
+3. The operator writes the next bundle version adding `REDIS_URL` with the `identity_cache.primary_endpoint`
+   output and the same password, and pins it. `auth_token_version` stays the same, so the cache's token does not change.
+
+Rotation: a new bundle version with a new `REDIS_PASSWORD` and `REDIS_URL`; bump `auth_token_version`
+with `auth_token_update_strategy = "ROTATE"` (both tokens accepted); roll Identity onto the new
+version; bump again with `"SET"` to drop the old token. After `SET`, older task definition revisions
+hold the old token, so a rollback to one fails closed (503) instead of using the cache.
+
+**Permissions the production plan and apply roles will need** (deployment-IAM stage, owner
+authorization; nothing here changes IAM): `elasticache:CreateReplicationGroup`,
+`ModifyReplicationGroup`, `DeleteReplicationGroup`, `DescribeReplicationGroups`, `DescribeCacheClusters`,
+`Create/Modify/Delete/DescribeCacheParameterGroups` and `DescribeCacheParameters`,
+`Create/Modify/Delete/DescribeCacheSubnetGroups`, `AddTagsToResource`, `ListTagsForResource`,
+`RemoveTagsFromResource`; `iam:CreateServiceLinkedRole` for `elasticache.amazonaws.com`;
+`kms:CreateGrant` and `kms:DescribeKey` on the data key;
+`sns:CreateTopic`, `SetTopicAttributes`, `GetTopicAttributes`, `DeleteTopic`, `TagResource`;
+`cloudwatch:PutMetricAlarm`, `DescribeAlarms`, `DeleteAlarms`, `TagResource`,
+`ListTagsForResource`; and, **for both the plan and the apply role** (the ephemeral read runs while
+planning too), `secretsmanager:GetSecretValue` on `munaxa-prod/identity` with `kms:Decrypt` on the
+data key via Secrets Manager. The exact list is verified against the service authorization reference
+when the deployer policy is written.
+
+That last grant is not a small widening. The deployer policy (`bootstrap/iam.tf`) carries an explicit
+Deny, `NoSecretValuesNoUsersNoKeys`, on `secretsmanager:GetSecretValue` for every resource, and an
+explicit Deny wins over any Allow: until it changes, every production plan with `identity_cache` set
+fails AccessDenied in the ephemeral read. The change is a deliberate, narrow exception to the
+"deployers never read secret values" guardrail: only `munaxa-prod/identity`, only the production
+plan and apply roles, owner decision at the deployment-IAM stage. If the owner declines it, the
+alternative is a token Terraform never reads (the operator sets it on the cache with
+`ModifyReplicationGroup` and Terraform ignores it), recorded as a separate design change.
+
+`auth_token_update_strategy` defaults to `ROTATE` so a first change never cuts off running tasks.
+A rotation is finished only by the second, `SET`, apply: until then the old token stays valid. The
+Phase E checklist carries that step.
+
+No engine log is delivered: Valkey's slow log records command arguments, values included, and
+Identity's values hold MFA and session state.
 
 ## Runbook
 
@@ -272,11 +349,14 @@ See the migration report for the evidence and the price sources. In brief:
 - **Production, always on:** about **US$170 a month** with one task per service, about **US$230**
   with two of each API (`prod.tfvars`). Public IPv4 is a quarter of it (US$3.65 per task per
   month). Not within US$50; the production forecast is separate (owner decision of 29 Oct).
+- **Production Identity cache (`identity_cache`, when set):** one `cache.t4g.micro` Valkey node about
+  US$10.5 a month, about US$21 with the Multi-AZ replica, plus alarms about US$0.40 (estimates from
+  a third-party price index; report 2026-11-12-identity-shared-valkey-platform-release, 01 section 7.13).
 
 ## Validation
 
-`terraform fmt -check`, `terraform validate` (both roots) and `terraform test` (14 plan-only runs
-with a mocked AWS provider) pass locally; CI runs them and `shellcheck` on every PR. `tflint` and
+`terraform fmt -check`, `terraform validate` (both roots) and `terraform test` (mocked AWS provider:
+the stack, the bootstrap and `modules/service`) pass locally; CI runs them and `shellcheck` on every PR. `tflint` and
 `actionlint` last ran locally on #24. `db-bootstrap.sh` was
 run against PostgreSQL 16. Real nonprod plans ran on 4 and 5 Nov (runs 41887322394 and
 41977870108: 64 creates each); none was applied.

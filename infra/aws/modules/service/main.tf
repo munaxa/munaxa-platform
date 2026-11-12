@@ -12,7 +12,8 @@
 # |                      | the database security group only                                        |
 # | Task definition      | By image digest; skip_destroy keeps old revisions as rollback targets   |
 # | Service              | Public subnets with a public IPv4 address, no NAT; circuit breaker with  |
-# |                      | rollback                                                                |
+# |                      | rollback; optional deployment percentages and extra groups (Identity's   |
+# |                      | sidecar store and cache-client group)                                    |
 # | Target group, rules  | Host (and optional path) rules on the shared HTTPS listener              |
 #
 # A run-only task (create_service = false) is the task definition, roles and security group: a
@@ -344,9 +345,13 @@ resource "aws_ecs_service" "this" {
   enable_execute_command = false
   propagate_tags         = "SERVICE"
 
+  # Null keeps ECS's defaults (100 % / 200 %); see variables.tf.
+  deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
+  deployment_maximum_percent         = var.deployment_maximum_percent
+
   network_configuration {
     subnets          = var.subnet_ids
-    security_groups  = [aws_security_group.this.id]
+    security_groups  = concat([aws_security_group.this.id], var.extra_security_group_ids)
     assign_public_ip = true
   }
 
