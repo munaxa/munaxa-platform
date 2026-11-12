@@ -8,7 +8,8 @@
 | [munaxa-identity#19](https://github.com/munaxa/munaxa-identity/pull/19) | `888c532` | `verify` green, but only from the pnpm cache (02) | APPROVE | **draft**, waits on the package Read grant |
 | [munaxa-work#32](https://github.com/munaxa/munaxa-work/pull/32) | `7d30ba2` | 4/4 green, from cache | APPROVE | **draft**, same |
 | [munaxa-control#9](https://github.com/munaxa/munaxa-control/pull/9) | `2cb5371` | verify green (cache); **Build the images: failure, 403** (run 43293572031) | APPROVE | **draft**, same. A comment on the PR explains the failure |
-| this report | | | | docs-only PR, standing merge rule |
+| [munaxa-platform#118](https://github.com/munaxa/munaxa-platform/pull/118) | | green | n/a (docs) | interim report, squash-merged `72c37a9` |
+| this update | | | | docs-only PR, standing merge rule |
 
 The draft PRs were not merged: merging them now would make CI on main fail at its first cache miss.
 
@@ -21,7 +22,9 @@ The draft PRs were not merged: merging them now would make CI on main fail at it
 | [identity 42466697538](https://github.com/munaxa/munaxa-identity/actions/runs/42466697538) | 8 Nov ECR publish at `5277d71`, approved in `image-release` by tam2om (evidence for 03) |
 | [identity 43287805158](https://github.com/munaxa/munaxa-identity/actions/runs/43287805158) | CI on main `5a5994f`, success |
 
-**No `publish-images-ecr.yml` run was started in this thread.**
+| [identity 43305145232](https://github.com/munaxa/munaxa-identity/actions/runs/43305145232) | **ECR publish at `5a5994f`**, attempt 1, success, approved by tam2om (04) |
+
+This was the only `publish-images-ecr.yml` run in this thread.
 
 ## Tests and checks executed
 

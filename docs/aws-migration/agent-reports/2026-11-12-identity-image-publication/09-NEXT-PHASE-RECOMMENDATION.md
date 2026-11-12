@@ -2,13 +2,15 @@
 
 ## To finish this authorization (no new authorization needed, owner actions only)
 
-1. **[Owner] Sign in to the AWS MCP connector again.** Claude then runs the read-only check (03), creates `image/5a5994f52ae5e403cb61d01cdfb1cd7fa9e4b175`, and the run starts.
-2. **[Owner] Approve `image-release`** when GitHub asks. Claude then verifies the digests and provenance (05) and updates 04 and 05 in this folder.
+1. ~~Connector sign-in, tag, `image-release` approval~~ **done**. The images are published and verified (04, 05).
+2. **[Owner] Decide on the zlib CRITICAL** (CVE-2026-4738 in both images, from `node:22-alpine`).
+   - Recommended: a small Identity PR that pins a patched base digest, then a new image tag, before any Testing session.
+   - Or accept it for Testing only, explicitly.
 3. **[Owner] Grant Read access** on the `@munaxa` packages (02, owner file).
 4. Claude re-runs CI on identity#19, work#32 and control#9. The Control image build is the cache-free proof. Claude then marks them ready and squash-merges them.
-5. **[Owner]** After step 4 and **after** step 2's publication, delete `PLATFORM_PACKAGES_TOKEN` from munaxa-identity, munaxa-work and munaxa-control.
+5. **[Owner]** After step 4, delete `PLATFORM_PACKAGES_TOKEN` from munaxa-identity, munaxa-work and munaxa-control.
 
-The order of steps 2 and 5 matters. The `5a5994f` workflow still reads the repository secret.
+Any rebuild before step 4 merges still uses the repository secret. So delete it only after identity#19 is merged.
 
 ## Follow-ups needing their own authorization
 
@@ -28,4 +30,4 @@ Before E there are two repository tasks:
 - the throwaway-account MFA and revocation helper (runbook §13);
 - the runbook's "stop on any destroy" line, which must allow the declared task-definition replacements.
 
-**Recommendation:** finish steps 1 to 5 above first. Then authorize stage R together with the P-5 preparation. Stage C should be authorized only once the custody route for `MFA_ENCRYPTION_KEYS` (owner console or `asm-exec`) is confirmed in stage R.
+**Recommendation:** finish steps 2 to 5 above first. If the zlib fix is chosen, the P-5 pin uses the rebuilt digests, not the ones in 04. Then authorize stage R together with the P-5 preparation. Stage C should be authorized only once the custody route for `MFA_ENCRYPTION_KEYS` (owner console or `asm-exec`) is confirmed in stage R.
