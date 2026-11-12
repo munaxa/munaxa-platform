@@ -1,15 +1,31 @@
 name: Release
 
-# Platform publishes every public package to GitHub Packages, the registry the
-# product repos are configured against. Releases are dispatched manually; the
-# version published is whatever each package.json declares.
+# Platform publishes the 13 lockstep security packages (scripts/release-packages.mjs: `fixed[0]`
+# of .changeset/config.json, equal to LOCKSTEP in scripts/verify-release.mjs) to GitHub Packages,
+# the registry the product repos are configured against, at whatever version each package.json
+# declares. Nothing else under packages/ or tooling/ is ever published or packed here:
+# @munaxa/licensing, the platform and its façades, and the config packages are outside the list,
+# and releasing one of them is a separate, reviewed change to that script.
+#
+# Dispatched by hand only (never on a push, a merge or a tag). Two modes, kept apart:
+#   dry_run = true  (default)  builds, tests, runs the release gate and packs the 13 packages to
+#                              show their names, versions and files; no registry token, no publish.
+#   dry_run = false            the same gates, then publishes the 13; only on refs/heads/main.
 on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Resolve and pack without publishing'
+        description: 'true: build, check and pack the 13 lockstep packages without publishing'
         type: boolean
         default: true
+
+# One release at a time; a half-finished publish is never cancelled.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 env:
   NODE_VERSION: '22'
@@ -17,7 +33,7 @@ env:
 
 jobs:
   publish:
-    name: Publish @munaxa/* to GitHub Packages
+    name: ${{ inputs.dry_run && 'Dry run (pack only)' || 'Publish' }} the 13 lockstep @munaxa/* packages
     runs-on: ubuntu-latest
     # Not a server-side control: workflow_dispatch runs the workflow file as it exists on the chosen
     # ref, and any workflow with packages: write can publish with GITHUB_TOKEN. Who can publish is
@@ -29,19 +45,32 @@ jobs:
       packages: write
     steps:
       # A publish replaces nothing (a version is published once), so the version a consumer gets
-      # must be the one reviewed on main. This step stops an accidental publish from another ref
-      # (a dry run may use any ref); it is not a control on its own, see the environment above.
+      # must be the one reviewed on main. This stops an accidental publish from another ref or
+      # another trigger (a dry run may use any ref); it is not a control on its own, see above.
       - name: Refuse to publish from a ref other than main
-        if: ${{ !inputs.dry_run && github.ref != 'refs/heads/main' }}
+        if: ${{ !inputs.dry_run && (github.event_name != 'workflow_dispatch' || github.ref != 'refs/heads/main') }}
         env:
           REF: ${{ github.ref }}
+          EVENT: ${{ github.event_name }}
         run: |
-          echo "::error::Publishing is only allowed from refs/heads/main (got $REF). Re-run with dry_run, or dispatch on main."
+          echo "::error::Publishing is only allowed from a manual dispatch on refs/heads/main (got $EVENT on $REF). Re-run with dry_run, or dispatch on main."
           exit 1
 
-      - uses: actions/checkout@v6
+      - name: Mode
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "### Dry run: nothing is published" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Publish from main" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: ${{ env.PNPM_VERSION }}
 
@@ -67,12 +96,30 @@ jobs:
       - name: Release manifest check
         run: pnpm release:check
 
-      - name: Publish
-        if: ${{ !inputs.dry_run }}
-        run: pnpm -r --filter './packages/**' --filter './tooling/**' publish --no-git-checks --access restricted
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The one list both modes use. It fails unless the changeset group, the release gate's
+      # LOCKSTEP and the workspace agree on exactly 13 public packages at one version.
+      - name: The packages of this release
+        id: packages
+        run: |
+          set -euo pipefail
+          node scripts/release-packages.mjs --versions | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "filters=$(node scripts/release-packages.mjs --filters)" >> "$GITHUB_OUTPUT"
 
       - name: Pack only (dry run)
         if: ${{ inputs.dry_run }}
-        run: pnpm -r --filter './packages/**' --filter './tooling/**' exec npm pack --dry-run
+        env:
+          FILTERS: ${{ steps.packages.outputs.filters }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086 # FILTERS is a list of --filter arguments
+          pnpm -r $FILTERS exec npm pack --dry-run
+
+      - name: Publish
+        if: ${{ !inputs.dry_run && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
+        env:
+          FILTERS: ${{ steps.packages.outputs.filters }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086 # FILTERS is a list of --filter arguments
+          pnpm -r $FILTERS publish --no-git-checks --access restricted

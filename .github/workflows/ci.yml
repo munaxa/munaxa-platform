@@ -93,6 +93,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # The release publishes exactly the 13 lockstep packages, only from main, never in a dry run
+      # (scripts/release-packages.mjs and .github/workflows/release.yml). No registry call.
+      - name: Release package list and workflow restrictions
+        run: node --test scripts/release-packages.test.mjs
+
       # The design-system contract: the typed token surface and its CSS mirror must not
       # drift, and no product may rely on an export the contract does not promise.
       - name: Validate design-system contract
