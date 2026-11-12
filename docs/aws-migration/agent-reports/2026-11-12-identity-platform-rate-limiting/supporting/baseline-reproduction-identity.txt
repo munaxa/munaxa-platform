@@ -1,0 +1,5 @@
+Identity @ 420df43, compiled application over HTTP (NODE_ENV=test, MemoryCache), local PostgreSQL 16
+LOCK canonical wrong x11: 401,401,401,401,401,401,401,401,401,401,429
+LOCK canonical correct: 429
+LOCK " "+ident wrong x9 while locked: 401,401,401,401,401,401,401,401,401
+LOCK "  "+ident correct while locked: 200

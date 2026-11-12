@@ -1,0 +1,15 @@
+CAUGHT   counter key follows the penalty window
+CAUGHT   refused attempts are not counted
+CAUGHT   store failure admits a deny rule
+CAUGHT   route match uses the raw path
+CAUGHT   login rule removed from the baseline
+CAUGHT   counter identity drops the subject
+CAUGHT   degraded not reported from check()
+CAUGHT   block never set (adaptive off)
+CAUGHT   malformed counter accepted (NaN passes)
+CAUGHT   IPv6 counted per address
+CAUGHT   increment script drops the expiry
+CAUGHT   real 429 reported as 503 after a degraded rule
+CAUGHT   construction accepts cost above limit
+13/13 mutants caught
+exit=0

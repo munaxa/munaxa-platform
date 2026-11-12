@@ -1,0 +1,20 @@
+CAUGHT   edge route match disabled (request.path again) (tests fail)
+CAUGHT   route not lowercased (tests fail)
+CAUGHT   login-per-ip policy removed (tests fail)
+CAUGHT   password-reset edge policy removed (tests fail)
+CAUGHT   mfa-per-session policy removed (tests fail)
+CAUGHT   store failure treated as unlimited (tests fail)
+CAUGHT   wrong counter identity (one credential counter for all) (tests fail)
+CAUGHT   login-per-identifier policy removed (tests fail)
+CAUGHT   login rule also matches introspection (tests fail)
+CAUGHT   identifier not trimmed before lockout (tests fail)
+CAUGHT   no Redis command timeout (tests fail)
+CAUGHT   reset address rule adaptive again (tests fail)
+CAUGHT   identifier counter not scoped by organisation (tests fail)
+CAUGHT   IPv6 counted per address, not per /64 (tests fail)
+CAUGHT   encoded introspect spelling gets the introspection limit (tests fail)
+15/15 mutants caught
+exit=0
+# Added after review round 2 and run on its own (same script, last entry):
+CAUGHT   default organisation counted apart from its explicit key (tests fail)
+16/16 mutants caught in total
