@@ -210,3 +210,14 @@ run "a_per_task_store_with_private_callers_is_refused" {
   }
   expect_failures = [var.single_task_store]
 }
+
+run "a_per_task_store_with_extra_groups_is_refused" {
+  command = plan
+  variables {
+    single_task_store                  = true
+    deployment_minimum_healthy_percent = 0
+    deployment_maximum_percent         = 100
+    extra_security_group_ids           = ["sg-0123456789abcdef0"]
+  }
+  expect_failures = [var.single_task_store]
+}

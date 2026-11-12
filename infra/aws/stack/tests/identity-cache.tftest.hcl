@@ -112,7 +112,7 @@ variables {
 
 # --- Testing: one task, one sidecar, stop before start ------------------------------------------
 
-run "testing_identity_sidecar_stops_the_old_task_before_starting_the_new_one" {
+run "testing_identity_deploys_one_task_at_zero_and_one_hundred_percent" {
   command = plan
 
   variables {
@@ -124,7 +124,7 @@ run "testing_identity_sidecar_stops_the_old_task_before_starting_the_new_one" {
 
   assert {
     condition     = module.identity[0].service_deployment.minimum_healthy_percent == 0 && module.identity[0].service_deployment.maximum_percent == 100
-    error_message = "With the sidecar store Identity deploys at 0 % / 100 %: the old task stops before the new one starts, so two stores never serve together."
+    error_message = "With the sidecar store Identity deploys at 0 % / 100 %: the old task is deregistered from the load balancer before a new one can serve, so one store receives new requests at a time."
   }
   assert {
     condition     = module.identity[0].service_deployment.desired_count == 1

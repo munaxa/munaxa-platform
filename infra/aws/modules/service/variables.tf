@@ -178,8 +178,8 @@ variable "desired_count" {
 # and 200 % maximum, so every service that does not set them is planned exactly as before.
 #
 # A service whose tasks each hold their own state store (Identity with its Valkey sidecar) sets
-# 0 and 100: ECS then stops the old task before it starts the new one, so two tasks with two
-# independent stores never serve at the same time. That costs the service's downtime during each
+# 0 and 100: the old task is deregistered from the load balancer before a new one can serve, so
+# at most one store receives new requests at a time (see single_task_store below). That costs the service's downtime during each
 # replacement (README, "Identity in Testing: deployments").
 variable "deployment_minimum_healthy_percent" {
   description = "ECS minimumHealthyPercent, 0-100. Null keeps the ECS default (100)."
@@ -235,8 +235,10 @@ variable "single_task_store" {
   }
 
   validation {
-    condition     = !var.single_task_store || (!var.register_discovery && length(var.ingress_security_group_ids) == 0)
-    error_message = "A service with a per-task state store is reached through its load balancer only (no register_discovery, no ingress_security_group_ids): during a replacement the old task may still run, and only the load balancer stops sending it requests before the new one serves."
+    condition = !var.single_task_store || (
+      !var.register_discovery && length(var.ingress_security_group_ids) == 0 && length(var.extra_security_group_ids) == 0
+    )
+    error_message = "A service with a per-task state store is reached through its load balancer only (no register_discovery, no ingress_security_group_ids, no extra_security_group_ids, whose rules this module cannot see): during a replacement the old task may still run, and only the load balancer stops sending it requests before the new one serves."
   }
 }
 
