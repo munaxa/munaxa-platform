@@ -1,0 +1,2 @@
+Platform RateLimiter @ 535ddd4, BASELINE login-per-ip (10/15min, adaptiveFactor 2), MemoryCache, 30 POST /api/auth/login from 203.0.113.7, 1 s apart
+REFUSED 11,22
