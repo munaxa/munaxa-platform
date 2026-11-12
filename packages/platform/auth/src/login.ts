@@ -327,7 +327,7 @@ export class LoginService {
  * the tenant segment is escaped so it cannot run into the digest.
  */
 function subjectDigest(identifier: string): string {
-  return sha256Hex(identifier.toLowerCase()).slice(0, 32);
+  return sha256Hex(identifier.trim().toLowerCase()).slice(0, 32);
 }
 
 function failureKey(tenantId: TenantId, identifier: string): string {

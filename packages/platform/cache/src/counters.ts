@@ -61,6 +61,15 @@ export class FixedWindowCounter implements CounterPort {
  * CDNs. It costs one extra read per check and removes the boundary burst that lets a caller
  * spend two full windows' worth of budget in a few milliseconds.
  */
+export interface SlidingWindowState extends CounterState {
+  /** Start of the current fixed window, epoch milliseconds. */
+  readonly windowStart: number;
+  /** Raw count in the current fixed window, this hit included. */
+  readonly current: number;
+  /** Raw count in the previous fixed window. */
+  readonly previous: number;
+}
+
 export class SlidingWindowCounter implements CounterPort {
   readonly #cache: CachePort;
   readonly #clock: Clock;
@@ -71,6 +80,18 @@ export class SlidingWindowCounter implements CounterPort {
   }
 
   async hit(key: string, window: DurationMs, cost = 1): Promise<CounterState> {
+    const { count, resetAt } = await this.hitWithHistory(key, window, cost);
+    return { count, resetAt };
+  }
+
+  /**
+   * `hit`, also answering the two fixed windows the estimate was made from.
+   *
+   * A caller that has to say *when* a refused subject may try again needs them: the estimate falls
+   * as the previous window's weight runs down, so the answer depends on both counts, not on the
+   * estimate alone.
+   */
+  async hitWithHistory(key: string, window: DurationMs, cost = 1): Promise<SlidingWindowState> {
     const now = this.#clock.now();
     const index = Math.floor(now / window);
     const elapsed = now - index * window;
@@ -84,6 +105,9 @@ export class SlidingWindowCounter implements CounterPort {
     return {
       count: Math.round(previous * weight + current),
       resetAt: (index + 1) * window,
+      windowStart: index * window,
+      current,
+      previous,
     };
   }
 

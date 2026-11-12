@@ -17,6 +17,7 @@
     "validate": {},
     "test": {
       "dependsOn": ["^build"],
+      "env": ["MUNAXA_TEST_REDIS_URL"],
       "outputs": ["coverage/**"]
     },
     "build-storybook": {

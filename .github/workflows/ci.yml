@@ -51,6 +51,16 @@ jobs:
   verify:
     name: Lint · Typecheck · Test · Build
     runs-on: ubuntu-latest
+    # The rate limiter's counter, block and expiry script are tested against a real server too
+    # (packages/platform/security/test/redis-server.test.ts), not only against the in-memory fake.
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      MUNAXA_TEST_REDIS_URL: redis://127.0.0.1:6379
     steps:
       - uses: actions/checkout@v6
 
@@ -74,6 +84,11 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Rate limiter against a real Redis server
+        run: pnpm --filter @munaxa/security exec vitest run test/redis-server.test.ts
+        env:
+          MUNAXA_REQUIRE_REDIS: '1'
 
       - name: Build
         run: pnpm build

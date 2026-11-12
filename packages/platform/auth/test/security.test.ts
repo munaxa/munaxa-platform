@@ -325,6 +325,28 @@ describe('lockout is not an oracle', () => {
       login.authenticate('nobody@example.com', 'wrong', { tenantId: ROOT_TENANT_ID }),
     ).rejects.toMatchObject({ code: 'AUTH_ACCOUNT_LOCKED' });
   });
+
+  it('keeps one lockout counter whatever the spelling: case and surrounding whitespace', async () => {
+    const clock = { now: () => START };
+    const { login } = await fixture({
+      loginOptions: { maxAttempts: 3, cache: new MemoryCache({ clock }) },
+    });
+    // A directory looks accounts up trimmed and lowercased, so every one of these is the same
+    // account. Each used to have its own counter, so respelling the address reset the lockout.
+    for (const spelling of [
+      ' Someone@Example.com',
+      'someone@example.com\t',
+      '  SOMEONE@example.com',
+    ]) {
+      await login
+        .authenticate(spelling, 'wrong', { tenantId: ROOT_TENANT_ID })
+        .catch(() => undefined);
+    }
+
+    await expect(
+      login.authenticate('\tsomeone@example.com ', 'wrong', { tenantId: ROOT_TENANT_ID }),
+    ).rejects.toMatchObject({ code: 'AUTH_ACCOUNT_LOCKED' });
+  });
 });
 
 describe('OIDC callback handling', () => {

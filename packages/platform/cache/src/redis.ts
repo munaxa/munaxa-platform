@@ -18,9 +18,20 @@ export interface RedisLike {
   pttl(key: string): Promise<number>;
   /** Optional — used only by `clear(namespace)`, which is itself optional. */
   scan?(cursor: string, ...args: readonly (string | number)[]): Promise<[string, string[]]>;
-  /** Optional — used by the lock's compare-and-delete. Falls back to a non-atomic path. */
+  /**
+   * Optional — used by the lock's compare-and-delete and by `increment`, which then sets the counter
+   * and its expiry in one step. Both fall back to a non-atomic path without it.
+   */
   eval?(script: string, numKeys: number, ...args: readonly string[]): Promise<unknown>;
 }
+
+const INCREMENT_WITH_EXPIRY = `
+local next = redis.call('INCRBY', KEYS[1], ARGV[1])
+local ttl = tonumber(ARGV[2])
+if ttl > 0 and redis.call('PTTL', KEYS[1]) == -1 then
+  redis.call('PEXPIRE', KEYS[1], ttl)
+end
+return next`;
 
 export interface RedisCacheOptions {
   /** Prepended to every key. Set it per application so two products never collide. */
@@ -84,6 +95,15 @@ export class RedisCache implements CachePort {
 
   async increment(key: string, by = 1, options: CacheSetOptions = {}): Promise<number> {
     const full = this.#key(key);
+    const ttl = options.ttl === undefined ? 0 : Math.max(1, Math.round(options.ttl));
+    if (this.#redis.eval) {
+      // One script, so the counter and its expiry are written together: a client or server failure
+      // between a separate INCRBY and PEXPIRE would leave a counter that never expires. A counter
+      // found without an expiry is given one, which repairs a key left that way by the fallback
+      // path below. An existing expiry is never moved (the fixed-window semantic, as below).
+      const next = await this.#redis.eval(INCREMENT_WITH_EXPIRY, 1, full, String(by), String(ttl));
+      return Number(next);
+    }
     const next = await this.#redis.incrby(full, by);
     // Only the call that created the key sets the expiry. Doing it on every hit would turn a
     // fixed window into a sliding one and let a steady stream of requests keep a limit alive

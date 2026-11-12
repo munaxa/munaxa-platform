@@ -94,8 +94,25 @@ function rateLimitStep(limiter: RateLimiter, options: SecurityPipelineOptions): 
     await options.onEvent?.({
       name: 'security.ratelimit.exceeded',
       request,
-      detail: { rule: decision.rule, retryAfterSeconds: decision.retryAfterSeconds },
+      detail: {
+        rule: decision.rule,
+        retryAfterSeconds: decision.retryAfterSeconds,
+        ...(decision.degraded === true ? { reason: 'store-unavailable' } : {}),
+      },
     });
+
+    if (decision.degraded === true) {
+      // Refused because a rule that must not fail open could not read its counter: an outage on
+      // our side, so 503 (retry later) rather than 429 (you sent too many).
+      return {
+        ...response,
+        status: 503,
+        body: {
+          code: 'SECURITY_RATE_LIMIT_UNAVAILABLE',
+          retryAfterSeconds: decision.retryAfterSeconds,
+        },
+      };
+    }
 
     return {
       ...response,
