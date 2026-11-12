@@ -110,6 +110,13 @@ variable "sidecars" {
   description = "Extra containers in the task (Identity's Valkey). Written as ECS container definitions."
   type        = list(any)
   default     = []
+
+  # A sidecar serves its own task only (127.0.0.1 in awsvpc mode). A port mapping is what would
+  # let the task's security group or a load balancer reach it, so none is accepted.
+  validation {
+    condition     = alltrue([for c in var.sidecars : length(try(c.portMappings, [])) == 0])
+    error_message = "A sidecar has no portMappings: it serves its own task over loopback only."
+  }
 }
 
 variable "depends_on_sidecars" {
@@ -165,6 +172,64 @@ variable "subnet_ids" {
 variable "desired_count" {
   type    = number
   default = 1
+}
+
+# ECS rolling-deployment bounds. Null (the default) leaves ECS's own defaults, 100 % minimum healthy
+# and 200 % maximum, so every service that does not set them is planned exactly as before.
+#
+# A service whose tasks each hold their own state store (Identity with its Valkey sidecar) sets
+# 0 and 100: ECS then stops the old task before it starts the new one, so two tasks with two
+# independent stores never serve at the same time. That costs the service's downtime during each
+# replacement (README, "Identity in Testing: deployments").
+variable "deployment_minimum_healthy_percent" {
+  description = "ECS minimumHealthyPercent, 0-100. Null keeps the ECS default (100)."
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.deployment_minimum_healthy_percent == null || (try(floor(var.deployment_minimum_healthy_percent) == var.deployment_minimum_healthy_percent, false) && var.deployment_minimum_healthy_percent >= 0 && var.deployment_minimum_healthy_percent <= 100)
+    error_message = "deployment_minimum_healthy_percent is a whole number from 0 to 100, or null."
+  }
+}
+
+variable "deployment_maximum_percent" {
+  description = "ECS maximumPercent, 100-200. Null keeps the ECS default (200)."
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.deployment_maximum_percent == null || (try(floor(var.deployment_maximum_percent) == var.deployment_maximum_percent, false) && var.deployment_maximum_percent >= 100 && var.deployment_maximum_percent <= 200)
+    error_message = "deployment_maximum_percent is a whole number from 100 to 200, or null."
+  }
+
+  # A deployment needs room either to start a task early (maximum above 100) or to stop one early
+  # (minimum below 100). 100/100 can never replace a task: the deployment hangs until the circuit
+  # breaker fails it. The effective values are compared, with ECS's defaults standing in for null.
+  validation {
+    condition     = coalesce(var.deployment_minimum_healthy_percent, 100) < coalesce(var.deployment_maximum_percent, 200)
+    error_message = "deployment_minimum_healthy_percent must be below deployment_maximum_percent (with ECS's defaults 100 and 200 for null); otherwise no deployment can replace a task."
+  }
+}
+
+variable "single_task_store" {
+  description = "Every task holds its own state store (a sidecar). The service must then run at most one task and stop the old task before starting a new one (deployment percentages 0 and 100)."
+  type        = bool
+  default     = false
+
+  validation {
+    condition = !var.single_task_store || (
+      var.desired_count <= 1 &&
+      var.deployment_minimum_healthy_percent == 0 &&
+      var.deployment_maximum_percent == 100
+    )
+    error_message = "A service with a per-task state store runs at most one task with deployment percentages 0 (minimum healthy) and 100 (maximum): two tasks would serve from two independent stores."
+  }
+}
+
+variable "extra_security_group_ids" {
+  description = "Security groups added to the ECS service's tasks only (never to the task definition, so a task run by hand from it does not get them). Identity's cache-client group."
+  type        = list(string)
+  default     = []
 }
 
 variable "alb_security_group_id" {

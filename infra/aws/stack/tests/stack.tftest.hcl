@@ -26,6 +26,31 @@ mock_provider "aws" {
   }
 }
 
+# The ephemeral read of the Identity cache's AUTH token (identity-cache.tf). Terraform's provider
+# mocks reject ephemeral resources, so its provider alias is a real provider that cannot reach AWS
+# (fake keys, no account lookup, every endpoint used by the module on 127.0.0.1), and the module is
+# replaced, so it never opens the secret. The value is a public placeholder, never a real token.
+provider "aws" {
+  alias                       = "ephemeral_secrets"
+  region                      = "eu-central-1"
+  access_key                  = "mock-access-key"
+  secret_key                  = "mock-secret-key"
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+  skip_metadata_api_check     = true
+  skip_region_validation      = true
+  endpoints {
+    secretsmanager = "http://127.0.0.1:9"
+    sts            = "http://127.0.0.1:9"
+    iam            = "http://127.0.0.1:9"
+  }
+}
+
+override_module {
+  target  = module.identity_cache_auth
+  outputs = { value = "mock-placeholder-not-a-token-0123456789" }
+}
+
 variables {
   environment = "nonprod"
   account_id  = "229251310592"
@@ -501,7 +526,7 @@ run "identity_without_its_valkey_sidecar_is_refused_in_a_session" {
       identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
   }
-  expect_failures = [var.valkey_image]
+  expect_failures = [var.identity_cache] # the store rule lives on identity_cache (validations may not form a cycle)
 }
 
 run "identity_signing_kid_must_be_a_published_key" {
@@ -585,6 +610,7 @@ run "prod_never_gets_the_backstop" {
   variables {
     environment               = "prod"
     session_backstop_schedule = "cron(0 21 * * ? *)"
+    valkey_image              = "" # production never has the sidecar (variables.tf)
   }
 
   assert {
@@ -1237,6 +1263,10 @@ run "aw01_privileged_policy_passes_its_role_keys" {
   variables {
     environment = "prod"
     vpc_cidr    = "10.131.0.0/16"
+    # Production Identity: the shared cache, never the sidecar (variables.tf).
+    valkey_image       = ""
+    identity_cache     = { node_type = "cache.t4g.micro", replicas = 0, engine_version = "8.1", auth_token_version = 1 }
+    secret_version_ids = { identity = "00000000-0000-4000-8000-000000000001" }
     images = {
       identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     }

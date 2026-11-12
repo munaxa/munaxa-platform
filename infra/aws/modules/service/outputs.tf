@@ -36,3 +36,15 @@ output "execution_role_grants" {
     secret_arn           = local.reads_secret ? var.secret_arn : null
   }
 }
+
+output "service_deployment" {
+  description = "The ECS service's deployment settings, desired count and security groups (for plan tests). Null without a service."
+  value = var.create_service ? {
+    minimum_healthy_percent = aws_ecs_service.this[0].deployment_minimum_healthy_percent
+    maximum_percent         = aws_ecs_service.this[0].deployment_maximum_percent
+    circuit_breaker         = aws_ecs_service.this[0].deployment_circuit_breaker[0].enable
+    circuit_rollback        = aws_ecs_service.this[0].deployment_circuit_breaker[0].rollback
+    desired_count           = aws_ecs_service.this[0].desired_count
+    security_groups         = aws_ecs_service.this[0].network_configuration[0].security_groups
+  } : null
+}
