@@ -61,6 +61,10 @@ export class FixedWindowCounter implements CounterPort {
  * CDNs. It costs one extra read per check and removes the boundary burst that lets a caller
  * spend two full windows' worth of budget in a few milliseconds.
  */
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
 export interface SlidingWindowState extends CounterState {
   /** Start of the current fixed window, epoch milliseconds. */
   readonly windowStart: number;
@@ -100,6 +104,12 @@ export class SlidingWindowCounter implements CounterPort {
 
     const current = await this.#cache.increment(currentKey, cost, { ttl: window * 2 });
     const previous = (await this.#cache.get<number>(previousKey)) ?? 0;
+    // A count that is not a finite, non-negative number was not written by this counter. Failing
+    // here hands the decision to the caller's failure policy; going on would make every comparison
+    // with `NaN` false, which for a limiter means "never over the limit".
+    if (!isCount(current) || !isCount(previous)) {
+      throw new Error(`Counter ${key} holds a value that is not a count`);
+    }
     const weight = 1 - elapsed / window;
 
     return {

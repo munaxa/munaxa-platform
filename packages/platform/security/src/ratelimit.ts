@@ -103,6 +103,15 @@ export class RateLimiter {
   readonly #onDegraded: RateLimiterOptions['onDegraded'];
 
   constructor(options: RateLimiterOptions) {
+    for (const rule of options.rules) {
+      // A rule that can never admit anything is a configuration mistake, not a policy: it would
+      // refuse every request with an unbounded Retry-After.
+      if (!(rule.limit > 0) || !(rule.window > 0) || (rule.cost ?? 1) > rule.limit) {
+        throw new Error(
+          `Rate limit rule ${rule.id}: limit and window must be positive, cost at most limit`,
+        );
+      }
+    }
     this.#cache = options.cache;
     this.#rules = options.rules;
     this.#clock = options.clock ?? systemClock;
@@ -130,7 +139,9 @@ export class RateLimiter {
 
       const decision = await this.#evaluate(rule, target, subject);
       degraded ||= decision.degraded === true;
-      if (!decision.allowed) return degraded ? { ...decision, degraded } : decision;
+      // A refusal is reported as an outage only when the refusing rule itself could not be read; a
+      // real over-the-limit refusal stays a 429 even if an earlier fail-open rule was degraded.
+      if (!decision.allowed) return decision;
       if (!tightest || decision.remaining < tightest.remaining) tightest = decision;
     }
 
@@ -247,14 +258,23 @@ export class RateLimiter {
 
     const blockKey = `${key}:block`;
     const existing = await this.#cache.get<number>(blockKey);
+    if (existing !== undefined && !(typeof existing === 'number' && Number.isFinite(existing))) {
+      throw new Error(`Block ${blockKey} holds a value that is not a time`);
+    }
     if (existing !== undefined && existing > now) return existing;
     if (!over) return undefined;
 
     const violationsKey = `${key}:violations`;
-    const violations = (await this.#cache.get<number>(violationsKey)) ?? 0;
+    const stored = await this.#cache.get<number>(violationsKey);
+    // An unreadable violation count escalates to the longest block rather than the shortest.
+    const violations =
+      stored === undefined ? 0 : typeof stored === 'number' && Number.isFinite(stored) ? stored : 4;
     const penalty = Math.min(rule.window * factor ** Math.min(violations, 4), rule.window * 16);
     const until = now + penalty;
     if (await this.#cache.setIfAbsent(blockKey, until, { ttl: penalty })) {
+      // The memory of violations is set when the first one is recorded and not extended: an attack
+      // sustained for more than 32 windows starts its escalation again from one window (the block
+      // is then at most 1 + 2 + 4 + 8 + 16 windows behind it, and refused attempts keep counting).
       await this.#cache.increment(violationsKey, 1, { ttl: rule.window * 32 });
       return until;
     }
@@ -318,7 +338,7 @@ function admittedAgainAt(
 function subjectFor(dimension: RateLimitDimension, target: RateLimitTarget): string | undefined {
   switch (dimension) {
     case 'ip':
-      return target.ipAddress;
+      return target.ipAddress === undefined ? undefined : addressSubject(target.ipAddress);
     case 'user':
       return target.userId;
     case 'session':
@@ -330,6 +350,37 @@ function subjectFor(dimension: RateLimitDimension, target: RateLimitTarget): str
     case 'global':
       return 'global';
   }
+}
+
+/**
+ * The subject an address is counted under.
+ *
+ * IPv4 addresses are counted one by one. An IPv6 client is normally given a whole /64 (and often a
+ * /56 or /48), so counting single IPv6 addresses would let one client rotate through 2^64 of them
+ * past any per-address limit; IPv6 is counted by its /64. An IPv4-mapped IPv6 address
+ * (`::ffff:203.0.113.7`) is the IPv4 address it maps.
+ */
+export function addressSubject(address: string): string {
+  const trimmed = address.trim().toLowerCase();
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(trimmed);
+  if (mapped) return mapped[1]!;
+  if (!trimmed.includes(':')) return trimmed;
+  const withoutZone = trimmed.split('%')[0]!;
+  const [head = '', tail] = withoutZone.split('::');
+  const left = head === '' ? [] : head.split(':');
+  const right = tail === undefined || tail === '' ? [] : tail.split(':');
+  const groups =
+    tail === undefined
+      ? left
+      : [
+          ...left,
+          ...Array.from({ length: Math.max(0, 8 - left.length - right.length) }, () => '0'),
+          ...right,
+        ];
+  return `${groups
+    .slice(0, 4)
+    .map((group) => (group === '' ? '0' : group.replace(/^0+(?=.)/, '')))
+    .join(':')}::/64`;
 }
 
 /** Build a target from a request and whatever context has been resolved so far. */

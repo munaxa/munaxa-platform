@@ -12,6 +12,7 @@ import {
 import {
   BASELINE_RATE_LIMIT_RULES,
   RateLimiter,
+  addressSubject,
   canonicalRoutePath,
   securityPipeline,
   type RateLimitRule,
@@ -366,5 +367,99 @@ describe('baseline rules match every spelling of their route, and only their rou
   it('canonicalRoutePath folds every spelling to one lowercase path', () => {
     expect(canonicalRoutePath('HTTPS://h:443/A//b/./c/../D/?q#f')).toBe('/a/b/d');
     expect(canonicalRoutePath('/')).toBe('/');
+  });
+});
+
+describe('review round 1: malformed state, mixed failures, configuration, IPv6', () => {
+  const key = 'rl:login-per-ip:root:203.0.113.7';
+
+  it('treats a counter that is not a number as a store failure, never as an unlimited pass', async () => {
+    const { clock, cache, limiter } = setup([LOGIN]);
+    const index = Math.floor(clock.now() / LOGIN.window);
+    await cache.set(`${key}:${index - 1}`, 'garbage');
+    const decisions = await Promise.all(
+      range(1, 6).map(() => limiter.check(loginFrom('203.0.113.7'))),
+    );
+
+    expect(decisions.every((decision) => !decision.allowed && decision.degraded === true)).toBe(
+      true,
+    );
+    expect(decisions.every((decision) => Number.isFinite(decision.retryAfterSeconds))).toBe(true);
+  });
+
+  it('treats a block that is not a time as a store failure', async () => {
+    const { cache, limiter } = setup([LOGIN]);
+    await cache.set(`${key}:block`, { not: 'a time' });
+
+    expect(await limiter.check(loginFrom('203.0.113.7'))).toMatchObject({
+      allowed: false,
+      degraded: true,
+    });
+  });
+
+  it('keeps a real over-the-limit refusal a refusal (429), even after a degraded fail-open rule', async () => {
+    const store = new MemoryCache();
+    const flaky = new Proxy(store, {
+      get: (target, property): unknown => {
+        const value: unknown = Reflect.get(target, property);
+        if (typeof value !== 'function') return value;
+        const method = value as (...a: unknown[]) => Promise<unknown>;
+        return (...args: unknown[]): Promise<unknown> =>
+          String(args[0]).includes(':general:')
+            ? Promise.reject(new Error('timeout'))
+            : method.apply(target, args);
+      },
+    });
+    const limiter = new RateLimiter({
+      cache: flaky,
+      rules: [
+        { id: 'general', dimension: 'ip', limit: 300, window: MINUTE },
+        { id: 'strict', dimension: 'ip', limit: 1, window: MINUTE, onStoreFailure: 'deny' },
+      ],
+    });
+    await limiter.check(loginFrom('a'));
+    const refused = await limiter.check(loginFrom('a'));
+
+    expect(refused.allowed).toBe(false);
+    expect(refused.rule).toBe('strict');
+    expect(refused.degraded).toBeUndefined();
+  });
+
+  it('refuses a rule that could never admit anything', () => {
+    expect(
+      () =>
+        new RateLimiter({
+          cache: new MemoryCache(),
+          rules: [{ id: 'x', dimension: 'ip', limit: 1, window: MINUTE, cost: 2 }],
+        }),
+    ).toThrow(/cost at most limit/);
+    expect(
+      () =>
+        new RateLimiter({
+          cache: new MemoryCache(),
+          rules: [{ id: 'y', dimension: 'ip', limit: 0, window: MINUTE }],
+        }),
+    ).toThrow();
+  });
+
+  it('counts an IPv6 client by its /64, so rotating the interface identifier does not escape', async () => {
+    const rule: RateLimitRule = { id: 'r', dimension: 'ip', limit: 3, window: MINUTE };
+    const { limiter } = setup([rule]);
+    for (const suffix of ['1', 'abcd:1', 'ffff:ffff:ffff:fffe']) {
+      expect((await limiter.check(loginFrom(`2001:db8:1:2::${suffix}`))).allowed).toBe(true);
+    }
+    expect((await limiter.check(loginFrom('2001:0db8:0001:0002:9:9:9:9'))).allowed).toBe(false);
+    expect((await limiter.check(loginFrom('2001:db8:1:3::1'))).allowed).toBe(true);
+  });
+
+  it.each([
+    ['203.0.113.7', '203.0.113.7'],
+    ['::ffff:203.0.113.7', '203.0.113.7'],
+    ['2001:DB8::1', '2001:db8:0:0::/64'],
+    ['2001:db8:a:b:c:d:e:f', '2001:db8:a:b::/64'],
+    ['fe80::1%eth0', 'fe80:0:0:0::/64'],
+    ['::1', '0:0:0:0::/64'],
+  ])('addressSubject(%s) is %s', (address, subject) => {
+    expect(addressSubject(address)).toBe(subject);
   });
 });
