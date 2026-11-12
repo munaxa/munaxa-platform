@@ -31,7 +31,7 @@ change was made.**
 | Production IAM | **[R] Option B** (an operator sets the token; Terraform never reads it). If automation is wanted, A' (a token-only secret). **Never A**: the bundle holds the access-token signing key | 06 |
 | Production availability | One node (about USD 13/month **[E]**) or two in two zones (about USD 26 **[E]**). Not decided for the owner | 07 |
 | Work and Control | Use only `TokenService` and crypto. No change and no PR now; upgrade after publication | 08 |
-| Reviews | Three independent rounds. Every Critical, High and Medium finding is fixed: 1 Medium in round 1, 3 Medium in round 2 (all in the runbook) | 09 |
+| Reviews | Three independent rounds. Every Critical, High and Medium finding is fixed: 1 Medium in round 1, 3 in round 2 and 2 in round 3 (all five in the runbook after round 1) | 09 |
 
 ## Owner decisions (yes or no)
 
