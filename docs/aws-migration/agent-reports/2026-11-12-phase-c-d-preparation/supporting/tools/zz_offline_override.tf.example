@@ -1,0 +1,25 @@
+# LOCAL OFFLINE PLAN ONLY (not committed): local state, fake credentials, every AWS call refused.
+terraform {
+  backend "local" {
+    path = "offline.tfstate"
+  }
+}
+provider "aws" {
+  access_key                  = "AKIAOFFLINEOFFLINE00"
+  secret_key                  = "offline-offline-offline-offline-offline0"
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+  skip_metadata_api_check     = true
+  skip_region_validation      = true
+  allowed_account_ids         = null
+}
+provider "aws" {
+  alias                       = "ephemeral_secrets"
+  access_key                  = "AKIAOFFLINEOFFLINE00"
+  secret_key                  = "offline-offline-offline-offline-offline0"
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+  skip_metadata_api_check     = true
+  skip_region_validation      = true
+  allowed_account_ids         = null
+}

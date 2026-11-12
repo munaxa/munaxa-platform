@@ -1,0 +1,88 @@
+# Plan-only tests with a mocked AWS provider: no credentials, no AWS call. They check the shape of
+# each stage and that the guardrails refuse what they must.
+#
+#   terraform init -backend=false && terraform test
+
+mock_provider "aws" {
+  # Policy documents are rendered by the provider; the mock returns a fixed, valid one.
+  mock_data "aws_iam_policy_document" {
+    defaults = {
+      json = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"sts:AssumeRole\",\"Principal\":{\"Service\":\"ecs-tasks.amazonaws.com\"}}]}"
+    }
+  }
+  # The key policy names the control-api task role; give it an ARN at plan time.
+  override_resource {
+    target          = module.control_api[0].aws_iam_role.task[0]
+    override_during = plan
+    values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-test-control-api-task" }
+  }
+  override_resource {
+    target = aws_db_instance.main
+    values = {
+      address            = "munaxa-test-pg.example.eu-central-1.rds.amazonaws.com"
+      port               = 5432
+      master_user_secret = [{ secret_arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-mock", kms_key_id = "mock", secret_status = "active" }]
+    }
+  }
+}
+
+# The ephemeral read of the Identity cache's AUTH token (identity-cache.tf). Terraform's provider
+# mocks reject ephemeral resources, so its provider alias is a real provider that cannot reach AWS
+# (fake keys, no account lookup, every endpoint used by the module on 127.0.0.1), and the module is
+# replaced, so it never opens the secret. The value is a public placeholder, never a real token.
+provider "aws" {
+  alias                       = "ephemeral_secrets"
+  region                      = "eu-central-1"
+  access_key                  = "mock-access-key"
+  secret_key                  = "mock-secret-key"
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+  skip_metadata_api_check     = true
+  skip_region_validation      = true
+  endpoints {
+    secretsmanager = "http://127.0.0.1:9"
+    sts            = "http://127.0.0.1:9"
+    iam            = "http://127.0.0.1:9"
+  }
+}
+
+override_module {
+  target  = module.identity_cache_auth
+  outputs = { value = "mock-placeholder-not-a-token-0123456789" }
+}
+
+
+variables {
+}
+run "dump" {
+  command = plan
+  variables {
+    services_enabled = false
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-XXXXXX" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-migrate-XXXXXX" }
+  }
+  assert {
+    condition     = module.identity[0].task_definition_container_definitions == "x"
+    error_message = "DUMP-ID${module.identity[0].task_definition_container_definitions}ENDDUMP"
+  }
+  assert {
+    condition     = aws_ecs_task_definition.db_admin[0].container_definitions == "x"
+    error_message = "DUMP-DBA${aws_ecs_task_definition.db_admin[0].container_definitions}ENDDUMP"
+  }
+  assert {
+    condition     = aws_ecs_task_definition.identity_bootstrap[0].container_definitions == "x"
+    error_message = "DUMP-BOOT${aws_ecs_task_definition.identity_bootstrap[0].container_definitions}ENDDUMP"
+  }
+  assert {
+    condition     = module.migrate["identity"].task_definition_container_definitions == "x"
+    error_message = "DUMP-MIG${module.migrate["identity"].task_definition_container_definitions}ENDDUMP"
+  }
+}

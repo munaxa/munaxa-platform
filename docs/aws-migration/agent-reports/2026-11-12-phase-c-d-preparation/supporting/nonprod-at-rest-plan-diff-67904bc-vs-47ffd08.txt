@@ -1,0 +1,5 @@
+A: 101 resources, B: 102 resources
+only in B (would be CREATED): 1
+  + aws_secretsmanager_secret.service["docs-migrate"]
+only in A (would be DESTROYED): 0
+common resources with a different planned value (would be UPDATED or REPLACED): 0
