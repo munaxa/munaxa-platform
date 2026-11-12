@@ -152,9 +152,14 @@ module "identity" {
   secret_keys       = local.secret_keys["identity"]
   secret_version_id = lookup(var.secret_version_ids, "identity", "")
 
-  # Identity's lockout counters and rate limits live in Redis (its ADR-0002). Testing and the first
-  # Production run a Valkey sidecar on 127.0.0.1, password-protected, no persistence: a restart
-  # resets counters, which ADR §1 accepts until ElastiCache is justified.
+  # Identity's security state (rate limits, lockouts, MFA challenges and attempts, TOTP replay
+  # markers, reauthentication markers, the permission cache) lives in one Redis-protocol store
+  # (its ADR-0002). Two topologies, chosen by inputs and enforced by variables.tf:
+  #
+  #   Testing     one task with a Valkey sidecar on 127.0.0.1, password-protected, no persistence,
+  #               no port mapping; a replacement resets the state, which ADR §1 accepts there.
+  #   Production  several tasks, no sidecar, the shared ElastiCache group of identity-cache.tf
+  #               (TLS, AUTH token), reached through the cache-client group on the service only.
   sidecars = var.valkey_image == "" ? [] : [{
     name                   = "valkey"
     image                  = var.valkey_image
@@ -191,12 +196,25 @@ module "identity" {
   depends_on_sidecars  = var.valkey_image == "" ? [] : ["valkey"]
   health_check_command = local.node_health["identity"]
 
-  create_service    = local.running
-  desired_count     = var.desired_counts["identity"]
-  connect_database  = true
-  routed            = local.routed
-  listener_arn      = local.listener
-  health_check_path = "/api/auth/health/ready"
+  create_service = local.running
+  desired_count  = var.desired_counts["identity"]
+
+  # With the sidecar every task has its own store. ECS's default rolling deployment (100 % / 200 %)
+  # starts the new task before it stops the old one, so for a few minutes two tasks would serve
+  # from two independent stores. 0 % / 100 % stops the old task first: about a minute of Identity
+  # downtime per deployment in Testing (README, "Identity in Testing: deployments"). The circuit
+  # breaker still rolls a failed deployment back. The shared cache needs neither: ECS's defaults.
+  single_task_store                  = var.valkey_image != ""
+  deployment_minimum_healthy_percent = var.valkey_image != "" ? 0 : null
+  deployment_maximum_percent         = var.valkey_image != "" ? 100 : null
+
+  # Only the ECS service's tasks may reach the shared cache. The probe and bootstrap tasks run with
+  # module.identity's own group (output run_task_network.identity_group), which the cache does not admit.
+  extra_security_group_ids = local.identity_cache ? [aws_security_group.identity_cache_client[0].id] : []
+  connect_database         = true
+  routed                   = local.routed
+  listener_arn             = local.listener
+  health_check_path        = "/api/auth/health/ready"
   routes = concat(
     local.operator_open ? [{ priority = 30, hosts = [var.hosts.operator], paths = ["/api/auth/*"], source_ips = var.operator_cidrs }] : [],
     [

@@ -83,6 +83,9 @@ jobs:
           set -euo pipefail
           terraform -chdir=infra/aws/bootstrap test
           terraform -chdir=infra/aws/stack test
+          # The service module's own rules (deployment percentages, per-task store, sidecar ports).
+          terraform -chdir=infra/aws/modules/service init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=infra/aws/modules/service test
 
       # The identity-probe task's loader (identity-probe.tf) and any probe tests beside it: Node 22,
       # built-in modules only, no network (fetch is stubbed).

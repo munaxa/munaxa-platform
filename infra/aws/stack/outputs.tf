@@ -63,3 +63,12 @@ output "run_task_network" {
     identity_group            = length(module.identity) > 0 ? module.identity[0].security_group_id : null
   }
 }
+
+output "identity_cache" {
+  description = "Production Identity's shared cache (identity-cache.tf): the primary endpoint for REDIS_URL (rediss://:<token>@<endpoint>:6379) and the ops topic to subscribe to. Not secrets. Null without identity_cache."
+  value = length(aws_elasticache_replication_group.identity) == 0 ? null : {
+    primary_endpoint = aws_elasticache_replication_group.identity[0].primary_endpoint_address
+    port             = aws_elasticache_replication_group.identity[0].port
+    ops_topic_arn    = aws_sns_topic.ops[0].arn
+  }
+}
