@@ -9,7 +9,7 @@
 # | docs-api       | 0.5 vCPU, 2 GB | ALB (preview streams), web    | docs-api bundle; S3 bucket (task role) |
 # |                |  + Redis sidecar on 127.0.0.1:6379                                              |
 # | docs-scanner   | 0.25 vCPU, 2 GB| docs-api (ICAP, Cloud Map)    | nothing                                |
-# | docs-db-admin  | run-only       | -                             | RDS master, docs-operator bundle       |
+# | docs-db-admin  | run-only       | -                             | RDS master, docs-operator, docs-migrate|
 # | docs-migrate   | run-only       | -                             | docs-migrate bundle (owner URL) only   |
 # | docs-provision | run-only       | -                             | docs-api bundle, docs-provision/<slug> |
 #
@@ -52,7 +52,10 @@ locals {
     "SIGNATURE_WITNESS_SECRET", "AUDIT_CHECKPOINT_SECRET", "MFA_TOTP_SEALING_KEY",
     "METRICS_SCRAPE_TOKEN", "MAIL_RESEND_API_KEY", "CONTROL_PLANE_TOKEN",
   ]
-  docs_operator_keys  = ["EDMS_OWNER_PASSWORD", "EDMS_APP_PASSWORD", "EDMS_BACKUP_PASSWORD"]
+  # The owner credential is kept once, as docs-migrate's URL (L-5): docs-db-admin sets edms_owner's
+  # password from that URL (scripts/docs-owner-password.sql), so docs-operator holds only the
+  # application and backup roles' passwords and nothing has to be kept in step by hand.
+  docs_operator_keys  = ["EDMS_APP_PASSWORD", "EDMS_BACKUP_PASSWORD"]
   docs_migrate_keys   = ["DATABASE_MIGRATION_URL"] # edms_owner on the tenant database
   docs_provision_keys = ["TENANT_ID", "ADMIN_EMAIL", "ADMIN_NAME", "ADMIN_PASSWORD"]
 
@@ -268,16 +271,19 @@ module "docs_scanner" {
 # --- Database bootstrap (run-only) -------------------------------------------------------------
 #
 # As the RDS master user: the cluster roles (Docs infra/sql/cluster/01-roles.sql, vendored in
-# scripts/), their passwords from the docs-operator bundle, edms_backup, and the tenant database
-# owned by edms_owner. Idempotent. Passwords reach psql through \getenv only. The per-database
-# grants, migrations and post-migrate SQL are docs-migrate's job (below, DC-01).
+# scripts/), their passwords, edms_backup, and the tenant database owned by edms_owner. Idempotent.
+# edms_app's and edms_backup's passwords come from the docs-operator bundle; edms_owner's from the
+# docs-migrate bundle's DATABASE_MIGRATION_URL (scripts/docs-owner-password.sql, L-5), the only copy
+# of it. Credentials reach psql through \getenv only. The per-database grants, migrations and
+# post-migrate SQL are docs-migrate's job (below, DC-01).
 
 locals {
   docs_dbadmin_sql = join("\n", [
     "\\set ON_ERROR_STOP on",
     "DO $$ BEGIN SET log_min_error_statement TO panic; EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'log_min_error_statement unchanged'; END $$;",
+    # First: it only reads and checks the owner URL, and refuses before any role statement runs.
+    file("${path.module}/scripts/docs-owner-password.sql"),
     file("${path.module}/scripts/docs-cluster-roles.sql"),
-    "\\getenv owner_pw EDMS_OWNER_PASSWORD",
     "\\getenv app_pw EDMS_APP_PASSWORD",
     "\\getenv backup_pw EDMS_BACKUP_PASSWORD",
     "\\getenv tenant_db TENANT_DATABASE",
@@ -319,10 +325,14 @@ resource "aws_iam_role_policy" "docs_db_admin_execution" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "ReadMasterAndDocsOperator"
-        Effect   = "Allow"
-        Action   = "secretsmanager:GetSecretValue"
-        Resource = [aws_db_instance.main.master_user_secret[0].secret_arn, aws_secretsmanager_secret.service["docs-operator"].arn]
+        Sid    = "ReadMasterDocsOperatorAndOwnerUrl"
+        Effect = "Allow"
+        Action = "secretsmanager:GetSecretValue"
+        Resource = [
+          aws_db_instance.main.master_user_secret[0].secret_arn,
+          aws_secretsmanager_secret.service["docs-operator"].arn,
+          aws_secretsmanager_secret.service["docs-migrate"].arn,
+        ]
       },
       {
         Sid       = "DecryptThroughSecretsManager"
@@ -386,6 +396,8 @@ resource "aws_ecs_task_definition" "docs_db_admin" {
         { name = "PGPASSWORD", valueFrom = "${aws_db_instance.main.master_user_secret[0].secret_arn}:password::" },
       ],
       [for k in local.docs_operator_keys : { name = k, valueFrom = "${aws_secretsmanager_secret.service["docs-operator"].arn}:${k}::${lookup(var.secret_version_ids, "docs-operator", "")}" }],
+      # The owner URL docs-migrate uses, at the same pinned version, so both tasks see one password.
+      [{ name = "DATABASE_MIGRATION_URL", valueFrom = "${aws_secretsmanager_secret.service["docs-migrate"].arn}:DATABASE_MIGRATION_URL::${lookup(var.secret_version_ids, "docs-migrate", "")}" }],
     )
     logConfiguration = {
       logDriver = "awslogs"

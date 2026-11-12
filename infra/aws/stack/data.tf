@@ -141,9 +141,9 @@ resource "aws_db_instance" "main" {
 # |                          | CONTROL_PLANE_TOKEN, RESEND_API_KEY                                 |
 # | <env>/<product>-migrate  | DATABASE_MIGRATION_URL (the owner role)                             |
 # | <env>/docs-api           | docs.tf local.docs_app_keys (only with hosts.docs)                  |
-# | <env>/docs-operator      | EDMS_OWNER/APP/BACKUP_PASSWORD (only with hosts.docs)               |
-# | <env>/docs-migrate       | DATABASE_MIGRATION_URL, edms_owner on the tenant database (only     |
-# |                          | once every Docs image, docs_migrate included, is set; DC-01)        |
+# | <env>/docs-operator      | EDMS_APP_PASSWORD, EDMS_BACKUP_PASSWORD (only with hosts.docs)      |
+# | <env>/docs-migrate       | DATABASE_MIGRATION_URL, edms_owner on the tenant database: the one  |
+# |                          | copy of the owner credential (only with hosts.docs; DC-01, L-5)     |
 
 locals {
   # Identity's bundle. MFA_ENCRYPTION_KEYS is the hardened image's dedicated key ring (Identity
@@ -159,10 +159,10 @@ locals {
   secret_keys = merge(local.docs_enabled ? {
     docs-api      = local.docs_app_keys      # docs.tf; the Docs API and docs-provision
     docs-operator = local.docs_operator_keys # docs-db-admin only, never the API
-    } : {}, local.docs_defined ? {
-    # docs-migrate only (DC-01). Created with the Docs task definitions rather than with hosts.docs,
-    # so no current environment's plan changes until Docs is enabled; the owner writes its one value
-    # before the first docs-migrate run.
+    # docs-migrate and docs-db-admin only (DC-01, L-5). It follows hosts.docs like the other Docs
+    # bundles, not the Docs images: it holds the owner credential, so pinning or clearing an image
+    # must never schedule it for deletion (and a re-pin within the 30-day recovery window could not
+    # recreate it). The owner writes its one value before the first docs-db-admin run.
     docs-migrate = local.docs_migrate_keys
     } : {}, {
     identity         = local.identity_secret_keys
