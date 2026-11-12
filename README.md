@@ -129,6 +129,13 @@ pnpm storybook   # the living documentation
 
 ## Releasing
 
-Push a `v*.*.*` tag on `main`. The [release workflow](.github/workflows/release.yml) stamps
-every package with that version and publishes the set to GitHub Packages. Versioning policy
-lives in [`packages/platform/VERSIONING.md`](packages/platform/VERSIONING.md).
+Releases are dispatched by hand; no push, merge or tag publishes anything. First a version PR
+(`pnpm release:version`) sets the versions on `main`. Then the
+[release workflow](.github/workflows/release.yml) is dispatched on `main`, first with
+`dry_run = true` (build, tests, `release:check`, pack only, in a job whose token cannot write
+packages), then with `dry_run = false`, which publishes to GitHub Packages from a separate job that
+refuses any ref but `main` and any package list that is not exactly the 13. It publishes only the 13 lockstep security packages listed by
+[`scripts/release-packages.mjs`](scripts/release-packages.mjs) (the changeset `fixed` group, equal to
+the release gate's `LOCKSTEP`); `@munaxa/licensing`, the façades, the platform and the tooling
+packages are never published by it. Versioning policy lives in
+[`packages/platform/VERSIONING.md`](packages/platform/VERSIONING.md).
