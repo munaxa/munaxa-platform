@@ -116,8 +116,8 @@ old one is still draining**, and for up to the deregistration delay plus the sto
 stores can exist. What does hold: the ALB sends no new request to a deregistering target, and none to
 a new target before it passes its health check, so at most one store receives new requests at any
 time; a request already in flight on the old task can still finish there. That relies on the ALB
-being the only way to the task: `single_task_store` therefore refuses a service-discovery name and
-private callers (`modules/service/variables.tf`). Whether the draining task counts is observed in a
+being the only way to the task: `single_task_store` therefore refuses a service-discovery name,
+private callers and extra security groups (`modules/service/variables.tf`). Whether the draining task counts is observed in a
 Testing session with a forced deployment (ECS events); see the Testing runbook in that report.
 
 ### Identity cache: AUTH token
