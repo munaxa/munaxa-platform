@@ -281,8 +281,9 @@ locals {
   docs_dbadmin_sql = join("\n", [
     "\\set ON_ERROR_STOP on",
     "DO $$ BEGIN SET log_min_error_statement TO panic; EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'log_min_error_statement unchanged'; END $$;",
-    file("${path.module}/scripts/docs-cluster-roles.sql"),
+    # First: it only reads and checks the owner URL, and refuses before any role statement runs.
     file("${path.module}/scripts/docs-owner-password.sql"),
+    file("${path.module}/scripts/docs-cluster-roles.sql"),
     "\\getenv app_pw EDMS_APP_PASSWORD",
     "\\getenv backup_pw EDMS_BACKUP_PASSWORD",
     "\\getenv tenant_db TENANT_DATABASE",

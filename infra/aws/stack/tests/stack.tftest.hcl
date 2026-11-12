@@ -805,6 +805,9 @@ run "docs_db_admin_takes_the_owner_password_only_from_the_migration_url" {
       strcontains(local.docs_dbadmin_sql, "\\getenv migration_url DATABASE_MIGRATION_URL") &&
       strcontains(local.docs_dbadmin_sql, "ALTER ROLE edms_owner PASSWORD :'owner_pw';") &&
       strcontains(local.docs_dbadmin_sql, "\\if :owner_url_ok") &&
+      strcontains(local.docs_dbadmin_sql, "\\bind x:migration_url \\gset") &&
+      # The URL is checked before any role statement, the cluster roles file included.
+      strcontains(split("ALTER ROLE", local.docs_dbadmin_sql)[0], "\\endif") &&
       local.docs_operator_keys == ["EDMS_APP_PASSWORD", "EDMS_BACKUP_PASSWORD"]
     )
     error_message = "No second copy of the owner password: docs-operator has none, and db-admin derives it from the URL, refusing anything but edms_owner on the tenant database."

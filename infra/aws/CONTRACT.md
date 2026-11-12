@@ -207,3 +207,13 @@ the tenant database, before changing any role), then run `docs-migrate` to confi
 tasks read the same pinned version, so the role's password and the migration URL cannot drift. The
 bundle follows `hosts.docs` like `docs-api` and `docs-operator`: changing or clearing a Docs image
 never schedules it for deletion; removing `hosts.docs` removes all three.
+The URL must be one host (no raw `@` in the password: percent-encode it), carry no `user`,
+`password` or `dbname` query override, and the password must decode to UTF-8 without NUL; hex
+(`openssl rand -hex 32`) satisfies all of this. docs-db-admin passes the URL to the server only as a
+bound parameter, so a refused or failing statement never logs it.
+
+**Pending plan delta (L-5, not applied).** With `hosts.docs` set and no Docs images, as in nonprod
+today, this change adds one create, `aws_secretsmanager_secret.service["docs-migrate"]`, and one
+in-place update, `aws_iam_role_policy.docs_db_admin_execution[0]` (its Resource list gains
+docs-migrate). Prod has no `hosts.docs` and no change. The next nonprod apply, whatever it is for,
+must list both addresses in `envs/nonprod.expected-changes.json` or `check-plan-intent.sh` refuses it.

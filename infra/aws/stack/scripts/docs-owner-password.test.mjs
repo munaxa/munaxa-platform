@@ -157,6 +157,37 @@ describe(
       ['another database', 'postgresql://edms_owner:secret-value-1@db/postgres'],
       ['a malformed escape', 'postgresql://edms_owner:bad%zzescape@db/edms_munaxa_internal'],
       ['not a URL', 'host=db user=edms_owner password=secret-value-1'],
+      // A raw '@' would split the password differently from Prisma (which takes the last '@').
+      [
+        'a raw @ in the password',
+        'postgresql://edms_owner:secret-value-1@x@db/edms_munaxa_internal',
+      ],
+      // Bytes that are not UTF-8, or NUL: refused without an error that could carry them.
+      [
+        'bytes that are not UTF-8',
+        'postgresql://edms_owner:secret-value-1%FF@db/edms_munaxa_internal',
+      ],
+      [
+        'a truncated UTF-8 sequence',
+        'postgresql://edms_owner:secret-value-1%C3@db/edms_munaxa_internal',
+      ],
+      ['a NUL byte', 'postgresql://edms_owner:secret-value-1%00@db/edms_munaxa_internal'],
+      [
+        'an overlong encoding',
+        'postgresql://edms_owner:secret-value-1%C0%AF@db/edms_munaxa_internal',
+      ],
+      [
+        'a user override in the query string',
+        'postgresql://edms_owner:secret-value-1@db/edms_munaxa_internal?sslmode=require&user=edms_app',
+      ],
+      [
+        'a password override in the query string',
+        'postgresql://edms_owner:secret-value-1@db/edms_munaxa_internal?password=other',
+      ],
+      [
+        'a database override in the query string',
+        'postgresql://edms_owner:secret-value-1@db/edms_munaxa_internal?dbname=postgres',
+      ],
       ['an empty value', ''],
       [
         'the tenant database not given',
@@ -172,6 +203,20 @@ describe(
         assert.ok(!result.stderr.includes('secret-value-1') && !result.stderr.includes('zzescape'));
       });
     }
+
+    test('a refused URL never reaches the server log, as text or as a fragment', () => {
+      for (const url of [
+        'postgresql://edms_owner:secret-value-1%FF@db/edms_munaxa_internal',
+        'postgresql://edms_owner:secret-value-1@db/postgres',
+      ]) {
+        const result = run(url);
+        assert.notEqual(result.status, 0);
+      }
+      const log = readFileSync(join(dir, 'log'), 'utf8');
+      assert.match(log, /must be edms_owner/, 'the refusal is logged');
+      assert.ok(!log.includes('secret-value-1'), 'the password reached the server log');
+      assert.doesNotMatch(log, /postgres(ql)?:\/\//, 'the URL reached the server log');
+    });
 
     test('refuses when the bundle key is not delivered at all', () => {
       const result = run(undefined);
