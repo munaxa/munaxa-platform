@@ -1,0 +1,13 @@
+b5de9a5e168dfff462958aee500ee9b2b37d042f392f0f3195fe3eed865dbe30  munaxa-audit-2.5.0.tgz
+68885bdcbe92b5677ceb50e68d2f00b0040374d238f44a00589ba9c5331379de  munaxa-auth-2.5.0.tgz
+1c4c065c72fcc68ad238453f1f0204b870e10da7230601c5bd4d4fe3f7b9d20b  munaxa-cache-2.5.0.tgz
+8ec2a5c3541a54fe5a52da7430d134c0f7f434c9f5fce4df17ac402186302965  munaxa-config-2.5.0.tgz
+b6c8f99383d82298d470514fea02bea0bbe78075f0bdf2e3200feb92eea6cf4a  munaxa-conformance-2.5.0.tgz
+30674401d8ee90e0c011cc9f0736e93f90912352e1c812ef7533e71fdc80a596  munaxa-crypto-2.5.0.tgz
+a1a6f3147f0b966db22331ba4dbdc63c9d3e170b67117baf768f16b0ab723ac2  munaxa-interfaces-2.5.0.tgz
+1bf6c0a7129ed06aefbc077fdab0b1c661ddf3ff879f66d67b3864fdc30f0623  munaxa-logging-2.5.0.tgz
+0fedfc687d8a4fb8ecfeae6eb4314a3947fd80da977fccf4d16292a9025f168e  munaxa-notifications-2.5.0.tgz
+eca3adbf693fb9fed4aa9bf6cfaceeb016a14175deb172ca095e0dc0d76215b8  munaxa-rbac-2.5.0.tgz
+7cb0acef7c1be53f28372b3c2a255f5697497ab6b31621ddb2dfdd9958ec44a5  munaxa-security-2.5.0.tgz
+3e2edfee967d40e228ba2c7f830b219258402cbaeb6d7b8c7d98101293c96912  munaxa-session-2.5.0.tgz
+0f42b5079300bee4cf0af41d18e232a2d3236ae5c78c253bfedf5f70d8115e3f  munaxa-types-2.5.0.tgz
