@@ -1,0 +1,69 @@
+Local compatibility run, 12 Nov 2026 (session container; nothing published, no registry write, no AWS call)
+
+1. Platform candidate
+   Source: munaxa-platform main 0c6421a74afd0b9347b05e8c663058c8e36e9f03 (contains #100 116650c and #107 bc1f21b)
+   Scratch copy only: .changeset/config.json changelog set to false (changelog-github needs a GitHub token),
+   then "changeset version". Nothing was committed or pushed.
+
+   changeset status --verbose (before version):
+     🦋  info Running release would release NO packages as a patch
+     🦋  ---
+     🦋  info Packages to be bumped at minor
+     🦋  - @munaxa/auth 2.5.0
+     🦋    - .changeset/auth-verify-claim-shapes.md
+     🦋    - .changeset/rate-limiter-stable-counter.md
+     🦋  - @munaxa/security 2.5.0
+     🦋    - .changeset/rate-limiter-stable-counter.md
+     🦋  - @munaxa/cache 2.5.0
+     🦋    - .changeset/rate-limiter-stable-counter.md
+     🦋  - @munaxa/types 2.5.0
+     🦋  - @munaxa/interfaces 2.5.0
+     🦋  - @munaxa/crypto 2.5.0
+     🦋  - @munaxa/config 2.5.0
+     🦋  - @munaxa/logging 2.5.0
+     🦋  - @munaxa/audit 2.5.0
+     🦋  - @munaxa/rbac 2.5.0
+     🦋  - @munaxa/session 2.5.0
+     🦋  - @munaxa/notifications 2.5.0
+     🦋  - @munaxa/conformance 2.5.0
+     🦋  ---
+     🦋  info Running release would release NO packages as a major
+
+   After "changeset version": 13 lockstep packages at 2.5.0; @munaxa/licensing stays 0.2.0.
+   pnpm build: exit 0
+   pnpm release:check: "Release check: 13 packages at 2.5.0 / all checks passed"
+   node scripts/verify-release.mjs --since 54bbf46 (the 2.4.1 release commit): all checks passed
+
+   Package tests on the candidate (real redis-server 7 on 127.0.0.1, MUNAXA_REQUIRE_REDIS=1):
+     @munaxa/security: Tests  145 passed (145)
+     @munaxa/cache: Tests  59 passed (59)
+     @munaxa/auth: Tests  110 passed (110)
+     @munaxa/rbac: Tests  81 passed (81)
+     @munaxa/session: Tests  71 passed (71)
+     security/test/redis-server.test.ts ran (4 real-Redis tests passed, not skipped)
+
+   pnpm pack of the 13 packages: see platform-2.5.0-candidate-SHA256SUMS.txt
+   (local tarballs; a real release builds its own in release.yml, so these hashes are evidence of
+   this run only, not of a future publication)
+
+2. Identity on the candidate
+   Source: munaxa-identity main a1bf695f91e5c84246fd5a49422ff64e2f054dcf (#16)
+   Scratch copy only: pnpm.overrides pointing the 13 @munaxa packages at the local 2.5.0 tarballs,
+   pnpm install --no-frozen-lockfile. Resolved: @munaxa/audit@file @munaxa/auth@file @munaxa/cache@file @munaxa/config@file @munaxa/conformance@file @munaxa/crypto@file @munaxa/interfaces@file @munaxa/logging@file @munaxa/rbac@file @munaxa/security@file @munaxa/session@file @munaxa/types@file (all file: tarballs, 2.5.0)
+   Steps of .github/workflows/ci.yml reproduced with local PostgreSQL 16 and redis-server 7:
+     format:check  exit 1  only package.json and pnpm-lock.yaml, the two files the override edit rewrote (harness artefact)
+     lint          exit 0
+     prisma generate exit 0
+     typecheck     exit 0
+     build         exit 0
+     roles, migrations from zero, grants as in ci.yml: applied
+     prisma validate exit 0
+     unit          Tests  47 passed (47)
+     integration   Tests  280 passed (280), Test Files  18 passed (18)
+     catalogue drift exit 0
+   (The first integration attempt failed only because the harness's CREATE DATABASE ran inside a
+   multi-statement psql call; it was rerun after creating the database correctly. No test was changed.)
+
+3. Work and Control on the candidate: NOT RUN
+   pnpm install needs GitHub Packages for @munaxa/platform, ui, theme, licensing and the config packages,
+   and this session has no packages token (401). Static evidence only (03-CROSS-PRODUCT-CONSUMER-ASSESSMENT.md).
