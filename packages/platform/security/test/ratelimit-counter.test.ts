@@ -432,7 +432,7 @@ describe('review round 1: malformed state, mixed failures, configuration, IPv6',
           cache: new MemoryCache(),
           rules: [{ id: 'x', dimension: 'ip', limit: 1, window: MINUTE, cost: 2 }],
         }),
-    ).toThrow(/cost at most limit/);
+    ).toThrow(/cost at most the limit/);
     expect(
       () =>
         new RateLimiter({
@@ -440,6 +440,24 @@ describe('review round 1: malformed state, mixed failures, configuration, IPv6',
           rules: [{ id: 'y', dimension: 'ip', limit: 0, window: MINUTE }],
         }),
     ).toThrow();
+    // A token bucket's capacity is its burst: a cost between limit and burst is admissible.
+    expect(
+      () =>
+        new RateLimiter({
+          cache: new MemoryCache(),
+          rules: [
+            {
+              id: 'z',
+              dimension: 'ip',
+              algorithm: 'token-bucket',
+              limit: 2,
+              burst: 10,
+              window: MINUTE,
+              cost: 5,
+            },
+          ],
+        }),
+    ).not.toThrow();
   });
 
   it('counts an IPv6 client by its /64, so rotating the interface identifier does not escape', async () => {

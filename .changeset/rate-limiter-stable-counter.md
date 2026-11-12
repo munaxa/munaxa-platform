@@ -25,9 +25,11 @@ only their method, and the reset rule also covers `/password/forgot`.
 login, password-reset and MFA rules now refuse with 503 while the cache is unavailable;
 `mfa-verify-per-session` no longer counts `GET`/`HEAD`; `password-reset-per-ip` counts only `POST`
 (a product completing a reset with another method must add its own rule). Per-address rules count an
-IPv6 client by its /64 (`addressSubject`). A counter, block or violation value that is not a number
-is now a store failure (the rule's `onStoreFailure` decides) instead of an unlimited pass. A rule
-whose `cost` exceeds its `limit`, or whose limit or window is not positive, is refused at
+IPv6 client by its /64 (`addressSubject`). A counter or block value that is not a number is now a
+store failure (the rule's `onStoreFailure` decides) instead of an unlimited pass; an unreadable
+violation count is read as a high one, so the next block is long rather than skipped. A rule whose
+`cost` exceeds its `limit` (or, for a token bucket, its `burst`), or whose limit or window is not
+positive, is refused at
 construction.
 
 `LoginService` keys lockout by the trimmed, lowercased identifier, so surrounding whitespace no longer

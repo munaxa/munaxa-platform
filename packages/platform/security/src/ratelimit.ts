@@ -106,9 +106,13 @@ export class RateLimiter {
     for (const rule of options.rules) {
       // A rule that can never admit anything is a configuration mistake, not a policy: it would
       // refuse every request with an unbounded Retry-After.
-      if (!(rule.limit > 0) || !(rule.window > 0) || (rule.cost ?? 1) > rule.limit) {
+      const capacity =
+        (rule.algorithm ?? 'sliding-window') === 'token-bucket'
+          ? (rule.burst ?? rule.limit)
+          : rule.limit;
+      if (!(rule.limit > 0) || !(rule.window > 0) || (rule.cost ?? 1) > capacity) {
         throw new Error(
-          `Rate limit rule ${rule.id}: limit and window must be positive, cost at most limit`,
+          `Rate limit rule ${rule.id}: limit and window must be positive, cost at most the limit (or burst)`,
         );
       }
     }
