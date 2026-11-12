@@ -1,5 +1,12 @@
 # @munaxa/interfaces
 
+## 2.5.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @munaxa/types@2.5.0
+
 ## 2.4.1
 
 ### Patch Changes
