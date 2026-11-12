@@ -97,16 +97,28 @@ by inputs, and `stack/variables.tf` refuses every other combination:
 
 ### Identity in Testing: deployments
 
-With 0 % / 100 % a deployment (new image, new bundle pin, a forced new deployment) stops the running
-Identity task, then starts the new one. **Expect about one to two minutes without Identity** per
-deployment: ECS stops the task (ALB deregistration delay 15 s, then SIGTERM), starts the new task
-(image pull, Valkey healthy, Identity's own health check) and the ALB needs two healthy checks 15 s
-apart. Sign-in, token refresh and Work's `/api/auth/*` answer 502/503 meanwhile; sessions and
-refresh tokens are in PostgreSQL and survive; the sidecar's state (counters, lockouts, pending MFA
-challenges, replay markers) starts empty, as on any replacement. The circuit breaker still rolls a
-failed deployment back, also stop-first. Whether ECS counts a draining task towards the 100 % is
-checked in the first Testing session with a forced deployment (ECS events): until then "never two
-stores" is verified in the plan only.
+With 0 % / 100 % a deployment (new image, new bundle pin, a forced new deployment) takes the running
+Identity task out of service before a new one can serve. **Expect about one to two minutes without
+Identity** per deployment: ECS deregisters the task from the target group (deregistration delay
+15 s, then SIGTERM), starts the new task (image pull, Valkey healthy, Identity's own health check)
+and the ALB needs two healthy checks 15 s apart. Sign-in, token refresh and Work's `/api/auth/*`
+answer 502/503 meanwhile; sessions and refresh tokens are in PostgreSQL and survive; the sidecar's
+state (counters, lockouts, pending MFA challenges, replay markers) starts empty, as on any
+replacement. The circuit breaker rolls a failed deployment back, also stop-first; with one task it
+fails a deployment after 3 failed task starts, so Identity can be down for several minutes before
+the rollback task serves.
+
+**What 0 % / 100 % guarantees, and what it does not** (AWS documentation, report
+`2026-11-12-phase-c-d-preparation/04`). `maximumPercent` bounds the tasks in the RUNNING or PENDING
+state. A task being stopped is DEACTIVATING (the target-group deregistration) and then STOPPING
+(SIGTERM). The documentation does not say whether those count, so **a new task may start while the
+old one is still draining**, and for up to the deregistration delay plus the stop two tasks with two
+stores can exist. What does hold: the ALB sends no new request to a deregistering target, and none to
+a new target before it passes its health check, so at most one store receives new requests at any
+time; a request already in flight on the old task can still finish there. That relies on the ALB
+being the only way to the task: `single_task_store` therefore refuses a service-discovery name and
+private callers (`modules/service/variables.tf`). Whether the draining task counts is observed in a
+Testing session with a forced deployment (ECS events); see the Testing runbook in that report.
 
 ### Identity cache: AUTH token
 

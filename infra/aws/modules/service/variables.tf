@@ -211,8 +211,17 @@ variable "deployment_maximum_percent" {
   }
 }
 
+# What 0 % / 100 % does and does not guarantee (AWS documentation, read 12 Nov 2026; report
+# 2026-11-12-phase-c-d-preparation/04): maximumPercent bounds the tasks in the RUNNING or PENDING
+# state, and a task being stopped is first DEACTIVATING (load balancer deregistration) and then
+# STOPPING (SIGTERM). The documentation does not say whether a DEACTIVATING or STOPPING task counts,
+# so a replacement may start while the old task is still draining: two tasks, two stores, for up to
+# the deregistration delay plus the stop. What holds is that the load balancer sends no new request
+# to a deregistering target and none to a new one before it passes its health checks, so at most
+# one store receives new requests at a time. That only holds if the load balancer is the one way in:
+# hence no service-discovery name (callers would resolve both tasks) and no private callers.
 variable "single_task_store" {
-  description = "Every task holds its own state store (a sidecar). The service must then run at most one task and stop the old task before starting a new one (deployment percentages 0 and 100)."
+  description = "Every task holds its own state store (a sidecar). The service must then run at most one task, deploy with percentages 0 and 100 (the old task is deregistered from the load balancer before a new one can start), and be reachable only through the load balancer."
   type        = bool
   default     = false
 
@@ -223,6 +232,11 @@ variable "single_task_store" {
       var.deployment_maximum_percent == 100
     )
     error_message = "A service with a per-task state store runs at most one task with deployment percentages 0 (minimum healthy) and 100 (maximum): two tasks would serve from two independent stores."
+  }
+
+  validation {
+    condition     = !var.single_task_store || (!var.register_discovery && length(var.ingress_security_group_ids) == 0)
+    error_message = "A service with a per-task state store is reached through its load balancer only (no register_discovery, no ingress_security_group_ids): during a replacement the old task may still run, and only the load balancer stops sending it requests before the new one serves."
   }
 }
 
