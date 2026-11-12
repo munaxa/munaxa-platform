@@ -1,0 +1,13 @@
+2026-11-12T18:58:48.2653436Z npm notice 📦  @munaxa/types@2.5.0
+2026-11-12T18:58:49.1169877Z npm notice 📦  @munaxa/crypto@2.5.0
+2026-11-12T18:58:49.1393726Z npm notice 📦  @munaxa/interfaces@2.5.0
+2026-11-12T18:58:50.4387490Z npm notice 📦  @munaxa/session@2.5.0
+2026-11-12T18:58:50.4547205Z npm notice 📦  @munaxa/config@2.5.0
+2026-11-12T18:58:50.4570863Z npm notice 📦  @munaxa/logging@2.5.0
+2026-11-12T18:58:50.4599957Z npm notice 📦  @munaxa/cache@2.5.0
+2026-11-12T18:58:51.7155891Z npm notice 📦  @munaxa/audit@2.5.0
+2026-11-12T18:58:51.7303341Z npm notice 📦  @munaxa/security@2.5.0
+2026-11-12T18:58:51.7487172Z npm notice 📦  @munaxa/notifications@2.5.0
+2026-11-12T18:58:51.7656662Z npm notice 📦  @munaxa/rbac@2.5.0
+2026-11-12T18:58:52.4593586Z npm notice 📦  @munaxa/auth@2.5.0
+2026-11-12T18:58:53.1395581Z npm notice 📦  @munaxa/conformance@2.5.0
