@@ -1,4 +1,4 @@
-import { SlidingWindowCounter, TokenBucket } from '@munaxa/cache';
+import { SlidingWindowCounter, TokenBucket, type SlidingWindowState } from '@munaxa/cache';
 import type { CachePort } from '@munaxa/interfaces';
 import {
   cacheKey,
@@ -9,6 +9,7 @@ import {
   type SecurityContext,
   type TenantId,
 } from '@munaxa/types';
+import { canonicalRoutePath } from './normalize.js';
 
 /**
  * Distributed rate limiting.
@@ -21,10 +22,14 @@ import {
  * - **Dimension, not just key.** A limit is per IP, per user, per tenant, per session or per
  *   endpoint. Limiting only by IP punishes offices and mobile carriers behind one address; only
  *   by user leaves unauthenticated endpoints — the ones being attacked — unprotected.
- * - **Fail open, loudly.** If the cache is down, requests are allowed and `degraded` is set. A
- *   rate limiter that fails closed converts a cache outage into a total outage.
- * - **Adaptive.** Repeated violations widen the penalty window, so a determined attacker gets
- *   progressively less throughput while an ordinary user who double-clicked does not.
+ * - **Fail open, loudly — except where it must not.** If the cache is down, requests are allowed
+ *   and `degraded` is set: a general API limit that fails closed converts a cache outage into a
+ *   total outage. A rule guarding credentials (`onStoreFailure: 'deny'`) refuses instead, also with
+ *   `degraded` set, because an unreadable login limit is no login limit.
+ * - **Adaptive.** Repeated violations lengthen a block on the subject, so a determined attacker
+ *   gets progressively less throughput while an ordinary user who double-clicked does not. The
+ *   block is a separate record: the count itself always lives in the rule's own window, so neither
+ *   a refusal nor a longer penalty can start it again from zero.
  */
 export type RateLimitDimension = 'ip' | 'user' | 'tenant' | 'session' | 'endpoint' | 'global';
 
@@ -40,8 +45,19 @@ export interface RateLimitRule {
   readonly algorithm?: RateLimitAlgorithm;
   /** Burst allowance for the token bucket. Defaults to `limit`. */
   readonly burst?: number;
-  /** Multiplies the penalty window after repeated violations. 1 disables adaptation. */
+  /**
+   * Lengthens the block after repeated violations: the first lasts one `window`, each later one
+   * `adaptiveFactor` times the last, up to 16 windows. 1 (the default) disables adaptation.
+   * Sliding-window rules only.
+   */
   readonly adaptiveFactor?: number;
+  /**
+   * What the rule answers when its counter store fails. `allow` (the default) admits the request
+   * with `degraded` set; `deny` refuses it with `degraded` set. Use `deny` for limits that guard a
+   * credential — sign-in, a reset, a second factor — where admitting unlimited attempts during an
+   * outage is the failure the limit exists to prevent.
+   */
+  readonly onStoreFailure?: 'allow' | 'deny';
   /** How many requests this one counts as. Use for expensive endpoints. */
   readonly cost?: number;
 }
@@ -62,7 +78,11 @@ export interface RateLimitDecision {
   readonly remaining: number;
   readonly resetAt: number;
   readonly retryAfterSeconds: number;
-  /** True when the backing store failed and the request was allowed rather than dropped. */
+  /**
+   * True when the backing store failed for at least one applicable rule. With `allowed` true the
+   * request was admitted anyway (`onStoreFailure: 'allow'`); with `allowed` false it was refused
+   * because a rule could not be read (`'deny'`), which is an outage, not the caller's fault.
+   */
   readonly degraded?: boolean;
 }
 
@@ -83,6 +103,19 @@ export class RateLimiter {
   readonly #onDegraded: RateLimiterOptions['onDegraded'];
 
   constructor(options: RateLimiterOptions) {
+    for (const rule of options.rules) {
+      // A rule that can never admit anything is a configuration mistake, not a policy: it would
+      // refuse every request with an unbounded Retry-After.
+      const capacity =
+        (rule.algorithm ?? 'sliding-window') === 'token-bucket'
+          ? (rule.burst ?? rule.limit)
+          : rule.limit;
+      if (!(rule.limit > 0) || !(rule.window > 0) || (rule.cost ?? 1) > capacity) {
+        throw new Error(
+          `Rate limit rule ${rule.id}: limit and window must be positive, cost at most the limit (or burst)`,
+        );
+      }
+    }
     this.#cache = options.cache;
     this.#rules = options.rules;
     this.#clock = options.clock ?? systemClock;
@@ -91,9 +124,14 @@ export class RateLimiter {
     this.#onDegraded = options.onDegraded;
   }
 
-  /** Evaluate every applicable rule; the first denial wins. */
+  /**
+   * Evaluate every applicable rule, in order; the first denial wins and later rules are not
+   * charged. A store failure on any rule is reported (`degraded`) on the answer, whichever rule's
+   * numbers it carries, so a caller can never mistake a partly unreadable decision for a clean one.
+   */
   async check(target: RateLimitTarget): Promise<RateLimitDecision> {
     let tightest: RateLimitDecision | undefined;
+    let degraded = false;
 
     for (const rule of this.#rules) {
       if (rule.match && !rule.match(target)) continue;
@@ -104,19 +142,21 @@ export class RateLimiter {
       if (subject === undefined) continue;
 
       const decision = await this.#evaluate(rule, target, subject);
+      degraded ||= decision.degraded === true;
+      // A refusal is reported as an outage only when the refusing rule itself could not be read; a
+      // real over-the-limit refusal stays a 429 even if an earlier fail-open rule was degraded.
       if (!decision.allowed) return decision;
       if (!tightest || decision.remaining < tightest.remaining) tightest = decision;
     }
 
-    return (
-      tightest ?? {
-        allowed: true,
-        limit: 0,
-        remaining: Number.MAX_SAFE_INTEGER,
-        resetAt: this.#clock.now(),
-        retryAfterSeconds: 0,
-      }
-    );
+    const answer = tightest ?? {
+      allowed: true,
+      limit: 0,
+      remaining: Number.MAX_SAFE_INTEGER,
+      resetAt: this.#clock.now(),
+      retryAfterSeconds: 0,
+    };
+    return degraded ? { ...answer, degraded } : answer;
   }
 
   async #evaluate(
@@ -147,23 +187,49 @@ export class RateLimiter {
         };
       }
 
-      const penalty = await this.#penaltyWindow(rule, key);
-      const state = await this.#window.hit(key, penalty, cost);
-      const allowed = state.count <= rule.limit;
-      if (!allowed) await this.#recordViolation(rule, key);
+      // Every attempt is counted — refused ones included — and always in the rule's own window, so
+      // the counter's key never depends on how often the subject has been refused. (It used to be
+      // counted in the penalty window, whose different length meant a different key: the count
+      // restarted at zero after each refusal.)
+      const state = await this.#window.hitWithHistory(key, rule.window, cost);
+      const now = this.#clock.now();
+      const over = state.count > rule.limit;
+      const blockedUntil = await this.#blockedUntil(rule, key, now, over);
+      const allowed = !over && blockedUntil === undefined;
 
       return {
         allowed,
         rule: rule.id,
         limit: rule.limit,
-        remaining: Math.max(0, rule.limit - state.count),
+        remaining: allowed ? Math.max(0, rule.limit - state.count) : 0,
         resetAt: state.resetAt,
         retryAfterSeconds: allowed
           ? 0
-          : Math.max(1, Math.ceil((state.resetAt - this.#clock.now()) / 1_000)),
+          : Math.max(
+              1,
+              Math.ceil(
+                (Math.max(
+                  blockedUntil ?? now,
+                  admittedAgainAt(state, rule.window, rule.limit, cost, now),
+                ) -
+                  now) /
+                  1_000,
+              ),
+            ),
       };
     } catch (error) {
       this.#onDegraded?.(error, rule);
+      if (rule.onStoreFailure === 'deny') {
+        return {
+          allowed: false,
+          rule: rule.id,
+          limit: rule.limit,
+          remaining: 0,
+          resetAt: this.#clock.now() + STORE_FAILURE_RETRY_MS,
+          retryAfterSeconds: STORE_FAILURE_RETRY_MS / 1_000,
+          degraded: true,
+        };
+      }
       return {
         allowed: true,
         rule: rule.id,
@@ -176,21 +242,48 @@ export class RateLimiter {
     }
   }
 
-  /** Widen the window for a subject that keeps hitting the limit. */
-  async #penaltyWindow(rule: RateLimitRule, key: string): Promise<DurationMs> {
+  /**
+   * The end of the subject's adaptive block, or `undefined` when it is not blocked.
+   *
+   * A subject that goes over the limit while not blocked is blocked: for one window the first time,
+   * then `adaptiveFactor` times longer for each violation remembered (at most 16 windows, so a long
+   * attack cannot push a shared NAT address out to something unrecoverable). Only one of several
+   * concurrent requests crossing the limit records the violation (`setIfAbsent` on the block), so a
+   * burst escalates the penalty once, not once per request. While blocked, attempts still count.
+   */
+  async #blockedUntil(
+    rule: RateLimitRule,
+    key: string,
+    now: number,
+    over: boolean,
+  ): Promise<number | undefined> {
     const factor = rule.adaptiveFactor ?? 1;
-    if (factor <= 1) return rule.window;
+    if (factor <= 1) return undefined;
 
-    const violations = (await this.#cache.get<number>(`${key}:violations`)) ?? 0;
-    if (violations === 0) return rule.window;
-    // Bounded so a long-running attack cannot push a window out to something unrecoverable for a
-    // shared address behind NAT.
-    return Math.min(rule.window * factor ** Math.min(violations, 4), rule.window * 16);
-  }
+    const blockKey = `${key}:block`;
+    const existing = await this.#cache.get<number>(blockKey);
+    if (existing !== undefined && !(typeof existing === 'number' && Number.isFinite(existing))) {
+      throw new Error(`Block ${blockKey} holds a value that is not a time`);
+    }
+    if (existing !== undefined && existing > now) return existing;
+    if (!over) return undefined;
 
-  async #recordViolation(rule: RateLimitRule, key: string): Promise<void> {
-    if ((rule.adaptiveFactor ?? 1) <= 1) return;
-    await this.#cache.increment(`${key}:violations`, 1, { ttl: rule.window * 16 });
+    const violationsKey = `${key}:violations`;
+    const stored = await this.#cache.get<number>(violationsKey);
+    // An unreadable violation count escalates to the longest block rather than the shortest.
+    const violations =
+      stored === undefined ? 0 : typeof stored === 'number' && Number.isFinite(stored) ? stored : 4;
+    const penalty = Math.min(rule.window * factor ** Math.min(violations, 4), rule.window * 16);
+    const until = now + penalty;
+    if (await this.#cache.setIfAbsent(blockKey, until, { ttl: penalty })) {
+      // The memory of violations is set when the first one is recorded and not extended: an attack
+      // sustained for more than 32 windows starts its escalation again from one window (the block
+      // is then at most 1 + 2 + 4 + 8 + 16 windows behind it, and refused attempts keep counting).
+      await this.#cache.increment(violationsKey, 1, { ttl: rule.window * 32 });
+      return until;
+    }
+    // Another request recorded this violation first; its block is the one that stands.
+    return (await this.#cache.get<number>(blockKey)) ?? until;
   }
 
   /**
@@ -208,14 +301,48 @@ export class RateLimiter {
     await this.#window.reset(key, rule.window);
     await this.#cache.delete(key);
     await this.#cache.delete(`${key}:violations`);
+    await this.#cache.delete(`${key}:block`);
     return true;
   }
+}
+
+/** How long a rule that refuses on a store failure tells the caller to wait. */
+const STORE_FAILURE_RETRY_MS = 5_000;
+
+/**
+ * The earliest time a further request of `cost` would be admitted, if nothing else arrives.
+ *
+ * The sliding estimate is `previous × (1 − elapsed/window) + current`, so it falls as the previous
+ * window's weight runs down and drops a step at each boundary, when `current` becomes `previous`.
+ * Rounding is ignored, which can only make the answer slightly later than the truth.
+ */
+function admittedAgainAt(
+  state: SlidingWindowState,
+  window: DurationMs,
+  limit: number,
+  cost: number,
+  now: number,
+): number {
+  const room = limit - cost;
+  if (room < 0) return Number.POSITIVE_INFINITY;
+  const end = state.windowStart + window;
+
+  // Within the current window: the previous window's share must fall to what `current` leaves.
+  const spare = room - state.current;
+  if (spare >= 0) {
+    if (state.previous <= spare) return now;
+    const at = state.windowStart + window * (1 - spare / state.previous);
+    if (at < end) return Math.max(now, at);
+  }
+  // In the next window `current` is the previous one, and the new current starts at zero.
+  if (state.current <= room) return Math.max(now, end);
+  return end + window * (1 - room / state.current);
 }
 
 function subjectFor(dimension: RateLimitDimension, target: RateLimitTarget): string | undefined {
   switch (dimension) {
     case 'ip':
-      return target.ipAddress;
+      return target.ipAddress === undefined ? undefined : addressSubject(target.ipAddress);
     case 'user':
       return target.userId;
     case 'session':
@@ -227,6 +354,37 @@ function subjectFor(dimension: RateLimitDimension, target: RateLimitTarget): str
     case 'global':
       return 'global';
   }
+}
+
+/**
+ * The subject an address is counted under.
+ *
+ * IPv4 addresses are counted one by one. An IPv6 client is normally given a whole /64 (and often a
+ * /56 or /48), so counting single IPv6 addresses would let one client rotate through 2^64 of them
+ * past any per-address limit; IPv6 is counted by its /64. An IPv4-mapped IPv6 address
+ * (`::ffff:203.0.113.7`) is the IPv4 address it maps.
+ */
+export function addressSubject(address: string): string {
+  const trimmed = address.trim().toLowerCase();
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(trimmed);
+  if (mapped) return mapped[1]!;
+  if (!trimmed.includes(':')) return trimmed;
+  const withoutZone = trimmed.split('%')[0]!;
+  const [head = '', tail] = withoutZone.split('::');
+  const left = head === '' ? [] : head.split(':');
+  const right = tail === undefined || tail === '' ? [] : tail.split(':');
+  const groups =
+    tail === undefined
+      ? left
+      : [
+          ...left,
+          ...Array.from({ length: Math.max(0, 8 - left.length - right.length) }, () => '0'),
+          ...right,
+        ];
+  return `${groups
+    .slice(0, 4)
+    .map((group) => (group === '' ? '0' : group.replace(/^0+(?=.)/, '')))
+    .join(':')}::/64`;
 }
 
 /** Build a target from a request and whatever context has been resolved so far. */
@@ -253,34 +411,47 @@ export function targetFor(
 export const BASELINE_RATE_LIMIT_RULES: readonly RateLimitRule[] = [
   {
     id: 'login-per-ip',
-    match: (target) => target.path.endsWith('/login') && target.method === 'POST',
+    match: (target) => isRoute(target, 'POST', (path) => path.endsWith('/login')),
     dimension: 'ip',
     limit: 10,
     window: 15 * 60 * 1_000,
     adaptiveFactor: 2,
+    onStoreFailure: 'deny',
   },
   {
     id: 'login-per-account',
-    match: (target) => target.path.endsWith('/login') && target.method === 'POST',
+    match: (target) => isRoute(target, 'POST', (path) => path.endsWith('/login')),
     dimension: 'user',
     limit: 5,
     window: 15 * 60 * 1_000,
     adaptiveFactor: 2,
+    onStoreFailure: 'deny',
   },
   {
     id: 'password-reset-per-ip',
-    match: (target) => target.path.includes('/password/reset'),
+    match: (target) =>
+      isRoute(
+        target,
+        'POST',
+        (path) => path.includes('/password/reset') || path.includes('/password/forgot'),
+      ),
     dimension: 'ip',
     limit: 5,
     window: 60 * 60 * 1_000,
     adaptiveFactor: 2,
+    onStoreFailure: 'deny',
   },
   {
     id: 'mfa-verify-per-session',
-    match: (target) => target.path.includes('/mfa/'),
+    match: (target) =>
+      target.method.toUpperCase() !== 'GET' &&
+      target.method.toUpperCase() !== 'HEAD' &&
+      (canonicalRoutePath(target.path).includes('/mfa/') ||
+        canonicalRoutePath(target.path).endsWith('/mfa')),
     dimension: 'session',
     limit: 10,
     window: 15 * 60 * 1_000,
+    onStoreFailure: 'deny',
   },
   {
     id: 'api-per-user',
@@ -297,6 +468,21 @@ export const BASELINE_RATE_LIMIT_RULES: readonly RateLimitRule[] = [
     window: 60 * 1_000,
   },
 ];
+
+/**
+ * Whether a target is `method` on a route whose canonical path satisfies `path`.
+ *
+ * The path is canonicalised first (`canonicalRoutePath`), so `/LOGIN`, `/login/`, `/login?x` and
+ * `http://host/login` are all the login route; a matcher on the raw string would let a respelling
+ * step around it.
+ */
+export function isRoute(
+  target: Pick<RateLimitTarget, 'method' | 'path'>,
+  method: string,
+  path: (canonical: string) => boolean,
+): boolean {
+  return target.method.toUpperCase() === method && path(canonicalRoutePath(target.path));
+}
 
 /** The headers a rate-limited response should carry, in the widely-adopted draft form. */
 export function rateLimitHeaders(decision: RateLimitDecision): Record<string, string> {

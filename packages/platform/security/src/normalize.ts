@@ -111,6 +111,26 @@ export function normalizePath(path: string): string {
   return `/${segments.join('/')}`;
 }
 
+/**
+ * The route a request path names, for matching a rule against it.
+ *
+ * A request target may be absolute-form (`POST http://host/login`), carry a query or fragment,
+ * differ in case, repeat or trail slashes, percent-encode letters or contain dot segments.
+ * Frameworks route several of those spellings to the same handler (Express, for one, ignores case
+ * and a trailing slash), so a rule that compares the raw string can be stepped around by
+ * respelling the path. This answers one lowercase, slash-collapsed, decoded path for all of them,
+ * so a rule matched against it holds for every spelling. Spellings the server itself would not
+ * route are mapped onto the route too, which only ever counts more requests, never fewer.
+ */
+export function canonicalRoutePath(path: string): string {
+  let target = path;
+  const scheme = /^[a-z][a-z0-9+.-]*:\/\/[^/?#]*/i.exec(target);
+  if (scheme) target = target.slice(scheme[0].length);
+  const end = target.search(/[?#]/);
+  if (end !== -1) target = target.slice(0, end);
+  return normalizePath(target).toLowerCase();
+}
+
 /** True when a path tried to escape its root before normalization flattened it. */
 export function hasTraversal(path: string): boolean {
   let decoded = path;
