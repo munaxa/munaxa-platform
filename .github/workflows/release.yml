@@ -93,10 +93,10 @@ jobs:
           FILTERS: ${{ steps.packages.outputs.filters }}
         run: |
           set -euo pipefail
-          # An empty or short list would make `pnpm -r` act on the whole workspace: refuse it.
-          count="$( { grep -o -- '--filter @munaxa/' <<< "${FILTERS:-}" || true; } | wc -l)"
-          if [ -z "${FILTERS:-}" ] || [ "$count" -ne 13 ]; then
-            echo "::error::Expected exactly 13 --filter arguments, got ${count}: refusing to touch the workspace."
+          # An empty, short or widened list would make `pnpm -r` act on more than the 13: the whole
+          # value must be exactly 13 `--filter @munaxa/<name>` arguments and nothing else.
+          if ! [[ "${FILTERS:-}" =~ ^(--filter\ @munaxa/[a-z-]+\ ){12}--filter\ @munaxa/[a-z-]+$ ]]; then
+            echo "::error::The package list is not exactly 13 --filter @munaxa/<name> arguments: refusing to touch the workspace."
             exit 1
           fi
           # shellcheck disable=SC2086 # FILTERS is a list of --filter arguments
@@ -180,10 +180,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # An empty or short list would make `pnpm -r` act on the whole workspace: refuse it.
-          count="$( { grep -o -- '--filter @munaxa/' <<< "${FILTERS:-}" || true; } | wc -l)"
-          if [ -z "${FILTERS:-}" ] || [ "$count" -ne 13 ]; then
-            echo "::error::Expected exactly 13 --filter arguments, got ${count}: refusing to touch the workspace."
+          # An empty, short or widened list would make `pnpm -r` act on more than the 13: the whole
+          # value must be exactly 13 `--filter @munaxa/<name>` arguments and nothing else.
+          if ! [[ "${FILTERS:-}" =~ ^(--filter\ @munaxa/[a-z-]+\ ){12}--filter\ @munaxa/[a-z-]+$ ]]; then
+            echo "::error::The package list is not exactly 13 --filter @munaxa/<name> arguments: refusing to touch the workspace."
             exit 1
           fi
           # shellcheck disable=SC2086 # FILTERS is a list of --filter arguments

@@ -305,6 +305,9 @@ test('pack and publish refuse an empty or short package list instead of acting o
     assert.equal(runGuard(s, ''), 1, 'empty list refused');
     assert.equal(runGuard(s, twelve), 1, 'twelve refused');
     assert.equal(runGuard(s, `${thirteen} --filter @munaxa/licensing`), 1, 'fourteen refused');
+    assert.equal(runGuard(s, `${thirteen} --filter ./packages/**`), 1, 'an extra selector refused');
+    assert.equal(runGuard(s, `${thirteen} --recursive`), 1, 'an extra flag refused');
+    assert.equal(runGuard(s, `${thirteen} `), 1, 'trailing text refused');
     assert.equal(runGuard(s, thirteen), 0, 'the thirteen accepted');
   }
 });
