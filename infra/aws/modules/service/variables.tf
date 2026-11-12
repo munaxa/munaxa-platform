@@ -219,7 +219,8 @@ variable "deployment_maximum_percent" {
 # the deregistration delay plus the stop. What holds is that the load balancer sends no new request
 # to a deregistering target and none to a new one before it passes its health checks, so at most
 # one store receives new requests at a time. That only holds if the load balancer is the one way in:
-# hence no service-discovery name (callers would resolve both tasks) and no private callers.
+# hence no service-discovery name (callers would resolve both tasks), no private callers and no
+# extra security groups (their rules are outside this module).
 variable "single_task_store" {
   description = "Every task holds its own state store (a sidecar). The service must then run at most one task, deploy with percentages 0 and 100 (the old task is deregistered from the load balancer before a new one can start), and be reachable only through the load balancer."
   type        = bool

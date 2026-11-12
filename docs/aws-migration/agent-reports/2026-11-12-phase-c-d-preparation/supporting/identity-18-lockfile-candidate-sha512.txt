@@ -1,0 +1,12 @@
+sha512-LfjMZyGawUICbqrwVhGOJJoehghQ7MLkSKArUEl0BiO+F5Ln2w+/ceii5711P4oKLp2z1q+NlN41yKaOFsBazw==  @munaxa/audit@2.5.0
+sha512-KoLecWsGLkmSh2o1uVPdlzPoMrQZb3uZFsq19sKGKsiLZktXC4oqeYLHCdLpDm3t8mC3sucT15b6c8wM60mCUg==  @munaxa/auth@2.5.0
+sha512-CcSr31c722nGRkDQoFBOqVfzi0cs57QMFlVd0kDGOPhW37G8g7WBuNt+wvSc2ji8Cyafz3GN3cgfWL0WtJFo2w==  @munaxa/cache@2.5.0
+sha512-RGzZ+G7OJIiBPDf4urJV2Ef+A4sFD2dp0sKaRChZ5fo5CVSGOx2KGsD7LXy4TW3peSdZ0xb4RztY9VrHxza2YA==  @munaxa/config@2.5.0
+sha512-BO3hspYzOIMnjZ3tmthe7NqrqXds07C7LbYeYgVT6dC89Y7D5OpwNBjb16gvTJjqQl49zJB7WeYEf46iBTd4Yg==  @munaxa/conformance@2.5.0
+sha512-KCizatT0QgBqyFpwrbqlTBTuDZXfiH/pILBgldjwe/45C2gD4sw4+3i6yDnb+H8n2vJQccJEgGYixA/5/nyA5A==  @munaxa/crypto@2.5.0
+sha512-4Thy5D+Eem6rCPtzLCMZrX/ibEunuJfT2YgIeVvGdPcZCJM3JkuoIVUhdub96aw93F1RcYT/l7W2F9V0b96v4Q==  @munaxa/interfaces@2.5.0
+sha512-9HhanndJOhNQy+6s42wWsvqqMAugocl7etL4gAUWSpXGM1JePPIraVg6fPtNENyyFV7MWoBYS6K55JbbwA1BSw==  @munaxa/logging@2.5.0
+sha512-Vu4Zh+mrXejfWD7s7zxKlpTg4K0SNsiNl1l0wG6U62p8RCAvCSHvE/CWTWk3NQ6BcGLUWXJaBWxRAIOoY2tF+g==  @munaxa/rbac@2.5.0
+sha512-MFYl77WyfE8MqdHwbnSXIwI/FwCmAUHK3C8sNkNlO/Y6fcLqNEdMqGuskUvsMWj7rjsrQ2iJaTObD9ukbYRcCA==  @munaxa/security@2.5.0
+sha512-sswECZ0H49aHiCB21SezwnMMoToNEUn53L1RnjOZTxfTJSlFtRB2bSmKzwTNXLCU0FKC0jZKMfWKTWycSe5yqQ==  @munaxa/session@2.5.0
+sha512-/8oRfcyez/CnQ0hYkpzwEUmRjqbZSX5aoaZN/93Wm7agqSiQ3b6xs55O6c0rb1srIHzrrSHl50vJ55rRRY1kHQ==  @munaxa/types@2.5.0
