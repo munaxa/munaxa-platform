@@ -4,7 +4,11 @@ Source commit: `5a5994f52ae5e403cb61d01cdfb1cd7fa9e4b175`, munaxa-identity.
 
 Tags: **[V]** verified, **[I]** inferred from run evidence, **[U]** not verifiable from this session, **[BLOCKED]** check could not run.
 
-## Result: GitHub side PASS; AWS side BLOCKED
+## Result: PASS (update 20:43 UTC)
+
+The first attempts were blocked, as described below. At 20:43 UTC the owner signed in to the connector again. The read-only check then **passed** (section "AWS settings, live"), and the tag and run followed (04).
+
+## First attempts: AWS side BLOCKED
 
 The AWS checks did not run. The AWS MCP connector (root of account 229251310592, approved for read-only checks) answered "needs you to sign in again" at about 19:44, 19:53 and 20:00 UTC.
 
@@ -41,7 +45,19 @@ Note: a tag push runs the workflow file **of the tagged commit**. So identity#19
 | `image/*` tag ruleset | **[V]** "Protect image tags", active: creation, update, deletion and non-fast-forward restricted; bypass is the repository **admin** role only. This session's identity can bypass it (`current_user_can_bypass: always`) |
 | Existing `image/*` tags | **[V]** only `image/5277d7190b3dda496443c4bd7d80c78bd4d9174e`; the `5a5994f` tag does not exist |
 
-## AWS settings: **[BLOCKED]**, expected from code
+## AWS settings, live (20:43 UTC, root connector, read-only): **PASS** [V]
+
+| Prerequisite | Live value |
+| --- | --- |
+| Caller | `arn:aws:iam::229251310592:root` (the approved development access) |
+| Role | `arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-identity-image-publisher`, max session 3600 s, last used 2026-11-08 09:35 UTC |
+| Trust | one statement, `sts:AssumeRoleWithWebIdentity`, from `oidc-provider/token.actions.githubusercontent.com`. Conditions:<br>• `aud = sts.amazonaws.com`;<br>• `sub = repo:munaxa@311481412/munaxa-identity@1354378376:environment:image-release`, GitHub's immutable-id subject format, naming this repository and this environment only;<br>• `ref` StringLike `refs/tags/image/*` |
+| OIDC provider | `token.actions.githubusercontent.com`, client id `sts.amazonaws.com` only |
+| Permissions | inline `push-own-images` only, no attached policy:<br>• `ecr:GetAuthorizationToken` on `*`;<br>• on the two Identity repository ARNs only: the 9 push and read actions listed below |
+| ECR repositories | both exist (created 31 Oct): `IMMUTABLE`, scan on push, AES256, no repository policy. Lifecycle: untagged images expire after 7 days, keep the last 20 tagged |
+| Existing images | api and migrate each hold only `5277d71` (`sha256:71d01fdf…`, `sha256:d175ef37…`). There was no `5a5994f` image before the run |
+
+## AWS settings, expected from code (for comparison)
 
 Expected from `munaxa-platform/infra/aws/bootstrap/iam.tf` (`publisher_trust`, `publisher`); not verified live this time.
 
@@ -64,9 +80,9 @@ Pass criteria:
 - no attached managed policy;
 - no tag `5a5994f` or `sha-5a5994f52ae5e403cb61d01cdfb1cd7fa9e4b175` exists yet.
 
-## What unblocks Phase C
+## What unblocked Phase C (historical)
 
 1. The owner signs in to the AWS MCP connector again (claude.ai, Settings, Connectors).
 2. Claude runs the read-only check above.
-3. If it passes, Claude creates the tag and the run starts.
+3. If it passes, the tag is created and the run starts. In fact this session's tag push was refused (HTTP 403, push scope), so the owner created the tag on the release page (04).
 4. The owner approves `image-release` in GitHub when it asks. Claude does not approve it: that would be self-approval of an environment protection.
