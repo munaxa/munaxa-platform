@@ -1,0 +1,16 @@
+Stub test (fake boto3, fake values containing SECRET markers; no AWS). The script's python3 -I is replaced by PYTHONPATH=stub python3 for the test only.
+== normal
+CREATED VERIFIED
+secret          munaxa-nonprod/identity
+new_version_id  11111111-2222-3333-4444-555555555555
+previous        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a
+kid             mfa-nonprod-2026-11
+key_names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,MFA_ENCRYPTION_KEYS,REDIS_PASSWORD,REDIS_URL
+exit=0
+== access denied
+ABORT EXCEPTION ClientError AccessDeniedException
+exit=1
+== abort while sourced into an interactive-like shell: the outer shell must survive
+ABORT EXCEPTION ClientError AccessDeniedException
+OUTER_SHELL_STILL_RUNNING
+== fake secret markers in this output: 0
