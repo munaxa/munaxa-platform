@@ -3,7 +3,7 @@
 | Action | Performed? |
 | --- | --- |
 | Terraform live plan, apply, destroy, import or state change (local offline plans used a local empty state, refused network and fake keys) | **No** |
-| Any AWS API call (the connector failed to connect, so not even the authorized read-only calls ran) | **No** |
+| Any AWS API call other than the authorized read-only Stage R metadata reads (02a; CloudTrail shows 0 writes and 0 `GetSecretValue` by this task) | **No** |
 | Secrets Manager secret or version created, changed, read (`GetSecretValue`) or rotated | **No** |
 | MFA key generated, read, stored or exposed (the stub test used fake values in a local process; no real key exists) | **No** |
 | IAM, OIDC or account configuration change | **No** |
