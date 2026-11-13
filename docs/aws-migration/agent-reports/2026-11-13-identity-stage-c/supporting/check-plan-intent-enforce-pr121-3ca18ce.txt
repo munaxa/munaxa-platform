@@ -1,0 +1,29 @@
+== synthetic plan: full
+Declared intent (stack-nonprod): P-5, services off (report 2026-11-13-identity-testing-stage-r-p5), declared for the state AFTER stage C: secret_version_ids.identity pinned to the new munaxa-nonprod/identity version that holds MFA_ENCRYPTION_KEYS. New revisions of four task definitions, each a replacement (task definitions are immutable; skip_destroy keeps the old revision registered): identity-api (2db6ed9 image; MFA_ENCRYPTION_PRIMARY_KID, MFA_POLICY=off, IDENTITY_PASSWORD_RESET=disabled; the MFA_ENCRYPTION_KEYS secret reference; the new bundle version), identity-migrate (2db6ed9 migrate image), identity-bootstrap (2db6ed9 api image), and db-admin (its IDENTITY_APP_URL reference carries the new identity bundle version). Plus the pending docs-migrate delta (L-5, platform#105): one secret container create, no value, and the docs_db_admin execution policy update. No IAM change for Identity, no ECS service, ALB, network, database, KMS, DNS or production resource. While secret_version_ids.identity is still ad02f18e, db-admin is not replaced, so --enforce refuses the plan: the merge blocker is enforced at apply time.
+The plan matches the declared changes exactly (6 resource action(s)).
+exit=0
+
+== synthetic plan: no-dbadmin
+Declared intent (stack-nonprod): P-5, services off (report 2026-11-13-identity-testing-stage-r-p5), declared for the state AFTER stage C: secret_version_ids.identity pinned to the new munaxa-nonprod/identity version that holds MFA_ENCRYPTION_KEYS. New revisions of four task definitions, each a replacement (task definitions are immutable; skip_destroy keeps the old revision registered): identity-api (2db6ed9 image; MFA_ENCRYPTION_PRIMARY_KID, MFA_POLICY=off, IDENTITY_PASSWORD_RESET=disabled; the MFA_ENCRYPTION_KEYS secret reference; the new bundle version), identity-migrate (2db6ed9 migrate image), identity-bootstrap (2db6ed9 api image), and db-admin (its IDENTITY_APP_URL reference carries the new identity bundle version). Plus the pending docs-migrate delta (L-5, platform#105): one secret container create, no value, and the docs_db_admin execution policy update. No IAM change for Identity, no ECS service, ALB, network, database, KMS, DNS or production resource. While secret_version_ids.identity is still ad02f18e, db-admin is not replaced, so --enforce refuses the plan: the merge blocker is enforced at apply time.
+Declared but not in the plan (address, actions):
+  aws_ecs_task_definition.db_admin[0] delete,create
+::error::Plan intent check failed: the plan does not match infra/aws/stack/envs/nonprod.expected-changes.json. Nothing may be applied: correct the code or the declaration in a reviewed PR, then plan again
+exit=1
+
+== synthetic plan: dbadmin-noop
+Declared intent (stack-nonprod): P-5, services off (report 2026-11-13-identity-testing-stage-r-p5), declared for the state AFTER stage C: secret_version_ids.identity pinned to the new munaxa-nonprod/identity version that holds MFA_ENCRYPTION_KEYS. New revisions of four task definitions, each a replacement (task definitions are immutable; skip_destroy keeps the old revision registered): identity-api (2db6ed9 image; MFA_ENCRYPTION_PRIMARY_KID, MFA_POLICY=off, IDENTITY_PASSWORD_RESET=disabled; the MFA_ENCRYPTION_KEYS secret reference; the new bundle version), identity-migrate (2db6ed9 migrate image), identity-bootstrap (2db6ed9 api image), and db-admin (its IDENTITY_APP_URL reference carries the new identity bundle version). Plus the pending docs-migrate delta (L-5, platform#105): one secret container create, no value, and the docs_db_admin execution policy update. No IAM change for Identity, no ECS service, ALB, network, database, KMS, DNS or production resource. While secret_version_ids.identity is still ad02f18e, db-admin is not replaced, so --enforce refuses the plan: the merge blocker is enforced at apply time.
+Declared but not in the plan (address, actions):
+  aws_ecs_task_definition.db_admin[0] delete,create
+::error::Plan intent check failed: the plan does not match infra/aws/stack/envs/nonprod.expected-changes.json. Nothing may be applied: correct the code or the declaration in a reviewed PR, then plan again
+exit=1
+
+== synthetic plan: extra
+Declared intent (stack-nonprod): P-5, services off (report 2026-11-13-identity-testing-stage-r-p5), declared for the state AFTER stage C: secret_version_ids.identity pinned to the new munaxa-nonprod/identity version that holds MFA_ENCRYPTION_KEYS. New revisions of four task definitions, each a replacement (task definitions are immutable; skip_destroy keeps the old revision registered): identity-api (2db6ed9 image; MFA_ENCRYPTION_PRIMARY_KID, MFA_POLICY=off, IDENTITY_PASSWORD_RESET=disabled; the MFA_ENCRYPTION_KEYS secret reference; the new bundle version), identity-migrate (2db6ed9 migrate image), identity-bootstrap (2db6ed9 api image), and db-admin (its IDENTITY_APP_URL reference carries the new identity bundle version). Plus the pending docs-migrate delta (L-5, platform#105): one secret container create, no value, and the docs_db_admin execution policy update. No IAM change for Identity, no ECS service, ALB, network, database, KMS, DNS or production resource. While secret_version_ids.identity is still ad02f18e, db-admin is not replaced, so --enforce refuses the plan: the merge blocker is enforced at apply time.
+In the plan but not declared (address, actions):
+  aws_secretsmanager_secret_version.unexpected create
+::error::Plan intent check failed: the plan does not match infra/aws/stack/envs/nonprod.expected-changes.json. Nothing may be applied: correct the code or the declaration in a reviewed PR, then plan again
+exit=1
+
+== --validate on the declaration
+Declaration valid: root stack-nonprod, 6 declared change(s).
+exit=0
