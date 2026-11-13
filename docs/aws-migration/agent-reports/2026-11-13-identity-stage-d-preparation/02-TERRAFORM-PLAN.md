@@ -55,7 +55,7 @@ Nothing else is predicted: no database, network, security group, IAM task role, 
 
 - `--validate`: nonprod valid, 6 changes; prod valid, 0 [V].
 - `--enforce` on **synthetic** plan JSON (supporting file): the six declared changes pass (exit 0); a plan without the db-admin replacement, a plan with an extra secret version, and a db-admin no-op are all refused (exit 1) [V].
-- `--enforce` on the **real** plan: [U], after the merge. The workflow runs `--report` for a plan dispatch; Claude runs `--enforce` on the plan JSON only through the workflow's apply dispatch, or reads the `--report` comparison, which uses the same comparison and prints "matches the declared changes exactly" or the differences.
+- `--enforce` on the **real** plan: [U] until after the merge. A plan dispatch runs the same comparison in `--report` mode and prints either "matches the declared changes exactly" or the differences; an apply dispatch runs it as `--enforce` and stops before saving the plan if it does not match.
 
 ## Unavailable evidence
 

@@ -31,7 +31,7 @@ Legend: **[V]** independently verified (read-only AWS metadata, CloudTrail, GitH
 
 ## New finding needing your attention
 
-**N-1:** the Testing database restarted by itself at 16:26 UTC today (RDS's 7-day limit for a stopped instance) and was **running** at 20:15 UTC. The AWS backstop (enabled, 21:00 UTC daily) stops it; nothing else is running. Expected behaviour per the session design, cost about US$0.1 an hour. Not changed by this task (03).
+**N-1:** the Testing database restarted by itself at 16:26 UTC today (RDS's 7-day limit for a stopped instance) and was **running** at 20:15 UTC. The AWS backstop (enabled, 21:00 UTC daily) stops it; nothing else is running. Expected behaviour per the session design; its cost is in the running RDS total. Not changed by this task (03).
 
 ## Recommendation
 
