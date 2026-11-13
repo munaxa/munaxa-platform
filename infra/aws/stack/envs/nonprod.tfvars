@@ -55,23 +55,28 @@ desired_counts = {
 docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f"
 
 # Images are set by reviewed PRs after each product's "Publish image" run, by digest only.
-# Config A1 (Identity only, report 2026-11-09-identity-config-a1-preparation section 5): Identity at
-# release 5277d71. Every other image stays unset, so no Control, Work, School or Docs resource exists.
+# P-5 (report 2026-11-13-identity-testing-stage-r-p5): Identity at 2db6ed9 (identity#20: Platform
+# 2.5.0, the security hardening identity#7 to #17, zlib 1.4-r0 for CVE-2026-4738), published by run
+# 43359947421; both ECR scans complete with no findings (report
+# 2026-11-13-identity-cve-2026-4738-remediation). Never the 5277d71 or 5a5994f images. Every other
+# image stays unset, so no Control, Work, School or Docs resource exists.
 images = {
-  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156"
-  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820"
+  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b"
+  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874"
 }
 
-# Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Unset while images.identity_api
-# is release 5277d71: that release reads none of it, and the bundle version pinned below holds no
-# MFA_ENCRYPTION_KEYS. Uncomment only in the reviewed PR that pins an Identity image built from main
-# after identity#7 to #14, together with its migrate image and the new secret_version_ids.identity.
-# mfa_policy stays "off" until the privileged accounts' enrolment and recovery procedure exists
-# (munaxa-identity docs/production-readiness.md section 6).
-# identity_security_config = {
-#   mfa_primary_kid = "<the kid of the MFA_ENCRYPTION_KEYS entry, not the key>"
-#   mfa_policy      = "off"
-# }
+# Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Required by the 2db6ed9
+# image: under NODE_ENV=production it refuses to start without MFA_ENCRYPTION_KEYS, a primary kid
+# that names an entry of it, and IDENTITY_PASSWORD_RESET=disabled (fixed by the stack). The kid is a
+# name, not key material: the operator writes the ring entry "mfa-nonprod-2026-11=<key>" into
+# munaxa-nonprod/identity (stage C, MFA custody procedure in the P-5 report), and the key never
+# appears here. mfa_policy stays "off" in Testing (runbook 2026-11-12-phase-c-d-preparation/03
+# P-4) until the privileged accounts' enrolment and recovery procedure exists (munaxa-identity
+# docs/production-readiness.md section 6).
+identity_security_config = {
+  mfa_primary_kid = "mfa-nonprod-2026-11"
+  mfa_policy      = "off"
+}
 
 # Identity's cache sidecar: Valkey 8.1.11, linux/amd64 manifest.
 valkey_image = "public.ecr.aws/valkey/valkey@sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e"
@@ -90,6 +95,11 @@ identity_public_keys = "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-
 
 # Bundle version pins (metadata, not secrets): the AWSCURRENT version id of each bundle, supplied by
 # the owner on 10 Nov 2026.
+# MERGE BLOCKER (P-5): identity must be replaced by the version id that stage C creates (the bundle
+# version holding MFA_ENCRYPTION_KEYS), read with describe-secret / list-secret-version-ids, never
+# get-secret-value. ad02f18e holds no MFA_ENCRYPTION_KEYS, and ECS refuses to start a task whose
+# secret names a JSON key its pinned version lacks. identity-migrate is unchanged: the migrate image
+# reads only DATABASE_MIGRATION_URL.
 secret_version_ids = {
   identity         = "ad02f18e-f3e7-41da-9959-f9b41e0b7e1a"
   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
