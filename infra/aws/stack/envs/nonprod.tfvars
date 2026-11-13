@@ -99,7 +99,9 @@ identity_public_keys = "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-
 # version holding MFA_ENCRYPTION_KEYS), read with describe-secret / list-secret-version-ids, never
 # get-secret-value. ad02f18e holds no MFA_ENCRYPTION_KEYS, and ECS refuses to start a task whose
 # secret names a JSON key its pinned version lacks. identity-migrate is unchanged: the migrate image
-# reads only DATABASE_MIGRATION_URL.
+# reads only DATABASE_MIGRATION_URL. envs/nonprod.expected-changes.json is declared for the new version
+# (it also replaces db-admin, whose IDENTITY_APP_URL carries this pin), so with ad02f18e still here the
+# real plan does not match the declaration and check-plan-intent.sh --enforce refuses the apply.
 secret_version_ids = {
   identity         = "ad02f18e-f3e7-41da-9959-f9b41e0b7e1a"
   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
