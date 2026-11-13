@@ -93,16 +93,12 @@ db_bootstrap_products = ["identity"]
 identity_signing_kid = "identity-nonprod-2026-11"
 identity_public_keys = "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-----BEGIN PUBLIC KEY-----\\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1PulSDhEOvX3B61NzQwO20+q4+42\\n0KcstlgmQccrRJy+byuVwhz2HiJp1itFmUBkugYOR087NqwNr2Kowk5fRQ==\\n-----END PUBLIC KEY-----\"}]"
 
-# Bundle version pins (metadata, not secrets): the AWSCURRENT version id of each bundle, supplied by
-# the owner on 10 Nov 2026.
-# MERGE BLOCKER (P-5): identity must be replaced by the version id that stage C creates (the bundle
-# version holding MFA_ENCRYPTION_KEYS), read with describe-secret / list-secret-version-ids, never
-# get-secret-value. ad02f18e holds no MFA_ENCRYPTION_KEYS, and ECS refuses to start a task whose
-# secret names a JSON key its pinned version lacks. identity-migrate is unchanged: the migrate image
-# reads only DATABASE_MIGRATION_URL. envs/nonprod.expected-changes.json is declared for the new version
-# (it also replaces db-admin, whose IDENTITY_APP_URL carries this pin), so with ad02f18e still here the
-# real plan does not match the declaration and check-plan-intent.sh --enforce refuses the apply.
+# Bundle version pins (metadata, not secrets). identity-migrate: supplied by the owner on 10 Nov 2026.
+# identity: the stage C version (report 2026-11-13-identity-stage-c-cli), which adds MFA_ENCRYPTION_KEYS
+# (kid mfa-nonprod-2026-11) to the five earlier values; ad02f18e is its AWSPREVIOUS. Supplied by the
+# owner from the stage C output and checked with describe-secret metadata only. db-admin is replaced
+# with it (its IDENTITY_APP_URL carries this pin), as envs/nonprod.expected-changes.json declares.
 secret_version_ids = {
-  identity         = "ad02f18e-f3e7-41da-9959-f9b41e0b7e1a"
+  identity         = "80914756-68cd-420d-8094-0fd49afe3492"
   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
 }
