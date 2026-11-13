@@ -29,7 +29,7 @@
 ## AWS read-only evidence (connector, root)
 
 - `rds:DescribeDBInstances`, `DescribeEvents`.
-- `cloudtrail:LookupEvents` (`StopDBInstance`, `UpdateService` since 20:55; write events and `GetSecretValue` since 21:25: none delivered at 21:3x, CloudTrail can lag up to 15 minutes).
+- `cloudtrail:LookupEvents` (`StopDBInstance`, `UpdateService` since 20:55; since 21:25, rechecked at 21:33 after the plan's own read events (Describe*, Get*, Decrypt) had been delivered: **no management write event** and no `GetSecretValue`; the state lock file is an S3 data event, not in this trail).
 - `secretsmanager:DescribeSecret` on the RDS master secret (metadata).
 - `acm:ListCertificates`, `DescribeCertificate`; `budgets:DescribeBudgets`.
 - `ecs:ListServices`, `ListTasks`, `DescribeTaskDefinition` (revision, task role, IPC/PID mode, fault injection, tag keys).
