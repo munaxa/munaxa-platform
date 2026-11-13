@@ -2,6 +2,8 @@
 
 **Result (13 Nov 2026, 21:29 UTC): STAGE D PLAN COMPLETE — AWAITING SEPARATE OWNER APPROVAL FOR APPLY.**
 
+**Update 21:45 UTC: the owner approved decision A; the apply ran and is verified (06). Stage D is DONE; nothing runs.**
+
 **Apply was not authorized and was not done.** Nothing was applied, deployed, migrated, started or written in AWS.
 
 | Decision | Outcome |
@@ -44,6 +46,7 @@ The plan is **eligible for apply** (04). Next is decision **A**, a separate owne
 | 03 | risk update and database state |
 | 04 | the owner's apply decision |
 | 05 | validation evidence |
+| 06 | apply result and verification (added after decision A) |
 
 Related reports:
 - `2026-11-13-identity-stage-d-preparation/` (PR #127)
