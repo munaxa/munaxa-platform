@@ -1,0 +1,16 @@
+Mocked terraform test render of the container definitions, envs/nonprod.tfvars, main b2d93aa vs P-5 branch.
+Secret ARNs are fixed mock overrides (XXXXXX); no secret value exists in either render.
+
+== module.identity[0] (containers identity, valkey) differs
+  identity environment IDENTITY_PASSWORD_RESET: None -> disabled
+  identity environment MFA_ENCRYPTION_PRIMARY_KID: None -> mfa-nonprod-2026-11
+  identity environment MFA_POLICY: None -> off
+  identity image: 229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156 -> 229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b
+  identity secrets MFA_ENCRYPTION_KEYS: None -> arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-XXXXXX:MFA_ENCRYPTION_KEYS::ad02f18e-f3e7-41da-9959-f9b41e0b7e1a
+
+== aws_ecs_task_definition.identity_bootstrap[0] differs
+  identity-bootstrap image: 229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156 -> 229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b
+
+== module.migrate["identity"] differs
+  identity-migrate image: 229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820 -> 229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874
+

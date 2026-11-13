@@ -1,0 +1,10 @@
+== synthetic plan: full (post-stage-C, 6 changes)
+The plan matches the declared changes exactly (6 resource action(s)).
+exit=0
+
+== synthetic plan: stale (stale ad02f18e pin, db_admin not replaced)
+Declared but not in the plan (address, actions):
+  aws_ecs_task_definition.db_admin[0] delete,create
+::error::Plan intent check failed: the plan does not match infra/aws/stack/envs/nonprod.expected-changes.json. Nothing may be applied: correct the code or the declaration in a reviewed PR, then plan again
+exit=1
+

@@ -1,0 +1,203 @@
+# 05. P-5 PR: link, exact diff and CI
+
+**PR:** https://github.com/munaxa/munaxa-platform/pull/121 (draft, **not merged**, by design). Branch `claude/project-thread-xdgua1`, head `3ca18ce` (commits `4cd8f1a`, `3ca18ce`), base `main` `b2d93aa`. Two files, +34 / -86 (the old Config A1 declaration is replaced).
+
+## CI on head `3ca18ce`
+
+All applicable checks pass [V]:
+
+| Workflow, job | Result |
+| --- | --- |
+| AWS Terraform (run 43448552502), "Format, validate, mocked plan tests" | **success** (fmt, validate, bootstrap/stack/module tests, declared intents well formed) |
+| AWS Terraform, "Plan" and "Apply" | skipped (dispatch only; never run on a PR) |
+| CI (run 43448552683), "Lint · Typecheck · Test · Build" | **success** |
+| CI, "Accessibility · contrast and keyboard …" | **success** |
+| CI, "Façades match the platform surface" | **success** |
+
+The first head `4cd8f1a` also passed (AWS Terraform run 43447399435, CI run 43447399500).
+
+## Local checks (offline, no AWS call)
+
+| Check | Result |
+| --- | --- |
+| `terraform fmt -check -recursive infra/aws` | pass |
+| `terraform validate` bootstrap, stack | pass |
+| `terraform test` bootstrap / stack / modules/service | 12/12, 67/67, 17/17 |
+| `check-plan-intent.sh --validate` | valid, 6 changes |
+| `check-plan-intent.sh --enforce`, synthetic plans | 6 declared changes: match; without db-admin: refused (`supporting/check-plan-intent-enforce-synthetic.txt`) |
+| Prettier on the declaration | pass |
+| Offline plans main vs branch, mocked render (06) | only the intended values change |
+| Identity 2db6ed9 configuration harness | 11/11 |
+
+## Exact diff (`git diff origin/main...3ca18ce`, also `supporting/p5-pr-121-3ca18ce.diff`)
+
+```diff
+diff --git a/infra/aws/stack/envs/nonprod.expected-changes.json b/infra/aws/stack/envs/nonprod.expected-changes.json
+index a4b340b..c1659fc 100644
+--- a/infra/aws/stack/envs/nonprod.expected-changes.json
++++ b/infra/aws/stack/envs/nonprod.expected-changes.json
+@@ -1,94 +1,30 @@
+ {
+   "root": "stack-nonprod",
+-  "intent": "Config A1, Identity only, services off (report 2026-11-09-identity-config-a1-preparation): Identity API and migration task definitions with their execution roles, policies, log groups, security groups and rules; the identity-bootstrap task definition, role and policy; the db-admin task definition (db_bootstrap_products = identity); the ALB-to-Identity egress rule. 22 creates. No update, replacement or destroy; no Control, Work, School or Docs resource; no ALB, service, NAT, DNS, KMS key or production resource.",
++  "intent": "P-5, services off (report 2026-11-13-identity-testing-stage-r-p5), declared for the state AFTER stage C: secret_version_ids.identity pinned to the new munaxa-nonprod/identity version that holds MFA_ENCRYPTION_KEYS. New revisions of four task definitions, each a replacement (task definitions are immutable; skip_destroy keeps the old revision registered): identity-api (2db6ed9 image; MFA_ENCRYPTION_PRIMARY_KID, MFA_POLICY=off, IDENTITY_PASSWORD_RESET=disabled; the MFA_ENCRYPTION_KEYS secret reference; the new bundle version), identity-migrate (2db6ed9 migrate image), identity-bootstrap (2db6ed9 api image), and db-admin (its IDENTITY_APP_URL reference carries the new identity bundle version). Plus the pending docs-migrate delta (L-5, platform#105): one secret container create, no value, and the docs_db_admin execution policy update. No IAM change for Identity, no ECS service, ALB, network, database, KMS, DNS or production resource. While secret_version_ids.identity is still ad02f18e, db-admin is not replaced, so --enforce refuses the plan: the merge blocker is enforced at apply time.",
+   "changes": [
+     {
+       "address": "aws_ecs_task_definition.db_admin[0]",
+-      "actions": ["create"]
++      "actions": ["delete", "create"]
+     },
+     {
+       "address": "aws_ecs_task_definition.identity_bootstrap[0]",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "aws_iam_role.identity_bootstrap_execution[0]",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "aws_iam_role_policy.identity_bootstrap_execution[0]",
+-      "actions": ["create"]
++      "actions": ["delete", "create"]
+     },
+     {
+-      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"identity\"]",
+-      "actions": ["create"]
++      "address": "aws_iam_role_policy.docs_db_admin_execution[0]",
++      "actions": ["update"]
+     },
+     {
+-      "address": "module.identity[0].aws_cloudwatch_log_group.this",
++      "address": "aws_secretsmanager_secret.service[\"docs-migrate\"]",
+       "actions": ["create"]
+     },
+     {
+       "address": "module.identity[0].aws_ecs_task_definition.this",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.identity[0].aws_iam_role.execution",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.identity[0].aws_iam_role_policy.execution",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.identity[0].aws_security_group.this",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.identity[0].aws_vpc_security_group_egress_rule.database[0]",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.identity[0].aws_vpc_security_group_egress_rule.https",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.identity[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.identity[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.migrate[\"identity\"].aws_cloudwatch_log_group.this",
+-      "actions": ["create"]
++      "actions": ["delete", "create"]
+     },
+     {
+       "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.migrate[\"identity\"].aws_iam_role.execution",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.migrate[\"identity\"].aws_iam_role_policy.execution",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.migrate[\"identity\"].aws_security_group.this",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.migrate[\"identity\"].aws_vpc_security_group_egress_rule.database[0]",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.migrate[\"identity\"].aws_vpc_security_group_egress_rule.https",
+-      "actions": ["create"]
+-    },
+-    {
+-      "address": "module.migrate[\"identity\"].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+-      "actions": ["create"]
++      "actions": ["delete", "create"]
+     }
+   ]
+ }
+diff --git a/infra/aws/stack/envs/nonprod.tfvars b/infra/aws/stack/envs/nonprod.tfvars
+index ff57bfd..bab14d2 100644
+--- a/infra/aws/stack/envs/nonprod.tfvars
++++ b/infra/aws/stack/envs/nonprod.tfvars
+@@ -55,23 +55,28 @@ desired_counts = {
+ docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f"
+ 
+ # Images are set by reviewed PRs after each product's "Publish image" run, by digest only.
+-# Config A1 (Identity only, report 2026-11-09-identity-config-a1-preparation section 5): Identity at
+-# release 5277d71. Every other image stays unset, so no Control, Work, School or Docs resource exists.
++# P-5 (report 2026-11-13-identity-testing-stage-r-p5): Identity at 2db6ed9 (identity#20: Platform
++# 2.5.0, the security hardening identity#7 to #17, zlib 1.4-r0 for CVE-2026-4738), published by run
++# 43359947421; both ECR scans complete with no findings (report
++# 2026-11-13-identity-cve-2026-4738-remediation). Never the 5277d71 or 5a5994f images. Every other
++# image stays unset, so no Control, Work, School or Docs resource exists.
+ images = {
+-  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156"
+-  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820"
++  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b"
++  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874"
+ }
+ 
+-# Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Unset while images.identity_api
+-# is release 5277d71: that release reads none of it, and the bundle version pinned below holds no
+-# MFA_ENCRYPTION_KEYS. Uncomment only in the reviewed PR that pins an Identity image built from main
+-# after identity#7 to #14, together with its migrate image and the new secret_version_ids.identity.
+-# mfa_policy stays "off" until the privileged accounts' enrolment and recovery procedure exists
+-# (munaxa-identity docs/production-readiness.md section 6).
+-# identity_security_config = {
+-#   mfa_primary_kid = "<the kid of the MFA_ENCRYPTION_KEYS entry, not the key>"
+-#   mfa_policy      = "off"
+-# }
++# Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Required by the 2db6ed9
++# image: under NODE_ENV=production it refuses to start without MFA_ENCRYPTION_KEYS, a primary kid
++# that names an entry of it, and IDENTITY_PASSWORD_RESET=disabled (fixed by the stack). The kid is a
++# name, not key material: the operator writes the ring entry "mfa-nonprod-2026-11=<key>" into
++# munaxa-nonprod/identity (stage C, MFA custody procedure in the P-5 report), and the key never
++# appears here. mfa_policy stays "off" in Testing (runbook 2026-11-12-phase-c-d-preparation/03
++# P-4) until the privileged accounts' enrolment and recovery procedure exists (munaxa-identity
++# docs/production-readiness.md section 6).
++identity_security_config = {
++  mfa_primary_kid = "mfa-nonprod-2026-11"
++  mfa_policy      = "off"
++}
+ 
+ # Identity's cache sidecar: Valkey 8.1.11, linux/amd64 manifest.
+ valkey_image = "public.ecr.aws/valkey/valkey@sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e"
+@@ -90,6 +95,13 @@ identity_public_keys = "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-
+ 
+ # Bundle version pins (metadata, not secrets): the AWSCURRENT version id of each bundle, supplied by
+ # the owner on 10 Nov 2026.
++# MERGE BLOCKER (P-5): identity must be replaced by the version id that stage C creates (the bundle
++# version holding MFA_ENCRYPTION_KEYS), read with describe-secret / list-secret-version-ids, never
++# get-secret-value. ad02f18e holds no MFA_ENCRYPTION_KEYS, and ECS refuses to start a task whose
++# secret names a JSON key its pinned version lacks. identity-migrate is unchanged: the migrate image
++# reads only DATABASE_MIGRATION_URL. envs/nonprod.expected-changes.json is declared for the new version
++# (it also replaces db-admin, whose IDENTITY_APP_URL carries this pin), so with ad02f18e still here the
++# real plan does not match the declaration and check-plan-intent.sh --enforce refuses the apply.
+ secret_version_ids = {
+   identity         = "ad02f18e-f3e7-41da-9959-f9b41e0b7e1a"
+   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+```
