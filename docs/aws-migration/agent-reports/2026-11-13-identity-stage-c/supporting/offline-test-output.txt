@@ -1,0 +1,294 @@
+== test-only substitutions
+48c48
+< exec /usr/bin/python3 -I -W ignore - <<'PY'
+---
+> exec env PYTHONPATH="<test>/stub" /usr/bin/python3 - <<'PY'
+231c231
+<     with open("/dev/tty", "r") as tty:
+---
+>     with open("<test>/confirm.txt", "r") as tty:
+== 1 normal run
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version a1cd1934-61bc-4dc1-9ee0-86f5f8906afe
+CREATED VERIFIED
+secret          munaxa-nonprod/identity
+new_version_id  a1cd1934-61bc-4dc1-9ee0-86f5f8906afe   (AWSCURRENT)
+previous        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a   (AWSPREVIOUS)
+kid             mfa-nonprod-2026-11
+key_names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,MFA_ENCRYPTION_KEYS,REDIS_PASSWORD,REDIS_URL
+SEND CLAUDE     the new_version_id and kid lines above, nothing else
+exit=0
+case ok
+== 1a Identity 2db6ed9 loader on the written bundle
+written key names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,REDIS_URL,REDIS_PASSWORD,MFA_ENCRYPTION_KEYS
+task secret names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,REDIS_URL,REDIS_PASSWORD,MFA_ENCRYPTION_KEYS
+task env MFA/RESET      MFA_ENCRYPTION_PRIMARY_KID=mfa-nonprod-2026-11 MFA_POLICY=off IDENTITY_PASSWORD_RESET=disabled NODE_ENV=production
+parseMfaKeys            entries=1 kid=mfa-nonprod-2026-11 keyBytes=32 problems=0
+ring text shape         kid=<43 base64url chars>: true
+reusesSecret(signing)   false false
+loadEnvironment (prod)  starts
+case ok
+== 1b second run on the result (rerun safety)
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+already_done    a1cd1934-61bc-4dc1-9ee0-86f5f8906afe is AWSCURRENT, ad02f18e-f3e7-41da-9959-f9b41e0b7e1a is AWSPREVIOUS: checking it, read only
+ALREADY DONE VERIFIED   nothing written by this run
+new_version_id  a1cd1934-61bc-4dc1-9ee0-86f5f8906afe   (AWSCURRENT)
+previous        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a   (AWSPREVIOUS)
+kid             mfa-nonprod-2026-11
+SEND CLAUDE     the new_version_id and kid lines above, nothing else
+exit=0
+case ok
+== 1c already done but the existing version is wrong (bad ring)
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+already_done    55555555-0000-4000-8000-000000000000 is AWSCURRENT, ad02f18e-f3e7-41da-9959-f9b41e0b7e1a is AWSPREVIOUS: checking it, read only
+ABORT EXISTING_VERSION_NOT_AS_EXPECTED (do not run again; send this line to Claude)
+NOTHING WRITTEN
+exit=1
+case ok
+== 1d a version without a label exists (hidden from DescribeSecret)
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+ABORT UNEXPECTED_VERSIONS listed=2
+NOTHING WRITTEN
+exit=1
+case ok
+== 1e labels move while the operator sits at the prompt
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT LABELS_CHANGED_SINCE_PREFLIGHT
+NOTHING WRITTEN
+exit=1
+case ok
+== 2 wrong account
+ABORT WRONG_ACCOUNT
+NOTHING WRITTEN
+exit=1
+case ok
+== 3 secret ARN mismatch
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+ABORT SECRET_ARN_OR_NAME_MISMATCH
+NOTHING WRITTEN
+exit=1
+case ok
+== 4 wrong KMS key
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+ABORT SECRET_KMS_KEY_MISMATCH
+NOTHING WRITTEN
+exit=1
+case ok
+== 5 rotation enabled
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+ABORT SECRET_HAS_ROTATION
+NOTHING WRITTEN
+exit=1
+case ok
+== 6 an extra AWSPENDING version
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+ABORT UNEXPECTED_VERSIONS count=2
+NOTHING WRITTEN
+exit=1
+case ok
+== 7 not confirmed (typed yes)
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT NOT_CONFIRMED
+NOTHING WRITTEN
+exit=1
+case ok
+== 8 bundle already has MFA_ENCRYPTION_KEYS
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT MFA_ENCRYPTION_KEYS_ALREADY_PRESENT
+NOTHING WRITTEN
+exit=1
+case ok
+== 9 unexpected extra key
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT BUNDLE_KEYS_UNEXPECTED missing=none extra_count=1
+NOTHING WRITTEN
+exit=1
+case ok
+== 10 duplicate JSON key
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT BUNDLE_NOT_VALID_JSON_OR_DUPLICATE_KEY
+NOTHING WRITTEN
+exit=1
+case ok
+== 11 empty value
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT BUNDLE_VALUE_NOT_A_NON_EMPTY_STRING
+NOTHING WRITTEN
+exit=1
+case ok
+== 12 binary secret
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT BUNDLE_NOT_A_STRING
+NOTHING WRITTEN
+exit=1
+case ok
+== 13 read denied
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT EXCEPTION ClientError AccessDeniedException
+NOTHING WRITTEN
+exit=1
+case ok
+== 14 key collides with the signing secret (forced)
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT KEY_COLLIDES_WITH_ANOTHER_SECRET
+NOTHING WRITTEN
+exit=1
+case ok
+== 15 degenerate key (forced repeated byte)
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT KEY_SELF_CHECK_FAILED
+NOTHING WRITTEN
+exit=1
+case ok
+== 16 concurrent writer moves AWSCURRENT after our write
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version 5dd7232f-8cd3-4ec8-8813-fadc7b4da8d4
+ABORT LABELS_UNEXPECTED versions=3
+ABORT AFTER_WRITE_ATTEMPT: send these ABORT lines to Claude before doing anything else
+exit=1
+case ok
+== 17 written value differs on read-back
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version 97aa944f-a23f-459f-a52e-9a2ea3e0ca6e
+ABORT WRITTEN_VALUE_DIFFERS
+ABORT AFTER_WRITE_ATTEMPT: send these ABORT lines to Claude before doing anything else
+exit=1
+case ok
+== 18 AWS error after the write
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version 774cd690-c588-44d0-91b2-a9d152892f12
+ABORT EXCEPTION ClientError InternalServiceError
+ABORT AFTER_WRITE_ATTEMPT: send these ABORT lines to Claude before doing anything else
+exit=1
+case ok
+== 19 sourced instead of run: refused, outer shell survives
+ABORT SOURCED (run it as: /bin/bash -p ./stage-c-add-mfa-key.sh)
+OUTER_SHELL_STILL_RUNNING rc=1
+case ok
+== 20 isolated mode (-I -W ignore kept) and a real terminal prompt
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): CREATE
+writing         new version 7e6c91af-67ff-40b7-a6b2-4b4df512efc1
+CREATED VERIFIED
+secret          munaxa-nonprod/identity
+new_version_id  7e6c91af-67ff-40b7-a6b2-4b4df512efc1   (AWSCURRENT)
+previous        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a   (AWSPREVIOUS)
+kid             mfa-nonprod-2026-11
+key_names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,MFA_ENCRYPTION_KEYS,REDIS_PASSWORD,REDIS_URL
+SEND CLAUDE     the new_version_id and kid lines above, nothing else
+exit=0 typed_on_tty=True
+leak check: no fake secret marker and no key in the output
+case ok
+== RESULT: ALL CASES PASS, no fake secret marker and no key in any output
