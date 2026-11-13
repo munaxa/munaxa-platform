@@ -2,7 +2,9 @@
 
 Legend: **[V]** verified by Claude, **[W]** reported by a workflow run, **[AWS]** needs the AWS read-only check, **[O]** owner action.
 
-## Status: NOT RUN against AWS. Every AWS check below is explicitly unavailable.
+## Status: DONE 13 Nov 15:50 to 16:00 UTC, 12/12 PASS. Results in [02a](02a-STAGE-R-RESULTS.md).
+
+The text below is the original specification and the record of the earlier connector failure.
 
 **Exact connection requirement.** The only approved read-only AWS identity is the owner's AWS MCP connector (root of `229251310592`, ACCESS-POLICY 8 Nov). In this session it **failed to connect**: the session start reported `AWS_MCP (502)`, an HTTP error from the connector proxy, and no `aws___*` tool was loaded. The connector directory lists it as installed and connected at the organisation level, so this is a connection failure, not a missing sign-in or a missing permission. There is no other approved route:
 
