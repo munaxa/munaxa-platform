@@ -1,5 +1,7 @@
 # 03. Owner instructions: stage C in AWS CloudShell
 
+> **Superseded (13 Nov 2026, evening):** CloudShell's `/usr/bin/python3 -I` has no boto3, so this script stopped at step 4 of 03 without running. Use revision 2 in [`../2026-11-13-identity-stage-c-cli/`](../2026-11-13-identity-stage-c-cli/) and its 03 instead. This folder's 01, 04 (the PR #121 update) and 06 still apply.
+
 **For:** the owner only. **Time:** about 10 minutes. **What it does:** adds one new version to the secret `munaxa-nonprod/identity`. The new version holds the five existing values unchanged, plus a new MFA encryption key that the script generates inside AWS. **What it does not do:** it deploys nothing, starts nothing and changes no other secret. The running Testing configuration keeps using the old version until stage D.
 
 **You are the only one who handles the key.** The key never appears on your screen. Nothing you copy back to Claude is secret.

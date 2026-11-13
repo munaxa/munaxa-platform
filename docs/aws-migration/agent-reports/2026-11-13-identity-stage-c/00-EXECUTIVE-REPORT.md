@@ -1,5 +1,7 @@
 # 00. Executive report: Identity Testing stage C, MFA bundle preparation
 
+> **Superseded (13 Nov 2026, evening):** CloudShell's `/usr/bin/python3 -I` has no boto3, so this script stopped at step 4 of 03 without running. Use revision 2 in [`../2026-11-13-identity-stage-c-cli/`](../2026-11-13-identity-stage-c-cli/) and its 03 instead. This folder's 01, 04 (the PR #121 update) and 06 still apply.
+
 **Status (13 Nov 2026): STAGE C PACKAGE READY FOR THE OWNER TO RUN (route M-1). Nothing was run against AWS. No key or secret was generated, read, written or exposed. Nothing was deployed. PR #121 was not changed and not merged.**
 
 Legend: **[V]** verified in source or by a local test, **[S]** from the Stage R live results, **[D]** AWS documentation, **[E]** expectation, **[U]** not verifiable offline, **[O]** owner action.
