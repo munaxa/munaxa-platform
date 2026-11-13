@@ -1,0 +1,455 @@
+== test-only substitutions
+58c58
+< exec /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+---
+> exec /usr/bin/env -i PYTHONPATH="<test>/stub" SCEN="${SCEN:-normal}" PATH=/usr/bin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+63c63
+<   /usr/bin/python3 -I -W ignore - <<'PY'
+---
+>   /usr/bin/python3 -W ignore - <<'PY'
+89,90c89,90
+< ENDPOINTS = {"sts": f"https://sts.{REGION}.amazonaws.com",
+<              "secretsmanager": f"https://secretsmanager.{REGION}.amazonaws.com"}
+---
+> ENDPOINTS = {"sts": f"http://127.0.0.1:18443",
+>              "secretsmanager": f"http://127.0.0.1:18443"}
+346c346
+<     with open("/dev/tty", "r") as tty:
+---
+>     with open("<test>/confirm.txt", "r") as tty:
+aws cli under test: aws-cli/2.40.2
+
+######## A. The 25 revision 1 cases, now through the real AWS CLI v2
+== 1 normal run
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version 857cbf96-6108-49b4-b3b8-35d5dfd33c97
+CREATED VERIFIED
+secret          munaxa-nonprod/identity
+new_version_id  857cbf96-6108-49b4-b3b8-35d5dfd33c97   (AWSCURRENT)
+previous        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a   (AWSPREVIOUS)
+kid             mfa-nonprod-2026-11
+key_names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,MFA_ENCRYPTION_KEYS,REDIS_PASSWORD,REDIS_URL
+SEND CLAUDE     the new_version_id and kid lines above, nothing else
+exit=0
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue,ContainerCredentials,DescribeSecret,ContainerCredentials,PutSecretValue,ContainerCredentials,DescribeSecret,ContainerCredentials,GetSecretValue
+request shape: one PutSecretValue, UUID v4 token, no VersionStages, only the expected secret
+case ok
+== 1a Identity 2db6ed9 loader on the written bundle
+written key names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,REDIS_URL,REDIS_PASSWORD,MFA_ENCRYPTION_KEYS
+task secret names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,REDIS_URL,REDIS_PASSWORD,MFA_ENCRYPTION_KEYS
+task env MFA/RESET      MFA_ENCRYPTION_PRIMARY_KID=mfa-nonprod-2026-11 MFA_POLICY=off IDENTITY_PASSWORD_RESET=disabled NODE_ENV=production
+parseMfaKeys            entries=1 kid=mfa-nonprod-2026-11 keyBytes=32 problems=0
+ring text shape         kid=<43 base64url chars>: true
+reusesSecret(signing)   false false
+loadEnvironment (prod)  starts
+case ok
+== 1b second run on the result (rerun safety)
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+already_done    857cbf96-6108-49b4-b3b8-35d5dfd33c97 is AWSCURRENT, ad02f18e-f3e7-41da-9959-f9b41e0b7e1a is AWSPREVIOUS: checking it, read only
+ALREADY DONE VERIFIED   nothing written by this run
+new_version_id  857cbf96-6108-49b4-b3b8-35d5dfd33c97   (AWSCURRENT)
+previous        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a   (AWSPREVIOUS)
+kid             mfa-nonprod-2026-11
+SEND CLAUDE     the new_version_id and kid lines above, nothing else
+exit=0
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue,ContainerCredentials,DescribeSecret,ContainerCredentials,PutSecretValue,ContainerCredentials,DescribeSecret,ContainerCredentials,GetSecretValue,ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,GetSecretValue,ContainerCredentials,GetSecretValue
+case ok
+still exactly one PutSecretValue
+== 1c already done but the existing version is wrong (bad ring)
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+already_done    55555555-0000-4000-8000-000000000000 is AWSCURRENT, ad02f18e-f3e7-41da-9959-f9b41e0b7e1a is AWSPREVIOUS: checking it, read only
+ABORT EXISTING_VERSION_NOT_AS_EXPECTED (do not run again; send this line to Claude)
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,GetSecretValue,ContainerCredentials,GetSecretValue
+case ok
+== 1d a version without a label exists (hidden from DescribeSecret)
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+ABORT UNEXPECTED_VERSIONS listed=2
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds
+case ok
+== 1e labels move while the operator sits at the prompt
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT LABELS_CHANGED_SINCE_PREFLIGHT
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue,ContainerCredentials,DescribeSecret
+case ok
+== 2 wrong account
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+ABORT WRONG_ACCOUNT
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity
+case ok
+== 3 secret ARN mismatch
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+ABORT SECRET_ARN_OR_NAME_MISMATCH
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret
+case ok
+== 4 wrong KMS key
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+ABORT SECRET_KMS_KEY_MISMATCH
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret
+case ok
+== 5 rotation enabled
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+ABORT SECRET_HAS_ROTATION
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret
+case ok
+== 6 an extra AWSPENDING version
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+ABORT UNEXPECTED_VERSIONS count=2
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret
+case ok
+== 7 not confirmed (typed yes)
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT NOT_CONFIRMED
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds
+case ok
+== 8 bundle already has MFA_ENCRYPTION_KEYS
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT MFA_ENCRYPTION_KEYS_ALREADY_PRESENT
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue
+case ok
+== 9 unexpected extra key
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT BUNDLE_KEYS_UNEXPECTED missing=none extra_count=1
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue
+case ok
+== 10 duplicate JSON key
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT BUNDLE_NOT_VALID_JSON_OR_DUPLICATE_KEY
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue
+case ok
+== 11 empty value
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT BUNDLE_VALUE_NOT_A_NON_EMPTY_STRING
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue
+case ok
+== 12 binary secret
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT BUNDLE_NOT_A_STRING
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue
+case ok
+== 13 read denied (the AWS error message holds a marker and must not be printed)
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT AWS_ERROR get-secret-value AccessDeniedException
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue
+case ok
+== 14 key collides with the signing secret (forced)
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT KEY_COLLIDES_WITH_ANOTHER_SECRET
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue
+case ok
+== 15 degenerate key (forced repeated byte)
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): ABORT KEY_SELF_CHECK_FAILED
+NOTHING WRITTEN
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue
+case ok
+== 16 concurrent writer moves AWSCURRENT after our write
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version f239835a-8b9a-4091-96e0-ea0d8cf531cb
+ABORT LABELS_UNEXPECTED versions=3
+ABORT AFTER_WRITE_ATTEMPT: send these ABORT lines to Claude before doing anything else
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue,ContainerCredentials,DescribeSecret,ContainerCredentials,PutSecretValue,ContainerCredentials,DescribeSecret
+request shape: one PutSecretValue, UUID v4 token, no VersionStages, only the expected secret
+case ok
+== 17 written value differs on read-back
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version b20c2569-2a76-408e-ac52-6ef7d637573f
+ABORT WRITTEN_VALUE_DIFFERS
+ABORT AFTER_WRITE_ATTEMPT: send these ABORT lines to Claude before doing anything else
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue,ContainerCredentials,DescribeSecret,ContainerCredentials,PutSecretValue,ContainerCredentials,DescribeSecret,ContainerCredentials,GetSecretValue
+request shape: one PutSecretValue, UUID v4 token, no VersionStages, only the expected secret
+case ok
+== 18 AWS error after the write
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version ad4df89c-8247-46fc-9a04-d24ea1222514
+ABORT AWS_ERROR describe-secret InternalServiceError
+ABORT AFTER_WRITE_ATTEMPT: send these ABORT lines to Claude before doing anything else
+exit=1
+aws calls: ContainerCredentials,GetCallerIdentity,ContainerCredentials,DescribeSecret,ContainerCredentials,ListSecretVersionIds,ContainerCredentials,GetSecretValue,ContainerCredentials,DescribeSecret,ContainerCredentials,PutSecretValue,ContainerCredentials,DescribeSecret
+request shape: one PutSecretValue, UUID v4 token, no VersionStages, only the expected secret
+case ok
+== 19 sourced instead of run: refused, outer shell survives
+ABORT SOURCED (run it as: /bin/bash -p ./stage-c-add-mfa-key-cli.sh)
+OUTER_SHELL_STILL_RUNNING rc=1
+case ok
+== 20 isolated mode (-I -W ignore kept), real terminal prompt, real CLI
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=True
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): CREATE
+writing         new version db2b1062-f4a4-4801-809f-58d154a641e8
+CREATED VERIFIED
+secret          munaxa-nonprod/identity
+new_version_id  db2b1062-f4a4-4801-809f-58d154a641e8   (AWSCURRENT)
+previous        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a   (AWSPREVIOUS)
+kid             mfa-nonprod-2026-11
+key_names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,MFA_ENCRYPTION_KEYS,REDIS_PASSWORD,REDIS_URL
+SEND CLAUDE     the new_version_id and kid lines above, nothing else
+exit=0 typed_on_tty=True
+leak check: no fake secret marker and no key in the output
+request shape: one PutSecretValue, UUID v4 token, no VersionStages, only the expected secret
+case ok
+
+######## B. New cases for the AWS CLI execution path
+-- variant missing: > AWS_CANDIDATES = ["/nonexistent/aws"]
+== 21 AWS CLI missing
+ABORT AWS_CLI_MISSING
+NOTHING WRITTEN
+exit=1
+case ok
+no AWS call made
+-- variant outside: > AWS_CANDIDATES = ["<test>/fakebin/aws"]
+== 22a an aws outside the allowed locations (e.g. installed in a home directory)
+ABORT AWS_CLI_UNEXPECTED_LOCATION
+NOTHING WRITTEN
+exit=1
+case ok
+no AWS call made
+-- variant notroot: > AWS_CANDIDATES = ["/usr/local/aws-cli/v2/zz-test/aws"]
+== 22b an aws in the right place but not owned by root
+ABORT AWS_CLI_NOT_ROOT_OWNED
+NOTHING WRITTEN
+exit=1
+case ok
+no AWS call made
+== 22c an aws writable by others
+ABORT AWS_CLI_NOT_ROOT_OWNED
+NOTHING WRITTEN
+exit=1
+case ok
+no AWS call made
+== 23 AWS CLI version 1
+ABORT AWS_CLI_NOT_VERSION_2
+NOTHING WRITTEN
+exit=1
+case ok
+no AWS call made
+== 24 no CloudShell container credentials
+ABORT CLOUDSHELL_CREDENTIALS_MISSING
+NOTHING WRITTEN
+exit=1
+case ok
+no AWS call made
+== 25 hostile home and environment (tampered ~/.aws, CLI history and alias, other credential sources, proxy, CA, TMPDIR)
+aws_cli         /usr/local/bin/aws aws-cli/2.40.2
+python          3.13.18 isolated=False
+caller          arn:aws:iam::229251310592:root
+account         229251310592
+region          eu-central-1
+secret          arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-sn5umm
+kms_key         arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37
+current         ad02f18e-f3e7-41da-9959-f9b41e0b7e1a (the only version)
+PREFLIGHT OK    nothing read or written yet
+Type CREATE and press Enter to add the MFA key ring (anything else stops): writing         new version c3499925-09b6-4646-9e8e-1f20b78940cf
+CREATED VERIFIED
+secret          munaxa-nonprod/identity
+new_version_id  c3499925-09b6-4646-9e8e-1f20b78940cf   (AWSCURRENT)
+previous        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a   (AWSPREVIOUS)
+kid             mfa-nonprod-2026-11
+key_names       DATABASE_URL,IDENTITY_SIGNING_PRIVATE_KEY,IDENTITY_SIGNING_SECRET,MFA_ENCRYPTION_KEYS,REDIS_PASSWORD,REDIS_URL
+SEND CLAUDE     the new_version_id and kid lines above, nothing else
+exit=0
+request shape: one PutSecretValue, UUID v4 token, no VersionStages, only the expected secret
+case ok
+no CLI history database anywhere
+hostile TMPDIR not used
+== 26 process arguments and environment while requests were in flight (all cases above)
+process scans across all cases: 121, every one with no hit (checked after each case)
+== 28 environment of the script's Python and of every AWS CLI process, seen while requests were in flight
+python  processes seen with variables: AWS_CONTAINER_AUTHORIZATION_TOKEN,AWS_CONTAINER_CREDENTIALS_FULL_URI,LANG,LC_ALL,PATH,PYTHONPATH,SCEN
+aws     processes seen with variables: AWS_CLI_AUTO_PROMPT,AWS_CLI_FILE_ENCODING,AWS_CONFIG_FILE,AWS_CONTAINER_AUTHORIZATION_TOKEN,AWS_CONTAINER_CREDENTIALS_FULL_URI,AWS_DEFAULT_REGION,AWS_EC2_METADATA_DISABLED,AWS_MAX_ATTEMPTS,AWS_PAGER,AWS_REGION,AWS_RETRY_MODE,AWS_SHARED_CREDENTIALS_FILE,HOME,LANG,LC_ALL,LD_LIBRARY_PATH,PATH,_PYI_ARCHIVE_FILE,_PYI_LINUX_PROCESS_NAME,_PYI_PARENT_PROCESS_LEVEL
+LD_LIBRARY_PATH values seen: ['/usr/local/aws-cli/v2/2.40.2/dist']
+case ok
+== 27 control: the process scan does see a marker placed in another process's arguments
+control detected: {"at": "sts", "scanned": 90, "hits": ["15702/cmdline"]}
+case ok
+== RESULT: ALL CASES PASS, no fake secret marker and no key in any output, argument or environment
