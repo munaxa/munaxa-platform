@@ -315,7 +315,7 @@ run "enabled_cleanup_is_scoped_and_complete" {
     error_message = "The ALB delete also needs the stack's tags."
   }
   assert {
-    condition     = aws_cloudwatch_metric_alarm.session_cleanup_failed[0].alarm_actions == toset(["arn:aws:sns:eu-central-1:229251310592:munaxa-nonprod-session-cleanup-alerts"]) && aws_cloudwatch_metric_alarm.session_cleanup_not_run[0].treat_missing_data == "breaching" && aws_cloudwatch_metric_alarm.session_cleanup_not_run[0].period == 86400
+    condition     = aws_cloudwatch_metric_alarm.session_cleanup_failed[0].alarm_actions == toset(["arn:aws:sns:eu-central-1:229251310592:munaxa-nonprod-session-cleanup-alerts"]) && aws_cloudwatch_metric_alarm.session_cleanup_not_run[0].treat_missing_data == "breaching" && aws_cloudwatch_metric_alarm.session_cleanup_not_run[0].period == 3600 && aws_cloudwatch_metric_alarm.session_cleanup_not_run[0].evaluation_periods == 26 && aws_cloudwatch_metric_alarm.session_cleanup_not_run[0].datapoints_to_alarm == 26
     error_message = "A failure notifies the alerts topic; a day without success alarms too."
   }
   assert {

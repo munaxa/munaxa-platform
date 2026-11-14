@@ -282,7 +282,9 @@ operator host as the one proxied record behind Cloudflare Access.
    `envs/nonprod.expected-changes.json`, while the session is down; only then dispatch `up`.
 1. Dispatch `aws-session.yml` → `up`. The ALB, listeners and services come up; the database starts.
 2. Add CNAMEs in Cloudflare from each host to `alb_dns_name` (DNS only), first session only.
-3. Run the db-admin task, then the migrations, in order, with `aws ecs run-task` using the
+3. Run the db-admin task, then the migrations, in order (Identity Stage E: only through the E-1 guard
+   `scripts/aws/connector/e1-task-guard.py`, never a direct `RunTask` or `aws ecs run-task`), with
+   `aws ecs run-task` for the products E-1 does not cover yet, using the
    `run_task_network` output (one at a time; each must exit 0):
    `db-admin` (with `db_bootstrap_products` set), `identity-migrate`, `control-migrate`,
    `work-migrate`, `school-migrate`; `school-bootstrap` after `school-migrate` (School's seeds

@@ -70,6 +70,9 @@ class FakeAws:
         self.other_lbs = [{"LoadBalancerName": "munaxa-docs-legacy", "LoadBalancerArn": f"arn:aws:elasticloadbalancing:{REGION}:{ACCOUNT}:loadbalancer/app/munaxa-docs-legacy/1",
                            "Type": "application", "Scheme": "internet-facing", "VpcId": "vpc-0bbbbbbbbbbbbbbbb"}]
         self.list_tasks_next_token = False
+        self.mangle = {}
+        self.secret_pages = None  # e.g. 3: ListSecrets answers one secret per page, with NextToken
+        self.secret_empty_pages = 0  # extra empty pages with NextToken before the first result
 
     # Builders --------------------------------------------------------------------------------
     def with_session(self):
@@ -94,13 +97,28 @@ class FakeAws:
             raise StatesError("AccessDenied", f"{service}:{action} is not in the role policy")
         self._raise_if_scripted(key)
         handler = getattr(self, f"_{service}_{action}")
-        return handler(params)
+        response = handler(params)
+        # Owner review A-1/A-2: a response in another shape than the code assumes (renamed or
+        # missing fields), applied after the fake's own logic.
+        if key in self.mangle:
+            response = self.mangle[key](copy.deepcopy(response))
+        return response
 
     def _secretsmanager_listSecrets(self, p):
         # The name filter is a prefix match (so a longer name can come back too); never a value.
         assert p["IncludePlannedDeletion"] is True
         prefix = [f for f in p["Filters"] if f["Key"] == "name"][0]["Values"][0]
-        return {"SecretList": [copy.deepcopy(s) for s in self.secrets.values() if s["Name"].startswith(prefix)]}
+        found = [copy.deepcopy(s) for s in self.secrets.values() if s["Name"].startswith(prefix)]
+        if self.secret_pages is None and not self.secret_empty_pages:
+            return {"SecretList": found}
+        # Paged: empty pages first (ListSecrets may return NextToken with fewer than MaxResults), then
+        # one secret per page.
+        pages = [[] for _ in range(self.secret_empty_pages)] + [[x] for x in found]
+        index = int(p.get("NextToken", "0"))
+        out = {"SecretList": pages[index] if index < len(pages) else []}
+        if index + 1 < len(pages) or (self.secret_pages is not None and index + 1 < self.secret_pages):
+            out["NextToken"] = str(index + 1)
+        return out
 
     def _secretsmanager_deleteSecret(self, p):
         arn = p["SecretId"]
@@ -499,5 +517,179 @@ class Scenarios(unittest.TestCase):
         self.assertLessEqual(result["seconds"], 900)
 
 
+class OwnerReviewResponseShapes(unittest.TestCase):
+    """Owner review A-1, A-2, A-6: a response field that is missing or named differently is an
+    unexpected result for its own branch; the other branches still finish, and the execution fails
+    with CleanupIncomplete (never States.Runtime, which no Catch can handle)."""
+
+    def assert_others_done(self, result, aws, skip):
+        self.assertEqual(result["status"], "FAILED", result)
+        self.assertEqual(result["error"], "CleanupIncomplete", result)
+        parts = by_component(result)
+        if skip != "alb":
+            self.assertEqual(parts["alb"]["status"], "deleted")
+            self.assertEqual(aws.lbs, [])
+        if skip != "secret":
+            self.assertEqual(parts["secret"]["status"], "deleted")
+        if skip != "ecs":
+            self.assertEqual(parts["ecs"]["status"], "done")
+        if skip != "database":
+            self.assertEqual(parts["database"]["status"], "stopping")
+        return parts
+
+    def test_secret_arn_named_arn_lower_case_is_accepted(self):
+        aws = FakeAws().with_session()
+        for s in aws.secrets.values():
+            s["Arn"] = s.pop("ARN")
+
+        def lower(r):
+            return {"SecretList": [{("Arn" if k == "ARN" else k): v for k, v in x.items()} for x in r["SecretList"]]}
+        aws.mangle[("secretsmanager", "listSecrets")] = lower
+        aws.secrets = {k: dict(v, ARN=v["Arn"]) for k, v in aws.secrets.items()}  # the fake deletes by ARN
+        result, sim = run(aws)
+        self.assertEqual(result["status"], "SUCCEEDED", result)
+        self.assertEqual(by_component(result)["secret"]["status"], "deleted")
+        self.assertNotIn(BOOTSTRAP, aws.secrets)
+
+    def test_secret_without_any_arn_field_is_unexpected_and_others_finish(self):
+        aws = FakeAws().with_session()
+        aws.mangle[("secretsmanager", "listSecrets")] = lambda r: {"SecretList": [{k: v for k, v in x.items() if k != "ARN"} for x in r["SecretList"]]}
+        result, sim = run(aws)
+        parts = self.assert_others_done(result, aws, "secret")
+        self.assertEqual(parts["secret"]["status"], "unexpected-secret")
+        self.assertIn(BOOTSTRAP, aws.secrets)
+
+    def test_secret_list_in_another_shape_is_unexpected_and_others_finish(self):
+        for mangle in (lambda r: {"secretList": r["SecretList"]}, lambda r: {"SecretList": [{"name": x["Name"]} for x in r["SecretList"]]}):
+            with self.subTest():
+                aws = FakeAws().with_session()
+                aws.mangle[("secretsmanager", "listSecrets")] = mangle
+                result, sim = run(aws)
+                parts = self.assert_others_done(result, aws, "secret")
+                self.assertEqual(parts["secret"]["status"], "unexpected-secret")
+                self.assertEqual([c for c in sim.calls if c[1] == "deleteSecret"], [])
+
+    def test_alb_missing_a_checked_field_is_unexpected_and_others_finish(self):
+        for field in ("VpcId", "Type", "Scheme", "LoadBalancerArn"):
+            with self.subTest(field=field):
+                aws = FakeAws().with_session()
+                aws.mangle[("elasticloadbalancingv2", "describeLoadBalancers")] = (
+                    lambda f: lambda r: {"LoadBalancers": [{k: v for k, v in lb.items() if k != f} for lb in r["LoadBalancers"]]})(field)
+                result, sim = run(aws)
+                parts = self.assert_others_done(result, aws, "alb")
+                self.assertEqual(parts["alb"]["status"], "unexpected-load-balancer")
+                self.assertEqual([c for c in sim.calls if c[1] == "deleteLoadBalancer"], [])
+
+    def test_alb_list_in_another_shape_is_unexpected(self):
+        aws = FakeAws().with_session()
+        aws.mangle[("elasticloadbalancingv2", "describeLoadBalancers")] = lambda r: {"loadBalancers": r["LoadBalancers"]}
+        result, sim = run(aws)
+        parts = self.assert_others_done(result, aws, "alb")
+        self.assertEqual(parts["alb"]["status"], "unexpected-load-balancer")
+
+    def test_alb_confirmation_in_another_shape_is_never_deleted(self):
+        aws = FakeAws().with_session()
+        calls = {"n": 0}
+
+        def second_call_mangled(r):
+            calls["n"] += 1
+            return r if calls["n"] == 1 else {"loadBalancers": r["LoadBalancers"]}
+        aws.mangle[("elasticloadbalancingv2", "describeLoadBalancers")] = second_call_mangled
+        result, sim = run(aws)
+        self.assertNotEqual(by_component(result)["alb"]["status"], "deleted")
+        self.assertEqual(result["error"], "CleanupIncomplete")
+
+    def test_ecs_shapes(self):
+        cases = [
+            (("ecs", "listTasks"), lambda r: {"taskArns": r["TaskArns"]}, "unexpected-response"),
+            (("ecs", "describeServices"), lambda r: {"services": r["Services"]}, "incomplete"),
+            (("ecs", "describeServices"), lambda r: {"Services": [{k: v for k, v in x.items() if k != "DesiredCount"} for x in r["Services"]]}, "incomplete"),
+        ]
+        for key, mangle, status in cases:
+            with self.subTest(status=status):
+                aws = FakeAws().with_session()
+                aws.mangle[key] = mangle
+                result, sim = run(aws)
+                parts = self.assert_others_done(result, aws, "ecs")
+                self.assertEqual(parts["ecs"]["status"], status)
+
+    def test_no_running_task_skips_the_map(self):
+        aws = FakeAws().with_session()
+        aws.tasks = []
+        result, sim = run(aws)
+        self.assertEqual(result["status"], "SUCCEEDED", result)
+        self.assertEqual(by_component(result)["ecs"]["tasksFound"], 0)
+
+    def test_database_shapes(self):
+        for mangle in (lambda r: {"DBInstances": r["DbInstances"]}, lambda r: {"DbInstances": [{"DbInstanceIdentifier": r["DbInstances"][0]["DbInstanceIdentifier"]}]},
+                       lambda r: {"DbInstances": r["DbInstances"] * 2}):
+            with self.subTest():
+                aws = FakeAws().with_session()
+                aws.mangle[("rds", "describeDBInstances")] = mangle
+                result, sim = run(aws)
+                parts = self.assert_others_done(result, aws, "database")
+                self.assertEqual(parts["database"]["status"], "unexpected-instance")
+                self.assertEqual([c for c in sim.calls if c[1] == "stopDBInstance"], [])
+
+    def test_secret_on_a_later_page_is_found_and_deleted(self):
+        aws = FakeAws().with_session()
+        aws.secret_empty_pages = 2
+        result, sim = run(aws)
+        self.assertEqual(result["status"], "SUCCEEDED", result)
+        self.assertEqual(by_component(result)["secret"]["status"], "deleted")
+        self.assertEqual(len([c for c in sim.calls if c[1] == "listSecrets"]), 3)
+        self.assertEqual([c[2].get("NextToken") for c in sim.calls if c[1] == "listSecrets"], [None, "1", "2"])
+
+    def test_endless_pages_are_bounded_and_unexpected(self):
+        aws = FakeAws().with_session()
+        aws.secret_empty_pages = 9
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["secret"]["status"], "unexpected-secret")
+        self.assertEqual(len([c for c in sim.calls if c[1] == "listSecrets"]), 5)
+        self.assertIn(BOOTSTRAP, aws.secrets)
+
+    def test_the_name_on_two_pages_is_unexpected(self):
+        aws = FakeAws().with_session()
+        aws.secret_empty_pages = 1
+        base = aws._secretsmanager_listSecrets
+        aws._secretsmanager_listSecrets = lambda p: dict(base(p), SecretList=[copy.deepcopy(aws.secrets[BOOTSTRAP])])
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["secret"]["status"], "unexpected-secret")
+        self.assertEqual([c for c in sim.calls if c[1] == "deleteSecret"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class OwnerReviewSurvivingMutants(unittest.TestCase):
+    """Pass A mutation runs: these guards could be deleted with every earlier test still passing."""
+
+    def test_two_secrets_of_the_name_on_one_page_are_unexpected(self):
+        aws = FakeAws().with_session()
+        base = aws._secretsmanager_listSecrets
+        aws._secretsmanager_listSecrets = lambda p: {"SecretList": base(p)["SecretList"] * 2}
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["secret"]["status"], "unexpected-secret")
+        self.assertEqual([c for c in sim.calls if c[1] == "deleteSecret"], [])
+
+    def test_an_alb_of_that_name_with_a_foreign_arn_is_not_deleted(self):
+        aws = FakeAws().with_session()
+        aws.lbs[0]["LoadBalancerArn"] = f"arn:aws:elasticloadbalancing:{REGION}:111111111111:loadbalancer/app/munaxa-nonprod/1"
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["alb"]["status"], "unexpected-load-balancer")
+        self.assertEqual([c for c in sim.calls if c[1] == "deleteLoadBalancer"], [])
+
+    def test_another_database_identifier_is_never_stopped(self):
+        aws = FakeAws().with_session()
+        aws.db["id"] = "munaxa-prod-pg"
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["database"]["status"], "unexpected-instance")
+        self.assertEqual([c for c in sim.calls if c[1] == "stopDBInstance"], [])
+
+    def test_a_next_token_on_the_last_allowed_page_is_never_ignored(self):
+        aws = FakeAws().with_session()
+        aws.secret_pages = 6  # the secret is on page 1, but the listing claims more pages than read
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["secret"]["status"], "unexpected-secret")
+        self.assertIn(BOOTSTRAP, aws.secrets)

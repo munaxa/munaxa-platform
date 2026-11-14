@@ -1,5 +1,5 @@
 {
-  "description": "Stage E blocker BE-1 (report 2026-11-14-identity-stage-e-blockers-remediation, file 01). The reviewed content of each nonprod task definition family Stage E runs, with no revision number: the guard connector script (scripts/aws/connector/e1-task-guard.py) finds the latest ACTIVE revision of each family and refuses it unless it matches this file. Each container's shape (shapeKeys), environment names and command are compared too (review findings S-2, C-4). Tests keep this file equal to envs/nonprod.tfvars and to what Terraform renders.",
+  "description": "Stage E blocker BE-1 (report 2026-11-14-identity-stage-e-blockers-remediation, file 01). The reviewed content of each nonprod task definition family Stage E runs, with no revision number: the guard connector script (scripts/aws/connector/e1-task-guard.py) finds the latest ACTIVE revision of each family and refuses it unless it matches this file. Each container's shape (shapeKeys), every environment name AND value, its other fields (extra), the command, and the task's cpu, memory and runtime platform are compared too; any task or container field not described here fails (review findings S-2, C-4; owner review B-1, B-8). Tests keep this file equal to envs/nonprod.tfvars and to what Terraform renders.",
   "schema": 1,
   "region": "eu-central-1",
   "account": "229251310592",
@@ -13,6 +13,14 @@
     "munaxa-nonprod-db-admin": {
       "executionRole": "munaxa-nonprod-db-admin-execution",
       "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
       "securityGroup": "munaxa-nonprod-db-admin",
       "service": false,
       "containers": {
@@ -61,7 +69,12 @@
               }
             }
           },
-          "commandSha256": "de2ea694d627845d1ca0cc97fbb6a1be3a04ca7787ce9c4feff7aec8671221ee"
+          "commandSha256": "de2ea694d627845d1ca0cc97fbb6a1be3a04ca7787ce9c4feff7aec8671221ee",
+          "environment": {
+            "HOME": "/tmp",
+            "PGHOST": "munaxa-nonprod-pg.cjw44yig4u0v.eu-central-1.rds.amazonaws.com",
+            "PGPORT": "5432"
+          }
         }
       },
       "commands": {
@@ -72,6 +85,14 @@
     "munaxa-nonprod-identity-migrate": {
       "executionRole": "munaxa-nonprod-identity-migrate-execution",
       "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
       "securityGroup": "munaxa-nonprod-identity-migrate",
       "service": false,
       "containers": {
@@ -103,6 +124,9 @@
                 "awslogs-stream-prefix": "identity-migrate"
               }
             }
+          },
+          "environment": {
+            "NODE_ENV": "production"
           }
         }
       },
@@ -114,6 +138,14 @@
     "munaxa-nonprod-identity-bootstrap": {
       "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
       "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
       "securityGroup": "munaxa-nonprod-db-admin",
       "service": false,
       "containers": {
@@ -163,7 +195,10 @@
             "munaxa-group",
             "--organisation-name",
             "Munaxa Group"
-          ]
+          ],
+          "environment": {
+            "NODE_ENV": "production"
+          }
         }
       },
       "commands": {
@@ -189,6 +224,14 @@
     "munaxa-nonprod-identity-probe": {
       "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
       "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
       "securityGroup": "munaxa-nonprod-identity",
       "service": false,
       "containers": {
@@ -232,9 +275,12 @@
           "probeLoader": true,
           "environment": {
             "NODE_ENV": "production",
-            "PROBE_STAGE": "account",
             "PROBE_ACCOUNT": "throwaway",
-            "PROBE_HANDOFF_DIR": "/stage-e"
+            "PROBE_HANDOFF_DIR": "/stage-e",
+            "PROBE_STAGE": "account"
+          },
+          "extra": {
+            "stopTimeout": 10
           }
         },
         "identity-probe": {
@@ -290,10 +336,22 @@
           },
           "probeLoader": true,
           "environment": {
-            "PROBE_STAGE": "probe",
+            "NODE_ENV": "production",
             "PROBE_ACCOUNT": "throwaway",
+            "PROBE_AUDIENCES": "munaxa-work,munaxa-control",
+            "PROBE_CONTROL_API_HOST": "control-api.test.munaxa.com",
+            "PROBE_HANDOFF_DIR": "/stage-e",
+            "PROBE_HOST": "id.test.munaxa.com",
+            "PROBE_ISSUER": "https://id.test.munaxa.com",
+            "PROBE_OPERATOR_HOST": "operator-test.munaxa.com",
             "PROBE_ORGANISATION": "munaxa-stage-e-checks",
-            "PROBE_HANDOFF_DIR": "/stage-e"
+            "PROBE_PUBLIC_KEYS": "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-----BEGIN PUBLIC KEY-----\\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1PulSDhEOvX3B61NzQwO20+q4+42\\n0KcstlgmQccrRJy+byuVwhz2HiJp1itFmUBkugYOR087NqwNr2Kowk5fRQ==\\n-----END PUBLIC KEY-----\"}]",
+            "PROBE_SIGNING_KID": "identity-nonprod-2026-11",
+            "PROBE_STAGE": "probe",
+            "PROBE_UNKNOWN_HOST": "unknown.test.munaxa.com"
+          },
+          "extra": {
+            "stopTimeout": 10
           }
         }
       },
@@ -307,12 +365,20 @@
         "commit": "",
         "sha256": ""
       },
-      "loaderSha256": "0e391c1d519062392b9c1f8ad4320969d19a3999ff440849eac46e1ed425d687",
+      "loaderSha256": "0201914656cd129b1de25cccf60af0248f5e99aba48d820a0b21f52b90a3f962",
       "volumes": ["stage-e-handoff"]
     },
     "munaxa-nonprod-identity": {
       "executionRole": "munaxa-nonprod-identity-execution",
       "taskRole": null,
+      "task": {
+        "cpu": "512",
+        "memory": "1024",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
       "securityGroup": "munaxa-nonprod-identity",
       "service": true,
       "containers": {
@@ -406,6 +472,30 @@
                 "awslogs-stream-prefix": "identity"
               }
             }
+          },
+          "environment": {
+            "CSRF_TRUSTED_ORIGINS": "https://id.test.munaxa.com,https://work.test.munaxa.com,https://operator-test.munaxa.com",
+            "IDENTITY_AUTH_AUDIENCE": "munaxa-work,munaxa-control",
+            "IDENTITY_BASE_URL": "https://id.test.munaxa.com",
+            "IDENTITY_DEFAULT_ORGANISATION": "",
+            "IDENTITY_PASSWORD_RESET": "disabled",
+            "IDENTITY_SIGNING_ALGORITHM": "ES256",
+            "IDENTITY_SIGNING_KID": "identity-nonprod-2026-11",
+            "LOG_PRETTY": "false",
+            "MFA_ENCRYPTION_PRIMARY_KID": "mfa-nonprod-2026-11",
+            "MFA_POLICY": "off",
+            "NODE_ENV": "production",
+            "PORT": "4001",
+            "TRUST_PROXY_HOPS": "1"
+          },
+          "extra": {
+            "portMappings": [
+              {
+                "containerPort": 4001,
+                "hostPort": 4001,
+                "protocol": "tcp"
+              }
+            ]
           }
         },
         "valkey": {
@@ -451,7 +541,8 @@
           },
           "command": [
             "umask 077 && printf 'requirepass %s\\n' \"$REDIS_PASSWORD\" > /tmp/valkey.conf && exec valkey-server /tmp/valkey.conf --bind 127.0.0.1 --port 6379 --protected-mode yes --maxmemory 128mb --maxmemory-policy noeviction --save '' --appendonly no"
-          ]
+          ],
+          "environment": {}
         }
       },
       "commands": {

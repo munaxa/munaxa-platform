@@ -279,18 +279,21 @@ resource "aws_cloudwatch_metric_alarm" "session_cleanup_failed" {
 }
 
 # The heartbeat: R runs every day, so a day without a SUCCEEDED execution means the schedule, the
-# role or the state machine is broken. Missing data is breaching.
+# role or the state machine is broken. Missing data is breaching. Hourly periods, alarm only when all
+# 26 of the last 26 hours had no success (owner review A-7: one 24-hour period would flap with R's
+# finishing time and the metric's delay).
 resource "aws_cloudwatch_metric_alarm" "session_cleanup_not_run" {
   count = local.session_cleanup_enabled ? 1 : 0
 
   alarm_name          = "${local.session_cleanup_name}-not-run"
-  alarm_description   = "No Testing session cleanup execution SUCCEEDED in 24 hours: the daily run R is broken, so the independent cleanup cannot be relied on. Gate H-20 blocks the next session."
+  alarm_description   = "No Testing session cleanup execution SUCCEEDED in 26 hours: the daily run R is broken, so the independent cleanup cannot be relied on. Gate H-20 blocks the next session."
   namespace           = "AWS/States"
   metric_name         = "ExecutionsSucceeded"
   dimensions          = { StateMachineArn = aws_sfn_state_machine.session_cleanup[0].arn }
   statistic           = "Sum"
-  period              = 86400
-  evaluation_periods  = 1
+  period              = 3600
+  evaluation_periods  = 26
+  datapoints_to_alarm = 26
   threshold           = 1
   comparison_operator = "LessThanThreshold"
   treat_missing_data  = "breaching"

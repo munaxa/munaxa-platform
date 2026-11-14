@@ -216,6 +216,7 @@ writeFileSync(new URL('./received.json', import.meta.url), JSON.stringify({
 }));
 process.stderr.write('stderr noise ' + env.DIRECT_DATABASE_URL + '\\n');
 if (behaviour.exit) { process.stdout.write('IDENTITY_OWNER_PASSWORD does not meet the password policy\\n'); process.exit(1); }
+if (behaviour.createdThenFail) { process.stdout.write('Created ' + env.IDENTITY_OWNER_EMAIL + ' in organisation munaxa-stage-e-checks.\\n\\n  sub           ${SUB}\\n'); process.exit(1); }
 const created = behaviour.already ? 'Already bootstrapped.' : 'Created ' + env.IDENTITY_OWNER_EMAIL + ' in organisation munaxa-stage-e-checks.';
 process.stdout.write(created + '\\n\\n  organisation  aaaaaaaa-0000-4000-8000-000000000000  (munaxa-stage-e-checks)\\n  sub           ' + (behaviour.sub ?? '${SUB}') + '\\n\\n');
 `,
@@ -322,6 +323,46 @@ for (const [name, behaviour, env, code] of accountRefusals) {
     assert.equal(existsSync(join(dir, 'stage-e-account.json')), false);
   });
 }
+
+test('account container: an account created before the bootstrap failed is named and never retried (owner review A-8)', () => {
+  const { r, w, dir } = account({ createdThenFail: true });
+  assert.equal(r.code, 3);
+  assert.equal(r.stdout, `INFO throwaway-sub ${SUB}\nFAIL throwaway-account bootstrap-exit\n`);
+  assert.equal(existsSync(join(dir, 'stage-e-account.json')), false);
+  assert.match(w.received().email, /^stage-e-[0-9a-f]{16}@stage-e\.invalid$/);
+  assert.ok(!r.stdout.includes(w.received().email));
+});
+
+test('account container: a refused password is retried with a fresh address (owner review A-8)', () => {
+  const w = workdir({ exit: true });
+  const seen = [];
+  const stub = join(w.dir, 'scripts', 'bootstrap-account.mjs');
+  writeFileSync(
+    stub,
+    readFileSync(stub, 'utf8').replace(
+      "writeFileSync(new URL('./received.json', import.meta.url),",
+      "import { appendFileSync } from 'node:fs'; appendFileSync(new URL('./emails.txt', import.meta.url), env.IDENTITY_OWNER_EMAIL + '\\n'); writeFileSync(new URL('./received.json', import.meta.url),",
+    ),
+  );
+  const r = run(pinned(COMMIT, sha256(PROBE_ECHO)), {
+    body: PROBE_ECHO,
+    cwd: w.dir,
+    env: {
+      PROBE_STAGE: 'account',
+      PROBE_ACCOUNT: 'throwaway',
+      PROBE_HANDOFF_DIR: handoffDir(),
+      DIRECT_DATABASE_URL: DB_URL,
+    },
+  });
+  seen.push(
+    ...readFileSync(join(w.dir, 'scripts', 'emails.txt'), 'utf8')
+      .trim()
+      .split('\n'),
+  );
+  assert.equal(r.stdout, 'FAIL throwaway-account bootstrap-exit\n');
+  assert.equal(seen.length, 2);
+  assert.notEqual(seen[0], seen[1]);
+});
 
 test('account container creates nothing when the hand-off volume is not writable', () => {
   const { w } = account({}, { PROBE_HANDOFF_DIR: '/nonexistent/stage-e' });

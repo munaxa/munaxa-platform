@@ -144,7 +144,7 @@ The real loader and probe are tested in PRs #92 and #93 [P].
 
 | Attribute | Value |
 | --- | --- |
-| Family | `munaxa-nonprod-identity-probe`. The revision is **not assumed**: step 0-6 reads the ACTIVE revision back and records `PROBE_TD` = `family:revision` (PR #95 X-2) |
+| Family | `munaxa-nonprod-identity-probe`. The revision is **not assumed**: E-1 `discover` validates the latest ACTIVE revision against the manifest and records its number (owner review A-5; was `PROBE_TD`, PR #95 X-2) |
 | Container | `identity-probe`, essential |
 | Image | The Identity API digest that revision 1 of `munaxa-nonprod-identity-bootstrap` carried on 11 Nov: `munaxa-identity/api@sha256:71d01fdf…` (`node:22-alpine` runtime) [R]. Superseded: Stage E uses the manifest's digest (BE-1) |
 | Root filesystem | read-only; Linux capabilities: drop `ALL` |
@@ -162,26 +162,22 @@ role, the container has no AWS credentials at all, and the probe makes no AWS AP
 is allowed to read the migrate secret too, but the definition does not reference it, so ECS does
 not fetch it and the container never receives it.
 
-### 4.2 `RunTask` (exact, through the connector as root)
+### 4.2 Starting the probe: E-1 only
+
+> **Superseded for Stage E (owner review A-5, 14 Nov 2026, report
+> `../2026-11-14-identity-stage-e-blockers-remediation/13-REVIEW-FIXES-AND-REGRESSION-TESTS.md`).**
+> The hand-written `RunTask` parameter dictionary that stood here (11 Nov) is removed: it bypassed the
+> E-1 guard, used no `clientToken` and a fixed `startedBy`. The probe is started only by
+> `scripts/aws/connector/e1-task-guard.py` with these inputs, and E-1 builds the network, the
+> `startedBy`/`clientToken` and the one allow-listed override itself:
 
 ```python
-# Inputs resolved earlier in the session (section 8, step S-0): SUBNETS (2 ids), SG_IDENTITY, ALB_DNS.
-params = {
-    "cluster": "munaxa-nonprod",
-    "taskDefinition": PROBE_TD,             # family:revision recorded at step 0-6, never a hard-coded :1
-    "launchType": "FARGATE",
-    "count": 1,
-    "startedBy": "first-identity-session-probe",
-    "networkConfiguration": {"awsvpcConfiguration": {
-        "subnets": SUBNETS,                 # munaxa-nonprod-public-a, munaxa-nonprod-public-b
-        "securityGroups": [SG_IDENTITY],    # munaxa-nonprod-identity
-        "assignPublicIp": "ENABLED",        # public subnets, no NAT
-    }},
-    "overrides": {"containerOverrides": [{
-        "name": "identity-probe",
-        "environment": [{"name": "PROBE_ALB_DNS", "value": ALB_DNS}],
-    }]},
-}
+MODE = "run"
+FAMILY = "munaxa-nonprod-identity-probe"
+EXPECTED_REVISION = <the revision E-1 discover validated this session>
+COMMAND = "default"
+PROBE_ALB_DNS = "<munaxa-nonprod-<digits>.eu-central-1.elb.amazonaws.com, from DescribeLoadBalancers>"
+RUN_TOKEN = "<fresh, e.g. s9-probe-20261120t1200>"
 ```
 
 - **The only override is `PROBE_ALB_DNS`.** No `command`, `secrets`, `environmentFiles`,
@@ -195,7 +191,13 @@ params = {
   and `raw.githubusercontent.com` on 443. It cannot reach port 80 (section 9). It could open a
   connection to the database port, but it holds no database credential (4.1).
 
-### 4.3 The other tasks (unchanged from the checklist)
+### 4.3 The other tasks (E-1 only)
+
+> **Superseded for Stage E (owner review A-5, 14 Nov 2026, report
+> `../2026-11-14-identity-stage-e-blockers-remediation/13-REVIEW-FIXES-AND-REGRESSION-TESTS.md`).**
+> Each row is one E-1 `run` with `FAMILY`, `EXPECTED_REVISION` (from E-1 `discover`), `COMMAND`
+> (`default`, `seed-control-roles` or `operator-admin-role`) and a fresh `RUN_TOKEN`. E-1 builds the
+> override shown from its own allow-list; nothing in this table is sent by hand.
 
 | Step | Task definition | Security group | Override |
 | --- | --- | --- | --- |
@@ -211,6 +213,14 @@ overrides carry commands only, never a secret.
 ## 5. Environment variables and secret references
 
 ### 5.1 Probe task (from workstream 2 [P]; names agreed with workstream 1)
+
+> **Superseded for Stage E (owner review A-5, 14 Nov 2026, report
+> `../2026-11-14-identity-stage-e-blockers-remediation/13-REVIEW-FIXES-AND-REGRESSION-TESTS.md`).**
+> Stage E runs the probe in **throwaway** mode (decision D-BE4): two containers, the probe container
+> has no secret at all (no `IDENTITY_OWNER_*`), `PROBE_ACCOUNT` = `throwaway`, `PROBE_ORGANISATION` =
+> `munaxa-stage-e-checks`, `PROBE_HANDOFF_DIR` = `/stage-e`. The table below is the 11 Nov operator
+> mode and is not used. The authoritative list, with every value, is
+> `infra/aws/stack/envs/nonprod.stage-e-tasks.json`, which E-1 enforces.
 
 | Name | Kind | Value | Set where |
 | --- | --- | --- | --- |
@@ -274,42 +284,16 @@ bootstrap and probe tasks. Nothing reads `munaxa-nonprod/identity-operator` duri
 
 Step 0-6 connector script (read-only; returns booleans and names only):
 
-```python
-# The family name alone resolves to the latest ACTIVE revision; the result records it.
-r = await call_boto3(service_name="ecs", operation_name="DescribeTaskDefinition", region_name="eu-central-1",
-                     params={"taskDefinition": "munaxa-nonprod-identity-probe"})
-b = await call_boto3(service_name="ecs", operation_name="DescribeTaskDefinition", region_name="eu-central-1",
-                     params={"taskDefinition": "munaxa-nonprod-identity-bootstrap:<E1>"})
-td, bt = r["taskDefinition"], b["taskDefinition"]
-c = td["containerDefinitions"]; bc = bt["containerDefinitions"][0]
-env = {e["name"]: e["value"] for e in c[0].get("environment", [])}
-sec = sorted(s["name"] for s in c[0].get("secrets", []))
-cmd = " ".join(c[0].get("command", []))
-C, H = "<C from 3.2>", "<H from 3.2>"
-result = {
-  "one_container": len(c) == 1 and c[0]["name"] == "identity-probe",
-  "same_image_as_bootstrap": c[0]["image"] == bc["image"],
-  "readonly_root": c[0].get("readonlyRootFilesystem") is True,
-  "drop_all": c[0].get("linuxParameters", {}).get("capabilities", {}).get("drop") == ["ALL"],
-  "no_task_role": "taskRoleArn" not in td,
-  "execution_role": td["executionRoleArn"].endswith("role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution"),
-  "secrets_exactly_two": sec == ["IDENTITY_OWNER_EMAIL", "IDENTITY_OWNER_PASSWORD"],
-  "secrets_from_bootstrap": all(":secret:munaxa-nonprod/identity-bootstrap:" in s["valueFrom"] for s in c[0]["secrets"]),
-  "no_db_names": not ({"DIRECT_DATABASE_URL", "DATABASE_URL", "DATABASE_MIGRATION_URL"} & (set(env) | set(sec))),
-  "pin_commit": env.get("PROBE_COMMIT") == C, "pin_sha256": env.get("PROBE_SHA256") == H,
-  "env_names": sorted(env),
-  "log_prefix": c[0]["logConfiguration"]["options"].get("awslogs-stream-prefix"),
-  "log_group": c[0]["logConfiguration"]["options"].get("awslogs-group"),
-  "command_has_loader": cmd.startswith("node --input-type=module -e"),
-  "cpu_mem": [td.get("cpu"), td.get("memory")],
-  "probe_td": f'{td["family"]}:{td["revision"]}',   # recorded as PROBE_TD for 4.2
-}
-result
-```
+> **Superseded for Stage E (owner review A-5, 14 Nov 2026, report
+> `../2026-11-14-identity-stage-e-blockers-remediation/13-REVIEW-FIXES-AND-REGRESSION-TESTS.md`).**
+> Do not run this script in Stage E: it assumes one probe container at index 0 (throwaway mode has
+> two, `throwaway-account` first) and operator-mode secrets. Step 0-6 is E-1 `discover` for all five
+> families, which validates the complete definitions against the manifest.
 
-Every boolean must be `true`, `log_prefix` `identity-probe`, `log_group` `/munaxa/nonprod/ops`.
-Record `probe_td` as `PROBE_TD`. Phase 1 repeats this check on session day; if `probe_td` changed
-since 0-6, stop and re-run the full check before any `RunTask`.
+> The 11 Nov script is removed from this page (it is in this file at `main` 68fa6f9). Record the
+> probe revision E-1 `discover` validated as `EXPECTED_REVISION`; on session day `discover` runs
+> again, and a different revision stops the session before any task starts.
+
 The returned data has no secret: task definitions hold secret ARNs, never values.
 
 ## 7. Phase 1: session-day read-only checks
@@ -338,15 +322,16 @@ unless stated.
 | S-0 | Resolve `SUBNETS` (tag `Name` = `munaxa-nonprod-public-a`, `-public-b`), `SG_DBADMIN`, `SG_MIGRATE`, `SG_IDENTITY` (group names `munaxa-nonprod-db-admin`, `-identity-migrate`, `-identity`) | 2 subnets, 3 group ids, none missing | any missing: no dispatch |
 | S-1 | **Dispatch** `aws-session.yml`, ref `main`, `session=up`. Record T0. Schedule the wakes in section 14 | run green; 11 creates; DB `available` | H-1, H-2, H-3, H-4, H-7, H-8 |
 | S-2 | Step 8 verification (read-only): DB `available`; ALB `munaxa-nonprod` active, internet-facing; listeners 80 and 443; service `identity` ACTIVE; Valkey HEALTHY; Identity task exits on a **database** error | as stated | H-9 |
-| S-3 | `RunTask` db-admin (4.3); wait for STOPPED; exit code 0; log line read through the allow-list (10.2) | exit 0, roles line | H-4 |
-| S-4 | `RunTask` identity-migrate; exit 0; `All migrations have been successfully applied.` | exit 0 | H-5 |
+| S-3 | E-1 `run` db-admin (4.3); wait for STOPPED; exit code 0; log line read through the allow-list (10.2) | exit 0, roles line | H-4 |
+| S-4 | E-1 `run` identity-migrate; exit 0; `All migrations have been successfully applied.` | exit 0 | H-5 |
 | S-5 | **Bootstrap credential (Option A).** PR #91 script **C-8**, one connector call: `GetRandomPassword`; `CreateSecret` `munaxa-nonprod/identity-operator`; `CreateSecret` `munaxa-nonprod/identity-bootstrap` with the same email and password; both with `alias/munaxa-nonprod-data`; if the second create fails, the persistent secret is **kept** (never force-deleted) and recovery is PR #91 script **C-8R** (rotate it in place, create the bootstrap secret, one call; only while no account exists). Returns names, ARNs and version ids only; errors as codes only (OA-2). Then **C-8v**, a separate metadata check. Record the time just before C-8 for C-24 | 2 secrets, 1 version each, data key | any value or error message in the output: H-17; a partial result: C-8v, then C-8R, then the general rule |
-| S-6a | `RunTask` bootstrap, default command | exit 0; `Created … in organisation munaxa-group.` (email masked); organisation id and `sub` | H-6 |
-| S-6b | `RunTask` bootstrap, `seed-control-roles.mjs` override | exit 0; roles line | H-6 |
-| S-6c | `RunTask` bootstrap, `--role control-operator-admin` override | exit 0; `Assigned control-operator-admin` | H-6 |
+| S-6a | E-1 `run` bootstrap, `COMMAND` `default` | exit 0; `Created … in organisation munaxa-group.` (email masked); organisation id and `sub` | H-6 |
+| S-6b | E-1 `run` bootstrap, `COMMAND` `seed-control-roles` | exit 0; roles line | H-6 |
+| S-6c | E-1 `run` bootstrap, `COMMAND` `operator-admin-role` | exit 0; `Assigned control-operator-admin` | H-6 |
 | S-7 | `UpdateService` cluster `munaxa-nonprod`, service `identity`, `forceNewDeployment`; wait stable (poll `DescribeServices` up to 15 min); target group `munaxa-nonprod-identity` 1 healthy | COMPLETED, 1 running, healthy | H-10 |
 | S-8 | **Listener configuration verification** (section 9), read-only | all checks true | H-11, H-14 |
-| S-9 | **Probe:** `RunTask` exactly as 4.2; wait for STOPPED (poll `DescribeTasks`, 10 min limit); exit code; read the probe stream through the allow-list (10.2) | exit 0; 15 `PASS` lines; `SUMMARY … result=PASS`; 0 non-allow-listed lines | section 13 table |
+| S-9 | **Probe:** E-1 `run` as 4.2; wait with E-1 `status` (same `RUN_TOKEN`, 10 min limit); read both streams through the allow-list (10.2); record the `INFO throwaway-sub <uuid>` line of `throwaway-account` | `throwaway-account` exit 0; probe exit 0; 28 `PASS` lines; summary `28/28 passed`; 0 non-allow-listed lines (owner review A-5: throwaway mode, file 04) | section 13 table |
+| S-9b | **Disable the throwaway account**, also when S-9 failed after an `INFO throwaway-sub` line: E-1 `run`, family `munaxa-nonprod-identity`, `COMMAND` `account-disable-plan`, then `account-disable`, `ACCOUNT_ID` = that sub | both exit 0 | report the sub as residue (file 04 §6) |
 | S-10 | **Count-only log checks** (10.3) | every count 0 | H-17 |
 | S-11 | **Delete the bootstrap secret** (section 11); confirm count 0; confirm the persistent secret is present (metadata) | 0; persistent present | retry; H-15 timing still applies |
 | S-12 | **Dispatch** `aws-session.yml`, `session=down`; follow both jobs | both green; 11 deletes; DB stopping | section 13 |
@@ -372,13 +357,14 @@ db-admin (exit 0) → migrate (exit 0) → create both secrets (metadata only)
 ### 8.2 Probe execution sequence (S-9) in one view
 
 ```
-check override dict (4.2) → RunTask → poll DescribeTasks until STOPPED (≤ 10 min)
+E-1 run (4.2) → E-1 status until SUCCEEDED or FAILED (≤ 10 min)
   → read stopCode, exit code, container reason (no environment, no overrides echoed)
   → read stream identity-probe/identity-probe/<task id> through the allow-list
-  → expect 15 PASS + SUMMARY result=PASS, exit 0, non-allow-listed = 0
+  → expect 28 PASS + summary 28/28 passed, exit 0, non-allow-listed = 0
+  → S-9b: disable the throwaway account by its sub (E-1)
 ```
 
-The 15 checks (workstream 1 names): `tls-certificate`, `health-live`, `health-ready`,
+The 15 checks of the 11 Nov operator mode (workstream 1 names; Stage E runs the 28 throwaway-mode checks of file 03 of the Stage E remediation report instead): `tls-certificate`, `health-live`, `health-ready`,
 `session-unauthenticated`, `login`, `session-authenticated`, `jwt-verification`, `refresh`,
 `logout`, `refresh-replay-after-logout`, `invalid-password`, `operator-host`,
 `control-admin-path`, `control-other-path`, `unknown-host`.
@@ -393,7 +379,7 @@ Probe facts Claude relies on [P, to be confirmed by the I-1 review]:
   `identity-nonprod-2026-11`, issuer, audience, expiry;
 - output is only `PASS <check>`, `FAIL <check> <code>` and one `SUMMARY` line.
 
-**Run the probe at most once per session.** Each run makes one valid and one invalid login for the
+**Run the probe at most once per session** (the reason below is the 11 Nov operator mode; in throwaway mode each run creates, locks and must disable its own account). Each run makes one valid and one invalid login for the
 operator identifier, and Identity's lockout counts failures per identifier (`auth.service.ts`
 333-339). The threshold was not traced (**NOT VERIFIED**). A second run is allowed only for a
 loader download error before any check ran (H-18) and is recorded in the report.
@@ -480,7 +466,7 @@ result = {"lines": kept, "other_line_count": other, "total": len(ev)}
 result
 ```
 
-- Probe stream: expect 16 kept lines (15 `PASS`, 1 `SUMMARY`), `other_line_count` 0. A non-zero
+- Probe stream: expect 29 kept lines in Stage E throwaway mode (28 `PASS`, 1 summary; the 11 Nov operator mode had 16), `other_line_count` 0. A non-zero
   `other_line_count` is **H-19** (section 13): its content is never read.
 - Bootstrap and db-admin streams: the allow-list holds the expected line shapes (the checklist's
   roles line, `Created <email> in organisation munaxa-group.`, organisation and `sub` ids,

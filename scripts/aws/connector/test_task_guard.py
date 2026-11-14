@@ -80,6 +80,7 @@ def render(family, revision, pin=PIN):
         c = {"name": name, "image": cs["image"], "cpu": 0, "portMappings": [], "volumesFrom": [], "systemControls": [],
              "secrets": [{"name": k, "valueFrom": value_from(v)} for k, v in cs["secrets"].items()]}
         c.update(copy.deepcopy(cs["shape"]))
+        c.update(copy.deepcopy(cs.get("extra") or {}))
         c.setdefault("mountPoints", [])
         env = {n: (cs.get("environment") or {}).get(n, "value-" + n) for n in cs["environmentNames"]}
         if name == "identity-probe":
@@ -97,6 +98,11 @@ def render(family, revision, pin=PIN):
         "executionRoleArn": f"arn:aws:iam::{ACCOUNT}:role/munaxa-shared/{spec['executionRole']}",
         "requiresCompatibilities": ["FARGATE"], "networkMode": "awsvpc", "containerDefinitions": containers,
         "volumes": [{"name": v, "host": {}} for v in spec["volumes"]],
+        "cpu": spec["task"]["cpu"], "memory": spec["task"]["memory"], "runtimePlatform": copy.deepcopy(spec["task"]["runtimePlatform"]),
+        # Metadata and defaults ECS adds, which the guard must ignore (owner review B-8).
+        "compatibilities": ["EC2", "FARGATE"], "requiresAttributes": [{"name": "com.amazonaws.ecs.capability.logging-driver.awslogs"}],
+        "registeredAt": "2026-11-13T21:45:00Z", "registeredBy": f"arn:aws:sts::{ACCOUNT}:assumed-role/x/y",
+        "placementConstraints": [], "enableFaultInjection": False,
     }
 
 
@@ -332,6 +338,94 @@ class Discover(unittest.TestCase):
                 self.assertEqual(r["result"], "FAIL")
                 self.assertIn(problem, r["families"][0]["problems"])
 
+    def test_owner_review_b1_every_environment_value_is_pinned(self):
+        # Owner review B-1: a revision whose PGHOST points elsewhere would hand the RDS master password
+        # (and, through ALTER ROLE, the owner and app passwords) to that host. Every value of every
+        # Stage E container is compared, not only the names.
+        attacker = "db.attacker.example"
+        cases = [
+            ("munaxa-nonprod-db-admin", "db-admin", "PGHOST", attacker),
+            ("munaxa-nonprod-db-admin", "db-admin", "PGPORT", "443"),
+            ("munaxa-nonprod-db-admin", "db-admin", "HOME", "/"),
+            ("munaxa-nonprod-identity-migrate", "identity-migrate", "NODE_ENV", "development"),
+            ("munaxa-nonprod-identity-bootstrap", "identity-bootstrap", "NODE_ENV", "development"),
+            ("munaxa-nonprod-identity", "identity", "IDENTITY_BASE_URL", "https://" + attacker),
+            ("munaxa-nonprod-identity", "identity", "MFA_POLICY", "disabled"),
+            ("munaxa-nonprod-identity", "identity", "CSRF_TRUSTED_ORIGINS", "https://" + attacker),
+            ("munaxa-nonprod-identity-probe", "identity-probe", "PROBE_PUBLIC_KEYS", "[]"),
+            ("munaxa-nonprod-identity-probe", "identity-probe", "PROBE_HOST", attacker),
+            ("munaxa-nonprod-identity-probe", "throwaway-account", "NODE_ENV", "development"),
+        ]
+        for family, name, var, value in cases:
+            with self.subTest(family=family, var=var):
+                fake = FakeEcs()
+                td = render(family, 2)
+                for e in container(td, name)["environment"]:
+                    if e["name"] == var:
+                        e["value"] = value
+                fake.register(family, td)
+                r = guard(fake, pinned_script() if family.endswith("probe") else SCRIPT, FAMILY=family)
+                self.assertEqual(r["result"], "FAIL")
+                self.assertIn(f"{name}:env:{var}", r["families"][0]["problems"])
+                self.assertNotIn(value, json.dumps(r), "a problem code never carries the value")
+
+    def test_owner_review_b1_every_environment_name_has_a_pinned_value(self):
+        for family, spec in FAMILIES.items():
+            for name, cs in spec["containers"].items():
+                names = [n for n in cs["environmentNames"] if not (cs.get("probeLoader") and n in ("PROBE_COMMIT", "PROBE_SHA256"))]
+                self.assertEqual(sorted((cs.get("environment") or {}).keys()), sorted(names), (family, name))
+
+    def test_owner_review_b8_unknown_task_and_container_fields_fail(self):
+        cases = {
+            "task-field:proxyConfiguration": lambda td: td.update(proxyConfiguration={"type": "APPMESH", "containerName": "identity-bootstrap"}),
+            "task-field:ephemeralStorage": lambda td: td.update(ephemeralStorage={"sizeInGiB": 200}),
+            "task-field:enableFaultInjection": lambda td: td.update(enableFaultInjection=True),
+            "task-field:inferenceAccelerators": lambda td: td.update(inferenceAccelerators=[{"deviceName": "x", "deviceType": "y"}]),
+            "runtime-platform": lambda td: td.update(runtimePlatform={"cpuArchitecture": "ARM64", "operatingSystemFamily": "LINUX"}),
+            "task-size": lambda td: td.update(cpu="4096"),
+            "launch": lambda td: td.update(requiresCompatibilities=["EC2", "FARGATE"]),
+            "volumes": lambda td: td.update(volumes=[{"name": "x", "configuredAtLaunch": True}]),
+            "identity-bootstrap:fields": lambda td: td["containerDefinitions"][0].update(ulimits=[{"name": "nofile", "softLimit": 1, "hardLimit": 1}]),
+        }
+        more = {
+            "dockerLabels": {"x": "y"},
+            "firelensConfiguration": {"type": "fluentbit"},
+            "restartPolicy": {"enabled": True},
+            "portMappings": [{"containerPort": 22, "hostPort": 22, "protocol": "tcp"}],
+            "versionConsistency": "disabled",
+            "memory": 4096,
+            "startTimeout": 600,
+        }
+        for field, value in more.items():
+            cases["identity-bootstrap:fields:" + field] = (lambda f, v: lambda td: td["containerDefinitions"][0].update({f: v}))(field, value)
+        for problem, change in cases.items():
+            with self.subTest(problem=problem):
+                fake = FakeEcs()
+                td = render("munaxa-nonprod-identity-bootstrap", 2)
+                change(td)
+                fake.register("munaxa-nonprod-identity-bootstrap", td)
+                r = guard(fake, FAMILY="munaxa-nonprod-identity-bootstrap")
+                self.assertEqual(r["result"], "FAIL")
+                self.assertIn(problem.split(":fields:")[0] + (":fields" if ":fields:" in problem else ""), r["families"][0]["problems"])
+
+    def test_owner_review_b8_ecs_defaults_still_pass(self):
+        fake = FakeEcs()
+        td = render("munaxa-nonprod-identity-bootstrap", 2)
+        c = td["containerDefinitions"][0]
+        c.update(restartPolicy={"enabled": False}, versionConsistency="enabled", ulimits=[], dockerLabels={}, cpu=0)
+        td.update(proxyConfiguration=None, inferenceAccelerators=[], ephemeralStorage={})
+        fake.register("munaxa-nonprod-identity-bootstrap", td)
+        self.assertEqual(guard(fake, FAMILY="munaxa-nonprod-identity-bootstrap")["result"], "PASS")
+
+    def test_owner_review_b8_the_identity_port_mapping_is_the_only_one(self):
+        fake = FakeEcs()
+        td = render("munaxa-nonprod-identity", 2)
+        container(td, "identity")["portMappings"] = [{"containerPort": 4001, "hostPort": 4001, "protocol": "tcp"},
+                                                      {"containerPort": 9229, "hostPort": 9229, "protocol": "tcp"}]
+        fake.register("munaxa-nonprod-identity", td)
+        r = guard(fake, FAMILY="munaxa-nonprod-identity")
+        self.assertIn("identity:fields", r["families"][0]["problems"])
+
     def test_shape_and_command_drift_in_every_family_is_named(self):
         cases = [
             ("munaxa-nonprod-identity-migrate", "identity-migrate:command", lambda td: container(td, "identity-migrate").update(command=["sh", "-c", "env"])),
@@ -482,7 +576,9 @@ class Run(unittest.TestCase):
         self.assertEqual(r["result"], "STARTED")
         self.assertEqual(fake.ops("RunTask")[0]["overrides"], {"containerOverrides": [
             {"name": "identity-probe", "environment": [{"name": "PROBE_ALB_DNS", "value": ALB}]}]})
-        for bad in ("", "evil.example", ALB.replace("eu-central-1", "us-east-1")):
+        for bad in ("", "evil.example", ALB.replace("eu-central-1", "us-east-1"),
+                    # owner review A-11: another load balancer in the Region is not the session ALB
+                    "munaxa-prod-1234567890.eu-central-1.elb.amazonaws.com", "internal-munaxa-nonprod-1.eu-central-1.elb.amazonaws.com"):
             with self.subTest(bad=bad):
                 fresh = FakeEcs()
                 fresh.register("munaxa-nonprod-identity-probe", render("munaxa-nonprod-identity-probe", 2))
@@ -584,6 +680,29 @@ class Status(unittest.TestCase):
         self.assertEqual(r["result"], "SUCCEEDED")
         self.assertTrue(r["tasks"][0]["containers"][0]["digest_ok"])
 
+    def test_owner_review_a4_an_expired_task_arn_is_never_in_progress(self):
+        fake = FakeEcs()
+        arn = f"arn:aws:ecs:{REGION}:{ACCOUNT}:task/{CLUSTER}/" + "c" * 32
+        fake.overrides["DescribeTasks"] = lambda p: {"tasks": [], "failures": [{"arn": arn, "reason": "MISSING"}]}
+        r = guard(fake, MODE="status", TASK_ARN=arn)
+        self.assertEqual((r["result"], r["code"]), ("NOT_FOUND", "TASK_EXPIRED_OR_UNKNOWN"))
+
+    def test_owner_review_a4_a_task_expiring_between_list_and_describe_is_unknown(self):
+        fake = FakeEcs()
+        self.assertEqual(guard(fake, FAMILY="munaxa-nonprod-identity-migrate", MODE="run", EXPECTED_REVISION=1,
+                               RUN_TOKEN="s4-migrate-00001")["result"], "STARTED")
+        fake.finish()
+        base = fake.op_DescribeTasks
+        fake.overrides["DescribeTasks"] = lambda p: dict(base(p), failures=[{"arn": "x", "reason": "MISSING"}])
+        r = guard(fake, MODE="status", RUN_TOKEN="s4-migrate-00001")
+        self.assertEqual((r["result"], r["code"]), ("UNKNOWN", "SOME_TASKS_EXPIRED"))
+
+    def test_owner_review_a4_other_describe_failures_fail(self):
+        fake = FakeEcs()
+        arn = f"arn:aws:ecs:{REGION}:{ACCOUNT}:task/{CLUSTER}/" + "c" * 32
+        fake.overrides["DescribeTasks"] = lambda p: {"tasks": [], "failures": [{"arn": arn, "reason": "AccessDenied by policy"}]}
+        self.assertEqual(guard(fake, MODE="status", TASK_ARN=arn)["code"], "DESCRIBE_FAILURES")
+
     def test_a_non_zero_exit_or_another_digest_fails(self):
         fake = self.started()
         fake.finish(exit_code=1)
@@ -639,6 +758,24 @@ class NoRevisionNumbers(unittest.TestCase):
                 for n, line in enumerate(f, 1):
                     if self.PATTERN.search(line) and "historical" not in line.lower():
                         offenders.append(f"{os.path.relpath(path, ROOT)}:{n}")
+        self.assertEqual(offenders, [])
+
+    def test_owner_review_a5_no_live_runbook_starts_a_task_by_hand(self):
+        # Owner review A-5: the revision lint alone let a hand-written RunTask (any revision) stand.
+        runbooks = [
+            os.path.join(ROOT, "docs", "aws-migration", "agent-reports", "2026-11-11-identity-final-operator-runbook", "00-IDENTITY-FINAL-OPERATOR-RUNBOOK.md"),
+            os.path.join(ROOT, "docs", "aws-migration", "agent-reports", "2026-11-11-identity-first-session-operator-checklist", "00-IDENTITY-FIRST-SESSION-OPERATOR-CHECKLIST.md"),
+        ]
+        by_hand = re.compile(r'"startedBy"|"taskDefinition"\s*:|operation_name="RunTask"|"RunTask",\s*\{|^\|\s*S-\d+[a-z]?\s*\|\s*`RunTask`')
+        offenders = []
+        for path in runbooks:
+            with open(path, encoding="utf-8") as f:
+                lines = f.read().split("\n")
+            for n, line in enumerate(lines):
+                if by_hand.search(line):
+                    offenders.append(f"{os.path.basename(path)}:{n + 1}")
+                if "aws ecs run-task" in line and not any("SUPERSEDED" in x for x in lines[max(0, n - 12):n]):
+                    offenders.append(f"{os.path.basename(path)}:{n + 1}")
         self.assertEqual(offenders, [])
 
     def test_the_pattern_catches_the_old_forms(self):

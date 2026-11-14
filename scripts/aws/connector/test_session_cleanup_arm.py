@@ -262,6 +262,16 @@ class Arm(unittest.TestCase):
         self.assertEqual((r["result"], r["p"]["status"]), ("FAIL", "conflict"))
         self.assertEqual(fake.schedules[name]["Target"], {"Arn": "other"})
 
+    def test_owner_review_a10_a_same_named_schedule_that_keeps_itself_is_a_conflict(self):
+        fake = Fake()
+        h_text = hard_stop()
+        first = run(fake, MODE="arm", HARD_STOP_UTC=h_text)
+        self.assertEqual(first["result"], "ARMED")
+        for name in list(fake.schedules):
+            fake.schedules[name]["ActionAfterCompletion"] = "NONE"
+        r = run(fake, MODE="arm", HARD_STOP_UTC=h_text)
+        self.assertEqual((r["p"]["status"], r["s"]["status"]), ("conflict", "conflict"))
+
     def test_a_failed_gate_arms_nothing(self):
         fake = Fake()
         fake.running = [{"executionArn": "y"}]

@@ -194,7 +194,11 @@ async def arm_one(label, at):
         r = await aws("scheduler", "GetSchedule", {"Name": name})
         target = r.get("Target") or {}
         if (r.get("ScheduleExpression") == expression and target.get("Arn") == SM_ARN
-                and target.get("RoleArn") == ROLE_ARN and same_input(target.get("Input", "")) and r.get("State") == "ENABLED"):
+                and target.get("RoleArn") == ROLE_ARN and same_input(target.get("Input", "")) and r.get("State") == "ENABLED"
+                # Owner review A-10: a same-named schedule that would not delete itself, or retries less, is
+                # not ours.
+                and r.get("ActionAfterCompletion") == "DELETE" and r.get("ScheduleExpressionTimezone") in ("UTC", None)
+                and (target.get("RetryPolicy") or {}).get("MaximumRetryAttempts") == 3):
             return {"name": name, "at": expression, "status": "already-armed"}
         return {"name": name, "status": "conflict"}
     except Exception as e:

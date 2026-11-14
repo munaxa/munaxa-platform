@@ -87,7 +87,9 @@ run "stage_e_task_definitions_match_the_manifest" {
     target          = aws_db_instance.main
     override_during = plan
     values = {
-      address            = "munaxa-test-pg.example.eu-central-1.rds.amazonaws.com"
+      # The live Testing endpoint (a DNS name, not a secret; report 2026-11-09-identity-config-a1-
+      # preparation): the manifest pins PGHOST to it (owner review B-1).
+      address            = "munaxa-nonprod-pg.cjw44yig4u0v.eu-central-1.rds.amazonaws.com"
       port               = 5432
       master_user_secret = [{ secret_arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-0d1c2b3a-4f5e-4d7c-8b9a-0f1e2d3c4b5a-AbCdEf", kms_key_id = "mock", secret_status = "active" }]
     }
@@ -114,6 +116,18 @@ run "stage_e_task_definitions_match_the_manifest" {
   }
 
   variables {
+    # envs/nonprod.tfvars' values for everything a Stage E environment value comes from, so the
+    # rendered values can be compared with the manifest's (owner review B-1; test_task_guard.py checks
+    # the manifest against envs/nonprod.tfvars).
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator-test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+    }
+    identity_signing_kid = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity"].containers.identity.environment.IDENTITY_SIGNING_KID
+    identity_public_keys = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-probe"].containers["identity-probe"].environment.PROBE_PUBLIC_KEYS
     images = {
       identity_api     = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity"].containers.identity.image
       identity_migrate = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-migrate"].containers["identity-migrate"].image
@@ -204,7 +218,10 @@ run "stage_e_task_definitions_match_the_manifest" {
           [jsonencode(sort([for e in try(c.environment, []) : e.name])) == jsonencode(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].environmentNames)],
           [for k in jsondecode(file("envs/nonprod.stage-e-tasks.json")).shapeKeys : contains(keys(c), k) == contains(keys(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].shape), k)],
           [for k, v in jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].shape : c[k] == v],
-          [for k, v in try(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].environment, {}) : { for e in c.environment : e.name => e.value }[k] == v],
+          # Owner review B-1: every value, except the probe pin's two (compared with probePin by the guard).
+          [for e in try(c.environment, []) : contains(["PROBE_COMMIT", "PROBE_SHA256"], e.name) || try(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].environment[e.name] == e.value, false)],
+          # Owner review B-8: any other container field is one the manifest lists under "extra".
+          [jsonencode({ for k, v in c : k => v if !contains(concat(["name", "image", "secrets", "environment", "command"], jsondecode(file("envs/nonprod.stage-e-tasks.json")).shapeKeys), k) && v != false }) == jsonencode(try(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].extra, {}))],
           [
             can(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].command) ? c.command == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].command :
             can(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].commandSha256) ? length(c.command) == 1 && sha256(c.command[0]) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].commandSha256 :
@@ -213,7 +230,24 @@ run "stage_e_task_definitions_match_the_manifest" {
           ],
       )]
     ]))
-    error_message = "A Stage E container's environment names, shape fields or command differ from envs/nonprod.stage-e-tasks.json."
+    error_message = "A Stage E container's environment names or values, shape fields, other fields or command differ from envs/nonprod.stage-e-tasks.json."
+  }
+
+  # Owner review B-8: the task's cpu, memory and runtime platform are the manifest's "task".
+  assert {
+    condition = alltrue([
+      for family, t in {
+        "munaxa-nonprod-db-admin"           = { cpu = aws_ecs_task_definition.db_admin[0].cpu, memory = aws_ecs_task_definition.db_admin[0].memory, arch = aws_ecs_task_definition.db_admin[0].runtime_platform[0].cpu_architecture, os = aws_ecs_task_definition.db_admin[0].runtime_platform[0].operating_system_family }
+        "munaxa-nonprod-identity-bootstrap" = { cpu = aws_ecs_task_definition.identity_bootstrap[0].cpu, memory = aws_ecs_task_definition.identity_bootstrap[0].memory, arch = aws_ecs_task_definition.identity_bootstrap[0].runtime_platform[0].cpu_architecture, os = aws_ecs_task_definition.identity_bootstrap[0].runtime_platform[0].operating_system_family }
+        "munaxa-nonprod-identity-probe"     = { cpu = aws_ecs_task_definition.identity_probe[0].cpu, memory = aws_ecs_task_definition.identity_probe[0].memory, arch = aws_ecs_task_definition.identity_probe[0].runtime_platform[0].cpu_architecture, os = aws_ecs_task_definition.identity_probe[0].runtime_platform[0].operating_system_family }
+        "munaxa-nonprod-identity-migrate"   = { cpu = module.migrate["identity"].task_definition_size.cpu, memory = module.migrate["identity"].task_definition_size.memory, arch = module.migrate["identity"].task_definition_size.cpu_architecture, os = module.migrate["identity"].task_definition_size.operating_system_family }
+        "munaxa-nonprod-identity"           = { cpu = module.identity[0].task_definition_size.cpu, memory = module.identity[0].task_definition_size.memory, arch = module.identity[0].task_definition_size.cpu_architecture, os = module.identity[0].task_definition_size.operating_system_family }
+      } : tostring(t.cpu) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].task.cpu &&
+      tostring(t.memory) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].task.memory &&
+      t.arch == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].task.runtimePlatform.cpuArchitecture &&
+      t.os == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].task.runtimePlatform.operatingSystemFamily
+    ])
+    error_message = "A Stage E task's cpu, memory or runtime platform differs from envs/nonprod.stage-e-tasks.json."
   }
 
   assert {

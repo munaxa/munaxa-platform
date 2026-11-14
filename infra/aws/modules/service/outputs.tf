@@ -48,3 +48,13 @@ output "service_deployment" {
     security_groups         = aws_ecs_service.this[0].network_configuration[0].security_groups
   } : null
 }
+
+output "task_definition_size" {
+  description = "The task's cpu, memory and runtime platform (for plan tests: the Stage E manifest pins them)."
+  value = {
+    cpu                     = aws_ecs_task_definition.this.cpu
+    memory                  = aws_ecs_task_definition.this.memory
+    cpu_architecture        = var.cpu_architecture
+    operating_system_family = "LINUX"
+  }
+}

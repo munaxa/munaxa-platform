@@ -127,13 +127,16 @@ function bootstrap(databaseUrl, email, password) {
     child.stderr.resume(); // drained, never read or printed
     child.once('error', () => resolve({ code: 'spawn' }));
     child.once('close', (status, signal) => {
-      if (signal !== null) return resolve({ code: 'bootstrap-killed' });
-      if (status !== 0) return resolve({ code: 'bootstrap-exit' });
       const out = Buffer.concat(chunks).toString('utf8');
-      if (!out.includes(`Created ${email} in organisation ${THROWAWAY_ORGANISATION}.`))
-        return resolve({ code: 'bootstrap-not-created' });
+      const created = out.includes(`Created ${email} in organisation ${THROWAWAY_ORGANISATION}.`);
       const sub = /^\s+sub\s+(\S+)\s*$/m.exec(out)?.[1] ?? '';
-      if (!UUID.test(sub)) return resolve({ code: 'bootstrap-no-sub' });
+      // Owner review A-8: an account the child created before it failed or was killed is still
+      // named (its sub only), so it can be disabled, and is never followed by a retry.
+      const createdSub = created && UUID.test(sub) ? sub : undefined;
+      if (signal !== null) return resolve({ code: 'bootstrap-killed', created, createdSub });
+      if (status !== 0) return resolve({ code: 'bootstrap-exit', created, createdSub });
+      if (!created) return resolve({ code: 'bootstrap-not-created', created });
+      if (!UUID.test(sub)) return resolve({ code: 'bootstrap-no-sub', created });
       return resolve({ sub });
     });
   });
@@ -145,13 +148,15 @@ async function throwaway() {
   const databaseUrl = process.env.DIRECT_DATABASE_URL ?? '';
   for (const name of DATABASE_ENV) delete process.env[name];
   if (!/^postgres(ql)?:\/\//.test(databaseUrl)) return { code: 'no-database-url' };
-  const email = `stage-e-${randomBytes(8).toString('hex')}@stage-e.invalid`;
   // 32 random base64url characters plus fixed classes; bootstrap-account.mjs checks the real
-  // policy before it writes, so a refused password creates nothing and is tried once more.
+  // policy before it writes, so a refused password creates nothing and is tried once more, with a
+  // fresh address (owner review A-8: never the address of an account that may exist).
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    const email = `stage-e-${randomBytes(8).toString('hex')}@stage-e.invalid`;
     const password = `Se7-${randomBytes(24).toString('base64url')}`;
     const made = await bootstrap(databaseUrl, email, password);
     if (made.sub !== undefined) return { email, password, sub: made.sub };
+    if (made.created) return { code: made.code, createdSub: made.createdSub };
     if (made.code !== 'bootstrap-exit') return made;
   }
   return { code: 'bootstrap-exit' };
@@ -186,7 +191,12 @@ async function account() {
     return failAccount('handoff-not-writable');
   }
   const made = await throwaway();
-  if (made.sub === undefined) return failAccount(made.code);
+  if (made.sub === undefined) {
+    // An account was created although the step failed: name it (sub only) for the disable step.
+    if (made.createdSub !== undefined)
+      process.stdout.write(`INFO throwaway-sub ${made.createdSub}\n`);
+    return failAccount(made.code);
+  }
   // Printed before the hand-off write, so a failed write still names the account to disable.
   process.stdout.write(`INFO throwaway-sub ${made.sub}\n`);
   try {

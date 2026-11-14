@@ -98,6 +98,14 @@ MANIFEST = {
         "munaxa-nonprod-db-admin": {
             "executionRole": "munaxa-nonprod-db-admin-execution",
             "taskRole": None,
+            "task": {
+                "cpu": "256",
+                "memory": "512",
+                "runtimePlatform": {
+                    "cpuArchitecture": "X86_64",
+                    "operatingSystemFamily": "LINUX"
+                }
+            },
             "securityGroup": "munaxa-nonprod-db-admin",
             "service": False,
             "containers": {
@@ -155,7 +163,12 @@ MANIFEST = {
                             }
                         }
                     },
-                    "commandSha256": "de2ea694d627845d1ca0cc97fbb6a1be3a04ca7787ce9c4feff7aec8671221ee"
+                    "commandSha256": "de2ea694d627845d1ca0cc97fbb6a1be3a04ca7787ce9c4feff7aec8671221ee",
+                    "environment": {
+                        "HOME": "/tmp",
+                        "PGHOST": "munaxa-nonprod-pg.cjw44yig4u0v.eu-central-1.rds.amazonaws.com",
+                        "PGPORT": "5432"
+                    }
                 }
             },
             "commands": {
@@ -166,6 +179,14 @@ MANIFEST = {
         "munaxa-nonprod-identity-migrate": {
             "executionRole": "munaxa-nonprod-identity-migrate-execution",
             "taskRole": None,
+            "task": {
+                "cpu": "256",
+                "memory": "512",
+                "runtimePlatform": {
+                    "cpuArchitecture": "X86_64",
+                    "operatingSystemFamily": "LINUX"
+                }
+            },
             "securityGroup": "munaxa-nonprod-identity-migrate",
             "service": False,
             "containers": {
@@ -201,6 +222,9 @@ MANIFEST = {
                                 "awslogs-stream-prefix": "identity-migrate"
                             }
                         }
+                    },
+                    "environment": {
+                        "NODE_ENV": "production"
                     }
                 }
             },
@@ -212,6 +236,14 @@ MANIFEST = {
         "munaxa-nonprod-identity-bootstrap": {
             "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
             "taskRole": None,
+            "task": {
+                "cpu": "256",
+                "memory": "512",
+                "runtimePlatform": {
+                    "cpuArchitecture": "X86_64",
+                    "operatingSystemFamily": "LINUX"
+                }
+            },
             "securityGroup": "munaxa-nonprod-db-admin",
             "service": False,
             "containers": {
@@ -265,7 +297,10 @@ MANIFEST = {
                         "munaxa-group",
                         "--organisation-name",
                         "Munaxa Group"
-                    ]
+                    ],
+                    "environment": {
+                        "NODE_ENV": "production"
+                    }
                 }
             },
             "commands": {
@@ -296,6 +331,14 @@ MANIFEST = {
         "munaxa-nonprod-identity-probe": {
             "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
             "taskRole": None,
+            "task": {
+                "cpu": "256",
+                "memory": "512",
+                "runtimePlatform": {
+                    "cpuArchitecture": "X86_64",
+                    "operatingSystemFamily": "LINUX"
+                }
+            },
             "securityGroup": "munaxa-nonprod-identity",
             "service": False,
             "containers": {
@@ -346,9 +389,12 @@ MANIFEST = {
                     "probeLoader": True,
                     "environment": {
                         "NODE_ENV": "production",
-                        "PROBE_STAGE": "account",
                         "PROBE_ACCOUNT": "throwaway",
-                        "PROBE_HANDOFF_DIR": "/stage-e"
+                        "PROBE_HANDOFF_DIR": "/stage-e",
+                        "PROBE_STAGE": "account"
+                    },
+                    "extra": {
+                        "stopTimeout": 10
                     }
                 },
                 "identity-probe": {
@@ -406,10 +452,22 @@ MANIFEST = {
                     },
                     "probeLoader": True,
                     "environment": {
-                        "PROBE_STAGE": "probe",
+                        "NODE_ENV": "production",
                         "PROBE_ACCOUNT": "throwaway",
+                        "PROBE_AUDIENCES": "munaxa-work,munaxa-control",
+                        "PROBE_CONTROL_API_HOST": "control-api.test.munaxa.com",
+                        "PROBE_HANDOFF_DIR": "/stage-e",
+                        "PROBE_HOST": "id.test.munaxa.com",
+                        "PROBE_ISSUER": "https://id.test.munaxa.com",
+                        "PROBE_OPERATOR_HOST": "operator-test.munaxa.com",
                         "PROBE_ORGANISATION": "munaxa-stage-e-checks",
-                        "PROBE_HANDOFF_DIR": "/stage-e"
+                        "PROBE_PUBLIC_KEYS": "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-----BEGIN PUBLIC KEY-----\\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1PulSDhEOvX3B61NzQwO20+q4+42\\n0KcstlgmQccrRJy+byuVwhz2HiJp1itFmUBkugYOR087NqwNr2Kowk5fRQ==\\n-----END PUBLIC KEY-----\"}]",
+                        "PROBE_SIGNING_KID": "identity-nonprod-2026-11",
+                        "PROBE_STAGE": "probe",
+                        "PROBE_UNKNOWN_HOST": "unknown.test.munaxa.com"
+                    },
+                    "extra": {
+                        "stopTimeout": 10
                     }
                 }
             },
@@ -425,7 +483,7 @@ MANIFEST = {
                 "commit": "",
                 "sha256": ""
             },
-            "loaderSha256": "0e391c1d519062392b9c1f8ad4320969d19a3999ff440849eac46e1ed425d687",
+            "loaderSha256": "0201914656cd129b1de25cccf60af0248f5e99aba48d820a0b21f52b90a3f962",
             "volumes": [
                 "stage-e-handoff"
             ]
@@ -433,6 +491,14 @@ MANIFEST = {
         "munaxa-nonprod-identity": {
             "executionRole": "munaxa-nonprod-identity-execution",
             "taskRole": None,
+            "task": {
+                "cpu": "512",
+                "memory": "1024",
+                "runtimePlatform": {
+                    "cpuArchitecture": "X86_64",
+                    "operatingSystemFamily": "LINUX"
+                }
+            },
             "securityGroup": "munaxa-nonprod-identity",
             "service": True,
             "containers": {
@@ -528,6 +594,30 @@ MANIFEST = {
                                 "awslogs-stream-prefix": "identity"
                             }
                         }
+                    },
+                    "environment": {
+                        "CSRF_TRUSTED_ORIGINS": "https://id.test.munaxa.com,https://work.test.munaxa.com,https://operator-test.munaxa.com",
+                        "IDENTITY_AUTH_AUDIENCE": "munaxa-work,munaxa-control",
+                        "IDENTITY_BASE_URL": "https://id.test.munaxa.com",
+                        "IDENTITY_DEFAULT_ORGANISATION": "",
+                        "IDENTITY_PASSWORD_RESET": "disabled",
+                        "IDENTITY_SIGNING_ALGORITHM": "ES256",
+                        "IDENTITY_SIGNING_KID": "identity-nonprod-2026-11",
+                        "LOG_PRETTY": "false",
+                        "MFA_ENCRYPTION_PRIMARY_KID": "mfa-nonprod-2026-11",
+                        "MFA_POLICY": "off",
+                        "NODE_ENV": "production",
+                        "PORT": "4001",
+                        "TRUST_PROXY_HOPS": "1"
+                    },
+                    "extra": {
+                        "portMappings": [
+                            {
+                                "containerPort": 4001,
+                                "hostPort": 4001,
+                                "protocol": "tcp"
+                            }
+                        ]
                     }
                 },
                 "valkey": {
@@ -578,7 +668,8 @@ MANIFEST = {
                     },
                     "command": [
                         "umask 077 && printf 'requirepass %s\\n' \"$REDIS_PASSWORD\" > /tmp/valkey.conf && exec valkey-server /tmp/valkey.conf --bind 127.0.0.1 --port 6379 --protected-mode yes --maxmemory 128mb --maxmemory-policy noeviction --save '' --appendonly no"
-                    ]
+                    ],
+                    "environment": {}
                 }
             },
             "commands": {
@@ -639,7 +730,7 @@ MANIFEST = {
 
 TOKEN_SHAPE = re.compile(r"^[a-z0-9][a-z0-9-]{7,35}$")
 UUID_SHAPE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
-ALB_SHAPE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}\.eu-central-1\.elb\.amazonaws\.com$")
+ALB_SHAPE = re.compile(r"^munaxa-nonprod-[0-9]{1,20}\.eu-central-1\.elb\.amazonaws\.com$")  # owner review A-11: the session ALB only
 DIGEST_SHAPE = re.compile(r"@sha256:([0-9a-f]{64})$")
 TD_PREFIX = "arn:aws:ecs:" + REGION + ":" + ACCOUNT + ":task-definition/"
 SM_PREFIX = "arn:aws:secretsmanager:" + REGION + ":" + ACCOUNT + ":secret:"
@@ -726,6 +817,50 @@ def bare(value):
     return value
 
 
+# Owner review B-8: every other field DescribeTaskDefinition can return. Read-only metadata ECS adds
+# is ignored; any other task-level or container field must be absent (empty, false or a container
+# cpu of 0) unless the manifest lists it ("task" for the task, "extra" per container).
+TASK_METADATA = ("taskDefinitionArn", "revision", "registeredAt", "registeredBy", "deregisteredAt",
+                 "compatibilities", "requiresAttributes")
+TASK_COMPARED = ("family", "status", "executionRoleArn", "taskRoleArn", "requiresCompatibilities", "networkMode",
+                 "pidMode", "ipcMode", "volumes", "containerDefinitions", "cpu", "memory", "runtimePlatform")
+CONTAINER_COMPARED = ("name", "image", "secrets", "environment", "command", "environmentFiles", "repositoryCredentials")
+
+
+def absent_value(value):
+    """bare(value) that also drops false and 0 at every depth, so ECS defaults such as a container
+    cpu of 0, enableFaultInjection false or restartPolicy {"enabled": false} count as absent, and a
+    default versionConsistency "enabled" too (the image is pinned by digest either way)."""
+    if isinstance(value, dict):
+        out = {}
+        for k in sorted(value.keys()):
+            v = absent_value(value[k])
+            if v is not None:
+                out[k] = v
+        return out or None
+    if isinstance(value, list):
+        out = [absent_value(v) for v in value]
+        out = [v for v in out if v is not None]
+        return out or None
+    if value is None or value == "" or value is False or (not isinstance(value, bool) and value == 0):
+        return None
+    return value
+
+
+def extras(fields, skip):
+    """The fields outside `skip` that carry something, normalised (bare, false and 0 dropped)."""
+    out = {}
+    for k in sorted(fields.keys()):
+        if k in skip:
+            continue
+        v = absent_value(fields[k])
+        if k == "versionConsistency" and v == "enabled":
+            v = None
+        if v is not None:
+            out[k] = v
+    return out
+
+
 def shape_of(c):
     """The security-relevant fields of one container (MANIFEST["shapeKeys"]), normalised."""
     out = {}
@@ -761,9 +896,10 @@ def loader_ok(cmd, family_spec):
 def validate(family, td):
     """Every difference from MANIFEST, as short codes (never a value). Compared: family, status,
     roles, launch, task volumes and namespaces, and per container the image, every secret name and
-    reference, the exact set of environment names (and the manifest's values), the shape fields and
-    the command (review findings S-2, C-4: a revision with an added entryPoint, command, NODE_OPTIONS
-    or capability fails)."""
+    reference, the exact set of environment names and every value, the shape fields, every other
+    field (task cpu, memory, runtime platform; per container the manifest's "extra"; anything else
+    must be absent) and the command (review findings S-2, C-4; owner review B-1, B-8: a revision
+    with an added entryPoint, command, NODE_OPTIONS, capability, other PGHOST, proxy or field fails)."""
     spec = MANIFEST["families"][family]
     p = []
     if not isinstance(td, dict):
@@ -776,13 +912,20 @@ def validate(family, td):
         p.append("execution-role")
     if td.get("taskRoleArn") not in (None, ""):
         p.append("task-role")
-    if "FARGATE" not in (td.get("requiresCompatibilities") or []) or td.get("networkMode") != "awsvpc":
+    if td.get("requiresCompatibilities") != ["FARGATE"] or td.get("networkMode") != "awsvpc":
         p.append("launch")
     if td.get("pidMode") not in (None, "") or td.get("ipcMode") not in (None, ""):
         p.append("namespaces")
+    task = spec["task"]
+    if str(td.get("cpu")) != task["cpu"] or str(td.get("memory")) != task["memory"]:
+        p.append("task-size")
+    if bare(td.get("runtimePlatform")) != bare(task["runtimePlatform"]):
+        p.append("runtime-platform")
+    for k in sorted(extras(td, TASK_METADATA + TASK_COMPARED).keys()):
+        p.append("task-field:" + str(k)[:40])
     volumes = td.get("volumes") or []
     if sorted(str(v.get("name")) for v in volumes if isinstance(v, dict)) != sorted(spec["volumes"]) or len(volumes) != len(spec["volumes"]) \
-            or any(bare(v.get("host")) is not None or v.get("efsVolumeConfiguration") or v.get("dockerVolumeConfiguration") for v in volumes if isinstance(v, dict)):
+            or any(not isinstance(v, dict) or extras(v, ("name",)) for v in volumes):
         p.append("volumes")
     containers = td.get("containerDefinitions")
     if not isinstance(containers, list):
@@ -810,14 +953,21 @@ def validate(family, td):
             p.append(tag + "unexpected-source")
         if shape_of(c) != shape_of(cs["shape"]):
             p.append(tag + "shape")
+        if extras(c, CONTAINER_COMPARED + tuple(MANIFEST["shapeKeys"])) != extras(cs.get("extra") or {}, ()):
+            p.append(tag + "fields")
         env, entries = {}, c.get("environment") or []
         for e in entries:
             if isinstance(e, dict):
                 env[str(e.get("name"))] = e.get("value")
         if sorted(env.keys()) != sorted(cs["environmentNames"]) or len(env) != len(entries):
             p.append(tag + "env-names")
-        for name, value in (cs.get("environment") or {}).items():
-            if env.get(name) != value:
+        # Owner review B-1: every value, not only the names (a changed PGHOST would send the master
+        # password elsewhere). The probe pin's two values are compared with probePin below.
+        pinned = cs.get("environment") or {}
+        for name in sorted(env.keys()):
+            if cs.get("probeLoader") and name in ("PROBE_COMMIT", "PROBE_SHA256"):
+                continue
+            if name not in pinned or (env.get(name) or "") != (pinned[name] or ""):
                 p.append(tag + "env:" + name)
         cmd = c.get("command")
         if "command" in cs:
@@ -1068,6 +1218,21 @@ async def status():
         d = await aws("ecs", "DescribeTasks", {"cluster": MANIFEST["cluster"], "tasks": arns})
     except Exception as e:
         return {"result": "FAIL", "code": "DESCRIBE_" + code_of(e)}
+    # Owner review A-4: a task ECS no longer knows comes back under failures (reason MISSING), not
+    # under tasks. It is reported as expired or unknown, never as still in progress.
+    missing, other = 0, []
+    for f in d.get("failures") or []:
+        reason = str(f.get("reason", "")) if isinstance(f, dict) else ""
+        if reason == "MISSING":
+            missing += 1
+        else:
+            other.append(reason_class(reason))
+    if other:
+        return {"result": "FAIL", "code": "DESCRIBE_FAILURES", "reasons": sorted(set(other))}
+    if missing and not (d.get("tasks") or []):
+        return {"result": "NOT_FOUND", "code": "TASK_EXPIRED_OR_UNKNOWN", "missing": missing,
+                "next": "ECS keeps a stopped task for about an hour only: read the task's log stream; never run "
+                        "again on the basis of this answer"}
     out = []
     for t in d.get("tasks") or []:
         td = str(t.get("taskDefinitionArn", ""))
@@ -1084,6 +1249,9 @@ async def status():
                     "lastStatus": t.get("lastStatus"), "desiredStatus": t.get("desiredStatus"),
                     "stopCode": t.get("stopCode"), "stoppedReasonClass": reason_class(t.get("stoppedReason")),
                     "containers": containers})
+    if missing:
+        return {"result": "UNKNOWN", "code": "SOME_TASKS_EXPIRED", "missing": missing, "tasks": out,
+                "next": "read the expired tasks' log streams; never run again on the basis of this answer"}
     done = all(x["lastStatus"] == "STOPPED" for x in out) and len(out) == len(arns)
     ok = done and all(x["known_family"] and x["stopCode"] == "EssentialContainerExited"
                       and all(c["digest_ok"] for c in x["containers"])
