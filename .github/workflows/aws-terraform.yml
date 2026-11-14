@@ -101,6 +101,16 @@ jobs:
         env:
           DOCS_OWNER_PASSWORD_TEST_REQUIRE_POSTGRES: '1'
 
+      # Stage E (report 2026-11-14-identity-stage-e-blockers-remediation): the session cleanup's state
+      # machine against an offline ASL simulator, and the connector scripts (E-1 task guard, H-20
+      # cleanup gate, Option A C-8/C-8R/C-8v/C-16/C-24) against a fake AWS under the sandbox's rules.
+      # The runner's Python 3, standard library only, no network, no credentials.
+      - name: Session cleanup simulation and connector script tests
+        run: |
+          set -euo pipefail
+          python3 -I -m unittest discover -s infra/aws/stack/session-cleanup -p 'test_*.py' -v
+          python3 -I -m unittest discover -s scripts/aws/connector -p 'test_*.py' -v
+
       # docs-cluster-roles.sql is Docs' infra/sql/cluster/01-roles.sql below a 4-line header that
       # records the original's sha256. The copy must still hash to it; Docs CI pins the same hash on
       # its side, so a change there fails until this copy is refreshed (finding F-3).
