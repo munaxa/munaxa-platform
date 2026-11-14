@@ -9,6 +9,7 @@ import datetime
 import json
 import os
 import sys
+import types
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -24,8 +25,21 @@ with open(os.path.join(HERE, "h20-session-cleanup-gate-and-arm.py"), encoding="u
     SCRIPT = f.read()
 
 
+class FixedDT(datetime.datetime):
+    """The clock the script sees: 10:00 UTC, well clear of the 21:00 backstop unless a test moves it."""
+    at = None
+
+    @classmethod
+    def now(cls, tz=None):
+        return cls.at
+
+
+FixedDT.at = FixedDT(2026, 11, 20, 10, 0, 0, tzinfo=datetime.timezone.utc)
+CLOCK = types.SimpleNamespace(datetime=FixedDT, timedelta=datetime.timedelta, timezone=datetime.timezone)
+
+
 def now():
-    return datetime.datetime.now(datetime.timezone.utc)
+    return FixedDT.now(datetime.timezone.utc)
 
 
 def hard_stop(hours=2):
@@ -37,6 +51,7 @@ class Fake:
         self.account = ACCOUNT
         self.sm = {"stateMachineArn": SM, "name": NAME, "status": "ACTIVE", "type": "STANDARD"}
         self.succeeded = [{"executionArn": "x", "status": "SUCCEEDED", "stopDate": now() - datetime.timedelta(hours=3)}]
+        self.inputs = {"x": '{"dryRun": false}'}
         self.running = []
         self.schedules = {NAME + "-daily": {"State": "ENABLED", "ScheduleExpression": "cron(5 21 * * ? *)",
                                             "Target": {"Arn": SM, "RoleArn": ROLE, "Input": '{"dryRun": false}'}}}
@@ -85,12 +100,25 @@ class Fake:
         self.schedules[p["Name"]] = copy.deepcopy(p)
         return {"ScheduleArn": "x"}
 
+    def op_DescribeExecution(self, p):
+        return {"executionArn": p["executionArn"], "input": self.inputs.get(p["executionArn"], "{}")}
+
+    def op_ListSchedules(self, p):
+        assert p["NamePrefix"] == NAME + "-"
+        return {"Schedules": [{"Name": n, "State": v.get("State")} for n, v in sorted(self.schedules.items()) if n.startswith(p["NamePrefix"])]}
+
+    def op_DeleteSchedule(self, p):
+        if p["Name"] not in self.schedules:
+            raise h.ClientError("ResourceNotFoundException", "", "DeleteSchedule")
+        del self.schedules[p["Name"]]
+        return {}
+
     def op_DescribeAlarms(self, p):
         return {"MetricAlarms": [{"AlarmName": n, "StateValue": s} for n, s in self.alarms.items() if n in p["AlarmNames"]]}
 
 
 def run(fake, **inputs):
-    return h.run_script(h.set_inputs(SCRIPT, **inputs) if inputs else SCRIPT, fake)
+    return h.run_script(h.set_inputs(SCRIPT, **inputs) if inputs else SCRIPT, fake, overrides={"datetime": CLOCK})
 
 
 class Gate(unittest.TestCase):
@@ -113,6 +141,8 @@ class Gate(unittest.TestCase):
             "daily_enabled": lambda f: f.schedules[NAME + "-daily"].update(State="DISABLED"),
             "alarms_not_in_alarm": lambda f: f.alarms.update({NAME + "-not-run": "ALARM"}),
             "alarms_present": lambda f: f.alarms.pop(NAME + "-failed"),
+            "last_success_was_real": lambda f: f.inputs.update(x='{"dryRun": true}'),
+            "no_stale_session_schedules": lambda f: f.schedules.update({NAME + "-p-20261120t1100": {"State": "ENABLED"}}),
         }
         for check, change in cases.items():
             with self.subTest(check=check):
@@ -136,6 +166,41 @@ class Gate(unittest.TestCase):
         r = run(fake)
         self.assertEqual(r["result"], "FAIL")
         self.assertEqual(r["checks"]["alarms_error"], "AWS_AccessDenied")
+
+
+    def test_a_leftover_schedule_of_an_earlier_session_is_named(self):
+        fake = Fake()
+        fake.schedules[NAME + "-s-20261120t1130"] = {"State": "ENABLED"}
+        fake.schedules["munaxa-nonprod-session-cleanup-other"] = {"State": "ENABLED"}
+        r = run(fake)
+        self.assertEqual(r["result"], "FAIL")
+        self.assertEqual(r["checks"]["stale_session_schedules"], [NAME + "-s-20261120t1130"])
+
+    def test_this_sessions_own_schedules_pass_the_gate_once_armed(self):
+        fake = Fake()
+        h_text = hard_stop()
+        self.assertEqual(run(fake, MODE="arm", HARD_STOP_UTC=h_text)["result"], "ARMED")
+        self.assertEqual(run(fake, HARD_STOP_UTC=h_text)["result"], "PASS")
+        self.assertEqual(run(fake)["result"], "FAIL")
+
+
+class Disarm(unittest.TestCase):
+    def test_disarm_deletes_only_session_schedules(self):
+        fake = Fake()
+        h_text = hard_stop()
+        run(fake, MODE="arm", HARD_STOP_UTC=h_text)
+        fake.schedules["munaxa-nonprod-session-cleanup-other"] = {"State": "ENABLED"}
+        r = run(fake, MODE="disarm")
+        self.assertEqual(r["result"], "DISARMED")
+        self.assertEqual(sorted(fake.schedules), sorted([NAME + "-daily", "munaxa-nonprod-session-cleanup-other"]))
+        self.assertEqual(run(fake, MODE="disarm")["schedules"], [])
+
+    def test_a_denied_delete_fails(self):
+        fake = Fake()
+        run(fake, MODE="arm", HARD_STOP_UTC=hard_stop())
+        fake.faults["DeleteSchedule"] = ["AccessDeniedException"]
+        r = run(fake, MODE="disarm")
+        self.assertEqual(r["result"], "FAIL")
 
 
 class Arm(unittest.TestCase):
@@ -213,11 +278,23 @@ class Arm(unittest.TestCase):
                 self.assertEqual(run(fake, MODE="arm", HARD_STOP_UTC=bad)["code"], code)
                 self.assertEqual(fake.calls, [])
 
+    def test_a_session_that_would_cross_the_21_utc_backstop_is_refused(self):
+        for hours in (6, 5):  # S at 16:30 is fine; at 10:00 + 6 h + 30 min still before 21:00
+            self.assertEqual(run(Fake(), MODE="arm", HARD_STOP_UTC=hard_stop(hours))["result"], "ARMED")
+        FixedDT.at = FixedDT(2026, 11, 20, 17, 0, 0, tzinfo=datetime.timezone.utc)
+        try:
+            for hours, code in ((3, "ARMED"), (4, "SESSION_CROSSES_21_UTC")):
+                fake = Fake()
+                r = run(fake, MODE="arm", HARD_STOP_UTC=hard_stop(hours))
+                self.assertEqual(r.get("code", r["result"]) if r["result"] != "ARMED" else "ARMED", code)
+        finally:
+            FixedDT.at = FixedDT(2026, 11, 20, 10, 0, 0, tzinfo=datetime.timezone.utc)
+
     def test_the_wrong_account_and_an_unknown_mode_abort(self):
         fake = Fake()
         fake.account = "111111111111"
         self.assertEqual(run(fake, MODE="arm", HARD_STOP_UTC=hard_stop())["code"], "WRONG_ACCOUNT")
-        self.assertEqual(run(Fake(), MODE="disarm")["code"], "UNKNOWN_MODE")
+        self.assertEqual(run(Fake(), MODE="disable")["code"], "UNKNOWN_MODE")
 
 
 if __name__ == "__main__":

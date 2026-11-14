@@ -1,5 +1,5 @@
 {
-  "description": "Stage E blocker BE-1 (report 2026-11-14-identity-stage-e-blockers-remediation, file 01). The reviewed content of each nonprod task definition family Stage E runs, with no revision number: the guard connector script (scripts/aws/connector/e1-task-guard.py) finds the latest ACTIVE revision of each family and refuses it unless it matches this file. tests keep this file equal to envs/nonprod.tfvars and to what Terraform renders.",
+  "description": "Stage E blocker BE-1 (report 2026-11-14-identity-stage-e-blockers-remediation, file 01). The reviewed content of each nonprod task definition family Stage E runs, with no revision number: the guard connector script (scripts/aws/connector/e1-task-guard.py) finds the latest ACTIVE revision of each family and refuses it unless it matches this file. Each container's shape (shapeKeys), environment names and command are compared too (review findings S-2, C-4). Tests keep this file equal to envs/nonprod.tfvars and to what Terraform renders.",
   "schema": 1,
   "region": "eu-central-1",
   "account": "229251310592",
@@ -43,17 +43,43 @@
               "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
             }
           },
-          "entryPoint": [
-            "sh",
-            "-c"
+          "environmentNames": [
+            "HOME",
+            "PGHOST",
+            "PGPORT"
           ],
-          "commandLength": 4961,
-          "commandFirstLine": "#!/bin/sh"
+          "shape": {
+            "essential": true,
+            "user": "999:999",
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "entryPoint": [
+              "sh",
+              "-c"
+            ],
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/ops",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "db-admin"
+              }
+            }
+          },
+          "commandSha256": "de2ea694d627845d1ca0cc97fbb6a1be3a04ca7787ce9c4feff7aec8671221ee"
         }
       },
       "commands": {
         "default": null
-      }
+      },
+      "volumes": []
     },
     "munaxa-nonprod-identity-migrate": {
       "executionRole": "munaxa-nonprod-identity-migrate-execution",
@@ -70,12 +96,36 @@
               "key": "DATABASE_MIGRATION_URL",
               "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
             }
+          },
+          "environmentNames": [
+            "NODE_ENV"
+          ],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": false,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/identity-migrate",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity-migrate"
+              }
+            }
           }
         }
       },
       "commands": {
         "default": null
-      }
+      },
+      "volumes": []
     },
     "munaxa-nonprod-identity-bootstrap": {
       "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
@@ -101,6 +151,29 @@
               "form": "partial",
               "secret": "munaxa-nonprod/identity-bootstrap",
               "key": "IDENTITY_OWNER_PASSWORD"
+            }
+          },
+          "environmentNames": [
+            "NODE_ENV"
+          ],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/ops",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity-bootstrap"
+              }
             }
           },
           "command": [
@@ -135,7 +208,8 @@
             "control-operator-admin"
           ]
         }
-      }
+      },
+      "volumes": []
     },
     "munaxa-nonprod-identity-probe": {
       "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
@@ -143,7 +217,7 @@
       "securityGroup": "munaxa-nonprod-identity",
       "service": false,
       "containers": {
-        "identity-probe": {
+        "throwaway-account": {
           "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
           "secrets": {
             "DIRECT_DATABASE_URL": {
@@ -153,13 +227,106 @@
               "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
             }
           },
-          "environment": {
-            "PROBE_ACCOUNT": "throwaway",
-            "PROBE_ORGANISATION": "munaxa-stage-e-checks"
+          "environmentNames": [
+            "NODE_ENV",
+            "PROBE_ACCOUNT",
+            "PROBE_HANDOFF_DIR",
+            "PROBE_STAGE"
+          ],
+          "shape": {
+            "essential": false,
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "mountPoints": [
+              {
+                "containerPath": "/home/identity",
+                "readOnly": false,
+                "sourceVolume": "stage-e-handoff"
+              }
+            ],
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/ops",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity-probe"
+              }
+            }
           },
-          "probePin": {
-            "commit": "",
-            "sha256": ""
+          "probeLoader": true,
+          "environment": {
+            "NODE_ENV": "production",
+            "PROBE_STAGE": "account",
+            "PROBE_ACCOUNT": "throwaway",
+            "PROBE_HANDOFF_DIR": "/home/identity"
+          }
+        },
+        "identity-probe": {
+          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+          "secrets": {},
+          "environmentNames": [
+            "NODE_ENV",
+            "PROBE_ACCOUNT",
+            "PROBE_AUDIENCES",
+            "PROBE_COMMIT",
+            "PROBE_CONTROL_API_HOST",
+            "PROBE_HANDOFF_DIR",
+            "PROBE_HOST",
+            "PROBE_ISSUER",
+            "PROBE_OPERATOR_HOST",
+            "PROBE_ORGANISATION",
+            "PROBE_PUBLIC_KEYS",
+            "PROBE_SHA256",
+            "PROBE_SIGNING_KID",
+            "PROBE_STAGE",
+            "PROBE_UNKNOWN_HOST"
+          ],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "dependsOn": [
+              {
+                "condition": "SUCCESS",
+                "containerName": "throwaway-account"
+              }
+            ],
+            "mountPoints": [
+              {
+                "containerPath": "/home/identity",
+                "readOnly": false,
+                "sourceVolume": "stage-e-handoff"
+              }
+            ],
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/ops",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity-probe"
+              }
+            }
+          },
+          "probeLoader": true,
+          "environment": {
+            "PROBE_STAGE": "probe",
+            "PROBE_ACCOUNT": "throwaway",
+            "PROBE_ORGANISATION": "munaxa-stage-e-checks",
+            "PROBE_HANDOFF_DIR": "/home/identity"
           }
         }
       },
@@ -170,7 +337,15 @@
             "PROBE_ALB_DNS"
           ]
         }
-      }
+      },
+      "probePin": {
+        "commit": "",
+        "sha256": ""
+      },
+      "loaderSha256": "859a0af4bd0e9a1fa102779d5af32f8cbbfd16ec30b053747e1f6c7181ce394d",
+      "volumes": [
+        "stage-e-handoff"
+      ]
     },
     "munaxa-nonprod-identity": {
       "executionRole": "munaxa-nonprod-identity-execution",
@@ -217,6 +392,59 @@
               "key": "MFA_ENCRYPTION_KEYS",
               "version": "80914756-68cd-420d-8094-0fd49afe3492"
             }
+          },
+          "environmentNames": [
+            "CSRF_TRUSTED_ORIGINS",
+            "IDENTITY_AUTH_AUDIENCE",
+            "IDENTITY_BASE_URL",
+            "IDENTITY_DEFAULT_ORGANISATION",
+            "IDENTITY_PASSWORD_RESET",
+            "IDENTITY_SIGNING_ALGORITHM",
+            "IDENTITY_SIGNING_KID",
+            "LOG_PRETTY",
+            "MFA_ENCRYPTION_PRIMARY_KID",
+            "MFA_POLICY",
+            "NODE_ENV",
+            "PORT",
+            "TRUST_PROXY_HOPS"
+          ],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "dependsOn": [
+              {
+                "condition": "HEALTHY",
+                "containerName": "valkey"
+              }
+            ],
+            "healthCheck": {
+              "command": [
+                "CMD",
+                "node",
+                "-e",
+                "fetch('http://127.0.0.1:4001/api/auth/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+              ],
+              "interval": 15,
+              "retries": 3,
+              "startPeriod": 60,
+              "timeout": 5
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/identity",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity"
+              }
+            }
           }
         },
         "valkey": {
@@ -228,7 +456,46 @@
               "key": "REDIS_PASSWORD",
               "version": "80914756-68cd-420d-8094-0fd49afe3492"
             }
-          }
+          },
+          "environmentNames": [],
+          "shape": {
+            "essential": true,
+            "user": "999:999",
+            "readonlyRootFilesystem": false,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": [
+                  "ALL"
+                ]
+              }
+            },
+            "entryPoint": [
+              "sh",
+              "-c"
+            ],
+            "healthCheck": {
+              "command": [
+                "CMD-SHELL",
+                "valkey-cli -a \"$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"
+              ],
+              "interval": 10,
+              "retries": 5,
+              "startPeriod": 10,
+              "timeout": 3
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/identity",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "valkey"
+              }
+            }
+          },
+          "command": [
+            "umask 077 && printf 'requirepass %s\\n' \"$REDIS_PASSWORD\" > /tmp/valkey.conf && exec valkey-server /tmp/valkey.conf --bind 127.0.0.1 --port 6379 --protected-mode yes --maxmemory 128mb --maxmemory-policy noeviction --save '' --appendonly no"
+          ]
         }
       },
       "commands": {
@@ -261,7 +528,27 @@
             "--apply"
           ]
         }
-      }
+      },
+      "volumes": []
     }
-  }
+  },
+  "shapeKeys": [
+    "essential",
+    "user",
+    "privileged",
+    "readonlyRootFilesystem",
+    "linuxParameters",
+    "entryPoint",
+    "dependsOn",
+    "mountPoints",
+    "volumesFrom",
+    "healthCheck",
+    "logConfiguration",
+    "workingDirectory",
+    "dockerSecurityOptions",
+    "systemControls",
+    "links",
+    "interactive",
+    "pseudoTerminal"
+  ]
 }

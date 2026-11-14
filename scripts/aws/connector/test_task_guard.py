@@ -15,6 +15,7 @@ Run (offline; no network, no credentials):
 
 import asyncio
 import copy
+import hashlib
 import json
 import os
 import re
@@ -62,30 +63,45 @@ def value_from(spec):
     return f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:rds!db-0d1c2b3a-4f5e-4d7c-8b9a-0f1e2d3c4b5a-Xy98Zw:{spec['key']}::"
 
 
+LOADER = read("infra", "aws", "stack", "scripts", "identity-probe-loader.mjs")
+DB_SCRIPT = read("infra", "aws", "stack", "scripts", "db-bootstrap.sh")
+
+
+def pinned_loader(pin=PIN):
+    return LOADER.replace("__PROBE_COMMIT__", pin["commit"]).replace("__PROBE_SHA256__", pin["sha256"])
+
+
 def render(family, revision, pin=PIN):
-    """The task definition Terraform would register for `family`, as DescribeTaskDefinition returns it."""
+    """The task definition Terraform would register for `family`, as DescribeTaskDefinition returns it
+    (with the empty defaults ECS adds, which the guard must ignore)."""
     spec = FAMILIES[family]
     containers = []
     for name, cs in spec["containers"].items():
-        c = {"name": name, "image": cs["image"], "essential": True,
+        c = {"name": name, "image": cs["image"], "cpu": 0, "portMappings": [], "volumesFrom": [], "systemControls": [],
              "secrets": [{"name": k, "valueFrom": value_from(v)} for k, v in cs["secrets"].items()]}
+        c.update(copy.deepcopy(cs["shape"]))
+        c.setdefault("mountPoints", [])
+        env = {n: (cs.get("environment") or {}).get(n, "value-" + n) for n in cs["environmentNames"]}
+        if name == "identity-probe":
+            env.update({"PROBE_COMMIT": pin["commit"], "PROBE_SHA256": pin["sha256"]})
+        c["environment"] = [{"name": k, "value": v} for k, v in env.items()]
         if "command" in cs:
             c["command"] = list(cs["command"])
-        if "entryPoint" in cs:
-            c["entryPoint"] = list(cs["entryPoint"])
-            c["command"] = [cs["commandFirstLine"] + "x" * (cs["commandLength"] - len(cs["commandFirstLine"]))]
-        if "environment" in cs or "probePin" in cs:
-            env = dict(cs.get("environment", {}))
-            env.update({"PROBE_COMMIT": pin["commit"], "PROBE_SHA256": pin["sha256"], "NODE_ENV": "production"})
-            c["environment"] = [{"name": k, "value": v} for k, v in env.items()]
-            c["command"] = ["node", "--input-type=module", "-e",
-                            f"// loader\nconst COMMIT = '{pin['commit']}';\nconst SHA256 = '{pin['sha256']}';\n"]
+        elif "commandSha256" in cs:
+            c["command"] = [DB_SCRIPT]
+        elif cs.get("probeLoader"):
+            c["command"] = ["node", "--input-type=module", "-e", pinned_loader(pin)]
         containers.append(c)
     return {
         "taskDefinitionArn": f"{TD}{family}:{revision}", "family": family, "revision": revision, "status": "ACTIVE",
         "executionRoleArn": f"arn:aws:iam::{ACCOUNT}:role/munaxa-shared/{spec['executionRole']}",
         "requiresCompatibilities": ["FARGATE"], "networkMode": "awsvpc", "containerDefinitions": containers,
+        "volumes": [{"name": v, "host": {}} for v in spec["volumes"]],
     }
+
+
+def container(td, name):
+    return [c for c in td["containerDefinitions"] if c["name"] == name][0]
 
 
 class FakeEcs:
@@ -151,6 +167,8 @@ class FakeEcs:
         return {"SecurityGroups": [{"GroupId": "sg-" + name} for _ in range(self.groups)]}
 
     def op_ListTasks(self, p):
+        # The ECS reference: a startedBy filter must be the only filter (review finding C-2).
+        assert "startedBy" not in p, "the guard must not filter ListTasks by startedBy"
         out = []
         for t in self.tasks:
             if p.get("desiredStatus") and t["desiredStatus"] != p["desiredStatus"]:
@@ -218,14 +236,22 @@ class Manifest(unittest.TestCase):
                         bundle = s["secret"].split("/", 1)[1]
                         self.assertEqual(s["version"], versions[bundle], s)
         pin = re.search(r'identity_probe_source\s*=\s*\{\s*commit\s*=\s*"([0-9a-f]*)"\s*sha256\s*=\s*"([0-9a-f]*)"', tfvars)
-        self.assertEqual(FAMILIES["munaxa-nonprod-identity-probe"]["containers"]["identity-probe"]["probePin"],
+        self.assertEqual(FAMILIES["munaxa-nonprod-identity-probe"]["probePin"],
                          {"commit": pin.group(1) if pin else "", "sha256": pin.group(2) if pin else ""})
 
-    def test_db_admin_command_is_the_committed_script(self):
-        text = read("infra", "aws", "stack", "scripts", "db-bootstrap.sh")
+    def test_db_admin_command_and_probe_loader_are_pinned_by_their_sha256(self):
         c = FAMILIES["munaxa-nonprod-db-admin"]["containers"]["db-admin"]
-        self.assertEqual(c["commandLength"], len(text))
-        self.assertEqual(c["commandFirstLine"], text.splitlines()[0])
+        self.assertEqual(c["commandSha256"], hashlib.sha256(DB_SCRIPT.encode()).hexdigest())
+        self.assertEqual(FAMILIES["munaxa-nonprod-identity-probe"]["loaderSha256"], hashlib.sha256(LOADER.encode()).hexdigest())
+
+    def test_the_sandbox_sha256_equals_hashlib(self):
+        source = SCRIPT[SCRIPT.index("SHA_K = ["):SCRIPT.index("def bare(")]
+        namespace = {"__builtins__": {"bytearray": bytearray, "len": len, "range": range, "int": int, "zip": zip}}
+        exec(source, namespace)  # noqa: S102
+        sha = namespace["sha256_hex"]
+        for text in ("", "abc", "a" * 55, "a" * 56, "a" * 64, "é ✓ \n" * 300, DB_SCRIPT, LOADER):
+            with self.subTest(n=len(text)):
+                self.assertEqual(sha(text), hashlib.sha256(text.encode()).hexdigest())
 
     def test_module_families_follow_the_service_module_names(self):
         module = read("infra", "aws", "modules", "service", "main.tf")
@@ -287,6 +313,14 @@ class Discover(unittest.TestCase):
             "launch": lambda td: td.update(networkMode="bridge"),
             "identity-bootstrap:command": lambda td: td["containerDefinitions"][0].update(command=["sh", "-c", "env"]),
             "container-names": lambda td: td["containerDefinitions"].append({"name": "sidecar", "image": "x"}),
+            # Review findings S-2 and C-4: everything that changes what runs, not only the listed fields.
+            "identity-bootstrap:env-names": lambda td: td["containerDefinitions"][0]["environment"].append(
+                {"name": "NODE_OPTIONS", "value": "--import data:text/javascript,x"}),
+            "identity-bootstrap:shape": lambda td: td["containerDefinitions"][0].update(entryPoint=["sh", "-c"]),
+            "namespaces": lambda td: td.update(pidMode="task"),
+            "volumes": lambda td: td.update(volumes=[{"name": "x", "host": {"sourcePath": "/"}}]),
+            "identity-bootstrap:unexpected-source": lambda td: td["containerDefinitions"][0].update(
+                environmentFiles=[{"value": "arn:aws:s3:::x/y.env", "type": "s3"}]),
         }
         for problem, change in drifts.items():
             with self.subTest(problem=problem):
@@ -295,6 +329,52 @@ class Discover(unittest.TestCase):
                 change(td)
                 fake.register("munaxa-nonprod-identity-bootstrap", td)
                 r = guard(fake, FAMILY="munaxa-nonprod-identity-bootstrap")
+                self.assertEqual(r["result"], "FAIL")
+                self.assertIn(problem, r["families"][0]["problems"])
+
+    def test_shape_and_command_drift_in_every_family_is_named(self):
+        cases = [
+            ("munaxa-nonprod-identity-migrate", "identity-migrate:command", lambda td: container(td, "identity-migrate").update(command=["sh", "-c", "env"])),
+            ("munaxa-nonprod-identity-migrate", "identity-migrate:shape", lambda td: container(td, "identity-migrate").update(entryPoint=["node"])),
+            ("munaxa-nonprod-identity", "identity:command", lambda td: container(td, "identity").update(command=["node", "-e", "x"])),
+            ("munaxa-nonprod-identity", "identity:env-names", lambda td: container(td, "identity")["environment"].append({"name": "NODE_OPTIONS", "value": "x"})),
+            ("munaxa-nonprod-identity", "identity:shape", lambda td: container(td, "identity")["linuxParameters"]["capabilities"].update(add=["SYS_PTRACE"])),
+            ("munaxa-nonprod-identity", "identity:shape", lambda td: container(td, "identity").update(readonlyRootFilesystem=False)),
+            ("munaxa-nonprod-identity", "valkey:command", lambda td: container(td, "valkey").update(command=["valkey-server"])),
+            ("munaxa-nonprod-identity", "identity:shape", lambda td: container(td, "identity")["logConfiguration"]["options"].update({"awslogs-group": "/other"})),
+            ("munaxa-nonprod-db-admin", "db-admin:command", lambda td: container(td, "db-admin").update(command=[DB_SCRIPT + "\nenv"])),
+            ("munaxa-nonprod-db-admin", "db-admin:shape", lambda td: container(td, "db-admin").pop("user")),
+        ]
+        for family, problem, change in cases:
+            with self.subTest(problem=problem):
+                fake = FakeEcs()
+                td = render(family, 2)
+                change(td)
+                fake.register(family, td)
+                r = guard(fake, FAMILY=family)
+                self.assertEqual(r["result"], "FAIL")
+                self.assertIn(problem, r["families"][0]["problems"])
+
+    def test_the_probe_task_shape_is_enforced(self):
+        cases = [
+            ("identity-probe:probe-loader", lambda td: container(td, "identity-probe").update(
+                command=container(td, "identity-probe")["command"][:3] + [container(td, "identity-probe")["command"][3] + "\nconsole.log(1);"])),
+            ("throwaway-account:probe-loader", lambda td: container(td, "throwaway-account")["command"].__setitem__(
+                3, container(td, "throwaway-account")["command"][3].replace("delete process.env[name]", "void name"))),
+            ("identity-probe:secret-names", lambda td: container(td, "identity-probe")["secrets"].append(
+                container(td, "throwaway-account")["secrets"][0])),
+            ("identity-probe:shape", lambda td: container(td, "identity-probe").pop("dependsOn")),
+            ("throwaway-account:shape", lambda td: container(td, "throwaway-account").update(essential=True)),
+            ("namespaces", lambda td: td.update(pidMode="task")),
+            ("throwaway-account:env:PROBE_STAGE", lambda td: [e.update(value="probe") for e in container(td, "throwaway-account")["environment"] if e["name"] == "PROBE_STAGE"]),
+        ]
+        for problem, change in cases:
+            with self.subTest(problem=problem):
+                fake = FakeEcs()
+                td = render("munaxa-nonprod-identity-probe", 2)
+                change(td)
+                fake.register("munaxa-nonprod-identity-probe", td)
+                r = guard(fake, pinned_script(), FAMILY="munaxa-nonprod-identity-probe")
                 self.assertEqual(r["result"], "FAIL")
                 self.assertIn(problem, r["families"][0]["problems"])
 
@@ -320,6 +400,7 @@ class Discover(unittest.TestCase):
         fake = FakeEcs()
         r = guard(fake, FAMILY="munaxa-nonprod-identity-probe")
         self.assertIn("identity-probe:probe-not-pinned-in-manifest", r["families"][0]["problems"])
+        self.assertIn("throwaway-account:probe-not-pinned-in-manifest", r["families"][0]["problems"])
 
     def test_a_pinned_manifest_accepts_only_its_pin(self):
         fake = FakeEcs()
@@ -522,7 +603,9 @@ class Status(unittest.TestCase):
         self.assertNotIn("secretsmanager", json.dumps(r))
 
     def test_not_started_and_bad_inputs(self):
-        self.assertEqual(guard(FakeEcs(), MODE="status", RUN_TOKEN="never-used-0001")["result"], "NOT_STARTED")
+        r = guard(FakeEcs(), MODE="status", RUN_TOKEN="never-used-0001")
+        # Not "not started": ECS forgets stopped tasks after about an hour (review finding C-3).
+        self.assertEqual((r["result"], r["code"]), ("NOT_FOUND", "NOT_LISTED_MAY_HAVE_EXPIRED"))
         self.assertEqual(guard(FakeEcs(), MODE="status", TASK_ARN="arn:aws:ecs:us-east-1:1:task/x")["code"], "TASK_ARN_SHAPE")
 
 

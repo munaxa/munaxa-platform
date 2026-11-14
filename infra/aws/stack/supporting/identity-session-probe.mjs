@@ -1080,14 +1080,17 @@ async function runThrowawayChecks({ config, target, organisation, run, requires,
       const jar = parseSetCookies(r.headers['set-cookie']);
       for (const cookie of Object.values(jar)) if (cookie.value !== '') sensitive.add(cookie.value);
       if (r.status === 200) fail('wrong-password-accepted');
-      if (r.status === 429) limited = true;
+      // Only Identity's own account lockout counts, never the edge's per-identifier rate limit
+      // (SECURITY_RATE_LIMITED; review finding C-6).
+      if (r.status === 429 && json(r)?.code === 'AUTH_RATE_LIMITED') limited = true;
+      else if (r.status === 429) fail(refusalCode(r));
       else if (r.status !== 401 || json(r)?.code !== 'AUTH_INVALID_CREDENTIALS') fail(refusalCode(r));
     }
     if (!limited) fail('no-lockout');
     const r = await httpsCall(target, id, 'POST', '/api/auth/login', { headers: origin, body: login });
     const jar = parseSetCookies(r.headers['set-cookie']);
     for (const cookie of Object.values(jar)) if (cookie.value !== '') sensitive.add(cookie.value);
-    if (r.status !== 429) fail(r.status === 200 ? 'locked-account-signed-in' : refusalCode(r));
+    if (r.status !== 429 || json(r)?.code !== 'AUTH_RATE_LIMITED') fail(r.status === 200 ? 'locked-account-signed-in' : refusalCode(r));
     if (jar[EXPECTED.sessionCookie]?.value) fail('cookie-issued');
   });
 }

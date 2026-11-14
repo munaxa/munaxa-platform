@@ -171,7 +171,7 @@ resource "aws_iam_policy" "workload_boundary" {
           Sid    = "TestingSessionCleanup"
           Effect = "Allow"
           Action = [
-            "secretsmanager:DescribeSecret", "secretsmanager:DeleteSecret", "elasticloadbalancing:DeleteLoadBalancer",
+            "secretsmanager:DeleteSecret", "elasticloadbalancing:DeleteLoadBalancer",
             "ecs:DescribeServices", "ecs:StopTask", "rds:DescribeDBInstances", "states:StartExecution",
           ]
           Resource = [
@@ -184,11 +184,11 @@ resource "aws_iam_policy" "workload_boundary" {
           ]
         },
         {
-          # Neither has a resource-level permission for the lookup (ListTasks takes the cluster as a
-          # condition key).
+          # None has a resource-level permission for the lookup (ListTasks takes the cluster as a
+          # condition key; ListSecrets returns names and metadata, never a value).
           Sid      = "TestingSessionCleanupLookups"
           Effect   = "Allow"
-          Action   = ["elasticloadbalancing:DescribeLoadBalancers", "ecs:ListTasks"]
+          Action   = ["elasticloadbalancing:DescribeLoadBalancers", "ecs:ListTasks", "secretsmanager:ListSecrets"]
           Resource = ["*"]
         },
     ] : statement if each.key == "nonprod" && var.testing_session_cleanup])

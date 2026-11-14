@@ -39,32 +39,44 @@
       ],
       "Branches": [
         {
-          "StartAt": "SecretDescribe",
+          "StartAt": "SecretList",
           "States": {
-            "SecretDescribe": {
+            "SecretList": {
               "Type": "Task",
-              "Resource": "arn:aws:states:::aws-sdk:secretsmanager:describeSecret",
-              "Parameters": { "SecretId": "${bootstrap_secret}" },
-              "ResultPath": "$.secret",
+              "Comment": "Listed, not described: an absent secret is an empty list, never an error name that must match (review finding C-5).",
+              "Resource": "arn:aws:states:::aws-sdk:secretsmanager:listSecrets",
+              "Parameters": {
+                "Filters": [{ "Key": "name", "Values": ["${bootstrap_secret}"] }],
+                "IncludePlannedDeletion": true,
+                "MaxResults": 100
+              },
+              "ResultPath": "$.secretList",
               "TimeoutSeconds": 30,
               "Retry": [
-                { "ErrorEquals": ["SecretsManager.ResourceNotFoundException"], "MaxAttempts": 0 },
                 { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }
               ],
               "Catch": [
-                { "ErrorEquals": ["SecretsManager.ResourceNotFoundException"], "ResultPath": "$.error", "Next": "SecretAbsent" },
                 { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "SecretError" }
               ],
+              "Next": "SecretMatch"
+            },
+            "SecretMatch": {
+              "Type": "Pass",
+              "Parameters": { "matches.$": "$.secretList.SecretList[?(@.Name == '${bootstrap_secret}')]" },
+              "ResultPath": "$.secret",
               "Next": "SecretCheck"
             },
             "SecretCheck": {
               "Type": "Choice",
               "Choices": [
+                { "Variable": "$.secretList.NextToken", "IsPresent": true, "Next": "SecretUnexpected" },
+                { "Variable": "$.secret.matches[0]", "IsPresent": false, "Next": "SecretAbsent" },
+                { "Variable": "$.secret.matches[1]", "IsPresent": true, "Next": "SecretUnexpected" },
                 {
-                  "Not": { "Variable": "$.secret.Name", "StringEquals": "${bootstrap_secret}" },
+                  "Not": { "Variable": "$.secret.matches[0].ARN", "StringMatches": "${bootstrap_secret_arn_pattern}" },
                   "Next": "SecretUnexpected"
                 },
-                { "Variable": "$.secret.DeletedDate", "IsPresent": true, "Next": "SecretPendingDeletion" },
+                { "Variable": "$.secret.matches[0].DeletedDate", "IsPresent": true, "Next": "SecretPendingDeletion" },
                 { "Variable": "$.dryRun", "BooleanEquals": true, "Next": "SecretWouldDelete" }
               ],
               "Default": "SecretDelete"
@@ -72,7 +84,7 @@
             "SecretDelete": {
               "Type": "Task",
               "Resource": "arn:aws:states:::aws-sdk:secretsmanager:deleteSecret",
-              "Parameters": { "SecretId.$": "$.secret.ARN", "ForceDeleteWithoutRecovery": true },
+              "Parameters": { "SecretId.$": "$.secret.matches[0].ARN", "ForceDeleteWithoutRecovery": true },
               "ResultPath": null,
               "TimeoutSeconds": 30,
               "Retry": [
@@ -88,8 +100,8 @@
             "SecretDeleted": { "Type": "Pass", "Parameters": { "component": "secret", "status": "deleted", "ok": true }, "End": true },
             "SecretAbsent": { "Type": "Pass", "Parameters": { "component": "secret", "status": "absent", "ok": true }, "End": true },
             "SecretWouldDelete": { "Type": "Pass", "Parameters": { "component": "secret", "status": "would-delete", "ok": true }, "End": true },
-            "SecretPendingDeletion": { "Type": "Pass", "Parameters": { "component": "secret", "status": "pending-deletion", "ok": false }, "End": true },
-            "SecretUnexpected": { "Type": "Pass", "Parameters": { "component": "secret", "status": "unexpected-name", "ok": false }, "End": true },
+            "SecretPendingDeletion": { "Type": "Pass", "Comment": "Already deleted by someone, recoverable only by RestoreSecret until its window ends: reported, not a failure (review finding C-9).", "Parameters": { "component": "secret", "status": "pending-deletion", "ok": true }, "End": true },
+            "SecretUnexpected": { "Type": "Pass", "Parameters": { "component": "secret", "status": "unexpected-secret", "ok": false }, "End": true },
             "SecretError": { "Type": "Pass", "Parameters": { "component": "secret", "status": "error", "ok": false, "error.$": "$.error.Error" }, "End": true }
           }
         },
@@ -98,33 +110,39 @@
           "States": {
             "AlbDescribe": {
               "Type": "Task",
+              "Comment": "Every load balancer in the Region, then filtered by name: an absent ALB is an empty list, never an error name that must match (review finding C-5).",
               "Resource": "arn:aws:states:::aws-sdk:elasticloadbalancingv2:describeLoadBalancers",
-              "Parameters": { "Names": ["${alb_name}"] },
+              "Parameters": { "PageSize": 400 },
               "ResultPath": "$.lb",
               "TimeoutSeconds": 30,
               "Retry": [
-                { "ErrorEquals": ["ElasticLoadBalancingV2.LoadBalancerNotFoundException"], "MaxAttempts": 0 },
                 { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2 }
               ],
               "Catch": [
-                { "ErrorEquals": ["ElasticLoadBalancingV2.LoadBalancerNotFoundException"], "ResultPath": "$.error", "Next": "AlbAbsent" },
                 { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "AlbError" }
               ],
+              "Next": "AlbMatch"
+            },
+            "AlbMatch": {
+              "Type": "Pass",
+              "Parameters": { "matches.$": "$.lb.LoadBalancers[?(@.LoadBalancerName == '${alb_name}')]" },
+              "ResultPath": "$.alb",
               "Next": "AlbCheck"
             },
             "AlbCheck": {
               "Type": "Choice",
               "Choices": [
-                { "Variable": "$.lb.LoadBalancers[0]", "IsPresent": false, "Next": "AlbAbsent" },
-                { "Variable": "$.lb.LoadBalancers[1]", "IsPresent": true, "Next": "AlbUnexpected" },
+                { "Variable": "$.lb.NextMarker", "IsPresent": true, "Next": "AlbUnexpected" },
+                { "Variable": "$.alb.matches[0]", "IsPresent": false, "Next": "AlbAbsent" },
+                { "Variable": "$.alb.matches[1]", "IsPresent": true, "Next": "AlbUnexpected" },
                 {
                   "Not": {
                     "And": [
-                      { "Variable": "$.lb.LoadBalancers[0].LoadBalancerName", "StringEquals": "${alb_name}" },
-                      { "Variable": "$.lb.LoadBalancers[0].Type", "StringEquals": "application" },
-                      { "Variable": "$.lb.LoadBalancers[0].Scheme", "StringEquals": "internet-facing" },
-                      { "Variable": "$.lb.LoadBalancers[0].VpcId", "StringEquals": "${vpc_id}" },
-                      { "Variable": "$.lb.LoadBalancers[0].LoadBalancerArn", "StringMatches": "${alb_arn_pattern}" }
+                      { "Variable": "$.alb.matches[0].LoadBalancerName", "StringEquals": "${alb_name}" },
+                      { "Variable": "$.alb.matches[0].Type", "StringEquals": "application" },
+                      { "Variable": "$.alb.matches[0].Scheme", "StringEquals": "internet-facing" },
+                      { "Variable": "$.alb.matches[0].VpcId", "StringEquals": "${vpc_id}" },
+                      { "Variable": "$.alb.matches[0].LoadBalancerArn", "StringMatches": "${alb_arn_pattern}" }
                     ]
                   },
                   "Next": "AlbUnexpected"
@@ -136,7 +154,7 @@
             "AlbDelete": {
               "Type": "Task",
               "Resource": "arn:aws:states:::aws-sdk:elasticloadbalancingv2:deleteLoadBalancer",
-              "Parameters": { "LoadBalancerArn.$": "$.lb.LoadBalancers[0].LoadBalancerArn" },
+              "Parameters": { "LoadBalancerArn.$": "$.alb.matches[0].LoadBalancerArn" },
               "ResultPath": null,
               "TimeoutSeconds": 30,
               "Retry": [
@@ -152,15 +170,14 @@
             "AlbConfirm": {
               "Type": "Task",
               "Resource": "arn:aws:states:::aws-sdk:elasticloadbalancingv2:describeLoadBalancers",
-              "Parameters": { "Names": ["${alb_name}"] },
+              "Parameters": { "PageSize": 400 },
+              "ResultSelector": { "matches.$": "$.LoadBalancers[?(@.LoadBalancerName == '${alb_name}')]" },
               "ResultPath": "$.lbAfter",
               "TimeoutSeconds": 30,
               "Retry": [
-                { "ErrorEquals": ["ElasticLoadBalancingV2.LoadBalancerNotFoundException"], "MaxAttempts": 0 },
                 { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2 }
               ],
               "Catch": [
-                { "ErrorEquals": ["ElasticLoadBalancingV2.LoadBalancerNotFoundException"], "ResultPath": "$.error", "Next": "AlbDeleted" },
                 { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "AlbError" }
               ],
               "Next": "AlbPollCount"
@@ -180,7 +197,7 @@
             "AlbPollDecide": {
               "Type": "Choice",
               "Choices": [
-                { "Variable": "$.lbAfter.LoadBalancers[0]", "IsPresent": false, "Next": "AlbDeleted" },
+                { "Variable": "$.lbAfter.matches[0]", "IsPresent": false, "Next": "AlbDeleted" },
                 { "Variable": "$.albPolls", "NumericLessThan": 8, "Next": "AlbPollWait" }
               ],
               "Default": "AlbStillPresent"

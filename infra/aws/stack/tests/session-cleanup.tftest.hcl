@@ -235,7 +235,7 @@ run "enabled_cleanup_is_scoped_and_complete" {
   assert {
     condition = alltrue(flatten([for b in jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches : [
       for name, st in b.States : st.Type != "Task" || contains([
-        "arn:aws:states:::aws-sdk:secretsmanager:describeSecret", "arn:aws:states:::aws-sdk:secretsmanager:deleteSecret",
+        "arn:aws:states:::aws-sdk:secretsmanager:listSecrets", "arn:aws:states:::aws-sdk:secretsmanager:deleteSecret",
         "arn:aws:states:::aws-sdk:elasticloadbalancingv2:describeLoadBalancers", "arn:aws:states:::aws-sdk:elasticloadbalancingv2:deleteLoadBalancer",
         "arn:aws:states:::aws-sdk:ecs:listTasks", "arn:aws:states:::aws-sdk:rds:describeDBInstances", "arn:aws:states:::aws-sdk:rds:stopDBInstance",
       ], st.Resource)
@@ -243,7 +243,12 @@ run "enabled_cleanup_is_scoped_and_complete" {
     error_message = "The branches call only the reviewed actions (no GetSecretValue, nothing else)."
   }
   assert {
-    condition     = jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[0].States.SecretDescribe.Parameters.SecretId == "munaxa-nonprod/identity-bootstrap" && jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[1].States.AlbDescribe.Parameters.Names == ["munaxa-nonprod"] && jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[3].States.DbDescribe.Parameters.DbInstanceIdentifier == "munaxa-nonprod-pg"
+    condition = (
+      jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[0].States.SecretList.Parameters.Filters[0].Values == ["munaxa-nonprod/identity-bootstrap"] &&
+      jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[0].States.SecretMatch.Parameters["matches.$"] == "$.secretList.SecretList[?(@.Name == 'munaxa-nonprod/identity-bootstrap')]" &&
+      jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[1].States.AlbMatch.Parameters["matches.$"] == "$.lb.LoadBalancers[?(@.LoadBalancerName == 'munaxa-nonprod')]" &&
+      jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[3].States.DbDescribe.Parameters.DbInstanceIdentifier == "munaxa-nonprod-pg"
+    )
     error_message = "The targets are the fixed nonprod names: the bootstrap secret (never identity-operator), the ALB and the database."
   }
   assert {
@@ -289,7 +294,7 @@ run "enabled_cleanup_is_scoped_and_complete" {
   assert {
     condition = alltrue([for s in jsondecode(aws_iam_role_policy.session_cleanup[0].policy).Statement :
       s.Effect == "Deny" || alltrue([for a in flatten([s.Action]) : contains([
-        "secretsmanager:DescribeSecret", "secretsmanager:DeleteSecret", "elasticloadbalancing:DescribeLoadBalancers",
+        "secretsmanager:ListSecrets", "secretsmanager:DeleteSecret", "elasticloadbalancing:DescribeLoadBalancers",
         "elasticloadbalancing:DeleteLoadBalancer", "ecs:DescribeServices", "ecs:UpdateService", "ecs:ListTasks", "ecs:StopTask",
         "rds:DescribeDBInstances", "rds:StopDBInstance",
       ], a)])

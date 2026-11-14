@@ -36,12 +36,13 @@ TEMPLATE_VALUES = {
     "vpc_id": VPC,
     "db_identifier": "munaxa-nonprod-pg",
     "bootstrap_secret": BOOTSTRAP,
+    "bootstrap_secret_arn_pattern": f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{BOOTSTRAP}-??????",
 }
 
 # The ten actions the role policy allows (session-cleanup.tf; tests/session-cleanup.tftest.hcl
 # asserts the policy holds exactly these).
 ALLOWED = {
-    ("secretsmanager", "describeSecret"), ("secretsmanager", "deleteSecret"),
+    ("secretsmanager", "listSecrets"), ("secretsmanager", "deleteSecret"),
     ("elasticloadbalancingv2", "describeLoadBalancers"), ("elasticloadbalancingv2", "deleteLoadBalancer"),
     ("ecs", "describeServices"), ("ecs", "updateService"), ("ecs", "listTasks"), ("ecs", "stopTask"),
     ("rds", "describeDBInstances"), ("rds", "stopDBInstance"),
@@ -65,6 +66,9 @@ class FakeAws:
         self.db = {"id": "munaxa-nonprod-pg", "status": "stopped", "sequence": []}
         self.fail = {}
         self.lb_delete_lingers = 0
+        self.lb_more_pages = False
+        self.other_lbs = [{"LoadBalancerName": "munaxa-docs-legacy", "LoadBalancerArn": f"arn:aws:elasticloadbalancing:{REGION}:{ACCOUNT}:loadbalancer/app/munaxa-docs-legacy/1",
+                           "Type": "application", "Scheme": "internet-facing", "VpcId": "vpc-0bbbbbbbbbbbbbbbb"}]
         self.list_tasks_next_token = False
 
     # Builders --------------------------------------------------------------------------------
@@ -92,13 +96,11 @@ class FakeAws:
         handler = getattr(self, f"_{service}_{action}")
         return handler(params)
 
-    def _secretsmanager_describeSecret(self, p):
-        name = p["SecretId"]
-        if name != BOOTSTRAP:
-            raise StatesError("AccessDenied", "only the bootstrap secret")
-        if name not in self.secrets:
-            raise StatesError("SecretsManager.ResourceNotFoundException")
-        return copy.deepcopy(self.secrets[name])
+    def _secretsmanager_listSecrets(self, p):
+        # The name filter is a prefix match (so a longer name can come back too); never a value.
+        assert p["IncludePlannedDeletion"] is True
+        prefix = [f for f in p["Filters"] if f["Key"] == "name"][0]["Values"][0]
+        return {"SecretList": [copy.deepcopy(s) for s in self.secrets.values() if s["Name"].startswith(prefix)]}
 
     def _secretsmanager_deleteSecret(self, p):
         arn = p["SecretId"]
@@ -112,10 +114,12 @@ class FakeAws:
         raise StatesError("SecretsManager.ResourceNotFoundException")
 
     def _elasticloadbalancingv2_describeLoadBalancers(self, p):
-        found = [copy.deepcopy(lb) for lb in self.lbs if lb["LoadBalancerName"] in p["Names"]]
-        if not found:
-            raise StatesError("ElasticLoadBalancingV2.LoadBalancerNotFoundException")
-        return {"LoadBalancers": found}
+        # Every load balancer in the Region (another one is always there), never filtered by name.
+        assert "Names" not in p and p.get("PageSize") == 400
+        out = {"LoadBalancers": [copy.deepcopy(lb) for lb in self.lbs + self.other_lbs]}
+        if self.lb_more_pages:
+            out["NextMarker"] = "next"
+        return out
 
     def _elasticloadbalancingv2_deleteLoadBalancer(self, p):
         arn = p["LoadBalancerArn"]
@@ -316,7 +320,7 @@ class Scenarios(unittest.TestCase):
 
     def test_transient_throttling_is_retried(self):
         aws = FakeAws().with_session()
-        aws.fail[("secretsmanager", "describeSecret")] = ["SecretsManager.ThrottlingException"]
+        aws.fail[("secretsmanager", "listSecrets")] = ["SecretsManager.ThrottlingException"]
         result, _ = run(aws)
         self.assertEqual(result["status"], "SUCCEEDED", result)
         self.assertEqual(by_component(result)["secret"]["status"], "deleted")
@@ -347,6 +351,23 @@ class Scenarios(unittest.TestCase):
             self.assertEqual(by_component(result)["alb"]["status"], "unexpected-load-balancer", field)
             self.assertEqual([c for c in sim.calls if c[1] == "deleteLoadBalancer"], [])
 
+    def test_more_load_balancers_than_one_page_is_not_guessed(self):
+        aws = FakeAws().with_session()
+        aws.lb_more_pages = True
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["alb"]["status"], "unexpected-load-balancer")
+        self.assertEqual([c for c in sim.calls if c[1] == "deleteLoadBalancer"], [])
+
+    def test_no_not_found_error_name_is_needed_on_a_normal_day(self):
+        # Review finding C-5: between sessions nothing exists, and the result must not depend on
+        # AWS naming a "not found" error the way the definition expects.
+        aws = FakeAws()
+        result, sim = run(aws)
+        self.assertEqual(result["status"], "SUCCEEDED", result)
+        comp = by_component(result)
+        self.assertEqual((comp["secret"]["status"], comp["alb"]["status"]), ("absent", "absent"))
+        self.assertEqual(len(aws.other_lbs), 1)
+
     def test_two_load_balancers_with_the_name_are_not_deleted(self):
         aws = FakeAws().with_session()
         aws.lbs.append(dict(aws.lbs[0], LoadBalancerArn=ALB_ARN + "x"))
@@ -366,14 +387,23 @@ class Scenarios(unittest.TestCase):
         aws = FakeAws().with_session()
         aws.secrets[BOOTSTRAP]["DeletedDate"] = "2026-11-14T20:00:00Z"
         result, sim = run(aws)
-        self.assertEqual(by_component(result)["secret"]["status"], "pending-deletion")
+        self.assertEqual(by_component(result)["secret"], {"component": "secret", "status": "pending-deletion", "ok": True})
+        self.assertEqual(result["status"], "SUCCEEDED", result)
         self.assertEqual([c for c in sim.calls if c[1] == "deleteSecret"], [])
 
-    def test_secret_with_another_name_is_not_deleted(self):
-        aws = FakeAws().with_session()
-        aws.secrets[BOOTSTRAP]["Name"] = OPERATOR
+    def test_a_longer_name_is_never_the_bootstrap_secret(self):
+        aws = FakeAws()
+        name = BOOTSTRAP + "-old"
+        aws.secrets[name] = {"Name": name, "ARN": f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{name}-AbCdEf"}
         result, sim = run(aws)
-        self.assertEqual(by_component(result)["secret"]["status"], "unexpected-name")
+        self.assertEqual(by_component(result)["secret"]["status"], "absent")
+        self.assertEqual([c for c in sim.calls if c[1] == "deleteSecret"], [])
+
+    def test_a_secret_of_that_name_with_a_foreign_arn_is_not_deleted(self):
+        aws = FakeAws().with_session()
+        aws.secrets[BOOTSTRAP]["ARN"] = f"arn:aws:secretsmanager:{REGION}:111111111111:secret:{BOOTSTRAP}-XyZ123"
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["secret"]["status"], "unexpected-secret")
         self.assertEqual([c for c in sim.calls if c[1] == "deleteSecret"], [])
 
     def test_one_service_error_is_reported_and_others_still_scaled(self):
@@ -443,7 +473,7 @@ class Scenarios(unittest.TestCase):
         # If AWS names "not found" differently from what the definition expects, the branch reports
         # an error (alarm) instead of a false success. The B-4 dry run shows it before any session.
         aws = FakeAws()
-        aws._secretsmanager_describeSecret = lambda p: (_ for _ in ()).throw(StatesError("SecretsManager.SecretsManagerException"))
+        aws._secretsmanager_listSecrets = lambda p: (_ for _ in ()).throw(StatesError("SecretsManager.SecretsManagerException"))
         result, _ = run(aws)
         self.assertEqual(result["status"], "FAILED")
         self.assertEqual(by_component(result)["secret"]["status"], "error")
@@ -452,7 +482,7 @@ class Scenarios(unittest.TestCase):
         aws = FakeAws().with_session()
         aws.db["status"] = "backing-up"
         aws.lb_delete_lingers = 1
-        for key in [("secretsmanager", "describeSecret"), ("ecs", "listTasks")]:
+        for key in [("secretsmanager", "listSecrets"), ("ecs", "listTasks")]:
             aws.fail[key] = ["Throttling", "Throttling"]
         result, _ = run(aws)
         self.assertNotEqual(result["status"], "TIMED_OUT")

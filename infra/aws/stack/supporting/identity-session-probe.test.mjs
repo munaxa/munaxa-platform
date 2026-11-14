@@ -215,6 +215,9 @@ function startMock({ tls = 'good', behaviour = {} } = {}) {
     if (req.method === 'POST' && path === '/api/auth/login') {
       log.logins.push({ organisation: body.organisation, origin: req.headers.origin });
       const account = accounts[body.identifier];
+      if (behaviour.edgeLimitInsteadOfLockout && account !== undefined && account.failures >= 5) {
+        return sendJson(res, 429, { code: 'SECURITY_RATE_LIMITED' });
+      }
       if (account !== undefined && account.failures >= 10 && !behaviour.noLockout) {
         return sendJson(res, 429, { code: 'AUTH_RATE_LIMITED' });
       }
@@ -821,6 +824,7 @@ describe('throwaway mode (BE-3, BE-4): the thirteen extra checks', () => {
     ['totpReplayAccepted', 'mfa-totp-replay', 'replay-accepted'],
     ['recoveryReuseAccepted', 'mfa-recovery-code-reuse', 'reuse-accepted'],
     ['noLockout', 'lockout', 'no-lockout'],
+    ['edgeLimitInsteadOfLockout', 'lockout', 'status-429-edge-rate-limited'],
   ];
   for (const [flag, check, code] of failures) {
     test(`a weakened Identity fails ${check} (${code})`, async () => {

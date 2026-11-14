@@ -8,7 +8,11 @@
 #                    revisions by exact family name, describe the LATEST one and validate it against
 #                    MANIFEST (envs/nonprod.stage-e-tasks.json): containers, image digests, secret
 #                    names and references (bundle, key, pinned version), execution role, no task
-#                    role, Fargate/awsvpc, the command, the probe pin. Records the revision number.
+#                    role, Fargate/awsvpc, no shared namespaces, the task volumes, and per container
+#                    the exact set of environment names, the shape fields (entryPoint, user,
+#                    capabilities, read-only root, mounts, dependsOn, health check, logging) and the
+#                    command (exact, or by SHA-256 for db-admin's script and the probe loader, with the
+#                    probe pin). Records the revision number.
 #   MODE "run"       FAMILY, EXPECTED_REVISION (the number discover recorded), COMMAND (a key of the
 #                    family's allow-listed commands), RUN_TOKEN (fresh per run). Re-validates; refuses
 #                    unless the latest ACTIVE revision is EXPECTED_REVISION and valid (a stale, newer,
@@ -17,6 +21,9 @@
 #                    used; then ONE RunTask on the full revision ARN, never retried by the script.
 #   MODE "status"    RUN_TOKEN (or TASK_ARN): every task started with that token, its status, stop
 #                    code, exit codes, and whether each container ran the manifest's image digest.
+#                    ECS lists a stopped task for about an hour only: NOT_FOUND after that is not
+#                    proof that nothing ran (use TASK_ARN, or the log stream), and never a reason to
+#                    run a migration or bootstrap again.
 #
 # Read-only except the one RunTask. Never a secret value: task definitions carry secret ARNs only,
 # and the result holds names, revision numbers, task ARNs, statuses and codes. Checked by
@@ -118,17 +125,43 @@ MANIFEST = {
                             "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
                         }
                     },
-                    "entryPoint": [
-                        "sh",
-                        "-c"
+                    "environmentNames": [
+                        "HOME",
+                        "PGHOST",
+                        "PGPORT"
                     ],
-                    "commandLength": 4961,
-                    "commandFirstLine": "#!/bin/sh"
+                    "shape": {
+                        "essential": True,
+                        "user": "999:999",
+                        "readonlyRootFilesystem": True,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "entryPoint": [
+                            "sh",
+                            "-c"
+                        ],
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/ops",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "db-admin"
+                            }
+                        }
+                    },
+                    "commandSha256": "de2ea694d627845d1ca0cc97fbb6a1be3a04ca7787ce9c4feff7aec8671221ee"
                 }
             },
             "commands": {
                 "default": None
-            }
+            },
+            "volumes": []
         },
         "munaxa-nonprod-identity-migrate": {
             "executionRole": "munaxa-nonprod-identity-migrate-execution",
@@ -145,12 +178,36 @@ MANIFEST = {
                             "key": "DATABASE_MIGRATION_URL",
                             "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
                         }
+                    },
+                    "environmentNames": [
+                        "NODE_ENV"
+                    ],
+                    "shape": {
+                        "essential": True,
+                        "readonlyRootFilesystem": False,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/identity-migrate",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "identity-migrate"
+                            }
+                        }
                     }
                 }
             },
             "commands": {
                 "default": None
-            }
+            },
+            "volumes": []
         },
         "munaxa-nonprod-identity-bootstrap": {
             "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
@@ -176,6 +233,29 @@ MANIFEST = {
                             "form": "partial",
                             "secret": "munaxa-nonprod/identity-bootstrap",
                             "key": "IDENTITY_OWNER_PASSWORD"
+                        }
+                    },
+                    "environmentNames": [
+                        "NODE_ENV"
+                    ],
+                    "shape": {
+                        "essential": True,
+                        "readonlyRootFilesystem": True,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/ops",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "identity-bootstrap"
+                            }
                         }
                     },
                     "command": [
@@ -210,7 +290,8 @@ MANIFEST = {
                         "control-operator-admin"
                     ]
                 }
-            }
+            },
+            "volumes": []
         },
         "munaxa-nonprod-identity-probe": {
             "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
@@ -218,7 +299,7 @@ MANIFEST = {
             "securityGroup": "munaxa-nonprod-identity",
             "service": False,
             "containers": {
-                "identity-probe": {
+                "throwaway-account": {
                     "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
                     "secrets": {
                         "DIRECT_DATABASE_URL": {
@@ -228,13 +309,106 @@ MANIFEST = {
                             "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
                         }
                     },
-                    "environment": {
-                        "PROBE_ACCOUNT": "throwaway",
-                        "PROBE_ORGANISATION": "munaxa-stage-e-checks"
+                    "environmentNames": [
+                        "NODE_ENV",
+                        "PROBE_ACCOUNT",
+                        "PROBE_HANDOFF_DIR",
+                        "PROBE_STAGE"
+                    ],
+                    "shape": {
+                        "essential": False,
+                        "readonlyRootFilesystem": True,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "mountPoints": [
+                            {
+                                "containerPath": "/home/identity",
+                                "readOnly": False,
+                                "sourceVolume": "stage-e-handoff"
+                            }
+                        ],
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/ops",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "identity-probe"
+                            }
+                        }
                     },
-                    "probePin": {
-                        "commit": "",
-                        "sha256": ""
+                    "probeLoader": True,
+                    "environment": {
+                        "NODE_ENV": "production",
+                        "PROBE_STAGE": "account",
+                        "PROBE_ACCOUNT": "throwaway",
+                        "PROBE_HANDOFF_DIR": "/home/identity"
+                    }
+                },
+                "identity-probe": {
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+                    "secrets": {},
+                    "environmentNames": [
+                        "NODE_ENV",
+                        "PROBE_ACCOUNT",
+                        "PROBE_AUDIENCES",
+                        "PROBE_COMMIT",
+                        "PROBE_CONTROL_API_HOST",
+                        "PROBE_HANDOFF_DIR",
+                        "PROBE_HOST",
+                        "PROBE_ISSUER",
+                        "PROBE_OPERATOR_HOST",
+                        "PROBE_ORGANISATION",
+                        "PROBE_PUBLIC_KEYS",
+                        "PROBE_SHA256",
+                        "PROBE_SIGNING_KID",
+                        "PROBE_STAGE",
+                        "PROBE_UNKNOWN_HOST"
+                    ],
+                    "shape": {
+                        "essential": True,
+                        "readonlyRootFilesystem": True,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "dependsOn": [
+                            {
+                                "condition": "SUCCESS",
+                                "containerName": "throwaway-account"
+                            }
+                        ],
+                        "mountPoints": [
+                            {
+                                "containerPath": "/home/identity",
+                                "readOnly": False,
+                                "sourceVolume": "stage-e-handoff"
+                            }
+                        ],
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/ops",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "identity-probe"
+                            }
+                        }
+                    },
+                    "probeLoader": True,
+                    "environment": {
+                        "PROBE_STAGE": "probe",
+                        "PROBE_ACCOUNT": "throwaway",
+                        "PROBE_ORGANISATION": "munaxa-stage-e-checks",
+                        "PROBE_HANDOFF_DIR": "/home/identity"
                     }
                 }
             },
@@ -245,7 +419,15 @@ MANIFEST = {
                         "PROBE_ALB_DNS"
                     ]
                 }
-            }
+            },
+            "probePin": {
+                "commit": "",
+                "sha256": ""
+            },
+            "loaderSha256": "859a0af4bd0e9a1fa102779d5af32f8cbbfd16ec30b053747e1f6c7181ce394d",
+            "volumes": [
+                "stage-e-handoff"
+            ]
         },
         "munaxa-nonprod-identity": {
             "executionRole": "munaxa-nonprod-identity-execution",
@@ -292,6 +474,59 @@ MANIFEST = {
                             "key": "MFA_ENCRYPTION_KEYS",
                             "version": "80914756-68cd-420d-8094-0fd49afe3492"
                         }
+                    },
+                    "environmentNames": [
+                        "CSRF_TRUSTED_ORIGINS",
+                        "IDENTITY_AUTH_AUDIENCE",
+                        "IDENTITY_BASE_URL",
+                        "IDENTITY_DEFAULT_ORGANISATION",
+                        "IDENTITY_PASSWORD_RESET",
+                        "IDENTITY_SIGNING_ALGORITHM",
+                        "IDENTITY_SIGNING_KID",
+                        "LOG_PRETTY",
+                        "MFA_ENCRYPTION_PRIMARY_KID",
+                        "MFA_POLICY",
+                        "NODE_ENV",
+                        "PORT",
+                        "TRUST_PROXY_HOPS"
+                    ],
+                    "shape": {
+                        "essential": True,
+                        "readonlyRootFilesystem": True,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "dependsOn": [
+                            {
+                                "condition": "HEALTHY",
+                                "containerName": "valkey"
+                            }
+                        ],
+                        "healthCheck": {
+                            "command": [
+                                "CMD",
+                                "node",
+                                "-e",
+                                "fetch('http://127.0.0.1:4001/api/auth/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+                            ],
+                            "interval": 15,
+                            "retries": 3,
+                            "startPeriod": 60,
+                            "timeout": 5
+                        },
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/identity",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "identity"
+                            }
+                        }
                     }
                 },
                 "valkey": {
@@ -303,7 +538,46 @@ MANIFEST = {
                             "key": "REDIS_PASSWORD",
                             "version": "80914756-68cd-420d-8094-0fd49afe3492"
                         }
-                    }
+                    },
+                    "environmentNames": [],
+                    "shape": {
+                        "essential": True,
+                        "user": "999:999",
+                        "readonlyRootFilesystem": False,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "entryPoint": [
+                            "sh",
+                            "-c"
+                        ],
+                        "healthCheck": {
+                            "command": [
+                                "CMD-SHELL",
+                                "valkey-cli -a \"$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"
+                            ],
+                            "interval": 10,
+                            "retries": 5,
+                            "startPeriod": 10,
+                            "timeout": 3
+                        },
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/identity",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "valkey"
+                            }
+                        }
+                    },
+                    "command": [
+                        "umask 077 && printf 'requirepass %s\\n' \"$REDIS_PASSWORD\" > /tmp/valkey.conf && exec valkey-server /tmp/valkey.conf --bind 127.0.0.1 --port 6379 --protected-mode yes --maxmemory 128mb --maxmemory-policy noeviction --save '' --appendonly no"
+                    ]
                 }
             },
             "commands": {
@@ -336,9 +610,29 @@ MANIFEST = {
                         "--apply"
                     ]
                 }
-            }
+            },
+            "volumes": []
         }
-    }
+    },
+    "shapeKeys": [
+        "essential",
+        "user",
+        "privileged",
+        "readonlyRootFilesystem",
+        "linuxParameters",
+        "entryPoint",
+        "dependsOn",
+        "mountPoints",
+        "volumesFrom",
+        "healthCheck",
+        "logConfiguration",
+        "workingDirectory",
+        "dockerSecurityOptions",
+        "systemControls",
+        "links",
+        "interactive",
+        "pseudoTerminal"
+    ]
 }
 # --- end manifest ---
 
@@ -370,8 +664,105 @@ def secret_ok(spec, value_from):
     return False
 
 
+SHA_K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+]
+
+
+def sha256_hex(text):
+    """SHA-256 of a UTF-8 string in plain Python (the connector sandbox has no hashing module).
+    test_task_guard.py checks it against hashlib."""
+    data = bytearray(text.encode("utf-8"))
+    length = len(data) * 8
+    data.append(0x80)
+    while len(data) % 64 != 56:
+        data.append(0)
+    data += length.to_bytes(8, "big")
+    h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]
+    mask = 0xFFFFFFFF
+
+    def rotr(x, n):
+        return ((x >> n) | (x << (32 - n))) & mask
+
+    for start in range(0, len(data), 64):
+        w = [int.from_bytes(data[start + 4 * i:start + 4 * i + 4], "big") for i in range(16)]
+        for i in range(16, 64):
+            s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >> 3)
+            s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >> 10)
+            w.append((w[i - 16] + s0 + w[i - 7] + s1) & mask)
+        a, b, c, d, e, f, g, hh = h
+        for i in range(64):
+            t1 = (hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + SHA_K[i] + w[i]) & mask
+            t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) & mask
+            a, b, c, d, e, f, g, hh = (t1 + t2) & mask, a, b, c, (d + t1) & mask, e, f, g
+        h = [(x + y) & mask for x, y in zip(h, [a, b, c, d, e, f, g, hh])]
+    return "".join(x.to_bytes(4, "big").hex() for x in h)
+
+
+def bare(value):
+    """A value with every None, empty string, empty list and empty object removed, recursively
+    (DescribeTaskDefinition may return empty defaults Terraform never wrote); None if nothing is left."""
+    if isinstance(value, dict):
+        out = {}
+        for k in sorted(value.keys()):
+            v = bare(value[k])
+            if v is not None:
+                out[k] = v
+        return out or None
+    if isinstance(value, list):
+        out = [bare(v) for v in value]
+        out = [v for v in out if v is not None]
+        return out or None
+    if value is None or value == "":
+        return None
+    return value
+
+
+def shape_of(c):
+    """The security-relevant fields of one container (MANIFEST["shapeKeys"]), normalised."""
+    out = {}
+    for k in MANIFEST["shapeKeys"]:
+        v = c.get(k)
+        if k == "essential" and v is None:
+            v = True
+        if k in ("readonlyRootFilesystem", "privileged", "interactive", "pseudoTerminal") and v is False:
+            v = None
+        v = bare(v)
+        if v is not None:
+            out[k] = v
+    return out
+
+
+def loader_ok(cmd, family_spec):
+    """The probe loader command: exactly the reviewed loader text with the manifest's pin written in."""
+    pin = family_spec.get("probePin") or {}
+    if not re.fullmatch(r"[0-9a-f]{40}", str(pin.get("commit"))) or not re.fullmatch(r"[0-9a-f]{64}", str(pin.get("sha256"))):
+        return "probe-not-pinned-in-manifest"
+    if not isinstance(cmd, list) or len(cmd) != 4 or cmd[:3] != ["node", "--input-type=module", "-e"] or not isinstance(cmd[3], str):
+        return "probe-pin"
+    text = cmd[3]
+    commit_line, sha_line = "const COMMIT = '" + pin["commit"] + "';", "const SHA256 = '" + pin["sha256"] + "';"
+    if text.count(commit_line) != 1 or text.count(sha_line) != 1:
+        return "probe-pin"
+    text = text.replace(commit_line, "const COMMIT = '__PROBE_COMMIT__';").replace(sha_line, "const SHA256 = '__PROBE_SHA256__';")
+    if sha256_hex(text) != family_spec["loaderSha256"]:
+        return "probe-loader"
+    return ""
+
+
 def validate(family, td):
-    """Every difference from MANIFEST, as short codes (never a value)."""
+    """Every difference from MANIFEST, as short codes (never a value). Compared: family, status,
+    roles, launch, task volumes and namespaces, and per container the image, every secret name and
+    reference, the exact set of environment names (and the manifest's values), the shape fields and
+    the command (review findings S-2, C-4: a revision with an added entryPoint, command, NODE_OPTIONS
+    or capability fails)."""
     spec = MANIFEST["families"][family]
     p = []
     if not isinstance(td, dict):
@@ -386,6 +777,12 @@ def validate(family, td):
         p.append("task-role")
     if "FARGATE" not in (td.get("requiresCompatibilities") or []) or td.get("networkMode") != "awsvpc":
         p.append("launch")
+    if td.get("pidMode") not in (None, "") or td.get("ipcMode") not in (None, ""):
+        p.append("namespaces")
+    volumes = td.get("volumes") or []
+    if sorted(str(v.get("name")) for v in volumes if isinstance(v, dict)) != sorted(spec["volumes"]) or len(volumes) != len(spec["volumes"]) \
+            or any(bare(v.get("host")) is not None or v.get("efsVolumeConfiguration") or v.get("dockerVolumeConfiguration") for v in volumes if isinstance(v, dict)):
+        p.append("volumes")
     containers = td.get("containerDefinitions")
     if not isinstance(containers, list):
         return p + ["containers-malformed"]
@@ -408,34 +805,35 @@ def validate(family, td):
             for name in sorted(got.keys()):
                 if not secret_ok(cs["secrets"][name], got[name]):
                     p.append(tag + "secret-ref:" + name)
-        if "command" in cs and c.get("command") != cs["command"]:
+        if c.get("environmentFiles") or c.get("repositoryCredentials"):
+            p.append(tag + "unexpected-source")
+        if shape_of(c) != shape_of(cs["shape"]):
+            p.append(tag + "shape")
+        env, entries = {}, c.get("environment") or []
+        for e in entries:
+            if isinstance(e, dict):
+                env[str(e.get("name"))] = e.get("value")
+        if sorted(env.keys()) != sorted(cs["environmentNames"]) or len(env) != len(entries):
+            p.append(tag + "env-names")
+        for name, value in (cs.get("environment") or {}).items():
+            if env.get(name) != value:
+                p.append(tag + "env:" + name)
+        cmd = c.get("command")
+        if "command" in cs:
+            if cmd != cs["command"]:
+                p.append(tag + "command")
+        elif "commandSha256" in cs:
+            if not isinstance(cmd, list) or len(cmd) != 1 or not isinstance(cmd[0], str) or sha256_hex(cmd[0]) != cs["commandSha256"]:
+                p.append(tag + "command")
+        elif cs.get("probeLoader"):
+            problem = loader_ok(cmd, spec)
+            if problem:
+                p.append(tag + problem)
+            pin = spec.get("probePin") or {}
+            if c["name"] == "identity-probe" and (env.get("PROBE_COMMIT") != pin.get("commit") or env.get("PROBE_SHA256") != pin.get("sha256")):
+                p.append(tag + "env:probe-pin")
+        elif bare(cmd) is not None:
             p.append(tag + "command")
-        if "entryPoint" in cs:
-            cmd = c.get("command")
-            if c.get("entryPoint") != cs["entryPoint"] or not isinstance(cmd, list) or len(cmd) != 1:
-                p.append(tag + "command")
-            elif len(cmd[0]) != cs["commandLength"] or not cmd[0].startswith(cs["commandFirstLine"]):
-                p.append(tag + "command")
-        if "environment" in cs or "probePin" in cs:
-            env = {}
-            for e in c.get("environment") or []:
-                if isinstance(e, dict):
-                    env[str(e.get("name"))] = e.get("value")
-            for name, value in (cs.get("environment") or {}).items():
-                if env.get(name) != value:
-                    p.append(tag + "env:" + name)
-            pin = cs.get("probePin")
-            if pin is not None:
-                if not re.fullmatch(r"[0-9a-f]{40}", pin["commit"]) or not re.fullmatch(r"[0-9a-f]{64}", pin["sha256"]):
-                    p.append(tag + "probe-not-pinned-in-manifest")
-                else:
-                    cmd = c.get("command") or []
-                    loader = cmd[3] if isinstance(cmd, list) and len(cmd) == 4 else ""
-                    if cmd[:3] != ["node", "--input-type=module", "-e"] or ("const COMMIT = '" + pin["commit"] + "';") not in loader \
-                            or ("const SHA256 = '" + pin["sha256"] + "';") not in loader:
-                        p.append(tag + "probe-pin")
-                    if env.get("PROBE_COMMIT") != pin["commit"] or env.get("PROBE_SHA256") != pin["sha256"]:
-                        p.append(tag + "env:probe-pin")
     return p
 
 
@@ -508,15 +906,39 @@ async def network(family):
 
 
 async def tasks_started_by(token):
-    """Task ARNs started with this guard's token, running or stopped."""
+    """Task ARNs started with this guard's token, running or stopped. ListTasks filtered by family and
+    desired status, then DescribeTasks and startedBy compared here: the ECS reference says a startedBy
+    filter must be the only filter (review finding C-2). ECS lists a stopped task for about an hour
+    only, so an empty answer after that cannot prove a token was never used (finding C-3)."""
     arns = []
-    for status in ("RUNNING", "STOPPED"):
-        r = await aws("ecs", "ListTasks", {"cluster": MANIFEST["cluster"], "startedBy": STARTED_BY_PREFIX + token, "desiredStatus": status})
-        found = r.get("taskArns")
-        if not isinstance(found, list):
+    for family in sorted(MANIFEST["families"].keys()):
+        for status in ("RUNNING", "STOPPED"):
+            token_ = None
+            for _ in range(10):
+                params = {"cluster": MANIFEST["cluster"], "family": family, "desiredStatus": status, "maxResults": 100}
+                if token_:
+                    params["nextToken"] = token_
+                r = await aws("ecs", "ListTasks", params)
+                found = r.get("taskArns")
+                if not isinstance(found, list):
+                    raise ValueError("shape")
+                arns.extend(str(a) for a in found)
+                token_ = r.get("nextToken")
+                if not token_:
+                    break
+            else:
+                raise ValueError("too-many-pages")
+    arns = sorted(set(arns))
+    mine = []
+    for start in range(0, len(arns), 100):
+        d = await aws("ecs", "DescribeTasks", {"cluster": MANIFEST["cluster"], "tasks": arns[start:start + 100]})
+        tasks = d.get("tasks")
+        if not isinstance(tasks, list):
             raise ValueError("shape")
-        arns.extend(str(a) for a in found)
-    return sorted(set(arns))
+        for t in tasks:
+            if isinstance(t, dict) and t.get("startedBy") == STARTED_BY_PREFIX + token:
+                mine.append(str(t.get("taskArn")))
+    return sorted(mine)
 
 
 async def guard_running(family):
@@ -637,7 +1059,10 @@ async def status():
         except Exception as e:
             return {"result": "FAIL", "code": "LIST_" + code_of(e)}
         if not arns:
-            return {"result": "NOT_STARTED", "run_token": RUN_TOKEN}
+            # Not proof that nothing ran: ECS lists a stopped task for about an hour only (finding C-3).
+            return {"result": "NOT_FOUND", "code": "NOT_LISTED_MAY_HAVE_EXPIRED", "run_token": RUN_TOKEN,
+                    "next": "if this token was used more than about an hour ago, never run again on that basis: "
+                            "read the task's log stream, or give TASK_ARN"}
     try:
         d = await aws("ecs", "DescribeTasks", {"cluster": MANIFEST["cluster"], "tasks": arns})
     except Exception as e:

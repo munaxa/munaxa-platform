@@ -189,13 +189,41 @@ run "stage_e_task_definitions_match_the_manifest" {
     error_message = "The manifest's execution roles and the db-admin group are the ones Terraform gives the run-only families."
   }
 
+  # Review findings S-2 and C-4 (report file 06): the guard also compares each container's exact
+  # environment names, its shape fields (manifest shapeKeys) and its command; these are what
+  # Terraform renders, and a container has no shape field the manifest does not list.
+  assert {
+    condition = alltrue(flatten([
+      for family, cd in {
+        "munaxa-nonprod-db-admin"           = aws_ecs_task_definition.db_admin[0].container_definitions
+        "munaxa-nonprod-identity-migrate"   = module.migrate["identity"].task_definition_container_definitions
+        "munaxa-nonprod-identity-bootstrap" = aws_ecs_task_definition.identity_bootstrap[0].container_definitions
+        "munaxa-nonprod-identity-probe"     = aws_ecs_task_definition.identity_probe[0].container_definitions
+        "munaxa-nonprod-identity"           = module.identity[0].task_definition_container_definitions
+        } : [for c in jsondecode(cd) : concat(
+          [jsonencode(sort([for e in try(c.environment, []) : e.name])) == jsonencode(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].environmentNames)],
+          [for k in jsondecode(file("envs/nonprod.stage-e-tasks.json")).shapeKeys : contains(keys(c), k) == contains(keys(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].shape), k)],
+          [for k, v in jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].shape : c[k] == v],
+          [for k, v in try(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].environment, {}) : { for e in c.environment : e.name => e.value }[k] == v],
+          [
+            can(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].command) ? c.command == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].command :
+            can(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].commandSha256) ? length(c.command) == 1 && sha256(c.command[0]) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].commandSha256 :
+            try(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].probeLoader, false) ? c.command == ["node", "--input-type=module", "-e", replace(replace(file("scripts/identity-probe-loader.mjs"), "__PROBE_COMMIT__", var.identity_probe_source.commit), "__PROBE_SHA256__", var.identity_probe_source.sha256)] :
+            !contains(keys(c), "command")
+          ],
+      )]
+    ]))
+    error_message = "A Stage E container's environment names, shape fields or command differ from envs/nonprod.stage-e-tasks.json."
+  }
+
   assert {
     condition = (
-      jsondecode(aws_ecs_task_definition.identity_bootstrap[0].container_definitions)[0].command == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-bootstrap"].containers["identity-bootstrap"].command &&
-      jsondecode(aws_ecs_task_definition.db_admin[0].container_definitions)[0].entryPoint == ["sh", "-c"] &&
-      length(jsondecode(aws_ecs_task_definition.db_admin[0].container_definitions)[0].command[0]) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].containers["db-admin"].commandLength &&
-      { for e in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment : e.name => e.value if contains(["PROBE_ACCOUNT", "PROBE_ORGANISATION"], e.name) } == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-probe"].containers["identity-probe"].environment
+      sha256(file("scripts/identity-probe-loader.mjs")) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-probe"].loaderSha256 &&
+      sha256(file("scripts/db-bootstrap.sh")) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].containers["db-admin"].commandSha256 &&
+      [for v in aws_ecs_task_definition.identity_probe[0].volume : v.name] == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-probe"].volumes &&
+      length(aws_ecs_task_definition.db_admin[0].volume) == 0 && length(aws_ecs_task_definition.identity_bootstrap[0].volume) == 0 &&
+      aws_ecs_task_definition.identity_probe[0].pid_mode == null
     )
-    error_message = "The manifest's commands and probe environment are what Terraform renders."
+    error_message = "The manifest's loader and db-admin hashes, and the task volumes, are what Terraform registers."
   }
 }

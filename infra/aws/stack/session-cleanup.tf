@@ -51,6 +51,8 @@ locals {
     vpc_id           = aws_vpc.main.id
     db_identifier    = "${local.prefix}-pg"
     bootstrap_secret = "${local.prefix}/identity-bootstrap"
+    # The six random characters Secrets Manager appends to every secret ARN.
+    bootstrap_secret_arn_pattern = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap-??????"
   })
 }
 
@@ -85,7 +87,7 @@ resource "aws_iam_role_policy" "session_cleanup" {
       {
         Sid      = "BootstrapSecretOnly"
         Effect   = "Allow"
-        Action   = ["secretsmanager:DescribeSecret", "secretsmanager:DeleteSecret"]
+        Action   = "secretsmanager:DeleteSecret"
         Resource = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap-??????"
       },
       {
@@ -100,6 +102,14 @@ resource "aws_iam_role_policy" "session_cleanup" {
         Sid      = "NeverASecretValue"
         Effect   = "Deny"
         Action   = ["secretsmanager:GetSecretValue", "secretsmanager:BatchGetSecretValue", "secretsmanager:PutSecretValue", "secretsmanager:UpdateSecret"]
+        Resource = "*"
+      },
+      {
+        # Names and metadata only (never a value). Listed rather than described, so an absent secret
+        # is an empty list (review finding C-5); ListSecrets has no resource-level permission.
+        Sid      = "FindTheSecret"
+        Effect   = "Allow"
+        Action   = "secretsmanager:ListSecrets"
         Resource = "*"
       },
       {

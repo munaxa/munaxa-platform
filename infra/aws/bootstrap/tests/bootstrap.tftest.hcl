@@ -622,9 +622,9 @@ run "be2_session_cleanup_widens_only_nonprod" {
   }
   assert {
     condition = alltrue([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement :
-      length(setsubtract(s.Action, ["elasticloadbalancing:DescribeLoadBalancers", "ecs:ListTasks"])) == 0
+      length(setsubtract(s.Action, ["elasticloadbalancing:DescribeLoadBalancers", "ecs:ListTasks", "secretsmanager:ListSecrets"])) == 0
     if s.Sid == "TestingSessionCleanupLookups"])
-    error_message = "Only the two lookups are on *."
+    error_message = "Only the three lookups are on *."
   }
   assert {
     condition = alltrue([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement :

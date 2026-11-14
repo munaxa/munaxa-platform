@@ -1043,6 +1043,7 @@ run "identity_probe_is_isolated_from_database_credentials" {
     condition = (
       { for e in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment : e.name => e.value } == {
         NODE_ENV               = "production"
+        PROBE_STAGE            = "probe"
         PROBE_COMMIT           = "0123456789abcdef0123456789abcdef01234567"
         PROBE_SHA256           = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         PROBE_HOST             = "id.test.munaxa.com"
@@ -1075,10 +1076,11 @@ run "identity_probe_is_isolated_from_database_credentials" {
   }
 }
 
-# BE-3/BE-4 (report 2026-11-14-identity-stage-e-blockers-remediation, files 03 and 04): the default
-# throwaway mode holds the identity-migrate owner URL at the pinned version and nothing else, and
-# never the operator credential; everything else is the operator-mode definition above.
-run "identity_probe_throwaway_mode_holds_only_the_owner_url" {
+# BE-3/BE-4 (report 2026-11-14-identity-stage-e-blockers-remediation, files 03 and 04) and security
+# review finding S-1 (file 06): the default throwaway mode has two containers. Only the non-essential
+# throwaway-account container holds the identity-migrate owner URL; the probe container starts after
+# it exits 0, holds no secret at all, and shares only the ephemeral hand-off volume.
+run "identity_probe_throwaway_mode_keeps_the_owner_url_out_of_the_probe_container" {
   command = plan
 
   override_resource {
@@ -1105,34 +1107,62 @@ run "identity_probe_throwaway_mode_holds_only_the_owner_url" {
   }
 
   assert {
-    condition = jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].secrets == [{
-      name      = "DIRECT_DATABASE_URL"
-      valueFrom = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-migrate-AbCdEf:DATABASE_MIGRATION_URL::a3cc6622-df66-4787-bae7-83ccfec56ff4"
-    }]
-    error_message = "Throwaway mode's one secret is the identity-migrate owner URL at its pinned version."
+    condition     = [for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name] == ["throwaway-account", "identity-probe"]
+    error_message = "Throwaway mode has the account container, then the probe container."
   }
   assert {
-    condition = alltrue([
-      for k in ["identity-bootstrap", "IDENTITY_OWNER", "rds!", "REDIS_PASSWORD", "PRIVATE KEY", "munaxa-nonprod/identity:"] :
-      !strcontains(jsonencode([jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].secrets, jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment]), k)
-    ])
-    error_message = "Throwaway mode never names the operator credential, the RDS master secret, the service bundle or a key."
+    condition = { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].secrets == [{
+      name      = "DIRECT_DATABASE_URL"
+      valueFrom = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-migrate-AbCdEf:DATABASE_MIGRATION_URL::a3cc6622-df66-4787-bae7-83ccfec56ff4"
+    }] && { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].essential == false
+    error_message = "The account container's one secret is the identity-migrate owner URL at its pinned version, and it is not essential."
+  }
+  assert {
+    condition     = { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].secrets == [] && { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].essential == true
+    error_message = "The probe container holds no secret at all."
+  }
+  assert {
+    condition     = { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].dependsOn == [{ containerName = "throwaway-account", condition = "SUCCESS" }]
+    error_message = "The probe container starts only after the account container exited 0."
   }
   assert {
     condition = (
-      { for e in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment : e.name => e.value }["PROBE_ACCOUNT"] == "throwaway" &&
-      { for e in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment : e.name => e.value }["PROBE_ORGANISATION"] == "munaxa-stage-e-checks"
+      aws_ecs_task_definition.identity_probe[0].pid_mode == null &&
+      [for v in aws_ecs_task_definition.identity_probe[0].volume : v.name] == ["stage-e-handoff"] &&
+      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].mountPoints == [{ sourceVolume = "stage-e-handoff", containerPath = "/home/identity", readOnly = false }] &&
+      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].mountPoints == [{ sourceVolume = "stage-e-handoff", containerPath = "/home/identity", readOnly = false }]
     )
-    error_message = "Throwaway mode pins its own organisation, never munaxa-group."
+    error_message = "The containers share only the ephemeral hand-off volume, never a PID namespace."
+  }
+  assert {
+    condition = alltrue([
+      for k in ["identity-bootstrap", "IDENTITY_OWNER", "rds!", "REDIS_PASSWORD", "PRIVATE KEY", "munaxa-nonprod/identity:", "DATABASE"] :
+      !strcontains(jsonencode([{ for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].secrets, { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].environment]), k)
+      ]) && alltrue([
+      for k in ["identity-bootstrap", "IDENTITY_OWNER", "rds!", "REDIS_PASSWORD", "PRIVATE KEY", "munaxa-nonprod/identity:"] :
+      !strcontains(jsonencode([{ for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].secrets, { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].environment]), k)
+    ])
+    error_message = "Neither container names the operator credential, the RDS master secret, the service bundle or a key; the probe container names no database variable."
+  }
+  assert {
+    condition = (
+      { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].environment : e.name => e.value }["PROBE_ACCOUNT"] == "throwaway" &&
+      { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].environment : e.name => e.value }["PROBE_ORGANISATION"] == "munaxa-stage-e-checks" &&
+      { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].environment : e.name => e.value }["PROBE_STAGE"] == "probe" &&
+      { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].environment : e.name => e.value } == { NODE_ENV = "production", PROBE_STAGE = "account", PROBE_ACCOUNT = "throwaway", PROBE_HANDOFF_DIR = "/home/identity" }
+    )
+    error_message = "Throwaway mode pins its own organisation, never munaxa-group, and each container its stage."
   }
   assert {
     condition = (
       aws_ecs_task_definition.identity_probe[0].execution_role_arn == aws_iam_role.identity_bootstrap_execution[0].arn &&
       (aws_ecs_task_definition.identity_probe[0].task_role_arn == null || aws_ecs_task_definition.identity_probe[0].task_role_arn == "") &&
-      strcontains(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command[3], "scripts/bootstrap-account.mjs") &&
-      strcontains(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command[3], "munaxa-stage-e-checks")
+      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].command == { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].command &&
+      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].readonlyRootFilesystem == true && { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].linuxParameters.capabilities.drop == ["ALL"] &&
+      strcontains({ for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].command[3], "scripts/bootstrap-account.mjs") &&
+      strcontains({ for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].command[3], "munaxa-stage-e-checks")
     )
-    error_message = "Throwaway mode keeps the bootstrap execution role, no task role, and the loader that creates the account."
+    error_message = "Throwaway mode keeps the bootstrap execution role, no task role, read-only and capability-free containers, and the same pinned loader in both."
   }
 }
 
