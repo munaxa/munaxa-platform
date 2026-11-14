@@ -42,11 +42,13 @@ Tool versions: Python 3.13.18, Node v22.23.4, Terraform v1.16.5.
 
 ## 3. Prettier note
 
-`*.md` is in `.prettierignore`. CI's `pnpm format:check` will still report
-`infra/aws/stack/supporting/identity-session-probe.mjs` and its test, because **main's version of
-that file already fails the same check** (checked by running prettier on `git show
-origin/main:…`). This branch did not reformat those two files, to keep the diff reviewable; the
-other four changed non-Terraform files pass.
+CI's `pnpm format:check` runs `prettier --check "**/*.{ts,tsx,js,jsx,json,md,yml,yaml}"`, which
+does not match `.mjs`, and `.prettierignore` excludes `*.md` and the Terraform workflow file.
+The first CI run on this PR failed that check on `infra/aws/stack/session-cleanup/definition.asl.json`:
+it is a Terraform `templatefile` with `${...}` placeholders, so it is valid JSON only after
+rendering. It is now in `.prettierignore` (as other non-JSON-until-rendered inputs would be); its
+rendered form is checked by `session-cleanup.tftest.hcl` and the simulator tests. With that entry,
+`prettier --check` with the CI glob passes on the branch.
 
 ## 4. Not run, by design
 
