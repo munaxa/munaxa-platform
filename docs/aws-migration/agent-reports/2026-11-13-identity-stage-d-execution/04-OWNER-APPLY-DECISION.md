@@ -1,5 +1,7 @@
 # 04. Owner apply decision (decision A)
 
+**Outcome:** approved by the owner at 21:42 UTC; applied by run 43513076111 at 21:45 UTC (06). The text below is the request as made at 21:29.
+
 ## Eligibility
 
 **Eligible.** The real plan of `68fa6f9` matches the six declared changes exactly, with nothing undeclared, missing or destroyed beyond the declared replacements.

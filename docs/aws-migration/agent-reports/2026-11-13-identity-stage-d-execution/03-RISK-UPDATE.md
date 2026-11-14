@@ -1,6 +1,6 @@
 # 03. Risk update
 
-Read-only AWS checks, 21:20 and 21:3x UTC, 13 Nov 2026 [V].
+Read-only AWS checks, 21:20 and 21:3x UTC, 13 Nov 2026 [V], before the apply. Post-apply status: 06 and `2026-11-14-identity-stage-d-correction-and-stage-e-readiness/04-RISK-REGISTER.md`.
 
 ## Database and backstop (N-1)
 

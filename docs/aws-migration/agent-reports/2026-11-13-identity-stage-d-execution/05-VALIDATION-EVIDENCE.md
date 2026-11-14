@@ -10,6 +10,10 @@
 | 21:20 | read-only AWS checks: database stopped, backstop calls, rotation, certificate, budgets, ECS |
 | 21:29:02–21:29:40 | owner approved the gate; plan job success; apply job skipped |
 | 21:3x | job log read; read-only `DescribeTaskDefinition` (task role, modes, tag keys) |
+| 21:42 | owner approved decision A |
+| 21:43:38–21:44:24 | apply run 43513076111 plan job: `--enforce` matched 6; plan saved |
+| 21:44:39–21:45:15 | apply job (owner approved the second gate): saved plan applied |
+| 21:46–21:48 | read-only post-apply verification (06) |
 
 ## Commits
 
@@ -38,4 +42,6 @@ No secret value, plan file or state file was read.
 
 ## Not performed
 
-No Terraform apply; no `action=apply` dispatch; no second dispatch; no saved plan; no deployment or service start; no migration; no database start or stop; no secret create, rotate, update or delete; no IAM, network, security group, KMS, DNS, schedule or budget change; no production or management-account change; no safety check weakened; the expected-change declaration was not modified. Repository writes: the PR #121 merge (authorized) and this report's branch.
+Under decisions M and P (until 21:29), as originally recorded: no Terraform apply; no `action=apply` dispatch; no second dispatch; no saved plan; no deployment or service start; no migration; no database start or stop; no secret create, rotate, update or delete; no IAM, network, security group, KMS, DNS, schedule or budget change; no production or management-account change; no safety check weakened; the expected-change declaration was not modified. Repository writes: the PR #121 merge (authorized) and this report's branch.
+
+**Superseded in part at 21:42:** the owner then approved decision A, and one `action=apply` dispatch (run 43513076111) applied the six declared changes. That run and its verification are in 06. Everything else in the list above still holds after the apply.
