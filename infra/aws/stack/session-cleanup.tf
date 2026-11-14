@@ -51,8 +51,9 @@ locals {
     vpc_id           = aws_vpc.main.id
     db_identifier    = "${local.prefix}-pg"
     bootstrap_secret = "${local.prefix}/identity-bootstrap"
-    # The six random characters Secrets Manager appends to every secret ARN.
-    bootstrap_secret_arn_pattern = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap-??????"
+    # Choice StringMatches knows only `*` (`?` would be six literal question marks; fix-check
+    # finding N-2). The exact-name filter before it already excludes a longer name.
+    bootstrap_secret_arn_pattern = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap-*"
   })
 }
 

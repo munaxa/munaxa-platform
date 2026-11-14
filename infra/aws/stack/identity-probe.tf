@@ -43,8 +43,10 @@
 #     including the MFA lifecycle and the lockout, against that account only. It runs in its own
 #     process and PID namespace (no pidMode), so the downloaded probe can never read the database
 #     URL, not from its environment and not from /proc (security review finding S-1).
-# The hand-off volume is mounted at the identity user's home directory, which exists in the image
-# owned by that user, so the non-root containers can write it on a read-only root filesystem.
+# The hand-off volume is a Fargate bind mount at /stage-e. Fargate creates it empty, owned by root,
+# mode 0755 (the image declares no VOLUME there; fix-check finding N-1), so the account container
+# runs as uid 0 (still read-only root filesystem, every capability dropped, no task role) and writes
+# the hand-off file 0644; the probe container stays the non-root identity user and can only read it.
 # "operator" restores the original single-container design above (the two operator fields of
 # identity-bootstrap, 15 checks, no database URL).
 #
@@ -55,8 +57,8 @@
 locals {
   identity_probe_enabled   = local.defined.identity_api && var.identity_probe_source.commit != ""
   identity_probe_throwaway = var.identity_probe_account == "throwaway"
-  # The identity user's home directory in the Identity image (adduser -S), owned by that user.
-  identity_probe_handoff_dir = "/home/identity"
+  # The task's ephemeral hand-off volume (Fargate bind mount: empty, root-owned, 0755).
+  identity_probe_handoff_dir = "/stage-e"
 
   # The certificate covers *.<domain>; a name under it that no listener rule routes.
   identity_probe_unknown_host = join(".", concat(["unknown"], slice(split(".", var.hosts.identity), 1, length(split(".", var.hosts.identity)))))
@@ -97,6 +99,7 @@ resource "aws_ecs_task_definition" "identity_probe" {
     name                   = "throwaway-account"
     image                  = var.images.identity_api
     essential              = false
+    user                   = "0" # the only user that can write the root-owned bind mount
     readonlyRootFilesystem = true
     linuxParameters        = { capabilities = { add = [], drop = ["ALL"] } }
     stopTimeout            = 10
@@ -156,7 +159,7 @@ resource "aws_ecs_task_definition" "identity_probe" {
     }, jsondecode(local.identity_probe_throwaway ? jsonencode({
       # No secret: the credential comes from the hand-off volume.
       secrets     = []
-      mountPoints = [{ sourceVolume = "stage-e-handoff", containerPath = local.identity_probe_handoff_dir, readOnly = false }]
+      mountPoints = [{ sourceVolume = "stage-e-handoff", containerPath = local.identity_probe_handoff_dir, readOnly = true }]
       dependsOn   = [{ containerName = "throwaway-account", condition = "SUCCESS" }]
       }) : jsonencode({
       # Operator: the bootstrap task's IDENTITY_OWNER_* fields only (ops.tf), never DIRECT_DATABASE_URL.

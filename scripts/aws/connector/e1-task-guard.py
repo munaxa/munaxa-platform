@@ -317,6 +317,7 @@ MANIFEST = {
                     ],
                     "shape": {
                         "essential": False,
+                        "user": "0",
                         "readonlyRootFilesystem": True,
                         "linuxParameters": {
                             "capabilities": {
@@ -328,7 +329,7 @@ MANIFEST = {
                         },
                         "mountPoints": [
                             {
-                                "containerPath": "/home/identity",
+                                "containerPath": "/stage-e",
                                 "readOnly": False,
                                 "sourceVolume": "stage-e-handoff"
                             }
@@ -347,7 +348,7 @@ MANIFEST = {
                         "NODE_ENV": "production",
                         "PROBE_STAGE": "account",
                         "PROBE_ACCOUNT": "throwaway",
-                        "PROBE_HANDOFF_DIR": "/home/identity"
+                        "PROBE_HANDOFF_DIR": "/stage-e"
                     }
                 },
                 "identity-probe": {
@@ -389,8 +390,8 @@ MANIFEST = {
                         ],
                         "mountPoints": [
                             {
-                                "containerPath": "/home/identity",
-                                "readOnly": False,
+                                "containerPath": "/stage-e",
+                                "readOnly": True,
                                 "sourceVolume": "stage-e-handoff"
                             }
                         ],
@@ -408,7 +409,7 @@ MANIFEST = {
                         "PROBE_STAGE": "probe",
                         "PROBE_ACCOUNT": "throwaway",
                         "PROBE_ORGANISATION": "munaxa-stage-e-checks",
-                        "PROBE_HANDOFF_DIR": "/home/identity"
+                        "PROBE_HANDOFF_DIR": "/stage-e"
                     }
                 }
             },
@@ -424,7 +425,7 @@ MANIFEST = {
                 "commit": "",
                 "sha256": ""
             },
-            "loaderSha256": "859a0af4bd0e9a1fa102779d5af32f8cbbfd16ec30b053747e1f6c7181ce394d",
+            "loaderSha256": "0e391c1d519062392b9c1f8ad4320969d19a3999ff440849eac46e1ed425d687",
             "volumes": [
                 "stage-e-handoff"
             ]

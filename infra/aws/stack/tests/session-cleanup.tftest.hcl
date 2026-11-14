@@ -247,7 +247,8 @@ run "enabled_cleanup_is_scoped_and_complete" {
       jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[0].States.SecretList.Parameters.Filters[0].Values == ["munaxa-nonprod/identity-bootstrap"] &&
       jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[0].States.SecretMatch.Parameters["matches.$"] == "$.secretList.SecretList[?(@.Name == 'munaxa-nonprod/identity-bootstrap')]" &&
       jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[1].States.AlbMatch.Parameters["matches.$"] == "$.lb.LoadBalancers[?(@.LoadBalancerName == 'munaxa-nonprod')]" &&
-      jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[3].States.DbDescribe.Parameters.DbInstanceIdentifier == "munaxa-nonprod-pg"
+      jsondecode(aws_sfn_state_machine.session_cleanup[0].definition).States.Cleanup.Branches[3].States.DbDescribe.Parameters.DbInstanceIdentifier == "munaxa-nonprod-pg" &&
+      !strcontains(aws_sfn_state_machine.session_cleanup[0].definition, "??????")
     )
     error_message = "The targets are the fixed nonprod names: the bootstrap secret (never identity-operator), the ALB and the database."
   }

@@ -90,18 +90,30 @@ function bootstrap(databaseUrl, email, password) {
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn(process.execPath, ['scripts/bootstrap-account.mjs', '--organisation', THROWAWAY_ORGANISATION, '--organisation-name', 'Stage E checks'], {
-        env: {
-          ...Object.fromEntries(CA_ENV.filter((name) => process.env[name]).map((name) => [name, process.env[name]])),
-          PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
-          NODE_ENV: 'production',
-          DIRECT_DATABASE_URL: databaseUrl,
-          IDENTITY_OWNER_EMAIL: email,
-          IDENTITY_OWNER_PASSWORD: password,
+      child = spawn(
+        process.execPath,
+        [
+          'scripts/bootstrap-account.mjs',
+          '--organisation',
+          THROWAWAY_ORGANISATION,
+          '--organisation-name',
+          'Stage E checks',
+        ],
+        {
+          env: {
+            ...Object.fromEntries(
+              CA_ENV.filter((name) => process.env[name]).map((name) => [name, process.env[name]]),
+            ),
+            PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
+            NODE_ENV: 'production',
+            DIRECT_DATABASE_URL: databaseUrl,
+            IDENTITY_OWNER_EMAIL: email,
+            IDENTITY_OWNER_PASSWORD: password,
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+          timeout: 60000,
         },
-        stdio: ['ignore', 'pipe', 'pipe'],
-        timeout: 60000,
-      });
+      );
     } catch {
       resolve({ code: 'spawn' });
       return;
@@ -118,7 +130,8 @@ function bootstrap(databaseUrl, email, password) {
       if (signal !== null) return resolve({ code: 'bootstrap-killed' });
       if (status !== 0) return resolve({ code: 'bootstrap-exit' });
       const out = Buffer.concat(chunks).toString('utf8');
-      if (!out.includes(`Created ${email} in organisation ${THROWAWAY_ORGANISATION}.`)) return resolve({ code: 'bootstrap-not-created' });
+      if (!out.includes(`Created ${email} in organisation ${THROWAWAY_ORGANISATION}.`))
+        return resolve({ code: 'bootstrap-not-created' });
       const sub = /^\s+sub\s+(\S+)\s*$/m.exec(out)?.[1] ?? '';
       if (!UUID.test(sub)) return resolve({ code: 'bootstrap-no-sub' });
       return resolve({ sub });
@@ -177,14 +190,22 @@ async function account() {
   // Printed before the hand-off write, so a failed write still names the account to disable.
   process.stdout.write(`INFO throwaway-sub ${made.sub}\n`);
   try {
-    await writeFile(`${dir}/${HANDOFF_FILE}`, JSON.stringify({ email: made.email, password: made.password, sub: made.sub }), { flag: 'wx', mode: 0o600 });
+    await writeFile(
+      `${dir}/${HANDOFF_FILE}`,
+      JSON.stringify({ email: made.email, password: made.password, sub: made.sub }),
+      // 0644: written by the account container (uid 0, the only writer of the root-owned volume) for the
+      // probe container (the non-root identity user), which can read it but not delete it; the
+      // volume dies with the task.
+      { flag: 'wx', mode: 0o644 },
+    );
   } catch {
     return failAccount('handoff-write');
   }
   process.exitCode = 0;
 }
 
-// The probe container's throwaway credential: read once, deleted at once, shape-checked.
+// The probe container's throwaway credential: read once, shape-checked, and deleted where the
+// volume allows it (on the read-only task mount it stays until the task ends).
 async function handoff() {
   const dir = handoffDir();
   if (dir === '') return { code: 'handoff-dir' };
@@ -202,7 +223,11 @@ async function handoff() {
   } catch {
     return { code: 'handoff-shape' };
   }
-  if (!THROWAWAY_EMAIL.test(got?.email ?? '') || !THROWAWAY_PASSWORD.test(got?.password ?? '') || !UUID.test(got?.sub ?? '')) {
+  if (
+    !THROWAWAY_EMAIL.test(got?.email ?? '') ||
+    !THROWAWAY_PASSWORD.test(got?.password ?? '') ||
+    !UUID.test(got?.sub ?? '')
+  ) {
     return { code: 'handoff-shape' };
   }
   return { email: got.email, password: got.password };
@@ -237,7 +262,11 @@ async function main() {
       process.exitCode = 3;
       return;
     }
-    env = { ...process.env, IDENTITY_OWNER_EMAIL: credential.email, IDENTITY_OWNER_PASSWORD: credential.password };
+    env = {
+      ...process.env,
+      IDENTITY_OWNER_EMAIL: credential.email,
+      IDENTITY_OWNER_PASSWORD: credential.password,
+    };
   }
   let probe;
   try {

@@ -6,10 +6,7 @@
   "cluster": "munaxa-nonprod",
   "network": {
     "vpcName": "munaxa-nonprod",
-    "subnetNames": [
-      "munaxa-nonprod-public-a",
-      "munaxa-nonprod-public-b"
-    ],
+    "subnetNames": ["munaxa-nonprod-public-a", "munaxa-nonprod-public-b"],
     "assignPublicIp": "ENABLED"
   },
   "families": {
@@ -43,11 +40,7 @@
               "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
             }
           },
-          "environmentNames": [
-            "HOME",
-            "PGHOST",
-            "PGPORT"
-          ],
+          "environmentNames": ["HOME", "PGHOST", "PGPORT"],
           "shape": {
             "essential": true,
             "user": "999:999",
@@ -55,15 +48,10 @@
             "linuxParameters": {
               "capabilities": {
                 "add": [],
-                "drop": [
-                  "ALL"
-                ]
+                "drop": ["ALL"]
               }
             },
-            "entryPoint": [
-              "sh",
-              "-c"
-            ],
+            "entryPoint": ["sh", "-c"],
             "logConfiguration": {
               "logDriver": "awslogs",
               "options": {
@@ -97,18 +85,14 @@
               "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
             }
           },
-          "environmentNames": [
-            "NODE_ENV"
-          ],
+          "environmentNames": ["NODE_ENV"],
           "shape": {
             "essential": true,
             "readonlyRootFilesystem": false,
             "linuxParameters": {
               "capabilities": {
                 "add": [],
-                "drop": [
-                  "ALL"
-                ]
+                "drop": ["ALL"]
               }
             },
             "logConfiguration": {
@@ -153,18 +137,14 @@
               "key": "IDENTITY_OWNER_PASSWORD"
             }
           },
-          "environmentNames": [
-            "NODE_ENV"
-          ],
+          "environmentNames": ["NODE_ENV"],
           "shape": {
             "essential": true,
             "readonlyRootFilesystem": true,
             "linuxParameters": {
               "capabilities": {
                 "add": [],
-                "drop": [
-                  "ALL"
-                ]
+                "drop": ["ALL"]
               }
             },
             "logConfiguration": {
@@ -190,12 +170,7 @@
         "default": null,
         "seed-control-roles": {
           "container": "identity-bootstrap",
-          "command": [
-            "node",
-            "scripts/seed-control-roles.mjs",
-            "--organisation",
-            "munaxa-group"
-          ]
+          "command": ["node", "scripts/seed-control-roles.mjs", "--organisation", "munaxa-group"]
         },
         "operator-admin-role": {
           "container": "identity-bootstrap",
@@ -227,26 +202,20 @@
               "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
             }
           },
-          "environmentNames": [
-            "NODE_ENV",
-            "PROBE_ACCOUNT",
-            "PROBE_HANDOFF_DIR",
-            "PROBE_STAGE"
-          ],
+          "environmentNames": ["NODE_ENV", "PROBE_ACCOUNT", "PROBE_HANDOFF_DIR", "PROBE_STAGE"],
           "shape": {
             "essential": false,
+            "user": "0",
             "readonlyRootFilesystem": true,
             "linuxParameters": {
               "capabilities": {
                 "add": [],
-                "drop": [
-                  "ALL"
-                ]
+                "drop": ["ALL"]
               }
             },
             "mountPoints": [
               {
-                "containerPath": "/home/identity",
+                "containerPath": "/stage-e",
                 "readOnly": false,
                 "sourceVolume": "stage-e-handoff"
               }
@@ -265,7 +234,7 @@
             "NODE_ENV": "production",
             "PROBE_STAGE": "account",
             "PROBE_ACCOUNT": "throwaway",
-            "PROBE_HANDOFF_DIR": "/home/identity"
+            "PROBE_HANDOFF_DIR": "/stage-e"
           }
         },
         "identity-probe": {
@@ -294,9 +263,7 @@
             "linuxParameters": {
               "capabilities": {
                 "add": [],
-                "drop": [
-                  "ALL"
-                ]
+                "drop": ["ALL"]
               }
             },
             "dependsOn": [
@@ -307,8 +274,8 @@
             ],
             "mountPoints": [
               {
-                "containerPath": "/home/identity",
-                "readOnly": false,
+                "containerPath": "/stage-e",
+                "readOnly": true,
                 "sourceVolume": "stage-e-handoff"
               }
             ],
@@ -326,26 +293,22 @@
             "PROBE_STAGE": "probe",
             "PROBE_ACCOUNT": "throwaway",
             "PROBE_ORGANISATION": "munaxa-stage-e-checks",
-            "PROBE_HANDOFF_DIR": "/home/identity"
+            "PROBE_HANDOFF_DIR": "/stage-e"
           }
         }
       },
       "commands": {
         "default": {
           "container": "identity-probe",
-          "environment": [
-            "PROBE_ALB_DNS"
-          ]
+          "environment": ["PROBE_ALB_DNS"]
         }
       },
       "probePin": {
         "commit": "",
         "sha256": ""
       },
-      "loaderSha256": "859a0af4bd0e9a1fa102779d5af32f8cbbfd16ec30b053747e1f6c7181ce394d",
-      "volumes": [
-        "stage-e-handoff"
-      ]
+      "loaderSha256": "0e391c1d519062392b9c1f8ad4320969d19a3999ff440849eac46e1ed425d687",
+      "volumes": ["stage-e-handoff"]
     },
     "munaxa-nonprod-identity": {
       "executionRole": "munaxa-nonprod-identity-execution",
@@ -414,9 +377,7 @@
             "linuxParameters": {
               "capabilities": {
                 "add": [],
-                "drop": [
-                  "ALL"
-                ]
+                "drop": ["ALL"]
               }
             },
             "dependsOn": [
@@ -465,15 +426,10 @@
             "linuxParameters": {
               "capabilities": {
                 "add": [],
-                "drop": [
-                  "ALL"
-                ]
+                "drop": ["ALL"]
               }
             },
-            "entryPoint": [
-              "sh",
-              "-c"
-            ],
+            "entryPoint": ["sh", "-c"],
             "healthCheck": {
               "command": [
                 "CMD-SHELL",

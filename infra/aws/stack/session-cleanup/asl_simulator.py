@@ -18,9 +18,28 @@ service behaviour. Those are listed as unverified in the report and checked by t
 """
 
 import copy
-import fnmatch
 import json
 import re
+
+
+def _string_matches(value, pattern):
+    """Choice StringMatches: only `*` is a wildcard (any run of characters, also empty) and `\\*`
+    is a literal star. Not glob: `?` and `[` are literal (fix-check finding N-2)."""
+    parts, literal, i = [], "", 0
+    while i < len(pattern):
+        if pattern[i] == "\\" and i + 1 < len(pattern) and pattern[i + 1] in "*\\":
+            literal += pattern[i + 1]
+            i += 2
+        elif pattern[i] == "*":
+            parts.append(re.escape(literal))
+            literal = ""
+            parts.append(".*")
+            i += 1
+        else:
+            literal += pattern[i]
+            i += 1
+    parts.append(re.escape(literal))
+    return re.fullmatch("".join(parts), value, re.S) is not None
 
 
 class StatesError(Exception):
@@ -196,7 +215,7 @@ def _matches(rule, data):
     if "StringEquals" in rule:
         return isinstance(value, str) and value == rule["StringEquals"]
     if "StringMatches" in rule:
-        return isinstance(value, str) and fnmatch.fnmatchcase(value, rule["StringMatches"])
+        return isinstance(value, str) and _string_matches(value, rule["StringMatches"])
     if "BooleanEquals" in rule:
         return isinstance(value, bool) and value == rule["BooleanEquals"]
     number = isinstance(value, (int, float)) and not isinstance(value, bool)

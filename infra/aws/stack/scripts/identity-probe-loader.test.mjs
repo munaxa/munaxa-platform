@@ -38,7 +38,12 @@ const pinned = (commit, digest) =>
   LOADER.replace('__PROBE_COMMIT__', commit).replace('__PROBE_SHA256__', digest);
 
 function run(program, { body = '', status = 200, env = {}, throws = false, cwd } = {}) {
-  const childEnv = { PATH: process.env.PATH, PROBE_STAGE: 'probe', STUB_STATUS: String(status), ...env };
+  const childEnv = {
+    PATH: process.env.PATH,
+    PROBE_STAGE: 'probe',
+    STUB_STATUS: String(status),
+    ...env,
+  };
   for (const [k, v] of Object.entries(childEnv)) if (v === undefined) delete childEnv[k];
   childEnv.STUB_BODY_FILE = join(WORK, `body-${++bodies}`);
   writeFileSync(childEnv.STUB_BODY_FILE, body);
@@ -237,7 +242,14 @@ function account(behaviour, env = {}) {
   const r = run(pinned(COMMIT, sha256(PROBE_ECHO)), {
     body: PROBE_ECHO,
     cwd: w.dir,
-    env: { PROBE_STAGE: 'account', PROBE_ACCOUNT: 'throwaway', PROBE_HANDOFF_DIR: dir, DIRECT_DATABASE_URL: DB_URL, NODE_EXTRA_CA_CERTS: CA, ...env },
+    env: {
+      PROBE_STAGE: 'account',
+      PROBE_ACCOUNT: 'throwaway',
+      PROBE_HANDOFF_DIR: dir,
+      DIRECT_DATABASE_URL: DB_URL,
+      NODE_EXTRA_CA_CERTS: CA,
+      ...env,
+    },
   });
   return { r, w, dir };
 }
@@ -248,12 +260,24 @@ test('account container: creates the account, writes the hand-off file, never do
   assert.equal(r.stdout, `INFO throwaway-sub ${SUB}\n`);
   assert.ok(!r.stderr.includes('FETCH '), 'the account container must not fetch the probe');
   const got = w.received();
-  assert.deepEqual(got.argv, ['--organisation', 'munaxa-stage-e-checks', '--organisation-name', 'Stage E checks']);
+  assert.deepEqual(got.argv, [
+    '--organisation',
+    'munaxa-stage-e-checks',
+    '--organisation-name',
+    'Stage E checks',
+  ]);
   assert.equal(got.url, DB_URL);
   assert.match(got.email, /^stage-e-[0-9a-f]{16}@stage-e\.invalid$/);
   assert.equal(got.passwordLength, 36);
   // The child gets these names and nothing else; the CA bundle (review finding C-1) included.
-  assert.deepEqual(got.names, ['DIRECT_DATABASE_URL', 'IDENTITY_OWNER_EMAIL', 'IDENTITY_OWNER_PASSWORD', 'NODE_ENV', 'NODE_EXTRA_CA_CERTS', 'PATH']);
+  assert.deepEqual(got.names, [
+    'DIRECT_DATABASE_URL',
+    'IDENTITY_OWNER_EMAIL',
+    'IDENTITY_OWNER_PASSWORD',
+    'NODE_ENV',
+    'NODE_EXTRA_CA_CERTS',
+    'PATH',
+  ]);
   const handed = JSON.parse(readFileSync(join(dir, 'stage-e-account.json'), 'utf8'));
   assert.deepEqual(Object.keys(handed).sort(), ['email', 'password', 'sub']);
   assert.equal(handed.email, got.email);
@@ -261,20 +285,32 @@ test('account container: creates the account, writes the hand-off file, never do
   assert.match(handed.password, /^Se7-[A-Za-z0-9_-]{32}$/);
   assert.equal(existsSync(join(dir, '.stage-e-ready')), false);
   // The child's output, including its stderr, never reaches the task's log.
-  assert.ok(!r.stdout.includes('synthetic-db-password') && !r.stderr.includes('synthetic-db-password'));
+  assert.ok(
+    !r.stdout.includes('synthetic-db-password') && !r.stderr.includes('synthetic-db-password'),
+  );
   assert.ok(!r.stdout.includes(got.email));
 });
 
 const accountRefusals = [
   ['no database URL', {}, { DIRECT_DATABASE_URL: undefined }, 'no-database-url'],
-  ['a URL that is not PostgreSQL', {}, { DIRECT_DATABASE_URL: 'https://db.invalid/' }, 'no-database-url'],
+  [
+    'a URL that is not PostgreSQL',
+    {},
+    { DIRECT_DATABASE_URL: 'https://db.invalid/' },
+    'no-database-url',
+  ],
   ['a bootstrap that exits non-zero (twice)', { exit: true }, {}, 'bootstrap-exit'],
   ['an account that already existed', { already: true }, {}, 'bootstrap-not-created'],
   ['a sub that is not a UUID', { sub: 'not-a-uuid' }, {}, 'bootstrap-no-sub'],
   ['operator mode', {}, { PROBE_ACCOUNT: 'operator' }, 'not-throwaway-mode'],
   ['no hand-off directory', {}, { PROBE_HANDOFF_DIR: undefined }, 'handoff-dir'],
   ['a relative hand-off directory', {}, { PROBE_HANDOFF_DIR: 'tmp/x' }, 'handoff-dir'],
-  ['a hand-off directory that cannot be written', {}, { PROBE_HANDOFF_DIR: '/nonexistent/stage-e' }, 'handoff-not-writable'],
+  [
+    'a hand-off directory that cannot be written',
+    {},
+    { PROBE_HANDOFF_DIR: '/nonexistent/stage-e' },
+    'handoff-not-writable',
+  ],
 ];
 
 for (const [name, behaviour, env, code] of accountRefusals) {
@@ -299,19 +335,35 @@ test('account container: an existing hand-off file is never overwritten, and the
   const r = run(pinned(COMMIT, sha256(PROBE_ECHO)), {
     body: PROBE_ECHO,
     cwd: w.dir,
-    env: { PROBE_STAGE: 'account', PROBE_ACCOUNT: 'throwaway', PROBE_HANDOFF_DIR: dir, DIRECT_DATABASE_URL: DB_URL },
+    env: {
+      PROBE_STAGE: 'account',
+      PROBE_ACCOUNT: 'throwaway',
+      PROBE_HANDOFF_DIR: dir,
+      DIRECT_DATABASE_URL: DB_URL,
+    },
   });
   assert.equal(r.code, 3);
   assert.equal(r.stdout, `INFO throwaway-sub ${SUB}\nFAIL throwaway-account handoff-write\n`);
   assert.equal(readFileSync(join(dir, 'stage-e-account.json'), 'utf8'), 'old');
 });
 
-const GOOD_HANDOFF = { email: 'stage-e-0123456789abcdef@stage-e.invalid', password: 'Se7-abcdefghijklmnopqrstuvwxyzABCDEF', sub: SUB };
+const GOOD_HANDOFF = {
+  email: 'stage-e-0123456789abcdef@stage-e.invalid',
+  password: 'Se7-abcdefghijklmnopqrstuvwxyzABCDEF',
+  sub: SUB,
+};
 
 function probeStage(handed, env = {}) {
   const dir = handoffDir();
-  if (handed !== undefined) writeFileSync(join(dir, 'stage-e-account.json'), typeof handed === 'string' ? handed : JSON.stringify(handed));
-  const r = run(pinned(COMMIT, sha256(PROBE_ECHO)), { body: PROBE_ECHO, env: { PROBE_ACCOUNT: 'throwaway', PROBE_HANDOFF_DIR: dir, ...env } });
+  if (handed !== undefined)
+    writeFileSync(
+      join(dir, 'stage-e-account.json'),
+      typeof handed === 'string' ? handed : JSON.stringify(handed),
+    );
+  const r = run(pinned(COMMIT, sha256(PROBE_ECHO)), {
+    body: PROBE_ECHO,
+    env: { PROBE_ACCOUNT: 'throwaway', PROBE_HANDOFF_DIR: dir, ...env },
+  });
   return { r, dir };
 }
 
@@ -325,7 +377,11 @@ test('probe container: reads the hand-off once, deletes it, and passes the crede
 const probeRefusals = [
   ['no hand-off file', undefined, 'handoff-read'],
   ['a hand-off file that is not JSON', 'not json', 'handoff-shape'],
-  ['an operator-shaped identifier', { ...GOOD_HANDOFF, email: 'operator@example.invalid' }, 'handoff-shape'],
+  [
+    'an operator-shaped identifier',
+    { ...GOOD_HANDOFF, email: 'operator@example.invalid' },
+    'handoff-shape',
+  ],
   ['a short password', { ...GOOD_HANDOFF, password: 'Se7-short' }, 'handoff-shape'],
   ['a sub that is not a UUID', { ...GOOD_HANDOFF, sub: 'x' }, 'handoff-shape'],
 ];
@@ -350,7 +406,10 @@ for (const name of ['DIRECT_DATABASE_URL', 'DATABASE_URL', 'DATABASE_MIGRATION_U
 
 test('an unknown or missing stage refuses', () => {
   for (const stage of [undefined, 'both']) {
-    const r = run(pinned(COMMIT, sha256(PROBE_OK)), { body: PROBE_OK, env: { PROBE_STAGE: stage } });
+    const r = run(pinned(COMMIT, sha256(PROBE_OK)), {
+      body: PROBE_OK,
+      env: { PROBE_STAGE: stage },
+    });
     assert.equal(r.code, 3);
     assert.equal(r.stdout, 'FAIL probe-source stage\n');
   }
@@ -361,7 +420,12 @@ test('operator mode never reads a hand-off file and passes no database URL to th
   writeFileSync(join(dir, 'stage-e-account.json'), JSON.stringify(GOOD_HANDOFF));
   const r = run(pinned(COMMIT, sha256(PROBE_ECHO)), {
     body: PROBE_ECHO,
-    env: { PROBE_ACCOUNT: 'operator', PROBE_HANDOFF_DIR: dir, IDENTITY_OWNER_EMAIL: 'operator@example.invalid', IDENTITY_OWNER_PASSWORD: 'x' },
+    env: {
+      PROBE_ACCOUNT: 'operator',
+      PROBE_HANDOFF_DIR: dir,
+      IDENTITY_OWNER_EMAIL: 'operator@example.invalid',
+      IDENTITY_OWNER_PASSWORD: 'x',
+    },
   });
   assert.equal(r.code, 0);
   assert.equal(r.stdout, 'PASS demo none pw=1 leaked= in-process=yes\n');

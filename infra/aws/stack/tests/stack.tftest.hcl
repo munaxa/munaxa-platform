@@ -1129,8 +1129,10 @@ run "identity_probe_throwaway_mode_keeps_the_owner_url_out_of_the_probe_containe
     condition = (
       aws_ecs_task_definition.identity_probe[0].pid_mode == null &&
       [for v in aws_ecs_task_definition.identity_probe[0].volume : v.name] == ["stage-e-handoff"] &&
-      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].mountPoints == [{ sourceVolume = "stage-e-handoff", containerPath = "/home/identity", readOnly = false }] &&
-      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].mountPoints == [{ sourceVolume = "stage-e-handoff", containerPath = "/home/identity", readOnly = false }]
+      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].mountPoints == [{ sourceVolume = "stage-e-handoff", containerPath = "/stage-e", readOnly = false }] &&
+      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].mountPoints == [{ sourceVolume = "stage-e-handoff", containerPath = "/stage-e", readOnly = true }] &&
+      { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].user == "0" &&
+      !contains(keys({ for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"]), "user")
     )
     error_message = "The containers share only the ephemeral hand-off volume, never a PID namespace."
   }
@@ -1149,7 +1151,7 @@ run "identity_probe_throwaway_mode_keeps_the_owner_url_out_of_the_probe_containe
       { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].environment : e.name => e.value }["PROBE_ACCOUNT"] == "throwaway" &&
       { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].environment : e.name => e.value }["PROBE_ORGANISATION"] == "munaxa-stage-e-checks" &&
       { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["identity-probe"].environment : e.name => e.value }["PROBE_STAGE"] == "probe" &&
-      { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].environment : e.name => e.value } == { NODE_ENV = "production", PROBE_STAGE = "account", PROBE_ACCOUNT = "throwaway", PROBE_HANDOFF_DIR = "/home/identity" }
+      { for e in { for c in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions) : c.name => c }["throwaway-account"].environment : e.name => e.value } == { NODE_ENV = "production", PROBE_STAGE = "account", PROBE_ACCOUNT = "throwaway", PROBE_HANDOFF_DIR = "/stage-e" }
     )
     error_message = "Throwaway mode pins its own organisation, never munaxa-group, and each container its stage."
   }

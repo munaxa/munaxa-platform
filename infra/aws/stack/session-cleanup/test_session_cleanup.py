@@ -36,7 +36,7 @@ TEMPLATE_VALUES = {
     "vpc_id": VPC,
     "db_identifier": "munaxa-nonprod-pg",
     "bootstrap_secret": BOOTSTRAP,
-    "bootstrap_secret_arn_pattern": f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{BOOTSTRAP}-??????",
+    "bootstrap_secret_arn_pattern": f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{BOOTSTRAP}-*",
 }
 
 # The ten actions the role policy allows (session-cleanup.tf; tests/session-cleanup.tftest.hcl
@@ -468,6 +468,16 @@ class Scenarios(unittest.TestCase):
             result, sim = run(aws, payload)
             self.assertEqual((result["status"], result["error"]), ("FAILED", "BadInput"), payload)
             self.assertEqual(sim.calls, [])
+
+    def test_string_matches_knows_only_the_star(self):
+        # Fix-check finding N-2: Step Functions treats `?` literally, unlike IAM and glob.
+        from asl_simulator import _string_matches
+        arn = f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{BOOTSTRAP}-XyZ123"
+        self.assertFalse(_string_matches(arn, arn[:-6] + "??????"))
+        self.assertTrue(_string_matches(arn, arn[:-6] + "*"))
+        self.assertTrue(_string_matches("a*b", "a\\*b"))
+        self.assertFalse(_string_matches("axb", "a\\*b"))
+        self.assertNotIn("?", TEMPLATE_VALUES["bootstrap_secret_arn_pattern"] + TEMPLATE_VALUES["alb_arn_pattern"])
 
     def test_unknown_error_name_fails_closed(self):
         # If AWS names "not found" differently from what the definition expects, the branch reports
