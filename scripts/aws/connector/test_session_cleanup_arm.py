@@ -272,6 +272,24 @@ class Arm(unittest.TestCase):
         r = run(fake, MODE="arm", HARD_STOP_UTC=h_text)
         self.assertEqual((r["p"]["status"], r["s"]["status"]), ("conflict", "conflict"))
 
+    def test_pass_c_every_field_of_an_armed_schedule_is_compared(self):
+        changes = {
+            "retries": lambda sch: sch["Target"]["RetryPolicy"].update(MaximumRetryAttempts=0),
+            "timezone": lambda sch: sch.update(ScheduleExpressionTimezone="Europe/Berlin"),
+            "window": lambda sch: sch.update(FlexibleTimeWindow={"Mode": "FLEXIBLE", "MaximumWindowInMinutes": 1440}),
+        }
+        for what, change in changes.items():
+            with self.subTest(what=what):
+                fake = Fake()
+                h_text = hard_stop()
+                self.assertEqual(run(fake, MODE="arm", HARD_STOP_UTC=h_text)["result"], "ARMED")
+                armed = [n for n in fake.schedules if not n.endswith("-daily")]
+                self.assertEqual(len(armed), 2)
+                for name in armed:
+                    change(fake.schedules[name])
+                r = run(fake, MODE="arm", HARD_STOP_UTC=h_text)
+                self.assertEqual((r["p"]["status"], r["s"]["status"]), ("conflict", "conflict"))
+
     def test_a_failed_gate_arms_nothing(self):
         fake = Fake()
         fake.running = [{"executionArn": "y"}]

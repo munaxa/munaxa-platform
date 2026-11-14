@@ -245,6 +245,32 @@ class Manifest(unittest.TestCase):
         self.assertEqual(FAMILIES["munaxa-nonprod-identity-probe"]["probePin"],
                          {"commit": pin.group(1) if pin else "", "sha256": pin.group(2) if pin else ""})
 
+    def test_pass_c_c1_pinned_environment_values_equal_nonprod_tfvars(self):
+        tfvars = read("infra", "aws", "stack", "envs", "nonprod.tfvars")
+
+        def value(name):
+            return re.search(rf'^\s*{name}\s*=\s*"((?:[^"\\]|\\.)*)"', tfvars, re.M).group(1)
+
+        block = re.search(r"^hosts\s*=\s*\{(.*?)^\}", tfvars, re.M | re.S).group(1)
+        hosts = dict(re.findall(r'^\s*(identity|control_api|operator|work)\s*=\s*"([^"]+)"', block, re.M))
+        identity = FAMILIES["munaxa-nonprod-identity"]["containers"]["identity"]["environment"]
+        probe = FAMILIES["munaxa-nonprod-identity-probe"]["containers"]["identity-probe"]["environment"]
+        self.assertEqual(identity["IDENTITY_SIGNING_KID"], value("identity_signing_kid"))
+        self.assertEqual(probe["PROBE_SIGNING_KID"], value("identity_signing_kid"))
+        self.assertEqual(probe["PROBE_PUBLIC_KEYS"], json.loads('"' + value("identity_public_keys") + '"'))
+        self.assertEqual(identity["MFA_ENCRYPTION_PRIMARY_KID"], value("mfa_primary_kid"))
+        self.assertEqual(identity["MFA_POLICY"], value("mfa_policy"))
+        self.assertEqual(identity["IDENTITY_BASE_URL"], "https://" + hosts["identity"])
+        self.assertEqual(identity["CSRF_TRUSTED_ORIGINS"], ",".join("https://" + hosts[k] for k in ("identity", "work", "operator")))
+        self.assertEqual(probe["PROBE_HOST"], hosts["identity"])
+        self.assertEqual(probe["PROBE_OPERATOR_HOST"], hosts["operator"])
+        self.assertEqual(probe["PROBE_CONTROL_API_HOST"], hosts["control_api"])
+        self.assertEqual(probe["PROBE_UNKNOWN_HOST"], "unknown." + hosts["identity"].split(".", 1)[1])
+        if re.search(r"^\s*identity_default_organisation\s*=", tfvars, re.M):
+            self.assertEqual(identity["IDENTITY_DEFAULT_ORGANISATION"], value("identity_default_organisation"))
+        else:
+            self.assertEqual(identity["IDENTITY_DEFAULT_ORGANISATION"], "")
+
     def test_db_admin_command_and_probe_loader_are_pinned_by_their_sha256(self):
         c = FAMILIES["munaxa-nonprod-db-admin"]["containers"]["db-admin"]
         self.assertEqual(c["commandSha256"], hashlib.sha256(DB_SCRIPT.encode()).hexdigest())
@@ -416,6 +442,25 @@ class Discover(unittest.TestCase):
         td.update(proxyConfiguration=None, inferenceAccelerators=[], ephemeralStorage={})
         fake.register("munaxa-nonprod-identity-bootstrap", td)
         self.assertEqual(guard(fake, FAMILY="munaxa-nonprod-identity-bootstrap")["result"], "PASS")
+
+    def test_pass_c_an_empty_value_ecs_omits_still_passes(self):
+        fake = FakeEcs()
+        td = render("munaxa-nonprod-identity", 2)
+        for e in container(td, "identity")["environment"]:
+            if e["name"] == "IDENTITY_DEFAULT_ORGANISATION":
+                self.assertEqual(e.pop("value"), "")
+        fake.register("munaxa-nonprod-identity", td)
+        self.assertEqual(guard(fake, FAMILY="munaxa-nonprod-identity")["result"], "PASS")
+
+    def test_pass_c_a_correctly_named_volume_with_another_source_fails(self):
+        for extra in ({"efsVolumeConfiguration": {"fileSystemId": "fs-1"}}, {"host": {"sourcePath": "/"}}, {"configuredAtLaunch": True}):
+            with self.subTest(extra=extra):
+                fake = FakeEcs()
+                td = render("munaxa-nonprod-identity-probe", 2)
+                td["volumes"][0].update(extra)
+                fake.register("munaxa-nonprod-identity-probe", td)
+                r = guard(fake, pinned_script(), FAMILY="munaxa-nonprod-identity-probe")
+                self.assertIn("volumes", r["families"][0]["problems"])
 
     def test_owner_review_b8_the_identity_port_mapping_is_the_only_one(self):
         fake = FakeEcs()
@@ -777,6 +822,18 @@ class NoRevisionNumbers(unittest.TestCase):
                 if "aws ecs run-task" in line and not any("SUPERSEDED" in x for x in lines[max(0, n - 12):n]):
                     offenders.append(f"{os.path.basename(path)}:{n + 1}")
         self.assertEqual(offenders, [])
+
+    def test_pass_c_c3_no_run_one_and_the_readme_keeps_e1_families_out_of_run_task(self):
+        # Owner review C-3: the checklist still defined run_one, and the README allowed a hand-run db-admin.
+        checklist = read("docs", "aws-migration", "agent-reports", "2026-11-11-identity-first-session-operator-checklist",
+                         "00-IDENTITY-FIRST-SESSION-OPERATOR-CHECKLIST.md")
+        self.assertNotRegex(checklist, r"(?m)^\s*run_one\b|run_one\(\)\s*\{")
+        readme = read("infra", "aws", "README.md")
+        step = readme[readme.index("3. Run the db-admin task"):readme.index("using the\n   `run_task_network`")]
+        hand = step[step.index("`aws ecs run-task` is used only for"):]
+        for family in ("db-admin", "identity-migrate", "identity-bootstrap", "identity-probe", "`identity`"):
+            self.assertIn(family, step[:step.index("`aws ecs run-task` is used only for")])
+            self.assertNotIn(family, hand)
 
     def test_the_pattern_catches_the_old_forms(self):
         for line in ("run_one munaxa-nonprod-db-admin:1 $SG", "run_one $C-identity-bootstrap:1 \"$SG\"",

@@ -365,7 +365,7 @@
         "commit": "",
         "sha256": ""
       },
-      "loaderSha256": "0201914656cd129b1de25cccf60af0248f5e99aba48d820a0b21f52b90a3f962",
+      "loaderSha256": "605478009042bea7ad60d683cc3a2afdcbfc3feb74c7c1bb7daac5e38392e01e",
       "volumes": ["stage-e-handoff"]
     },
     "munaxa-nonprod-identity": {

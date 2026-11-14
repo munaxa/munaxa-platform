@@ -247,21 +247,10 @@ SG_MIGRATE=$(aws ec2 describe-security-groups --filters Name=group-name,Values=$
   --query 'SecurityGroups[0].GroupId' --output text)
 echo "subnets=$SUBNETS db_admin=$SG_DBADMIN migrate=$SG_MIGRATE"   # two subnet ids, two sg ids; no "None"
 
-# SUPERSEDED (BE-1, 14 Nov 2026): never call run_one. Every task is started by E-1 MODE run
-# (scripts/aws/connector/e1-task-guard.py) and followed by E-1 MODE status; the function is kept only
-# as a record of the 11 Nov procedure. TASK below is the task ARN E-1 returned.
-# Runs one task, waits for it to stop, prints exit code and stop reason. Never pass a secret in $3.
-run_one() { # run_one <task-definition> <security-group> [overrides-json]
-  local args=(--cluster "$C" --launch-type FARGATE --count 1 --task-definition "$1"
-    --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$2],assignPublicIp=ENABLED}"
-    --started-by first-identity-session --query 'tasks[0].taskArn' --output text)
-  [ -n "${3:-}" ] && args+=(--overrides "$3")
-  TASK=$(aws ecs run-task "${args[@]}") || { echo "run-task refused: STOP"; return 1; }
-  echo "task ${TASK##*/} started"; aws ecs wait tasks-stopped --cluster "$C" --tasks "$TASK"
-  aws ecs describe-tasks --cluster "$C" --tasks "$TASK" --query \
-    'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason,exitCode:containers[0].exitCode,containerReason:containers[0].reason}' --output table
-}
-```
+# SUPERSEDED (BE-1, 14 Nov 2026): the run_one function of the 11 Nov procedure is removed (owner
+# review C-3, see 2026-11-14-identity-stage-e-blockers-remediation/13). Every task is started by
+# E-1 MODE run (scripts/aws/connector/e1-task-guard.py) and followed by E-1 MODE status. TASK
+# below is the task ARN E-1 returned. The 11 Nov text is in git history (main 68fa6f9).```
 
 **Network and security-group validation.** The lookups must print two subnet ids and two group
 ids, with no `None`. `assignPublicIp=ENABLED` is required, because the subnets are public and there

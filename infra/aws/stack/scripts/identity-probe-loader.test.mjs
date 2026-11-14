@@ -302,7 +302,6 @@ const accountRefusals = [
   ],
   ['a bootstrap that exits non-zero (twice)', { exit: true }, {}, 'bootstrap-exit'],
   ['an account that already existed', { already: true }, {}, 'bootstrap-not-created'],
-  ['a sub that is not a UUID', { sub: 'not-a-uuid' }, {}, 'bootstrap-no-sub'],
   ['operator mode', {}, { PROBE_ACCOUNT: 'operator' }, 'not-throwaway-mode'],
   ['no hand-off directory', {}, { PROBE_HANDOFF_DIR: undefined }, 'handoff-dir'],
   ['a relative hand-off directory', {}, { PROBE_HANDOFF_DIR: 'tmp/x' }, 'handoff-dir'],
@@ -362,6 +361,16 @@ test('account container: a refused password is retried with a fresh address (own
   assert.equal(r.stdout, 'FAIL throwaway-account bootstrap-exit\n');
   assert.equal(seen.length, 2);
   assert.notEqual(seen[0], seen[1]);
+});
+
+test('account container: created without a usable sub says so (Pass C C-2)', () => {
+  const { r, dir } = account({ sub: 'not-a-uuid' });
+  assert.equal(r.code, 3);
+  assert.equal(
+    r.stdout,
+    'INFO throwaway-created-sub-unknown\nFAIL throwaway-account bootstrap-no-sub\n',
+  );
+  assert.equal(existsSync(join(dir, 'stage-e-account.json')), false);
 });
 
 test('account container creates nothing when the hand-off volume is not writable', () => {

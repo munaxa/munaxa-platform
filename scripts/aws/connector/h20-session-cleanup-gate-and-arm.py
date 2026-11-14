@@ -198,6 +198,7 @@ async def arm_one(label, at):
                 # Owner review A-10: a same-named schedule that would not delete itself, or retries less, is
                 # not ours.
                 and r.get("ActionAfterCompletion") == "DELETE" and r.get("ScheduleExpressionTimezone") in ("UTC", None)
+                and (r.get("FlexibleTimeWindow") or {}).get("Mode") == "OFF"
                 and (target.get("RetryPolicy") or {}).get("MaximumRetryAttempts") == 3):
             return {"name": name, "at": expression, "status": "already-armed"}
         return {"name": name, "status": "conflict"}

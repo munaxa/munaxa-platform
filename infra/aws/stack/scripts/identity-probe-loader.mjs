@@ -156,7 +156,7 @@ async function throwaway() {
     const password = `Se7-${randomBytes(24).toString('base64url')}`;
     const made = await bootstrap(databaseUrl, email, password);
     if (made.sub !== undefined) return { email, password, sub: made.sub };
-    if (made.created) return { code: made.code, createdSub: made.createdSub };
+    if (made.created) return { code: made.code, created: true, createdSub: made.createdSub };
     if (made.code !== 'bootstrap-exit') return made;
   }
   return { code: 'bootstrap-exit' };
@@ -195,6 +195,8 @@ async function account() {
     // An account was created although the step failed: name it (sub only) for the disable step.
     if (made.createdSub !== undefined)
       process.stdout.write(`INFO throwaway-sub ${made.createdSub}\n`);
+    // Pass C C-2: created, but no sub was printed: say so, never read as "nothing exists".
+    else if (made.created) process.stdout.write('INFO throwaway-created-sub-unknown\n');
     return failAccount(made.code);
   }
   // Printed before the hand-off write, so a failed write still names the account to disable.

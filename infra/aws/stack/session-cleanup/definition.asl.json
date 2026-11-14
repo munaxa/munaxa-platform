@@ -8,6 +8,11 @@
       "Type": "Choice",
       "Choices": [
         {
+          "Variable": "$.dryRun",
+          "IsPresent": false,
+          "Next": "BadInput"
+        },
+        {
           "And": [
             {
               "Variable": "$.dryRun",

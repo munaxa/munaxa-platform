@@ -25,7 +25,7 @@
 #     created by the operator before `up` (gate H-20) and delete themselves after firing; they are
 #     not Terraform resources (README "Every configuration PR needs its own apply").
 #   - Two alarms on an unencrypted SNS topic (alarm names and states only): any FAILED, TIMED_OUT or
-#     ABORTED execution, and no SUCCEEDED execution in 24 hours (R itself broken). The owner's email
+#     ABORTED execution, and no SUCCEEDED execution in 26 hours (R itself broken). The owner's email
 #     subscription is created outside Terraform, never in this public repository.
 #
 # Scope: only names this stack gives nonprod (cluster munaxa-nonprod, ALB munaxa-nonprod, database

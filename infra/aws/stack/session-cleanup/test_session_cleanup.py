@@ -658,9 +658,6 @@ class OwnerReviewResponseShapes(unittest.TestCase):
         self.assertEqual([c for c in sim.calls if c[1] == "deleteSecret"], [])
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class OwnerReviewSurvivingMutants(unittest.TestCase):
     """Pass A mutation runs: these guards could be deleted with every earlier test still passing."""
@@ -693,3 +690,36 @@ class OwnerReviewSurvivingMutants(unittest.TestCase):
         result, sim = run(aws)
         self.assertEqual(by_component(result)["secret"]["status"], "unexpected-secret")
         self.assertIn(BOOTSTRAP, aws.secrets)
+
+
+class PassCGuards(unittest.TestCase):
+    """Pass C C-6: guards a mutation run could delete with every earlier test passing."""
+
+    def test_a_first_load_balancer_without_a_name_field_is_unexpected(self):
+        aws = FakeAws().with_session()
+        aws.mangle[("elasticloadbalancingv2", "describeLoadBalancers")] = lambda r: {"LoadBalancers": [{"Name": "x"}] + r["LoadBalancers"]}
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["alb"]["status"], "unexpected-load-balancer")
+        self.assertEqual([c for c in sim.calls if c[1] == "deleteLoadBalancer"], [])
+
+    def test_a_next_marker_on_the_confirmation_is_never_read_as_deleted(self):
+        aws = FakeAws().with_session()
+        calls = {"n": 0}
+
+        def second_page_claimed(r):
+            calls["n"] += 1
+            return r if calls["n"] == 1 else dict(r, NextMarker="more")
+        aws.mangle[("elasticloadbalancingv2", "describeLoadBalancers")] = second_page_claimed
+        result, sim = run(aws)
+        self.assertEqual(by_component(result)["alb"]["status"], "unexpected-load-balancer")
+
+    def test_missing_input_is_bad_input_without_relying_on_and_short_circuit(self):
+        for payload in ({}, {"dryRun": "false"}, {"dryRun": None}):
+            with self.subTest(payload=payload):
+                result, sim = run(FakeAws().with_session(), payload)
+                self.assertEqual((result["status"], result["error"]), ("FAILED", "BadInput"))
+                self.assertEqual(sim.calls, [])
+
+
+if __name__ == "__main__":
+    unittest.main()
