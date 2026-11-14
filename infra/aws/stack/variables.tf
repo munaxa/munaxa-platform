@@ -594,6 +594,20 @@ variable "identity_probe_source" {
   }
 }
 
+variable "identity_probe_account" {
+  description = "Which account the Identity session probe signs in with (identity-probe.tf): throwaway (a synthetic account the loader creates, 28 checks) or operator (the identity-bootstrap credential, 15 checks)."
+  type        = string
+  # Stage E blocker BE-4 (report 2026-11-14-identity-stage-e-blockers-remediation, file 04): the
+  # operator account is not signed in to during Stage E. The probe has no task definition until
+  # identity_probe_source is pinned, so this default changes no plan on main.
+  default = "throwaway"
+
+  validation {
+    condition     = contains(["throwaway", "operator"], var.identity_probe_account)
+    error_message = "identity_probe_account is throwaway or operator."
+  }
+}
+
 variable "session_cleanup_enabled" {
   description = "Nonprod only: the independent Testing session cleanup (session-cleanup.tf). Needs the backstop (session_backstop_schedule) and the bootstrap testing_session_cleanup apply first."
   type        = bool

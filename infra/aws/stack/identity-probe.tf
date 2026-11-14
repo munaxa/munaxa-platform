@@ -30,12 +30,24 @@
 # `run_task_network.subnets`, `identity_group`, assignPublicIp ENABLED. The only run-task
 # override is the PROBE_ALB_DNS environment value. No role, policy or security group is added.
 #
+# Account mode (identity_probe_account; Stage E blockers BE-3 and BE-4, report
+# 2026-11-14-identity-stage-e-blockers-remediation, files 03 and 04). The default is "throwaway":
+# the probe never signs in as the operator. Its secrets are then only DIRECT_DATABASE_URL (the
+# identity-migrate bundle's owner URL at the pinned version, which the identity-bootstrap execution
+# role already reads), and the loader uses it, before importing the probe, for one call of the
+# image's own bootstrap-account.mjs that creates a synthetic account (stage-e-<hex>@stage-e.invalid,
+# organisation munaxa-stage-e-checks, no role). The loader deletes the URL from the environment
+# first, so the downloaded probe never receives it; the probe then runs 28 checks, including the
+# MFA lifecycle and the lockout, against that account only. "operator" restores the original
+# design above (the two operator fields of identity-bootstrap, 15 checks, no database URL).
+#
 # It exists only once identity_probe_source pins a reviewed probe commit, so merging this file
 # changes no plan. Pinning it is a configuration PR with its own apply (README "Every
 # configuration PR needs its own apply"): the session workflow refuses task definition changes.
 
 locals {
-  identity_probe_enabled = local.defined.identity_api && var.identity_probe_source.commit != ""
+  identity_probe_enabled   = local.defined.identity_api && var.identity_probe_source.commit != ""
+  identity_probe_throwaway = var.identity_probe_account == "throwaway"
 
   # The certificate covers *.<domain>; a name under it that no listener rule routes.
   identity_probe_unknown_host = join(".", concat(["unknown"], slice(split(".", var.hosts.identity), 1, length(split(".", var.hosts.identity)))))
@@ -78,15 +90,20 @@ resource "aws_ecs_task_definition" "identity_probe" {
       { name = "PROBE_HOST", value = var.hosts.identity },
       { name = "PROBE_ISSUER", value = local.https.identity },
       { name = "PROBE_AUDIENCES", value = "munaxa-work,munaxa-control" },
-      { name = "PROBE_ORGANISATION", value = var.identity_operator_organisation.slug },
+      { name = "PROBE_ACCOUNT", value = var.identity_probe_account },
+      { name = "PROBE_ORGANISATION", value = local.identity_probe_throwaway ? "munaxa-stage-e-checks" : var.identity_operator_organisation.slug },
       { name = "PROBE_SIGNING_KID", value = var.identity_signing_kid },
       { name = "PROBE_PUBLIC_KEYS", value = var.identity_public_keys },
       { name = "PROBE_OPERATOR_HOST", value = var.hosts.operator },
       { name = "PROBE_CONTROL_API_HOST", value = var.hosts.control_api },
       { name = "PROBE_UNKNOWN_HOST", value = local.identity_probe_unknown_host },
     ]
-    # The bootstrap task's IDENTITY_OWNER_* fields only (ops.tf); never DIRECT_DATABASE_URL.
-    secrets = [
+    # Throwaway: the identity-migrate owner URL only, pinned like identity-bootstrap's, for the
+    # loader's one bootstrap-account.mjs call. Operator: the bootstrap task's IDENTITY_OWNER_*
+    # fields only (ops.tf), never DIRECT_DATABASE_URL.
+    secrets = local.identity_probe_throwaway ? [
+      { name = "DIRECT_DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.service["identity-migrate"].arn}:DATABASE_MIGRATION_URL::${lookup(var.secret_version_ids, "identity-migrate", "")}" },
+      ] : [
       { name = "IDENTITY_OWNER_EMAIL", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap:IDENTITY_OWNER_EMAIL::" },
       { name = "IDENTITY_OWNER_PASSWORD", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap:IDENTITY_OWNER_PASSWORD::" },
     ]

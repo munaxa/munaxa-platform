@@ -990,6 +990,7 @@ run "identity_probe_is_isolated_from_database_credentials" {
       commit = "0123456789abcdef0123456789abcdef01234567"
       sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     }
+    identity_probe_account = "operator"
   }
 
   assert {
@@ -1017,10 +1018,11 @@ run "identity_probe_is_isolated_from_database_credentials" {
   }
   assert {
     condition = alltrue([
+      # The secrets and the environment, not the loader text (which names the variables it deletes).
       for k in ["DATABASE_URL", "DIRECT_DATABASE_URL", "DATABASE_MIGRATION_URL", "MIGRATION", "rds!", "identity-migrate", "REDIS_PASSWORD", "PRIVATE KEY"] :
-      !strcontains(aws_ecs_task_definition.identity_probe[0].container_definitions, k)
+      !strcontains(jsonencode([jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].secrets, jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment]), k)
     ])
-    error_message = "The probe's container definition names no database URL, migrate bundle, RDS master secret, Redis password or private key."
+    error_message = "The probe's secrets and environment name no database URL, migrate bundle, RDS master secret, Redis password or private key."
   }
   assert {
     condition = (
@@ -1046,6 +1048,7 @@ run "identity_probe_is_isolated_from_database_credentials" {
         PROBE_HOST             = "id.test.munaxa.com"
         PROBE_ISSUER           = "https://id.test.munaxa.com"
         PROBE_AUDIENCES        = "munaxa-work,munaxa-control"
+        PROBE_ACCOUNT          = "operator"
         PROBE_ORGANISATION     = "munaxa-group"
         PROBE_SIGNING_KID      = "identity-test-2026-11"
         PROBE_PUBLIC_KEYS      = var.identity_public_keys
@@ -1070,6 +1073,77 @@ run "identity_probe_is_isolated_from_database_credentials" {
     condition     = output.run_task_network.identity_probe_definition == "munaxa-nonprod-identity-probe" && output.run_task_network.identity_group == module.identity[0].security_group_id
     error_message = "run_task_network names the probe definition and the identity group it runs with."
   }
+}
+
+# BE-3/BE-4 (report 2026-11-14-identity-stage-e-blockers-remediation, files 03 and 04): the default
+# throwaway mode holds the identity-migrate owner URL at the pinned version and nothing else, and
+# never the operator credential; everything else is the operator-mode definition above.
+run "identity_probe_throwaway_mode_holds_only_the_owner_url" {
+  command = plan
+
+  override_resource {
+    target          = aws_iam_role.identity_bootstrap_execution[0]
+    override_during = plan
+    values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-migrate-AbCdEf" }
+  }
+
+  variables {
+    images = {
+      identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+    secret_version_ids = { identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4" }
+    identity_probe_source = {
+      commit = "0123456789abcdef0123456789abcdef01234567"
+      sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  }
+
+  assert {
+    condition = jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].secrets == [{
+      name      = "DIRECT_DATABASE_URL"
+      valueFrom = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-migrate-AbCdEf:DATABASE_MIGRATION_URL::a3cc6622-df66-4787-bae7-83ccfec56ff4"
+    }]
+    error_message = "Throwaway mode's one secret is the identity-migrate owner URL at its pinned version."
+  }
+  assert {
+    condition = alltrue([
+      for k in ["identity-bootstrap", "IDENTITY_OWNER", "rds!", "REDIS_PASSWORD", "PRIVATE KEY", "munaxa-nonprod/identity:"] :
+      !strcontains(jsonencode([jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].secrets, jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment]), k)
+    ])
+    error_message = "Throwaway mode never names the operator credential, the RDS master secret, the service bundle or a key."
+  }
+  assert {
+    condition = (
+      { for e in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment : e.name => e.value }["PROBE_ACCOUNT"] == "throwaway" &&
+      { for e in jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].environment : e.name => e.value }["PROBE_ORGANISATION"] == "munaxa-stage-e-checks"
+    )
+    error_message = "Throwaway mode pins its own organisation, never munaxa-group."
+  }
+  assert {
+    condition = (
+      aws_ecs_task_definition.identity_probe[0].execution_role_arn == aws_iam_role.identity_bootstrap_execution[0].arn &&
+      (aws_ecs_task_definition.identity_probe[0].task_role_arn == null || aws_ecs_task_definition.identity_probe[0].task_role_arn == "") &&
+      strcontains(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command[3], "scripts/bootstrap-account.mjs") &&
+      strcontains(jsondecode(aws_ecs_task_definition.identity_probe[0].container_definitions)[0].command[3], "munaxa-stage-e-checks")
+    )
+    error_message = "Throwaway mode keeps the bootstrap execution role, no task role, and the loader that creates the account."
+  }
+}
+
+run "identity_probe_account_is_throwaway_or_operator" {
+  command = plan
+
+  variables {
+    identity_probe_account = "admin"
+  }
+
+  expect_failures = [var.identity_probe_account]
 }
 
 run "identity_probe_pin_must_be_a_full_commit_and_sha256" {
