@@ -1,5 +1,16 @@
 # Identity non-production: final operator runbook for the Claude-executed first session (11 Nov 2026)
 
+> **Correction, 14 Nov 2026 (Stage E blocker BE-1, report
+> `../2026-11-14-identity-stage-e-blockers-remediation/01-BE1-TASK-DEFINITION-REVISION-FIX.md`).**
+> This document no longer names a task-definition revision. Revision 1 of each family was registered
+> before the stage D apply of 13 Nov (report PR #129: the Identity revision 1 definitions carry the
+> 5277d71-era image), and task definitions are never deregistered (`skip_destroy`), so a fixed `:1`
+> can run superseded content. Every `:<E1>` below means "the revision number the E-1 guard
+> (`scripts/aws/connector/e1-task-guard.py`, MODE `discover`) reported and validated against
+> `infra/aws/stack/envs/nonprod.stage-e-tasks.json` in the same session"; every task is started
+> through E-1 MODE `run` with that number as `EXPECTED_REVISION`, never by `run_one` or a hand-written
+> `RunTask`. A revision that is stale, newer than recorded, or differs from the manifest fails closed.
+
 - **Workstream 4** of the owner's five preparation workstreams (owner authorization, 11 Nov 2026
   10:07 UTC). Documentation only.
 - **This runbook does not authorize anything.** AWS deployment, Terraform apply, IAM, DNS,
@@ -135,7 +146,7 @@ The real loader and probe are tested in PRs #92 and #93 [P].
 | --- | --- |
 | Family | `munaxa-nonprod-identity-probe`. The revision is **not assumed**: step 0-6 reads the ACTIVE revision back and records `PROBE_TD` = `family:revision` (PR #95 X-2) |
 | Container | `identity-probe`, essential |
-| Image | The Identity API digest already in `munaxa-nonprod-identity-bootstrap:1`: `munaxa-identity/api@sha256:71d01fdf…` (`node:22-alpine` runtime) [R] |
+| Image | The Identity API digest that revision 1 of `munaxa-nonprod-identity-bootstrap` carried on 11 Nov: `munaxa-identity/api@sha256:71d01fdf…` (`node:22-alpine` runtime) [R]. Superseded: Stage E uses the manifest's digest (BE-1) |
 | Root filesystem | read-only; Linux capabilities: drop `ALL` |
 | Command | the loader (3.3), fixed in the definition |
 | Execution role | `munaxa-nonprod-identity-bootstrap-execution`, **unchanged** policy |
@@ -188,9 +199,9 @@ params = {
 
 | Step | Task definition | Security group | Override |
 | --- | --- | --- | --- |
-| S-3 | `munaxa-nonprod-db-admin:1` | `munaxa-nonprod-db-admin` | none |
-| S-4 | `munaxa-nonprod-identity-migrate:1` | `munaxa-nonprod-identity-migrate` | none |
-| S-6a | `munaxa-nonprod-identity-bootstrap:1` | `munaxa-nonprod-db-admin` | none (default command: `bootstrap-account.mjs --organisation munaxa-group --organisation-name …`) |
+| S-3 | `munaxa-nonprod-db-admin:<E1>` | `munaxa-nonprod-db-admin` | none |
+| S-4 | `munaxa-nonprod-identity-migrate:<E1>` | `munaxa-nonprod-identity-migrate` | none |
+| S-6a | `munaxa-nonprod-identity-bootstrap:<E1>` | `munaxa-nonprod-db-admin` | none (default command: `bootstrap-account.mjs --organisation munaxa-group --organisation-name …`) |
 | S-6b | same | same | `{"containerOverrides":[{"name":"identity-bootstrap","command":["node","scripts/seed-control-roles.mjs","--organisation","munaxa-group"]}]}` |
 | S-6c | same | same | `{"containerOverrides":[{"name":"identity-bootstrap","command":["node","scripts/bootstrap-account.mjs","--organisation","munaxa-group","--role","control-operator-admin"]}]}` |
 
@@ -268,7 +279,7 @@ Step 0-6 connector script (read-only; returns booleans and names only):
 r = await call_boto3(service_name="ecs", operation_name="DescribeTaskDefinition", region_name="eu-central-1",
                      params={"taskDefinition": "munaxa-nonprod-identity-probe"})
 b = await call_boto3(service_name="ecs", operation_name="DescribeTaskDefinition", region_name="eu-central-1",
-                     params={"taskDefinition": "munaxa-nonprod-identity-bootstrap:1"})
+                     params={"taskDefinition": "munaxa-nonprod-identity-bootstrap:<E1>"})
 td, bt = r["taskDefinition"], b["taskDefinition"]
 c = td["containerDefinitions"]; bc = bt["containerDefinitions"][0]
 env = {e["name"]: e["value"] for e in c[0].get("environment", [])}
