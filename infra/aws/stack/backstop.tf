@@ -70,7 +70,7 @@ resource "aws_iam_role_policy" "session_backstop" {
   role = aws_iam_role.session_backstop[0].id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Sid      = "StopTheDatabase"
         Effect   = "Allow"
@@ -84,7 +84,14 @@ resource "aws_iam_role_policy" "session_backstop" {
         Resource  = "arn:aws:ecs:${var.region}:${var.account_id}:service/${aws_ecs_cluster.main.name}/*"
         Condition = { ArnEquals = { "ecs:cluster" = aws_ecs_cluster.main.arn } }
       },
-    ]
+      ], local.session_cleanup_enabled ? [{
+        # session-cleanup.tf: the daily schedule R, and the per-session schedules P and S the operator
+        # creates before `up`, start the cleanup state machine with this role. Nothing else.
+        Sid      = "StartTheSessionCleanup"
+        Effect   = "Allow"
+        Action   = "states:StartExecution"
+        Resource = local.session_cleanup_sm_arn
+    }] : [])
   })
 }
 

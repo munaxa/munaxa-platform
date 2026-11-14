@@ -1,0 +1,441 @@
+{
+  "Comment": "Testing session cleanup (nonprod only). Deletes the one-run bootstrap secret, the session ALB, scales the nonprod services to 0, stops every nonprod task and stops the nonprod database. Four independent branches; each catches its own errors. Input: {\"dryRun\": true|false} (required).",
+  "QueryLanguage": "JSONPath",
+  "TimeoutSeconds": 900,
+  "StartAt": "CheckInput",
+  "States": {
+    "CheckInput": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            { "Variable": "$.dryRun", "IsPresent": true },
+            { "Variable": "$.dryRun", "IsBoolean": true }
+          ],
+          "Next": "Config"
+        }
+      ],
+      "Default": "BadInput"
+    },
+    "BadInput": {
+      "Type": "Fail",
+      "Error": "BadInput",
+      "Cause": "The input must be {\"dryRun\": true} or {\"dryRun\": false}. Nothing was changed."
+    },
+    "Config": {
+      "Type": "Pass",
+      "Parameters": {
+        "dryRun.$": "$.dryRun",
+        "services": ${services}
+      },
+      "Next": "Cleanup"
+    },
+    "Cleanup": {
+      "Type": "Parallel",
+      "ResultPath": "$.results",
+      "Next": "Evaluate",
+      "Catch": [
+        { "ErrorEquals": ["States.ALL"], "ResultPath": "$.parallelError", "Next": "ParallelFailed" }
+      ],
+      "Branches": [
+        {
+          "StartAt": "SecretDescribe",
+          "States": {
+            "SecretDescribe": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:secretsmanager:describeSecret",
+              "Parameters": { "SecretId": "${bootstrap_secret}" },
+              "ResultPath": "$.secret",
+              "TimeoutSeconds": 30,
+              "Retry": [
+                { "ErrorEquals": ["SecretsManager.ResourceNotFoundException"], "MaxAttempts": 0 },
+                { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }
+              ],
+              "Catch": [
+                { "ErrorEquals": ["SecretsManager.ResourceNotFoundException"], "ResultPath": "$.error", "Next": "SecretAbsent" },
+                { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "SecretError" }
+              ],
+              "Next": "SecretCheck"
+            },
+            "SecretCheck": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Not": { "Variable": "$.secret.Name", "StringEquals": "${bootstrap_secret}" },
+                  "Next": "SecretUnexpected"
+                },
+                { "Variable": "$.secret.DeletedDate", "IsPresent": true, "Next": "SecretPendingDeletion" },
+                { "Variable": "$.dryRun", "BooleanEquals": true, "Next": "SecretWouldDelete" }
+              ],
+              "Default": "SecretDelete"
+            },
+            "SecretDelete": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:secretsmanager:deleteSecret",
+              "Parameters": { "SecretId.$": "$.secret.ARN", "ForceDeleteWithoutRecovery": true },
+              "ResultPath": null,
+              "TimeoutSeconds": 30,
+              "Retry": [
+                { "ErrorEquals": ["SecretsManager.ResourceNotFoundException"], "MaxAttempts": 0 },
+                { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }
+              ],
+              "Catch": [
+                { "ErrorEquals": ["SecretsManager.ResourceNotFoundException"], "ResultPath": "$.error", "Next": "SecretAbsent" },
+                { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "SecretError" }
+              ],
+              "Next": "SecretDeleted"
+            },
+            "SecretDeleted": { "Type": "Pass", "Parameters": { "component": "secret", "status": "deleted", "ok": true }, "End": true },
+            "SecretAbsent": { "Type": "Pass", "Parameters": { "component": "secret", "status": "absent", "ok": true }, "End": true },
+            "SecretWouldDelete": { "Type": "Pass", "Parameters": { "component": "secret", "status": "would-delete", "ok": true }, "End": true },
+            "SecretPendingDeletion": { "Type": "Pass", "Parameters": { "component": "secret", "status": "pending-deletion", "ok": false }, "End": true },
+            "SecretUnexpected": { "Type": "Pass", "Parameters": { "component": "secret", "status": "unexpected-name", "ok": false }, "End": true },
+            "SecretError": { "Type": "Pass", "Parameters": { "component": "secret", "status": "error", "ok": false, "error.$": "$.error.Error" }, "End": true }
+          }
+        },
+        {
+          "StartAt": "AlbDescribe",
+          "States": {
+            "AlbDescribe": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:elasticloadbalancingv2:describeLoadBalancers",
+              "Parameters": { "Names": ["${alb_name}"] },
+              "ResultPath": "$.lb",
+              "TimeoutSeconds": 30,
+              "Retry": [
+                { "ErrorEquals": ["ElasticLoadBalancingV2.LoadBalancerNotFoundException"], "MaxAttempts": 0 },
+                { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2 }
+              ],
+              "Catch": [
+                { "ErrorEquals": ["ElasticLoadBalancingV2.LoadBalancerNotFoundException"], "ResultPath": "$.error", "Next": "AlbAbsent" },
+                { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "AlbError" }
+              ],
+              "Next": "AlbCheck"
+            },
+            "AlbCheck": {
+              "Type": "Choice",
+              "Choices": [
+                { "Variable": "$.lb.LoadBalancers[0]", "IsPresent": false, "Next": "AlbAbsent" },
+                { "Variable": "$.lb.LoadBalancers[1]", "IsPresent": true, "Next": "AlbUnexpected" },
+                {
+                  "Not": {
+                    "And": [
+                      { "Variable": "$.lb.LoadBalancers[0].LoadBalancerName", "StringEquals": "${alb_name}" },
+                      { "Variable": "$.lb.LoadBalancers[0].Type", "StringEquals": "application" },
+                      { "Variable": "$.lb.LoadBalancers[0].Scheme", "StringEquals": "internet-facing" },
+                      { "Variable": "$.lb.LoadBalancers[0].VpcId", "StringEquals": "${vpc_id}" },
+                      { "Variable": "$.lb.LoadBalancers[0].LoadBalancerArn", "StringMatches": "${alb_arn_pattern}" }
+                    ]
+                  },
+                  "Next": "AlbUnexpected"
+                },
+                { "Variable": "$.dryRun", "BooleanEquals": true, "Next": "AlbWouldDelete" }
+              ],
+              "Default": "AlbDelete"
+            },
+            "AlbDelete": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:elasticloadbalancingv2:deleteLoadBalancer",
+              "Parameters": { "LoadBalancerArn.$": "$.lb.LoadBalancers[0].LoadBalancerArn" },
+              "ResultPath": null,
+              "TimeoutSeconds": 30,
+              "Retry": [
+                { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2 }
+              ],
+              "Catch": [
+                { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "AlbError" }
+              ],
+              "Next": "AlbPollStart"
+            },
+            "AlbPollStart": { "Type": "Pass", "Result": 0, "ResultPath": "$.albPolls", "Next": "AlbPollWait" },
+            "AlbPollWait": { "Type": "Wait", "Seconds": 10, "Next": "AlbConfirm" },
+            "AlbConfirm": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:elasticloadbalancingv2:describeLoadBalancers",
+              "Parameters": { "Names": ["${alb_name}"] },
+              "ResultPath": "$.lbAfter",
+              "TimeoutSeconds": 30,
+              "Retry": [
+                { "ErrorEquals": ["ElasticLoadBalancingV2.LoadBalancerNotFoundException"], "MaxAttempts": 0 },
+                { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 10, "MaxAttempts": 2, "BackoffRate": 2 }
+              ],
+              "Catch": [
+                { "ErrorEquals": ["ElasticLoadBalancingV2.LoadBalancerNotFoundException"], "ResultPath": "$.error", "Next": "AlbDeleted" },
+                { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "AlbError" }
+              ],
+              "Next": "AlbPollCount"
+            },
+            "AlbPollCount": {
+              "Type": "Pass",
+              "Parameters": { "n.$": "States.MathAdd($.albPolls, 1)" },
+              "ResultPath": "$.albPollResult",
+              "Next": "AlbPollStore"
+            },
+            "AlbPollStore": {
+              "Type": "Pass",
+              "InputPath": "$.albPollResult.n",
+              "ResultPath": "$.albPolls",
+              "Next": "AlbPollDecide"
+            },
+            "AlbPollDecide": {
+              "Type": "Choice",
+              "Choices": [
+                { "Variable": "$.lbAfter.LoadBalancers[0]", "IsPresent": false, "Next": "AlbDeleted" },
+                { "Variable": "$.albPolls", "NumericLessThan": 8, "Next": "AlbPollWait" }
+              ],
+              "Default": "AlbStillPresent"
+            },
+            "AlbDeleted": { "Type": "Pass", "Parameters": { "component": "alb", "status": "deleted", "ok": true }, "End": true },
+            "AlbAbsent": { "Type": "Pass", "Parameters": { "component": "alb", "status": "absent", "ok": true }, "End": true },
+            "AlbWouldDelete": { "Type": "Pass", "Parameters": { "component": "alb", "status": "would-delete", "ok": true }, "End": true },
+            "AlbUnexpected": { "Type": "Pass", "Parameters": { "component": "alb", "status": "unexpected-load-balancer", "ok": false }, "End": true },
+            "AlbStillPresent": { "Type": "Pass", "Parameters": { "component": "alb", "status": "still-present", "ok": false }, "End": true },
+            "AlbError": { "Type": "Pass", "Parameters": { "component": "alb", "status": "error", "ok": false, "error.$": "$.error.Error" }, "End": true }
+          }
+        },
+        {
+          "StartAt": "EcsServices",
+          "States": {
+            "EcsServices": {
+              "Type": "Map",
+              "ItemsPath": "$.services",
+              "MaxConcurrency": 2,
+              "ItemSelector": { "service.$": "$$.Map.Item.Value", "dryRun.$": "$.dryRun" },
+              "ResultPath": "$.serviceResults",
+              "ItemProcessor": {
+                "ProcessorConfig": { "Mode": "INLINE" },
+                "StartAt": "ServiceDescribe",
+                "States": {
+                  "ServiceDescribe": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::aws-sdk:ecs:describeServices",
+                    "Parameters": { "Cluster": "${cluster}", "Services.$": "States.Array($.service)" },
+                    "ResultPath": "$.described",
+                    "TimeoutSeconds": 30,
+                    "Retry": [{ "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }],
+                    "Catch": [{ "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "ServiceError" }],
+                    "Next": "ServiceCheck"
+                  },
+                  "ServiceCheck": {
+                    "Type": "Choice",
+                    "Choices": [
+                      { "Variable": "$.described.Services[0]", "IsPresent": false, "Next": "ServiceAbsent" },
+                      { "Not": { "Variable": "$.described.Services[0].Status", "StringEquals": "ACTIVE" }, "Next": "ServiceAbsent" },
+                      { "Variable": "$.described.Services[0].DesiredCount", "NumericEquals": 0, "Next": "ServiceAtZero" },
+                      { "Variable": "$.dryRun", "BooleanEquals": true, "Next": "ServiceWouldScale" }
+                    ],
+                    "Default": "ServiceScale"
+                  },
+                  "ServiceScale": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::aws-sdk:ecs:updateService",
+                    "Parameters": { "Cluster": "${cluster}", "Service.$": "$.service", "DesiredCount": 0 },
+                    "ResultPath": null,
+                    "TimeoutSeconds": 30,
+                    "Retry": [
+                      { "ErrorEquals": ["Ecs.ServiceNotFoundException", "Ecs.ServiceNotActiveException"], "MaxAttempts": 0 },
+                      { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }
+                    ],
+                    "Catch": [
+                      { "ErrorEquals": ["Ecs.ServiceNotFoundException", "Ecs.ServiceNotActiveException"], "ResultPath": "$.error", "Next": "ServiceAbsent" },
+                      { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "ServiceError" }
+                    ],
+                    "Next": "ServiceScaled"
+                  },
+                  "ServiceScaled": { "Type": "Pass", "Parameters": { "service.$": "$.service", "status": "scaled-to-0", "ok": true }, "End": true },
+                  "ServiceAtZero": { "Type": "Pass", "Parameters": { "service.$": "$.service", "status": "at-0", "ok": true }, "End": true },
+                  "ServiceAbsent": { "Type": "Pass", "Parameters": { "service.$": "$.service", "status": "absent", "ok": true }, "End": true },
+                  "ServiceWouldScale": { "Type": "Pass", "Parameters": { "service.$": "$.service", "status": "would-scale-to-0", "ok": true }, "End": true },
+                  "ServiceError": { "Type": "Pass", "Parameters": { "service.$": "$.service", "status": "error", "ok": false, "error.$": "$.error.Error" }, "End": true }
+                }
+              },
+              "Next": "TaskList"
+            },
+            "TaskList": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:ecs:listTasks",
+              "Parameters": { "Cluster": "${cluster}", "DesiredStatus": "RUNNING", "MaxResults": 100 },
+              "ResultPath": "$.tasks",
+              "TimeoutSeconds": 30,
+              "Retry": [{ "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }],
+              "Catch": [{ "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "EcsError" }],
+              "Next": "TaskStop"
+            },
+            "TaskStop": {
+              "Type": "Map",
+              "ItemsPath": "$.tasks.TaskArns",
+              "MaxConcurrency": 5,
+              "ItemSelector": { "task.$": "$$.Map.Item.Value", "dryRun.$": "$.dryRun" },
+              "ResultPath": "$.taskResults",
+              "ItemProcessor": {
+                "ProcessorConfig": { "Mode": "INLINE" },
+                "StartAt": "TaskDry",
+                "States": {
+                  "TaskDry": {
+                    "Type": "Choice",
+                    "Choices": [{ "Variable": "$.dryRun", "BooleanEquals": true, "Next": "TaskWouldStop" }],
+                    "Default": "TaskStopOne"
+                  },
+                  "TaskStopOne": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::aws-sdk:ecs:stopTask",
+                    "Parameters": { "Cluster": "${cluster}", "Task.$": "$.task", "Reason": "munaxa-nonprod session cleanup" },
+                    "ResultPath": null,
+                    "TimeoutSeconds": 30,
+                    "Retry": [{ "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }],
+                    "Catch": [{ "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "TaskError" }],
+                    "Next": "TaskStopped"
+                  },
+                  "TaskStopped": { "Type": "Pass", "Parameters": { "status": "stopped", "ok": true }, "End": true },
+                  "TaskWouldStop": { "Type": "Pass", "Parameters": { "status": "would-stop", "ok": true }, "End": true },
+                  "TaskError": { "Type": "Pass", "Parameters": { "status": "error", "ok": false, "error.$": "$.error.Error" }, "End": true }
+                }
+              },
+              "Next": "EcsSummarize"
+            },
+            "EcsSummarize": {
+              "Type": "Pass",
+              "Parameters": {
+                "services.$": "$.serviceResults",
+                "tasksFound.$": "States.ArrayLength($.tasks.TaskArns)",
+                "serviceProblems.$": "$.serviceResults[?(@.ok == false)]",
+                "taskProblems.$": "$.taskResults[?(@.ok == false)]",
+                "moreTasks.$": "$.tasks"
+              },
+              "Next": "EcsDecide"
+            },
+            "EcsDecide": {
+              "Type": "Choice",
+              "Choices": [
+                { "Variable": "$.serviceProblems[0]", "IsPresent": true, "Next": "EcsIncomplete" },
+                { "Variable": "$.taskProblems[0]", "IsPresent": true, "Next": "EcsIncomplete" },
+                { "Variable": "$.moreTasks.NextToken", "IsPresent": true, "Next": "EcsIncomplete" }
+              ],
+              "Default": "EcsDone"
+            },
+            "EcsDone": {
+              "Type": "Pass",
+              "Parameters": { "component": "ecs", "status": "done", "ok": true, "services.$": "$.services", "tasksFound.$": "$.tasksFound" },
+              "End": true
+            },
+            "EcsIncomplete": {
+              "Type": "Pass",
+              "Parameters": { "component": "ecs", "status": "incomplete", "ok": false, "services.$": "$.services", "tasksFound.$": "$.tasksFound", "taskProblems.$": "$.taskProblems" },
+              "End": true
+            },
+            "EcsError": { "Type": "Pass", "Parameters": { "component": "ecs", "status": "error", "ok": false, "error.$": "$.error.Error" }, "End": true }
+          }
+        },
+        {
+          "StartAt": "DbTriesStart",
+          "States": {
+            "DbTriesStart": { "Type": "Pass", "Result": 0, "ResultPath": "$.dbTries", "Next": "DbDescribe" },
+            "DbDescribe": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:rds:describeDBInstances",
+              "Parameters": { "DbInstanceIdentifier": "${db_identifier}" },
+              "ResultSelector": {
+                "id.$": "$.DbInstances[0].DbInstanceIdentifier",
+                "status.$": "$.DbInstances[0].DbInstanceStatus"
+              },
+              "ResultPath": "$.db",
+              "TimeoutSeconds": 30,
+              "Retry": [
+                { "ErrorEquals": ["Rds.DbInstanceNotFoundException"], "MaxAttempts": 0 },
+                { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }
+              ],
+              "Catch": [
+                { "ErrorEquals": ["Rds.DbInstanceNotFoundException"], "ResultPath": "$.error", "Next": "DbAbsent" },
+                { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "DbError" }
+              ],
+              "Next": "DbCheck"
+            },
+            "DbCheck": {
+              "Type": "Choice",
+              "Choices": [
+                { "Not": { "Variable": "$.db.id", "StringEquals": "${db_identifier}" }, "Next": "DbUnexpected" },
+                { "Variable": "$.db.status", "StringEquals": "stopped", "Next": "DbStopped" },
+                { "Variable": "$.db.status", "StringEquals": "stopping", "Next": "DbStopping" },
+                {
+                  "And": [
+                    { "Variable": "$.db.status", "StringEquals": "available" },
+                    { "Variable": "$.dryRun", "BooleanEquals": true }
+                  ],
+                  "Next": "DbWouldStop"
+                },
+                { "Variable": "$.db.status", "StringEquals": "available", "Next": "DbStop" }
+              ],
+              "Default": "DbTryCount"
+            },
+            "DbStop": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::aws-sdk:rds:stopDBInstance",
+              "Parameters": { "DbInstanceIdentifier": "${db_identifier}" },
+              "ResultPath": null,
+              "TimeoutSeconds": 30,
+              "Retry": [
+                { "ErrorEquals": ["Rds.InvalidDbInstanceStateException"], "MaxAttempts": 0 },
+                { "ErrorEquals": ["States.ALL"], "IntervalSeconds": 5, "MaxAttempts": 2, "BackoffRate": 2 }
+              ],
+              "Catch": [
+                { "ErrorEquals": ["Rds.InvalidDbInstanceStateException"], "ResultPath": "$.error", "Next": "DbTryCount" },
+                { "ErrorEquals": ["States.ALL"], "ResultPath": "$.error", "Next": "DbError" }
+              ],
+              "Next": "DbStopping"
+            },
+            "DbTryCount": {
+              "Type": "Pass",
+              "Parameters": { "n.$": "States.MathAdd($.dbTries, 1)" },
+              "ResultPath": "$.dbTryResult",
+              "Next": "DbTryStore"
+            },
+            "DbTryStore": { "Type": "Pass", "InputPath": "$.dbTryResult.n", "ResultPath": "$.dbTries", "Next": "DbTryDecide" },
+            "DbTryDecide": {
+              "Type": "Choice",
+              "Choices": [{ "Variable": "$.dbTries", "NumericLessThanEquals": 10, "Next": "DbWait" }],
+              "Default": "DbStillRunning"
+            },
+            "DbWait": { "Type": "Wait", "Seconds": 60, "Next": "DbDescribe" },
+            "DbStopped": { "Type": "Pass", "Parameters": { "component": "database", "status": "stopped", "ok": true }, "End": true },
+            "DbStopping": { "Type": "Pass", "Parameters": { "component": "database", "status": "stopping", "ok": true }, "End": true },
+            "DbWouldStop": { "Type": "Pass", "Parameters": { "component": "database", "status": "would-stop", "ok": true }, "End": true },
+            "DbAbsent": { "Type": "Pass", "Parameters": { "component": "database", "status": "absent", "ok": false }, "End": true },
+            "DbUnexpected": { "Type": "Pass", "Parameters": { "component": "database", "status": "unexpected-instance", "ok": false }, "End": true },
+            "DbStillRunning": { "Type": "Pass", "Parameters": { "component": "database", "status": "still-running", "ok": false, "last.$": "$.db.status" }, "End": true },
+            "DbError": { "Type": "Pass", "Parameters": { "component": "database", "status": "error", "ok": false, "error.$": "$.error.Error" }, "End": true }
+          }
+        }
+      ]
+    },
+    "ParallelFailed": {
+      "Type": "Fail",
+      "Error": "CleanupIncomplete",
+      "Cause": "The cleanup's parallel step failed as a whole; read the execution history. Run aws-session.yml down."
+    },
+    "Evaluate": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "And": [
+            { "Variable": "$.results[0].ok", "BooleanEquals": true },
+            { "Variable": "$.results[1].ok", "BooleanEquals": true },
+            { "Variable": "$.results[2].ok", "BooleanEquals": true },
+            { "Variable": "$.results[3].ok", "BooleanEquals": true }
+          ],
+          "Next": "Done"
+        }
+      ],
+      "Default": "Incomplete"
+    },
+    "Done": {
+      "Type": "Pass",
+      "Parameters": { "dryRun.$": "$.dryRun", "results.$": "$.results" },
+      "End": true
+    },
+    "Incomplete": {
+      "Type": "Fail",
+      "Error": "CleanupIncomplete",
+      "CausePath": "States.JsonToString($.results)"
+    }
+  }
+}

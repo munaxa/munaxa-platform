@@ -281,6 +281,25 @@ data "aws_iam_policy_document" "deployer_session_read" {
     actions   = ["iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:ListRoleTags"]
     resources = ["arn:aws:iam::${var.account_id}:role/munaxa-shared/munaxa-${each.key}-*"]
   }
+
+  # Testing's session cleanup (stack/session-cleanup.tf): without these reads every session plan,
+  # including the scheduled `down`, would fail at refresh once the cleanup is applied (the S-1 class
+  # of failure). Reads only.
+  dynamic "statement" {
+    for_each = var.testing_session_cleanup && each.key == "nonprod" ? [1] : []
+    content {
+      sid = "RefreshSessionCleanup"
+      actions = [
+        "states:DescribeStateMachine", "states:ListTagsForResource", "sns:GetTopicAttributes",
+        "sns:ListTagsForResource", "cloudwatch:ListTagsForResource",
+      ]
+      resources = [
+        "arn:aws:states:${var.region}:${var.account_id}:stateMachine:munaxa-${each.key}-*",
+        "arn:aws:sns:${var.region}:${var.account_id}:munaxa-${each.key}-*",
+        "arn:aws:cloudwatch:${var.region}:${var.account_id}:alarm:munaxa-${each.key}-*",
+      ]
+    }
+  }
 }
 
 resource "aws_iam_policy" "deployer_session_read" {

@@ -92,3 +92,11 @@ variable "budget_alert_emails" {
   type    = list(string)
   default = ["admin@munaxa.com", "alert@munaxa.com"]
 }
+
+variable "testing_session_cleanup" {
+  description = "Testing's independent session cleanup (stack/session-cleanup.tf, Stage E blocker BE-2): widens the nonprod workload boundary for the cleanup role and lets the nonprod deployer manage the state machine and its alarm topic. Applied by root, before the stack apply that enables it."
+  type        = bool
+  # Off: merging changes nothing in IAM. Turning it on is the Stage B-2 root apply (report
+  # 2026-11-14-identity-stage-e-blockers-remediation, file 02).
+  default = false
+}
