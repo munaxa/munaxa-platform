@@ -835,6 +835,14 @@ class NoRevisionNumbers(unittest.TestCase):
             self.assertIn(family, step[:step.index("`aws ecs run-task` is used only for")])
             self.assertNotIn(family, hand)
 
+    def test_owner_review_b7_c8_call_records_are_never_evidence(self):
+        for name in ("c8-create-operator-secrets.py", "c8r-recover-operator-secrets.py"):
+            self.assertIn("never committed as evidence", read("scripts", "aws", "connector", name))
+        runbook = read("docs", "aws-migration", "agent-reports", "2026-11-11-identity-final-operator-runbook",
+                       "00-IDENTITY-FINAL-OPERATOR-RUNBOOK.md")
+        self.assertIn("so they are never committed as evidence", runbook)
+        self.assertIn("C-8 and C-8R stay blocked until the owner decides D-LA0", runbook)
+
     def test_the_pattern_catches_the_old_forms(self):
         for line in ("run_one munaxa-nonprod-db-admin:1 $SG", "run_one $C-identity-bootstrap:1 \"$SG\"",
                      'params={"taskDefinition": "munaxa-nonprod-identity-bootstrap:1"}', "`munaxa-nonprod-identity-migrate:12`"):

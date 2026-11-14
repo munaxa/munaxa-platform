@@ -8,13 +8,13 @@ explicit approval, in this order.
 | # | Decision | Recommendation | Detail |
 | --- | --- | --- | --- |
 | D-BE4 | Skip operator sign-in in Stage E; one throwaway account per probe run; disable it afterwards | **Yes** | file 04 |
-| D-PR | Merge this PR (after ChatGPT review) | Yes, once reviewed | changes no plan (Terraform tests) |
+| D-PR | Merge this PR (after ChatGPT review) | Yes, once reviewed | changes no plan (Terraform tests); independent owner review PASSED (file 10) |
 | D-B2 | Root bootstrap apply with `testing_session_cleanup = true` (CloudShell, owner) | Yes | file 02 §7: 2 updates, 2 creates, nonprod boundary only |
 | D-B3 | Stack nonprod configuration PR and apply: `session_cleanup_enabled = true` | Yes | file 02 §7: 8 creates, 1 update; session down |
-| D-B4 | One dry-run execution `{"dryRun": true}` through the connector | Yes | validates the [U] items; changes nothing |
+| D-B4 | One dry-run execution `{"dryRun": true}` through the connector, and a second one while a session is up so the present-resource paths run | Yes | validates the [U] items; changes nothing (owner review, file 12 §5) |
 | D-B5 | Subscribe an email address to `munaxa-nonprod-session-cleanup-alerts` | Yes | owner, outside the repository |
 | D-PIN | Probe pin PR (`identity_probe_source` + manifest `probePin`) and its apply | Yes | file 03 §4: 1 create (the probe task definition) |
-| D-LA0 | Before C-8: one connector call that shows what the connector records for a script's AWS calls (a harmless read, then a check of the returned `api_calls`), to size the L-A0 residual | Yes | file 06, section 5; if parameters or responses are recorded, C-8 must change before it runs |
+| D-LA0 | **Unresolved (owner review).** Before C-8 or C-8R: approve the canary check of what the connector records (file 11 §5: no real credential, one read-only call plus one `CreateSecret` designed to fail). If either canary or a random string appears, C-8/C-8R change to CloudFormation `GenerateSecretString` (file 11 §4) before Stage E | Yes, run the canary check | file 11; C-8 and C-8R must not run until decided |
 | D-E | Stage E itself (session up, C-8, bootstrap, probe, clean-up, C-16, C-24, down) | After all above | separate approval, per the corrected runbook |
 
 ## 2. Remaining blockers before Stage E
@@ -34,5 +34,11 @@ explicit approval, in this order.
   expiry, token revocation at relying parties): file 04 §7.
 - Residue: one tenant row and one disabled throwaway account per probe run in the Testing
   database (file 04 §6).
-- L-A0 (operator password in the connector's sandbox memory during C-8) stays accepted as on
-  11 Nov.
+- L-A0 (operator password in the connector's sandbox memory during C-8) as accepted on 11 Nov is
+  **reopened** by the owner review: the connector records full AWS error messages, and its
+  server-side audit log is unknown. Decision D-LA0 above.
+- Follow-ups recommended by the owner review, each in its own reviewed PR (file 12 §4): B-3
+  `aws:SourceArn` on the backstop scheduler role trust; B-4 a root-applied resource policy on
+  `munaxa-nonprod/identity-operator` limiting `GetSecretValue` to the named readers; B-5 tag
+  conditions on the new creates and a limit on `SetTopicAttributes`.
+- Accepted Low findings of the owner review: file 13 §3.

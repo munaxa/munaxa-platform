@@ -13,6 +13,8 @@
 # The operator edits only the INPUT line, in the session copy, never in this repository:
 # IDENTITY_OPERATOR_EMAIL is private runtime input (it is recorded in the account's own CloudTrail
 # with the script source, never in a public place). An unedited copy aborts with EMAIL_NOT_SET.
+# The call record of this script (its source holds the email) is never committed as evidence
+# (owner review B-7); only the returned names, ARNs, version ids and codes are recorded.
 #
 # Returns names, ARNs, version ids and codes only. Never the email, never the password.
 

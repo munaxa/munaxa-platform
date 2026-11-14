@@ -9,6 +9,8 @@
 # AWSPREVIOUS), CreateSecret for the bootstrap secret. The persistent secret is never deleted.
 #
 # Revised for the connector sandbox (BE-8). NOT RUN. Returns names, ARNs, version ids, codes only.
+# The call record of this script (its source holds the email) is never committed as evidence
+# (owner review B-7); only the returned names, ARNs, version ids and codes are recorded.
 
 OPERATOR_EMAIL = "<IDENTITY_OPERATOR_EMAIL>"  # INPUT: the confirmed Testing operator address (private)
 NO_ACCOUNT_CONFIRMED = False  # INPUT: True only after the bootstrap log shows no "Created" line
