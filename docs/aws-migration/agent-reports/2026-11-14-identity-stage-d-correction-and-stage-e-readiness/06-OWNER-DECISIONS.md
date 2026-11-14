@@ -6,7 +6,6 @@ Nothing here is authorized by this report. Each item is a separate yes/no for th
 
 | # | Decision | Options | Recommendation | Why |
 | --- | --- | --- | --- | --- |
-| D-E0 | Sign in to the AWS connector again so this thread's calls work (V-1) | owner action, not a choice | do it, then send any message | the 14 Nov read-only verification (02) could not run; every stage E connector step depends on it |
 | D-E1 | Merge PR #128 (corrected stage D report) and this report's PR | yes / not yet | yes, after review | documentation only; the corrected status is the record ChatGPT reviews |
 | D-E2 | Independent cleanup before the first session (BE-2) | (a) build PR #90 revision 2 first (Stage B approvals B-1 to B-4: one plan/apply adding the state machine, schedules and alarm); (b) proceed without it and accept that, if Claude loses control and every scheduled `down` fails, the ALB keeps costing about US$0.89 a day until someone runs `down` | **(a)** | it is the owner's own position of 11 Nov 10:30 UTC; (b) reverses it |
 | D-E3 | Verification route (BE-3) | (a) the probe: Claude opens the pin PR (`identity_probe_source`), then one owner-approved plan/apply with exactly 1 create; (b) runbook 03 §12–§14 checks run by a new throwaway-account helper; (c) both | **(c)**: the probe covers health, sign-in, JWT, logout, refresh replay and host rules; the helper covers MFA, recovery codes and lockout, which the probe does not | each covers what the other cannot |

@@ -15,19 +15,21 @@
 - **Database stop behaviour:** both the "Stop the database" job and the step inside "Testing down" reported `stopped`.
 - **Timing:** GitHub starts scheduled runs late. The two runs above started at 00:21 and 08:06; as of 20:30 UTC on 14 Nov no later scheduled run had started. This is the known GitHub limitation of layer 1 (operator runbook §14), not a failure.
 
-## AWS backstop (EventBridge, 21:00 UTC)
+## AWS backstop (EventBridge Scheduler, 21:00 UTC) [V]
 
-- Last direct evidence: 13 Nov, `StopDBInstance` at 21:00:48 by `munaxa-nonprod-session-backstop`, database stopped at 21:07 (stage D report 03).
-- 14 Nov: **NOT VERIFIED** (no AWS read, 02).
+- 11 schedules `munaxa-nonprod-backstop-*` (the database and 10 services), all `ENABLED` (14 Nov 20:40).
+- Last stop it made: 13 Nov 21:00:48, `StopDBInstance` by `munaxa-nonprod-session-backstop`; RDS "DB instance stopped" 21:07:07 (stage D report 03; RDS events re-read 14 Nov).
+- The database has stayed stopped since then (no RDS event after 21:07 on 13 Nov), so there was nothing for the 14 Nov runs to stop. The 14 Nov 21:00 run was after this read.
 
-## Budgets and alarms
+## Budgets (14 Nov 20:40 UTC) [V]
 
-**NOT VERIFIED on 14 Nov** (no AWS read, 02). Last direct readings, 13 Nov 21:20 UTC:
+| Budget | Limit | Actual (November) | Change since 13 Nov 21:20 |
+| --- | --- | --- | --- |
+| `munaxa-account-monthly` (alert only) | US$10 | **US$10.21, over the limit** | +US$0.54 |
+| `munaxa-shared-account-monthly` | US$50 | US$10.21 | +US$0.54 |
+| `munaxa-shared-testing-monthly` | US$50 | US$2.38 | +US$0.39 |
+| `munaxa-docs-eu-prod-monthly` (retired Docs production) | US$10 | US$5.53 | — |
 
-| Budget | Reading |
-| --- | --- |
-| `munaxa-account-monthly` US$10, alert only | US$9.67, 80 % alert in ALARM |
-| Testing US$50 | US$1.99 |
-| Account US$50 | US$9.67 |
-
-No running resource has been added since: stage D registered task definitions and created an empty secret container (about US$0.40 a month once it has a version; Secrets Manager bills per secret). [E]
+- The budgets send alerts only; on 13 Nov none had a budget action (stage R), and this read did not re-check actions.
+- [E] The Testing increase is most likely the database running on 13 Nov (16:27–21:07) and storage, not new resources: no ALB, NAT, Elastic IP or task exists (02 F).
+- No CloudWatch alarm is defined in either region.

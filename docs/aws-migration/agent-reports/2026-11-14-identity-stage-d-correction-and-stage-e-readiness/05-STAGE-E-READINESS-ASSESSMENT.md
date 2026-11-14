@@ -1,6 +1,6 @@
 # 05. Stage E readiness assessment (no execution)
 
-Stage E is the first Identity non-production session: `up`, database bootstrap and migrations, the operator account, Identity rollout, verification and `down`, on one day. **Nothing in this file was run.** This is an assessment of the repository, the two existing runbooks, the 13 Nov direct AWS evidence and the 14 Nov GitHub evidence. The 14 Nov AWS read did not run (02).
+Stage E is the first Identity non-production session: `up`, database bootstrap and migrations, the operator account, Identity rollout, verification and `down`, on one day. **Nothing in this file was run.** This is an assessment of the repository, the two existing runbooks and the AWS state read on 14 Nov (02).
 
 Sources:
 - `2026-11-12-phase-c-d-preparation/03-NONPROD-DEPLOYMENT-RUNBOOK.md` (**runbook 03**, stage letters A to E);
@@ -15,10 +15,10 @@ Sources:
 | Category | Items | Evidence |
 | --- | --- | --- |
 | **Infrastructure applied (at rest)** | VPC, subnets, security groups, RDS `munaxa-nonprod-pg` (stopped), secrets (identity bundle version `80914756…`, identity-migrate, docs-migrate container), IAM execution roles, log groups, ACM certificate `*.test.munaxa.com`, ECR images, backstop schedules (21:00 UTC), session workflows | G3 (6 Nov), Config A1 (10 Nov), stage D (13 Nov, direct read 21:46–21:48); 14 Nov scheduled plan "No changes" [G] (03) |
-| **Registered only (task definitions, nothing started)** | `munaxa-nonprod-identity:2`, `-identity-migrate:2`, `-identity-bootstrap:2`, `-db-admin:2` (2db6ed9 images, bundle `80914756`); revision 1 of each (old 5277d71 images) | stage D report 06 (direct, 13 Nov); 14 Nov AWS read NOT VERIFIED (02) |
-| **Not created** | ALB, listeners, target groups, ECS services (created only by `up`); probe task definition `munaxa-nonprod-identity-probe` (`identity_probe_source` is empty on `main`); secrets `munaxa-nonprod/identity-operator` and `munaxa-nonprod/identity-bootstrap`; the independent cleanup (PR #90 design, not built) | `envs/nonprod.tfvars`; `infra/aws/stack/*.tf` has no state machine; operator secret absent at stage R (13 Nov 15:50); 14 Nov NOT VERIFIED (02) |
-| **Running** | nothing known: 0 services and 0 tasks at 13 Nov 21:48 (direct); no service in the 14 Nov 08:06 plan and database `stopped` at 08:06 [G]. One-off tasks after that: NOT VERIFIED (02) | stage D 06; 03 |
-| **Never run** | db-admin, identity-migrate, bootstrap, any Identity task; the Identity schema has never been created in this database | runbook 03 P-7 "never run"; no RunTask in CloudTrail up to 13 Nov 21:48 (stage D 06); later CloudTrail NOT VERIFIED (02) |
+| **Registered only (task definitions, nothing started)** | `munaxa-nonprod-identity:2`, `-identity-migrate:2`, `-identity-bootstrap:2`, `-db-admin:2` (2db6ed9 images, bundle `80914756`); revision 1 of each (old 5277d71 images) | 02 A (direct, 14 Nov 20:36) |
+| **Not created** | ALB, listeners, target groups, ECS services (created only by `up`); probe task definition `munaxa-nonprod-identity-probe` (`identity_probe_source` is empty on `main`); secrets `munaxa-nonprod/identity-operator` and `munaxa-nonprod/identity-bootstrap`; the independent cleanup (PR #90 design, not built) | `envs/nonprod.tfvars`; `infra/aws/stack/*.tf` has no state machine; 02 C and F (direct, 14 Nov: 0 ALB; the two secrets absent) |
+| **Running** | **nothing**: 0 services, 0 running, 0 pending, 0 recently stopped tasks; database `stopped` | 02 A, B (direct, 14 Nov 20:36) |
+| **Never run** | db-admin, identity-migrate, bootstrap, any Identity task; the Identity schema has never been created in this database | runbook 03 P-7 "never run"; no `RunTask` or `StartTask` in CloudTrail since 13 Nov 21:40 (02 D) |
 
 **There is no working Identity service.** A registered task definition is a template. Identity has never started in AWS; its first start needs the schema, which needs the migrate task.
 
@@ -26,18 +26,18 @@ Sources:
 
 | # | Precondition | State | Blocking |
 | --- | --- | --- | --- |
-| E-P1 | Stage D applied; the four revision 2 task definitions registered with the 2db6ed9 digests and bundle `80914756` | **met** (06 of stage D, direct 13 Nov; confirmed indirectly by the 14 Nov "No changes" plan [G]) | — |
+| E-P1 | Stage D applied; the four revision 2 task definitions registered with the 2db6ed9 digests and bundle `80914756` | **met** (06 of stage D, direct 13 Nov; re-read directly 14 Nov, 02 A) | — |
 | E-P2 | Scheduled `down` healthy after stage D (S-1) | **met**: runs 43533662116 and 43574175677, switch plan "No changes" (03) | — |
-| E-P3 | Backstop working | **met on 13 Nov** (direct); 14 Nov NOT VERIFIED (02, 03) | re-check on session day |
+| E-P3 | Backstop working | **met**: last stop 13 Nov 21:00:48; 11 schedules ENABLED on 14 Nov (02 B, 03) | re-check on session day |
 | E-P4 | One reconciled stage E procedure that names **revision 2** task definitions | **not met.** The checklist and the operator runbook hard-code `:1` (`run_one munaxa-nonprod-identity-migrate:1`, `…-db-admin:1`, `…-identity-bootstrap:1`, operator runbook §4.3). After stage D, `:1` is the **old 5277d71 image** (pre-MFA, pre-CVE fix). Running `identity-migrate:1` would apply the old migration set and `bootstrap:1` would run the old code. Runbook 03 says "with the new image" but gives no revision. The procedure must name `:2` explicitly and check it before each RunTask (see §3) | **yes** |
 | E-P5 | Independent cleanup (operator runbook I-7, PR #90 revision 2) built and checked (gate H-20) | **not met.** Design merged, not built. Owner position of 11 Nov 10:30 UTC: the first session should not proceed with an unbounded ALB cost risk | **yes, unless the owner explicitly accepts the risk (06, D-E2)** |
 | E-P6 | Verification route chosen and ready: either the probe (operator runbook §3–§4; needs the I-3 pin PR and an I-4 apply, 1 create) or runbook 03 §12–§14 checks | **not met.** Probe not pinned or registered; runbook 03's throwaway-account helper does not exist | **yes** |
 | E-P7 | Throwaway-account MFA, recovery-code and revocation helper (runbook 03 §13) | **not written** (repository task) | **yes** for MFA testing; Identity could start without it but MFA would be untested |
 | E-P8 | Operator sign-in route that never shows the password to Claude (runbook 03 §13: `asm-exec` [U], owner hidden prompt, or skip) | **undecided**; `asm-exec` was found unavailable on 11 Nov | yes, as an owner choice (06, D-E4) |
-| E-P9 | Operator account custody (Option A): `munaxa-nonprod/identity-operator` and `/identity-bootstrap` created in-session by script C-8; operator email as private runtime input | email confirmed 11 Nov. C-8, C-8R, C-8v, C-16 and C-24 are on `main` only as `option-a-connector-scripts.DRAFT.py` ("Not run", `2026-11-11-identity-option-a-custody-cost-review`). They use `type(e).__name__`, and on 13 Nov the connector sandbox refused a read-only stage D check script for using `__name__`; it also refuses `secrets`, `os`, `base64` and `hashlib` imports (stage C execution note, 13 Nov 18:09). They have never run in the sandbox. The two secrets did not exist at stage R (13 Nov); 14 Nov NOT VERIFIED | **yes**: the scripts must be made sandbox-compatible and re-reviewed before stage E |
+| E-P9 | Operator account custody (Option A): `munaxa-nonprod/identity-operator` and `/identity-bootstrap` created in-session by script C-8; operator email as private runtime input | email confirmed 11 Nov. C-8, C-8R, C-8v, C-16 and C-24 are on `main` only as `option-a-connector-scripts.DRAFT.py` ("Not run", `2026-11-11-identity-option-a-custody-cost-review`). They use `type(e).__name__`, and on 13 Nov the connector sandbox refused a read-only stage D check script for using `__name__`; it also refuses `secrets`, `os`, `base64` and `hashlib` imports (stage C execution note, 13 Nov 18:09). They have never run in the sandbox. The two secrets do not exist (02 C, 14 Nov) | **yes**: the scripts must be made sandbox-compatible and re-reviewed before stage E |
 | E-P10 | `id.test.munaxa.com` DNS points at the session ALB | owner action in Cloudflare during the session (runbook 03 §7.1) | in-session owner step |
 | E-P11 | RDS master secret rotation (S-2) checked before the session | see 04; rotation fails while stopped | no, checked on session day |
-| E-P12 | Session-day read-only checks (the 02 script) and GitHub has no pending nonprod run. The connector must work (V-1) | to do on the day; the connector refused all calls on 14 Nov | **yes** while V-1 is open |
+| E-P12 | Session-day read-only checks (the 02 script) and GitHub has no pending nonprod run. The connector must work | to do on the day; the connector refused calls for most of 14 Nov before the owner reconnected it (V-1) | in-session |
 
 ## 2. The database start and its authorization
 
@@ -147,7 +147,6 @@ Taken from the operator runbook §8 (S-0 to S-7), with the revision fixed to 2. 
 | **BE-2** | Independent cleanup not built (owner position 11 Nov: do not proceed with unbounded ALB risk) | owner decision, then build (Stage B approvals) | 06, D-E2 |
 | **BE-3** | No verification tool ready: probe not pinned or registered; throwaway-account helper not written | repository + one owner-approved plan/apply if the probe is chosen | 06, D-E3 |
 | **BE-4** | Operator sign-in route undecided | owner decision | 06, D-E4 |
-| **V-1** | The AWS connector refuses calls from this thread; no session-day check or in-session connector step (RunTask, C-8, C-16, shutdown checks) can run | owner action | re-authenticate the connector; re-run the 02 script |
 | **BE-8** | Option A connector scripts (C-8, C-16, C-24) are unrun drafts and use `__name__`, which the connector sandbox refused on 13 Nov | repository | Revise for the sandbox, re-run the offline harness, independent review |
 | BE-5 | S-2 rotation failures while stopped; secret stages to check on the day | operational | session-day check |
 | BE-6 | Leftover throwaway account after the session (no reviewed disable step) | owner acceptance | 06, D-E5 |

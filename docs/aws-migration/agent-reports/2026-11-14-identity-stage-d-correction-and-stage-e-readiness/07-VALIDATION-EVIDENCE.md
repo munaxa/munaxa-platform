@@ -16,11 +16,17 @@
 
 ## AWS
 
-`sts:GetCallerIdentity` and the 02 script were refused by the connector ("needs you to sign in again") at about 12:10, 12:16, 17:0x and 20:3x UTC. No AWS response was received. Nothing in this report is presented as a 14 Nov AWS read.
+- Refused by the connector ("needs you to sign in again") at about 12:10, 12:16, 17:0x and 20:30 UTC; nothing was read then.
+- After the owner reconnected (20:35): four connector scripts, 20:36–20:40 UTC, root of `229251310592`:
+  1. `sts:GetCallerIdentity`;
+  2. ECS `DescribeClusters`, `ListServices`, `ListTasks` ×2, `ListTaskDefinitionFamilies`, `ListTaskDefinitions` ×4, `DescribeTaskDefinition` ×4; RDS `DescribeDBInstances`, `DescribeEvents`; Secrets Manager `DescribeSecret` ×3, `ListSecretVersionIds` ×2, `ListSecrets`;
+  3. CloudTrail `LookupEvents` (`ReadOnly=false`) in eu-central-1 and us-east-1 (one earlier attempt failed in the script's own date comparison after a successful read; re-run);
+  4. `budgets:DescribeBudgets`, CloudWatch `DescribeAlarms` ×2, ACM `ListCertificates`, `DescribeCertificate`, Scheduler `ListSchedules`, EventBridge `ListRules`, ELBv2 `DescribeLoadBalancers`, EC2 `DescribeNatGateways`, `DescribeAddresses`.
+- Every call returned success. The scripts returned names, ids, states, digest and version-id prefixes and dates only. No `GetSecretValue`, no write.
 
 ## Labels
 
-**[V]** verified directly; **[G]** from GitHub workflow logs (AWS seen through the workflow's own roles); **NOT VERIFIED** not read; **[E]** estimate.
+**[V]** verified directly; **[G]** from GitHub workflow logs (AWS seen through the workflow's own roles); **[E]** estimate.
 
 ## Documentation checks
 
