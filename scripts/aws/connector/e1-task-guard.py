@@ -480,8 +480,8 @@ MANIFEST = {
                 }
             },
             "probePin": {
-                "commit": "",
-                "sha256": ""
+                "commit": "2f6d44317b921d4cf59649285f2481c8bef9fdb0",
+                "sha256": "7254a0bade48dcd3d1d3517a0597181967e4b753b6a5b455b26ff48e13a7e369"
             },
             "loaderSha256": "605478009042bea7ad60d683cc3a2afdcbfc3feb74c7c1bb7daac5e38392e01e",
             "volumes": [

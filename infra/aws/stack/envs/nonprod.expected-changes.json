@@ -1,30 +1,46 @@
 {
   "root": "stack-nonprod",
-  "intent": "P-5, services off (report 2026-11-13-identity-testing-stage-r-p5), declared for the state AFTER stage C: secret_version_ids.identity pinned to the new munaxa-nonprod/identity version that holds MFA_ENCRYPTION_KEYS. New revisions of four task definitions, each a replacement (task definitions are immutable; skip_destroy keeps the old revision registered): identity-api (2db6ed9 image; MFA_ENCRYPTION_PRIMARY_KID, MFA_POLICY=off, IDENTITY_PASSWORD_RESET=disabled; the MFA_ENCRYPTION_KEYS secret reference; the new bundle version), identity-migrate (2db6ed9 migrate image), identity-bootstrap (2db6ed9 api image), and db-admin (its IDENTITY_APP_URL reference carries the new identity bundle version). Plus the pending docs-migrate delta (L-5, platform#105): one secret container create, no value, and the docs_db_admin execution policy update. No IAM change for Identity, no ECS service, ALB, network, database, KMS, DNS or production resource. While secret_version_ids.identity is still ad02f18e, db-admin is not replaced, so --enforce refuses the plan: the merge blocker is enforced at apply time.",
+  "intent": "Stage E owner decisions D-B3 and D-PIN (15 Nov 2026, report 2026-11-15-identity-stage-e-owner-decisions, files 04 and 05), services off, the session down. D-B3: the independent Testing session cleanup, session_cleanup_enabled = true: 8 creates (its IAM role and policy, the Step Functions state machine, the daily UTC schedule R, the alerts topic and its policy, the failed and not-run alarms) and the backstop role's policy update (StartTheSessionCleanup on that one state machine). Needs the bootstrap apply with testing_session_cleanup = true (D-B2) first. D-PIN: the Identity session probe task definition (throwaway mode), pinned to commit 2f6d443 and the probe's SHA-256 7254a0ba...e369: 1 create. No secret value, no ECS service, ALB, network, database, KMS, DNS or production resource.",
   "changes": [
     {
-      "address": "aws_ecs_task_definition.db_admin[0]",
-      "actions": ["delete", "create"]
-    },
-    {
-      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
-      "actions": ["delete", "create"]
-    },
-    {
-      "address": "aws_iam_role_policy.docs_db_admin_execution[0]",
-      "actions": ["update"]
-    },
-    {
-      "address": "aws_secretsmanager_secret.service[\"docs-migrate\"]",
+      "address": "aws_cloudwatch_metric_alarm.session_cleanup_failed[0]",
       "actions": ["create"]
     },
     {
-      "address": "module.identity[0].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
+      "address": "aws_cloudwatch_metric_alarm.session_cleanup_not_run[0]",
+      "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
+      "address": "aws_ecs_task_definition.identity_probe[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role.session_cleanup[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role_policy.session_backstop[0]",
+      "actions": ["update"]
+    },
+    {
+      "address": "aws_iam_role_policy.session_cleanup[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_scheduler_schedule.session_cleanup_daily[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_sfn_state_machine.session_cleanup[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_sns_topic.session_cleanup_alerts[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_sns_topic_policy.session_cleanup_alerts[0]",
+      "actions": ["create"]
     }
   ]
 }
