@@ -103,7 +103,7 @@ jobs:
 
       # Stage E (report 2026-11-14-identity-stage-e-blockers-remediation): the session cleanup's state
       # machine against an offline ASL simulator, and the connector scripts (E-1 task guard, H-20
-      # cleanup gate, Option A C-8/C-8R/C-8v/C-16/C-24) against a fake AWS under the sandbox's rules.
+      # cleanup gate, operator secret C-8G and C-24) against a fake AWS under the sandbox's rules.
       # The runner's Python 3, standard library only, no network, no credentials.
       - name: Session cleanup simulation and connector script tests
         run: |

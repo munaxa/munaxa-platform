@@ -1,4 +1,8 @@
-"""Fake-AWS tests for the Option A connector scripts C-8, C-8R, C-8v, C-16 and C-24 (Stage E blocker BE-8).
+"""Fake-AWS tests for the operator-credential connector scripts C-8G and C-24.
+
+C-8G replaced C-8, C-8R, C-8v and C-16 in the L-A0 redesign (owner decision D-LA0, 15 Nov 2026,
+report 2026-11-15-identity-stage-e-owner-decisions file 03): Secrets Manager generates the password
+through CloudFormation, so no connector request or response carries it.
 
 Run (offline; nothing here opens a network connection or reads a credential):
 
@@ -19,6 +23,7 @@ import os
 import re
 import sys
 import unittest
+import uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -31,15 +36,17 @@ GOOD_PW = "Zq7!mK2#vR9xT4pL8wN3sB6yH1cF5gJ0dQ2eA7uM"  # synthetic, 40 characters
 TRIVIAL_PW = "abcdefgh" * 5  # contains the sequence abcdef: refused by isTrivial
 PERSISTENT = "munaxa-nonprod/identity-operator"
 BOOTSTRAP = "munaxa-nonprod/identity-bootstrap"
-DATA_KEY_ID = None  # filled from c8v at import time
+SECRET_NAME = PERSISTENT
+DATA_KEY_ID = None  # filled from c8g at import time
 
 SCRIPTS = {
-    "c8": "c8-create-operator-secrets.py",
-    "c8r": "c8r-recover-operator-secrets.py",
-    "c8v": "c8v-verify-operator-secrets.py",
-    "c16": "c16-delete-bootstrap-secret.py",
+    "c8g": "c8g-operator-secret-stack.py",
     "c24": "c24-custody-cloudtrail-check.py",
 }
+TEMPLATE_FILE = os.path.join(HERE, "..", "..", "..", "infra", "aws", "cloudformation", "identity-operator-secret.template.json")
+STACK = "munaxa-nonprod-identity-operator-secret"
+ROOT_ARN = f"arn:aws:iam::{ACCOUNT}:root"
+READER_ARN = f"arn:aws:iam::{ACCOUNT}:role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution"
 
 
 def source(key):
@@ -47,7 +54,7 @@ def source(key):
         return f.read()
 
 
-DATA_KEY_ID = re.search(r'^DATA_KEY_ID = "([^"]+)"', source("c8v"), re.MULTILINE).group(1)
+DATA_KEY_ID = re.search(r'^DATA_KEY_ID = "([^"]+)"', source("c8g"), re.MULTILINE).group(1)
 
 
 class Fault:
@@ -68,6 +75,11 @@ class FakeAws:
         self.page_size = 50
         self.overrides = {}  # operation -> callable(params) returning a raw (possibly malformed) response
         self.suffix = 0
+        self.stack = None
+        self.rendered = {}
+        self.final_status = "CREATE_COMPLETE"
+        self.update_status = "UPDATE_COMPLETE"
+        self.in_progress_polls = 0
 
     # --- helpers -------------------------------------------------------------------------------
     def fault(self, operation, *faults):
@@ -196,6 +208,127 @@ class FakeAws:
                 out.append({"Name": rec["Name"], "ARN": rec["ARN"]})
         return {"SecretList": out}
 
+    # --- CloudFormation (renders the reviewed template the way AWS does, with a fake generator) -----
+    def resolve(self, node, params):
+        """Fn::Sub / Ref / Fn::If / Fn::Equals for the template's own shapes."""
+        if isinstance(node, list):
+            return [self.resolve(x, params) for x in node]
+        if not isinstance(node, dict):
+            return node
+        if set(node) == {"Ref"}:
+            return params[node["Ref"]] if node["Ref"] in params else self.ref(node["Ref"])
+        if set(node) == {"Fn::Sub"}:
+            text = node["Fn::Sub"]
+            text = text.replace("${AWS::AccountId}", self.account)
+            for k, v in params.items():
+                text = text.replace("${" + k + "}", v)
+            assert "${" not in text, text
+            return text
+        if set(node) == {"Fn::If"}:
+            cond, yes, no = node["Fn::If"]
+            return self.resolve(yes if self.conditions[cond] else no, params)
+        return {k: self.resolve(v, params) for k, v in node.items()}
+
+    def ref(self, logical):
+        assert logical == "OperatorSecret"
+        return self.secrets[SECRET_NAME]["ARN"]
+
+    def render(self, template, params):
+        for name, spec in template["Parameters"].items():
+            value = params.get(name, spec.get("Default"))
+            assert value is not None, name
+            if "AllowedValues" in spec and value not in spec["AllowedValues"]:
+                raise self.err("ValidationError", "CreateStack", {"parameter": name})
+            if "AllowedPattern" in spec and not re.fullmatch(spec["AllowedPattern"], value):
+                raise self.err("ValidationError", "CreateStack", {"parameter": name})
+            params[name] = value
+        self.conditions = {"WindowOpen": params["BootstrapReadWindow"] == "open"}
+        res = template["Resources"]
+        sec = res["OperatorSecret"]["Properties"]
+        gen = sec["GenerateSecretString"]
+        value = json.loads(self.resolve(gen["SecretStringTemplate"], params))
+        rec = self.secrets.get(sec["Name"])
+        previous = self.rendered.get("generate")
+        rendered_generate = json.dumps(self.resolve(gen, params), sort_keys=True)
+        if rec is None or rendered_generate != previous:
+            pw = self.passwords.pop(0) if len(self.passwords) > 1 else self.passwords[0]
+            assert len(pw) == gen["PasswordLength"] and not set(gen["ExcludeCharacters"]) & set(pw)
+            value[gen["GenerateStringKey"]] = pw
+            token = str(uuid.uuid4())
+            if rec is None:
+                self.secrets[sec["Name"]] = {
+                    "ARN": self.arn(sec["Name"]), "Name": sec["Name"], "Tags": copy.deepcopy(sec["Tags"]),
+                    "KmsKeyId": "arn:aws:kms:%s:%s:key/%s" % (REGION, self.account, DATA_KEY_ID), "Description": sec["Description"],
+                    "versions": {}}
+                rec = self.secrets[sec["Name"]]
+            for v in rec["versions"].values():
+                v["stages"] = ["AWSPREVIOUS"] if "AWSCURRENT" in v["stages"] else []
+            rec["versions"][token] = {"value": json.dumps(value), "stages": ["AWSCURRENT"]}
+        self.rendered["generate"] = rendered_generate
+        policy = self.resolve(res["OperatorSecretPolicy"]["Properties"]["ResourcePolicy"], params)
+        rec["policy"] = json.dumps(policy)
+
+    def op_CreateStack(self, params):
+        if self.stack is not None:
+            token = params["ClientRequestToken"]
+            if token == self.stack["token"]:
+                return {"StackId": self.stack["id"]}
+            raise self.err("AlreadyExistsException", "CreateStack", params)
+        assert "Capabilities" not in params and "RoleARN" not in params
+        template = json.loads(params["TemplateBody"])
+        values = {p["ParameterKey"]: p["ParameterValue"] for p in params["Parameters"]}
+        self.render(template, values)
+        self.stack = {"id": f"arn:aws:cloudformation:{REGION}:{self.account}:stack/{STACK}/1", "status": self.final_status,
+                      "template": params["TemplateBody"], "params": values, "tags": copy.deepcopy(params.get("Tags", [])),
+                      "protection": params.get("EnableTerminationProtection") is True, "token": params["ClientRequestToken"]}
+        return {"StackId": self.stack["id"]}
+
+    def op_UpdateStack(self, params):
+        if self.stack is None:
+            raise self.err("ValidationError", "UpdateStack", params)
+        assert params.get("UsePreviousTemplate") is True and "TemplateBody" not in params
+        values = {}
+        for p in params["Parameters"]:
+            if p.get("UsePreviousValue"):
+                assert "ParameterValue" not in p
+                values[p["ParameterKey"]] = self.stack["params"][p["ParameterKey"]]
+            else:
+                values[p["ParameterKey"]] = p["ParameterValue"]
+        if values == self.stack["params"]:
+            raise self.err("ValidationError", "UpdateStack", {"message": "No updates are to be performed."})
+        self.render(json.loads(self.stack["template"]), dict(values))
+        self.stack["params"] = values
+        self.stack["status"] = self.update_status
+        return {"StackId": self.stack["id"]}
+
+    def op_DescribeStacks(self, params):
+        if self.stack is None:
+            raise self.err("ValidationError", "DescribeStacks", params)
+        status = self.stack["status"]
+        if self.in_progress_polls:
+            self.in_progress_polls -= 1
+            status = "UPDATE_IN_PROGRESS" if status.startswith("UPDATE") else "CREATE_IN_PROGRESS"
+        return {"Stacks": [{
+            "StackId": self.stack["id"], "StackName": STACK, "StackStatus": status,
+            "StackStatusReason": "reason quoting " + json.dumps(self.stack["params"]),
+            "Parameters": [{"ParameterKey": k, "ParameterValue": "****" if k == "OperatorEmail" else v}
+                           for k, v in self.stack["params"].items()],
+            "Tags": copy.deepcopy(self.stack["tags"]), "EnableTerminationProtection": self.stack["protection"]}]}
+
+    def op_GetTemplate(self, params):
+        if self.stack is None:
+            raise self.err("ValidationError", "GetTemplate", params)
+        return {"TemplateBody": self.stack["template"]}
+
+    def op_GetResourcePolicy(self, params):
+        rec = self.find(params["SecretId"])
+        if rec is None:
+            raise self.err("ResourceNotFoundException", "GetResourcePolicy", params)
+        out = {"ARN": rec["ARN"], "Name": rec["Name"]}
+        if rec.get("policy"):
+            out["ResourcePolicy"] = rec["policy"]
+        return out
+
     # --- CloudTrail ----------------------------------------------------------------------------
     def op_LookupEvents(self, params):
         start = int(params.get("NextToken") or 0)
@@ -251,358 +384,319 @@ class SourceRules(unittest.TestCase):
                 self.assertIn(problem, h.check_source(text))
 
     def test_the_committed_inputs_are_placeholders(self):
-        self.assertIn('OPERATOR_EMAIL = "<IDENTITY_OPERATOR_EMAIL>"  # INPUT', source("c8"))
-        self.assertIn('OPERATOR_EMAIL = "<IDENTITY_OPERATOR_EMAIL>"  # INPUT', source("c8r"))
-        self.assertIn("NO_ACCOUNT_CONFIRMED = False  # INPUT", source("c8r"))
+        self.assertIn('OPERATOR_EMAIL = "<IDENTITY_OPERATOR_EMAIL>"  # INPUT', source("c8g"))
+        self.assertIn('MODE = "status"  # INPUT', source("c8g"))
+        self.assertIn("NO_ACCOUNT_CONFIRMED = False  # INPUT", source("c8g"))
+        self.assertIn("EXPECTED_GENERATION = 0  # INPUT", source("c8g"))
         self.assertIn('T_CREATE = "<', source("c24"))
         for key in SCRIPTS:
             self.assertNotRegex(source(key), r"[A-Za-z0-9._%+-]+@(?!munaxa-synthetic)[A-Za-z0-9-]+\.(com|net|org|io)\b")
 
 
-class C8(unittest.TestCase):
-    def test_success_creates_both_secrets_and_returns_no_value(self):
+def run8g(fake, **inputs):
+    return run("c8g", fake, **inputs)
+
+
+def created(**kw):
+    fake = FakeAws(**kw)
+    r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+    assert r["result"] == "CREATED", r
+    fake.calls.clear()
+    return fake
+
+
+def password_in_calls(fake):
+    """L-A0 regression: no request the script sent may hold the generated password (or any value)."""
+    text = json.dumps([c[2] for c in fake.calls], default=str)
+    return GOOD_PW in text or '"SecretString":' in text or '"RandomPassword"' in text
+
+
+class C8GTemplate(unittest.TestCase):
+    def setUp(self):
+        with open(TEMPLATE_FILE, encoding="utf-8") as f:
+            self.t = json.load(f)
+
+    def test_the_script_carries_exactly_the_reviewed_template(self):
+        text = re.search(r"TEMPLATE_TEXT = r'''(.*?)'''", source("c8g"), re.S).group(1)
+        self.assertEqual(json.loads(text), self.t)
+
+    def test_the_password_is_generated_by_secrets_manager_never_supplied(self):
+        sec = self.t["Resources"]["OperatorSecret"]
+        self.assertNotIn("SecretString", sec["Properties"])
+        g = sec["Properties"]["GenerateSecretString"]
+        self.assertEqual((g["GenerateStringKey"], g["PasswordLength"], g["RequireEachIncludedType"], g["IncludeSpace"]),
+                         ("IDENTITY_OWNER_PASSWORD", 40, True, False))
+        self.assertEqual(set(g["ExcludeCharacters"]), set(chr(34) + chr(39) + chr(96) + chr(92)))
+        self.assertNotIn("IDENTITY_OWNER_PASSWORD", g["SecretStringTemplate"]["Fn::Sub"])
+        self.assertNotIn("Password", json.dumps(self.t["Parameters"]))
+
+    def test_the_schema_matches_the_identity_bootstrap_task(self):
+        sub = self.t["Resources"]["OperatorSecret"]["Properties"]["GenerateSecretString"]["SecretStringTemplate"]["Fn::Sub"]
+        keys = set(json.loads(sub.replace("${OperatorEmail}", "a@b.cd").replace("${Generation}", "1")))
+        self.assertEqual(keys, {"IDENTITY_OWNER_EMAIL", "IDENTITY_ORGANISATION", "IDENTITY_SECRET_GENERATION"})
+        self.assertIn('"IDENTITY_ORGANISATION":"munaxa-group"', sub)
+
+    def test_retained_named_encrypted_nonprod_only(self):
+        sec = self.t["Resources"]["OperatorSecret"]
+        self.assertEqual((sec["DeletionPolicy"], sec["UpdateReplacePolicy"]), ("Retain", "Retain"))
+        p = sec["Properties"]
+        self.assertEqual((p["Name"], p["KmsKeyId"]), (PERSISTENT, "alias/munaxa-nonprod-data"))
+        self.assertNotIn("ReplicaRegions", p)
+        self.assertNotIn("prod/", json.dumps(self.t).replace("nonprod/", ""))
+        self.assertEqual(set(self.t["Resources"]), {"OperatorSecret", "OperatorSecretPolicy"})
+
+    def test_the_email_is_a_noecho_parameter_that_cannot_break_the_json(self):
+        e = self.t["Parameters"]["OperatorEmail"]
+        self.assertIs(e["NoEcho"], True)
+        self.assertNotIn("Default", e)
+        for bad in ('a"b@munaxa-synthetic.net', "a" + chr(92) + "b@munaxa-synthetic.net", "a b@munaxa-synthetic.net", "x@y"):
+            self.assertIsNone(re.fullmatch(e["AllowedPattern"], bad), bad)
+        self.assertIsNotNone(re.fullmatch(e["AllowedPattern"], EMAIL))
+        self.assertEqual(self.t["Parameters"]["BootstrapReadWindow"]["Default"], "closed")
+
+    def test_the_policy_denies_reads_except_root_and_the_open_window(self):
+        pol = self.t["Resources"]["OperatorSecretPolicy"]["Properties"]
+        self.assertIs(pol["BlockPublicPolicy"], True)
+        read, change = pol["ResourcePolicy"]["Statement"]
+        self.assertEqual((read["Effect"], read["Principal"], read["Action"]), ("Deny", "*", ["secretsmanager:GetSecretValue"]))
+        yes, no = read["Condition"]["StringNotEquals"]["aws:PrincipalArn"]["Fn::If"][1:]
+        self.assertEqual([x["Fn::Sub"] for x in no], ["arn:aws:iam::${AWS::AccountId}:root"])
+        self.assertEqual([x["Fn::Sub"] for x in yes], ["arn:aws:iam::${AWS::AccountId}:root",
+                         "arn:aws:iam::${AWS::AccountId}:role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution"])
+        self.assertEqual((change["Effect"], change["Principal"]), ("Deny", "*"))
+        for action in ("secretsmanager:PutSecretValue", "secretsmanager:DeleteSecret", "secretsmanager:PutResourcePolicy",
+                       "secretsmanager:DeleteResourcePolicy", "secretsmanager:UpdateSecretVersionStage", "secretsmanager:RotateSecret"):
+            self.assertIn(action, change["Action"])
+        self.assertNotIn("Allow", json.dumps(pol["ResourcePolicy"]))
+
+    def test_the_reader_role_is_the_one_terraform_creates(self):
+        with open(os.path.join(HERE, "..", "..", "..", "infra", "aws", "stack", "ops.tf"), encoding="utf-8") as f:
+            ops = f.read()
+        block = ops[ops.index('resource "aws_iam_role" "identity_bootstrap_execution"'):]
+        block = block[:block.index("\n}\n")]
+        self.assertIn('path                 = "/munaxa-shared/"', block)
+        self.assertIn('"${local.prefix}-identity-bootstrap-execution"', block)
+        self.assertTrue(READER_ARN.endswith(":role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution"))
+
+
+class C8G(unittest.TestCase):
+    def test_create_generates_inside_aws_and_returns_no_value(self):
         fake = FakeAws()
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["result"], "CREATED")
-        self.assertEqual(r["persistent"]["name"], PERSISTENT)
-        self.assertEqual(r["bootstrap"]["name"], BOOTSTRAP)
+        r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+        self.assertEqual((r["result"], r["stack_status"], r["mode"]), ("CREATED", "CREATE_COMPLETE", "create"))
         self.assertEqual(leaks(r, fake), [])
-        creates = fake.ops("CreateSecret")
-        self.assertEqual([c[2]["Name"] for c in creates], [PERSISTENT, BOOTSTRAP])
-        for c in creates:
-            self.assertEqual(c[2]["KmsKeyId"], "alias/munaxa-nonprod-data")
-            self.assertTrue(c[2]["ClientRequestToken"])
-            self.assertIn(GOOD_PW, c[2]["SecretString"])
-        self.assertEqual(json.loads(creates[0][2]["SecretString"])["IDENTITY_ORGANISATION"], "munaxa-group")
-        self.assertNotIn("IDENTITY_ORGANISATION", json.loads(creates[1][2]["SecretString"]))
+        self.assertFalse(password_in_calls(fake))
+        create = fake.ops("CreateStack")[0][2]
+        self.assertEqual({p["ParameterKey"]: p["ParameterValue"] for p in create["Parameters"]},
+                         {"OperatorEmail": EMAIL, "Generation": "1", "BootstrapReadWindow": "closed"})
+        self.assertIs(create["EnableTerminationProtection"], True)
+        self.assertEqual(create["OnFailure"], "ROLLBACK")
+        self.assertNotIn(EMAIL, create["TemplateBody"])
+        value = json.loads(next(iter(fake.secrets[PERSISTENT]["versions"].values()))["value"])
+        self.assertEqual(value, {"IDENTITY_OWNER_EMAIL": EMAIL, "IDENTITY_OWNER_PASSWORD": GOOD_PW,
+                                 "IDENTITY_ORGANISATION": "munaxa-group", "IDENTITY_SECRET_GENERATION": "1"})
+        fake.calls.clear()
+        s = run8g(fake)
+        self.assertEqual((s["result"], s["problems"], s["window_policy"], s["window_parameter"], s["generation"], s["versions"]),
+                         ("PASS", [], "closed", "closed", "1", 1))
+        self.assertEqual(leaks(s, fake), [])
+        self.assertEqual(fake.ops("CreateStack") + fake.ops("UpdateStack"), [])
 
-    def test_an_unedited_copy_aborts_before_any_call(self):
-        fake = FakeAws()
-        r = run("c8", fake)
-        self.assertEqual(r, {"result": "ABORT", "code": "EMAIL_NOT_SET"})
-        self.assertEqual(fake.calls, [])
+    def test_only_create_ever_sends_the_email(self):
+        fake = created()
+        for mode in ("open-window", "close-window", "status"):
+            run8g(fake, MODE=mode, OPERATOR_EMAIL=EMAIL)
+        run8g(fake, MODE="regenerate", EXPECTED_GENERATION=1, NO_ACCOUNT_CONFIRMED=True, OPERATOR_EMAIL=EMAIL)
+        self.assertNotIn(EMAIL, json.dumps([c[2] for c in fake.calls]))
+        self.assertFalse(password_in_calls(fake))
 
-    def test_a_malformed_or_reserved_email_aborts(self):
-        for email, code in (("not-an-email", "EMAIL_MALFORMED"), ("a@b", "EMAIL_MALFORMED"),
-                            ("x@example.com", "EMAIL_RESERVED_DOMAIN"), ("x@stage.invalid", "EMAIL_RESERVED_DOMAIN")):
+    def test_an_unedited_or_bad_email_aborts_before_any_call(self):
+        for email, code in (("<IDENTITY_OPERATOR_EMAIL>", "EMAIL_NOT_SET"), ('a"b@munaxa-synthetic.net', "EMAIL_MALFORMED"),
+                            ("ops@example.com", "EMAIL_RESERVED_DOMAIN"), ("ops@munaxa.test", "EMAIL_RESERVED_DOMAIN")):
             with self.subTest(email=email):
                 fake = FakeAws()
-                self.assertEqual(run("c8", fake, OPERATOR_EMAIL=email)["code"], code)
-                self.assertEqual(fake.calls, [])
+                r = run8g(fake, MODE="create", OPERATOR_EMAIL=email)
+                self.assertEqual((r["result"], r["code"]), ("ABORT", code))
+                self.assertEqual([c for c in fake.calls if c[0] != "sts"], [])
 
-    def test_the_wrong_account_aborts_before_any_secrets_call(self):
+    def test_an_unknown_mode_or_the_wrong_account_aborts(self):
+        fake = FakeAws()
+        self.assertEqual(run8g(fake, MODE="delete")["code"], "MODE_UNKNOWN")
+        self.assertEqual(fake.calls, [])
         fake = FakeAws(account="111111111111")
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "WRONG_ACCOUNT")
+        self.assertEqual(run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)["code"], "WRONG_ACCOUNT")
         self.assertEqual([c[1] for c in fake.calls], ["GetCallerIdentity"])
 
-    def test_a_denied_caller_check_aborts(self):
-        fake = FakeAws()
-        fake.fault("GetCallerIdentity", Fault("client", "AccessDenied"))
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "CALLER_AWS_AccessDenied")
-        self.assertEqual(leaks(r, fake), [])
+    def test_create_refuses_an_existing_stack_or_secret(self):
+        fake = created()
+        r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+        self.assertEqual(r["code"], "STACK_EXISTS")
+        for name in (PERSISTENT, BOOTSTRAP):
+            with self.subTest(name=name):
+                fake = FakeAws()
+                fake.secrets[name] = {"ARN": fake.arn(name), "Name": name, "versions": {}}
+                r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+                self.assertEqual((r["code"], r["name"]), ("SECRET_EXISTS", name))
+                self.assertEqual(fake.ops("CreateStack"), [])
 
-    def test_a_malformed_caller_response_aborts(self):
+    def test_a_create_timeout_retries_with_the_same_token(self):
         fake = FakeAws()
-        fake.overrides["GetCallerIdentity"] = lambda p: ["not", "a", "dict"]
-        self.assertEqual(run("c8", fake, OPERATOR_EMAIL=EMAIL)["code"], "WRONG_ACCOUNT")
-
-    def test_a_second_run_is_refused_and_changes_nothing(self):
-        fake = FakeAws()
-        run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        before = copy.deepcopy(fake.secrets)
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual((r["result"], r["code"], r["name"]), ("ABORT", "NAME_EXISTS", PERSISTENT))
-        self.assertEqual(fake.secrets, before)
-
-    def test_a_pending_deletion_name_is_refused(self):
-        fake = FakeAws()
-        fake.secrets[BOOTSTRAP] = {"ARN": fake.arn(BOOTSTRAP), "Name": BOOTSTRAP, "Tags": [], "KmsKeyId": "",
-                                   "versions": {}, "DeletedDate": "2026-11-19T00:00:00Z"}
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual((r["code"], r["name"]), ("NAME_EXISTS", BOOTSTRAP))
-        self.assertEqual(fake.ops("CreateSecret"), [])
-
-    def test_a_denied_precheck_aborts(self):
-        fake = FakeAws()
-        fake.fault("DescribeSecret", Fault("client", "AccessDeniedException"))
-        self.assertEqual(run("c8", fake, OPERATOR_EMAIL=EMAIL)["code"], "PRECHECK_AWS_AccessDeniedException")
-
-    def test_a_trivial_password_is_regenerated(self):
-        fake = FakeAws()
-        fake.passwords = [TRIVIAL_PW, GOOD_PW]
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
+        fake.fault("CreateStack", Fault("timeout", after=True))
+        r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
         self.assertEqual(r["result"], "CREATED")
-        self.assertEqual(len(fake.ops("GetRandomPassword")), 2)
-        self.assertNotIn(TRIVIAL_PW, json.dumps(fake.ops("CreateSecret")))
-
-    def test_three_trivial_passwords_abort_without_a_secret(self):
-        fake = FakeAws()
-        fake.passwords = [TRIVIAL_PW, TRIVIAL_PW, TRIVIAL_PW, TRIVIAL_PW]
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "GENERATE_POLICY_RETRIES")
-        self.assertEqual(fake.secrets, {})
-
-    def test_a_malformed_password_response_aborts(self):
-        fake = FakeAws()
-        fake.overrides["GetRandomPassword"] = lambda p: {"Unexpected": "x"}
-        self.assertEqual(run("c8", fake, OPERATOR_EMAIL=EMAIL)["code"], "GENERATE_PY_KEY")
-        fake = FakeAws()
-        fake.overrides["GetRandomPassword"] = lambda p: {"RandomPassword": 12345}
-        self.assertEqual(run("c8", fake, OPERATOR_EMAIL=EMAIL)["code"], "GENERATE_POLICY_RETRIES")
-
-    def test_a_denied_create_aborts_without_a_value(self):
-        fake = FakeAws()
-        fake.fault("CreateSecret", Fault("client", "AccessDeniedException"))
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "CREATE_PERSISTENT_AWS_AccessDeniedException")
-        self.assertEqual(r["next"], "C-8v")
-        self.assertEqual(fake.secrets, {})
-        self.assertEqual(leaks(r, fake), [])
-
-    def test_a_timeout_after_the_create_retries_idempotently(self):
-        fake = FakeAws()
-        fake.fault("CreateSecret", Fault("timeout", after=True))
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["result"], "CREATED")
-        creates = fake.ops("CreateSecret")
-        self.assertEqual(len(creates), 3)
-        self.assertEqual(creates[0][2]["ClientRequestToken"], creates[1][2]["ClientRequestToken"])
+        tokens = {c[2]["ClientRequestToken"] for c in fake.ops("CreateStack")}
+        self.assertEqual((len(fake.ops("CreateStack")), len(tokens)), (2, 1))
         self.assertEqual(len(fake.secrets[PERSISTENT]["versions"]), 1)
 
-    def test_throttling_is_retried_once_then_fails(self):
+    def test_throttling_twice_aborts_with_a_code(self):
         fake = FakeAws()
-        fake.fault("CreateSecret", Fault("client", "ThrottlingException"), Fault("client", "ThrottlingException"))
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "CREATE_PERSISTENT_AWS_ThrottlingException")
-        self.assertEqual(len(fake.ops("CreateSecret")), 2)
-
-    def test_partial_failure_keeps_the_persistent_secret_and_names_the_recovery(self):
-        fake = FakeAws()
-        fake.fault("CreateSecret", None, Fault("client", "LimitExceededException"))
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "CREATE_BOOTSTRAP_AWS_LimitExceededException")
-        self.assertTrue(r["persistent_kept"])
-        self.assertEqual(r["next"], "C-8v then C-8R")
-        self.assertIn(PERSISTENT, fake.secrets)
-        self.assertNotIn(BOOTSTRAP, fake.secrets)
-        self.assertEqual(fake.ops("DeleteSecret"), [])
+        fake.fault("CreateStack", Fault("client", "Throttling"), Fault("client", "Throttling"))
+        r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+        self.assertEqual(r["code"], "CREATE_AWS_Throttling")
         self.assertEqual(leaks(r, fake), [])
 
-    def test_a_malformed_create_response_fails_closed(self):
+    def test_a_rolled_back_create_fails_without_the_reason(self):
         fake = FakeAws()
-        fake.overrides["CreateSecret"] = lambda p: None
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual((r["result"], r["code"]), ("ABORT", "CREATE_PERSISTENT_PY_OTHER"))
+        fake.final_status = "ROLLBACK_COMPLETE"
+        r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+        self.assertEqual((r["result"], r["code"]), ("FAIL", "STACK_ROLLBACK_COMPLETE"))
+        self.assertEqual(leaks(r, fake), [])
+        self.assertNotIn("reason", json.dumps(r))
+
+    def test_a_slow_stack_is_reported_still_in_progress_within_the_time_limit(self):
+        fake = FakeAws()
+        fake.in_progress_polls = 100
+        r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+        self.assertEqual(r["code"], "STILL_IN_PROGRESS")
+        fake = FakeAws()
+        fake.in_progress_polls = 3
+        self.assertEqual(run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)["result"], "CREATED")
+
+    def test_the_window_opens_and_closes_through_the_policy(self):
+        fake = created()
+        r = run8g(fake, MODE="open-window")
+        self.assertEqual(r["result"], "WINDOW_OPEN")
+        upd = fake.ops("UpdateStack")[0][2]
+        self.assertIs(upd["UsePreviousTemplate"], True)
+        self.assertEqual(upd["Parameters"][0], {"ParameterKey": "OperatorEmail", "UsePreviousValue": True})
+        s = run8g(fake)
+        self.assertEqual((s["result"], s["window_policy"], s["window_parameter"]), ("PASS", "open", "open"))
+        self.assertIn(READER_ARN, fake.secrets[PERSISTENT]["policy"])
+        self.assertEqual(len(fake.secrets[PERSISTENT]["versions"]), 1)  # a window change never regenerates
+        self.assertEqual(run8g(fake, MODE="close-window")["result"], "WINDOW_CLOSED")
+        self.assertNotIn(READER_ARN, fake.secrets[PERSISTENT]["policy"])
+        fake.calls.clear()
+        self.assertEqual(run8g(fake, MODE="close-window")["result"], "ALREADY_CLOSED")
+        self.assertEqual(fake.ops("UpdateStack"), [])
+        self.assertEqual(run8g(fake)["window_policy"], "closed")
+
+    def test_a_window_change_refuses_a_drifted_template_or_an_unstable_stack(self):
+        fake = created()
+        t = json.loads(fake.stack["template"])
+        t["Resources"]["OperatorSecretPolicy"]["Properties"]["ResourcePolicy"]["Statement"].pop()
+        fake.stack["template"] = json.dumps(t)
+        self.assertEqual(run8g(fake, MODE="open-window")["code"], "TEMPLATE_DRIFT")
+        fake = created()
+        fake.stack["status"] = "UPDATE_ROLLBACK_FAILED"
+        self.assertEqual(run8g(fake, MODE="open-window")["code"], "STACK_UPDATE_ROLLBACK_FAILED")
+        fake = FakeAws()
+        self.assertEqual(run8g(fake, MODE="close-window")["code"], "STACK_ABSENT")
+        self.assertEqual(fake.ops("UpdateStack"), [])
+
+    def test_a_failed_window_update_is_reported(self):
+        fake = created()
+        fake.update_status = "UPDATE_ROLLBACK_COMPLETE"
+        r = run8g(fake, MODE="open-window")
+        self.assertEqual((r["result"], r["code"]), ("FAIL", "STACK_UPDATE_ROLLBACK_COMPLETE"))
+        fake = created()
+        fake.fault("UpdateStack", Fault("client", "AccessDenied"))
+        self.assertEqual(run8g(fake, MODE="open-window")["code"], "UPDATE_AWS_AccessDenied")
+
+    def test_regenerate_needs_confirmation_the_generation_and_a_closed_window(self):
+        fake = created()
+        self.assertEqual(run8g(fake, MODE="regenerate", EXPECTED_GENERATION=1)["code"], "NO_ACCOUNT_NOT_CONFIRMED")
+        self.assertEqual(run8g(fake, MODE="regenerate", NO_ACCOUNT_CONFIRMED=True)["code"], "EXPECTED_GENERATION_NOT_SET")
+        self.assertEqual(run8g(fake, MODE="regenerate", NO_ACCOUNT_CONFIRMED=True, EXPECTED_GENERATION=True)["code"], "EXPECTED_GENERATION_NOT_SET")
+        self.assertEqual(run8g(fake, MODE="regenerate", NO_ACCOUNT_CONFIRMED=True, EXPECTED_GENERATION=2)["code"], "GENERATION_MISMATCH")
+        run8g(fake, MODE="open-window")
+        self.assertEqual(run8g(fake, MODE="regenerate", NO_ACCOUNT_CONFIRMED=True, EXPECTED_GENERATION=1)["code"], "WINDOW_OPEN")
+        self.assertEqual(len(fake.secrets[PERSISTENT]["versions"]), 1)
+
+    def test_regenerate_makes_a_new_version_inside_aws(self):
+        fake = created()
+        fake.passwords = ["Xy9!" + "aB3#" * 9]
+        r = run8g(fake, MODE="regenerate", NO_ACCOUNT_CONFIRMED=True, EXPECTED_GENERATION=1)
+        self.assertEqual((r["result"], r["generation"]), ("REGENERATED", "2"))
+        self.assertFalse(password_in_calls(fake))
+        s = run8g(fake)
+        self.assertEqual((s["result"], s["generation"], s["versions"], s["window_policy"]), ("PASS", "2", 2, "closed"))
+        current = [v for v in fake.secrets[PERSISTENT]["versions"].values() if "AWSCURRENT" in v["stages"]]
+        self.assertEqual(json.loads(current[0]["value"])["IDENTITY_SECRET_GENERATION"], "2")
+
+    def test_status_reports_every_drift(self):
+        def policy(fake, f):
+            doc = json.loads(fake.secrets[PERSISTENT]["policy"])
+            f(doc)
+            fake.secrets[PERSISTENT]["policy"] = json.dumps(doc)
+        read = lambda d: d["Statement"][0]
+        cases = {
+            "policy-readers": lambda fk: policy(fk, lambda d: read(d)["Condition"]["StringNotEquals"].update(
+                {"aws:PrincipalArn": [ROOT_ARN, f"arn:aws:iam::{ACCOUNT}:role/munaxa-shared/munaxa-shared-deployer-nonprod"]})),
+            "policy-statements": lambda fk: policy(fk, lambda d: d["Statement"].pop()),
+            "policy-not-deny-all": lambda fk: policy(fk, lambda d: read(d).update(Effect="Allow")),
+            "policy-read-actions": lambda fk: policy(fk, lambda d: read(d).update(Action=["secretsmanager:DescribeSecret"])),
+            "policy-change-actions": lambda fk: policy(fk, lambda d: d["Statement"][1].update(Action=["secretsmanager:TagResource"])),
+            "policy-changers": lambda fk: policy(fk, lambda d: d["Statement"][1]["Condition"]["StringNotEquals"].update(
+                {"aws:PrincipalArn": READER_ARN})),
+            "policy-malformed": lambda fk: fk.secrets[PERSISTENT].update(policy="{not json"),
+            "window-mismatch": lambda fk: fk.stack["params"].update(BootstrapReadWindow="open"),
+            "stack-tags": lambda fk: fk.stack.update(tags=[]),
+            "termination-protection": lambda fk: fk.stack.update(protection=False),
+            "template-drift": lambda fk: fk.stack.update(template=json.dumps({"Resources": {}})),
+            "secret-tags": lambda fk: fk.secrets[PERSISTENT].update(Tags=[]),
+            "kms-key": lambda fk: fk.secrets[PERSISTENT].update(KmsKeyId="arn:aws:kms:eu-central-1:229251310592:key/other"),
+            "rotation-enabled": lambda fk: fk.secrets[PERSISTENT].update(RotationEnabled=True),
+            "scheduled-for-deletion": lambda fk: fk.secrets[PERSISTENT].update(DeletedDate="2026-11-20T00:00:00Z"),
+            "current-version": lambda fk: [v.update(stages=[]) for v in fk.secrets[PERSISTENT]["versions"].values()],
+            "legacy-bootstrap-secret-present": lambda fk: fk.secrets.update({BOOTSTRAP: {"ARN": fk.arn(BOOTSTRAP), "Name": BOOTSTRAP, "versions": {}}}),
+            "stack-status": lambda fk: fk.stack.update(status="UPDATE_ROLLBACK_COMPLETE"),
+        }
+        for problem, mutate in cases.items():
+            with self.subTest(problem=problem):
+                fake = created()
+                mutate(fake)
+                r = run8g(fake)
+                self.assertEqual(r["result"], "FAIL")
+                self.assertIn(problem, r["problems"])
+                self.assertEqual(leaks(r, fake), [])
+
+    def test_status_of_nothing_and_of_failures(self):
+        fake = FakeAws()
+        self.assertEqual(run8g(fake)["result"], "ABSENT")
+        fake = FakeAws()
+        fake.fault("DescribeStacks", Fault("client", "AccessDenied"))
+        self.assertEqual(run8g(fake)["code"], "DESCRIBE_STACK_AWS_AccessDenied")
+        fake = created()
+        fake.fault("GetResourcePolicy", Fault("client", "AccessDeniedException"))
+        r = run8g(fake)
+        self.assertEqual((r["result"], r["code"]), ("FAIL", "SECRET_AWS_AccessDeniedException"))
+        fake = created()
+        fake.overrides["DescribeStacks"] = lambda p: {"Stacks": "x"}
+        self.assertEqual(run8g(fake)["code"], "DESCRIBE_STACK_MALFORMED")
 
     def test_an_unexpected_exception_returns_a_code_only(self):
         fake = FakeAws()
-        fake.fault("CreateSecret", Fault("runtime"))
-        r = run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "CREATE_PERSISTENT_PY_OTHER")
+        fake.fault("DescribeStacks", Fault("runtime"))
+        r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+        self.assertEqual(r["code"], "DESCRIBE_STACK_PY_OTHER")
         self.assertEqual(leaks(r, fake), [])
 
 
-class C8R(unittest.TestCase):
-    def partial(self):
-        fake = FakeAws()
-        fake.fault("CreateSecret", None, Fault("client", "LimitExceededException"))
-        run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        fake.calls.clear()
-        fake.passwords = ["Wk4$hT8@pN2&vB6*xM9!zR3%cL7^fJ1#dS5+gQ0="]
-        return fake
-
-    def test_it_needs_the_no_account_confirmation(self):
-        fake = self.partial()
-        r = run("c8r", fake, OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "NO_ACCOUNT_NOT_CONFIRMED")
-        self.assertEqual(fake.calls, [])
-
-    def test_recovery_rotates_the_persistent_secret_and_creates_the_bootstrap_secret(self):
-        fake = self.partial()
-        r = run("c8r", fake, OPERATOR_EMAIL=EMAIL, NO_ACCOUNT_CONFIRMED=True)
-        self.assertEqual(r["result"], "CREATED")
-        self.assertEqual(len(fake.secrets[PERSISTENT]["versions"]), 2)
-        self.assertIn(BOOTSTRAP, fake.secrets)
-        put = fake.ops("PutSecretValue")[0][2]
-        self.assertTrue(put["SecretId"].startswith(f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{PERSISTENT}-"))
-        self.assertEqual(leaks(r, fake), [])
-        self.assertNotIn("Wk4$", json.dumps(r))
-        v = run("c8v", fake, EXPECTED_OPERATOR_VERSIONS=2)
-        self.assertEqual(v["result"], "PASS")
-
-    def test_recovery_refuses_when_the_bootstrap_secret_exists(self):
-        fake = FakeAws()
-        run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        r = run("c8r", fake, OPERATOR_EMAIL=EMAIL, NO_ACCOUNT_CONFIRMED=True)
-        self.assertEqual(r["code"], "BOOTSTRAP_EXISTS")
-        self.assertEqual(fake.ops("PutSecretValue"), [])
-
-    def test_recovery_refuses_without_a_persistent_secret(self):
-        fake = FakeAws()
-        r = run("c8r", fake, OPERATOR_EMAIL=EMAIL, NO_ACCOUNT_CONFIRMED=True)
-        self.assertEqual(r["code"], "PERSISTENT_AWS_ResourceNotFoundException")
-
-    def test_a_timeout_on_the_rotation_retries_with_the_same_token(self):
-        fake = self.partial()
-        fake.fault("PutSecretValue", Fault("timeout", after=True))
-        r = run("c8r", fake, OPERATOR_EMAIL=EMAIL, NO_ACCOUNT_CONFIRMED=True)
-        self.assertEqual(r["result"], "CREATED")
-        puts = fake.ops("PutSecretValue")
-        self.assertEqual(len(puts), 2)
-        self.assertEqual(puts[0][2]["ClientRequestToken"], puts[1][2]["ClientRequestToken"])
-        self.assertEqual(len(fake.secrets[PERSISTENT]["versions"]), 2)
-
-    def test_a_denied_bootstrap_create_keeps_the_rotated_secret(self):
-        fake = self.partial()
-        fake.fault("CreateSecret", Fault("client", "AccessDeniedException"))
-        r = run("c8r", fake, OPERATOR_EMAIL=EMAIL, NO_ACCOUNT_CONFIRMED=True)
-        self.assertEqual(r["code"], "CREATE_BOOTSTRAP_AWS_AccessDeniedException")
-        self.assertTrue(r["persistent_kept"])
-        self.assertEqual(leaks(r, fake), [])
-
-
-class C8v(unittest.TestCase):
-    def created(self):
-        fake = FakeAws()
-        run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        return fake
-
-    def test_pass_after_c8(self):
-        r = run("c8v", self.created(), EXPECTED_OPERATOR_VERSIONS=1)
-        self.assertEqual(r["result"], "PASS")
-        self.assertEqual(leaks(r, None), [])
-
-    def test_every_drift_fails(self):
-        drifts = {
-            "tag": lambda f: f.secrets[PERSISTENT]["Tags"].pop(),
-            "rotation": lambda f: f.secrets[BOOTSTRAP].__setitem__("RotationEnabled", True),
-            "kms": lambda f: f.secrets[PERSISTENT].__setitem__("KmsKeyId", "alias/aws/secretsmanager"),
-            "deleted": lambda f: f.secrets[BOOTSTRAP].__setitem__("DeletedDate", "2026-11-20T00:00:00Z"),
-            "missing": lambda f: f.secrets.pop(BOOTSTRAP),
-        }
-        for name, change in drifts.items():
-            with self.subTest(drift=name):
-                fake = self.created()
-                change(fake)
-                self.assertEqual(run("c8v", fake, EXPECTED_OPERATOR_VERSIONS=1)["result"], "FAIL")
-
-    def test_the_wrong_version_count_fails(self):
-        self.assertEqual(run("c8v", self.created(), EXPECTED_OPERATOR_VERSIONS=2)["result"], "FAIL")
-
-    def test_a_bad_input_aborts(self):
-        fake = self.created()
-        fake.calls.clear()
-        self.assertEqual(run("c8v", fake, EXPECTED_OPERATOR_VERSIONS=3)["code"], "BAD_EXPECTED_VERSIONS")
-        self.assertEqual(fake.calls, [])
-
-    def test_a_malformed_response_fails_closed(self):
-        fake = self.created()
-        fake.overrides["ListSecretVersionIds"] = lambda p: {"Versions": "garbage"}
-        r = run("c8v", fake, EXPECTED_OPERATOR_VERSIONS=1)
-        self.assertEqual(r["result"], "FAIL")
-
-    def test_a_denial_fails(self):
-        fake = self.created()
-        fake.fault("DescribeSecret", Fault("client", "AccessDeniedException"))
-        r = run("c8v", fake, EXPECTED_OPERATOR_VERSIONS=1)
-        self.assertEqual(r["result"], "FAIL")
-        self.assertEqual(r[PERSISTENT]["error"], "AWS_AccessDeniedException")
-
-
-class C16(unittest.TestCase):
-    def created(self):
-        fake = FakeAws()
-        run("c8", fake, OPERATOR_EMAIL=EMAIL)
-        fake.calls.clear()
-        return fake
-
-    def test_it_deletes_only_the_bootstrap_secret(self):
-        fake = self.created()
-        r = run("c16", fake)
-        self.assertEqual(r["result"], "PASS")
-        self.assertTrue(r["deleted"])
-        self.assertIn(PERSISTENT, fake.secrets)
-        self.assertNotIn(BOOTSTRAP, fake.secrets)
-        deletes = fake.ops("DeleteSecret")
-        self.assertEqual(len(deletes), 1)
-        self.assertTrue(deletes[0][2]["SecretId"].startswith(f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{BOOTSTRAP}-"))
-        self.assertIs(deletes[0][2]["ForceDeleteWithoutRecovery"], True)
-
-    def test_a_second_run_is_success_without_a_delete(self):
-        fake = self.created()
-        run("c16", fake)
-        fake.calls.clear()
-        r = run("c16", fake)
-        self.assertEqual((r["result"], r["already_absent"], r["deleted"]), ("PASS", True, False))
-        self.assertEqual(fake.ops("DeleteSecret"), [])
-
-    def test_a_name_mismatch_never_deletes(self):
-        fake = self.created()
-        fake.overrides["DescribeSecret"] = lambda p: {"Name": PERSISTENT, "ARN": fake.secrets[PERSISTENT]["ARN"]}
-        r = run("c16", fake)
-        self.assertEqual(r["code"], "NAME_MISMATCH")
-        self.assertEqual(fake.ops("DeleteSecret"), [])
-
-    def test_a_foreign_arn_never_deletes(self):
-        fake = self.created()
-        fake.overrides["DescribeSecret"] = lambda p: {
-            "Name": BOOTSTRAP, "ARN": f"arn:aws:secretsmanager:{REGION}:999999999999:secret:{BOOTSTRAP}-AbCdEf"}
-        self.assertEqual(run("c16", fake)["code"], "NAME_MISMATCH")
-        self.assertEqual(fake.ops("DeleteSecret"), [])
-
-    def test_throttling_is_retried(self):
-        fake = self.created()
-        fake.fault("DeleteSecret", Fault("client", "ThrottlingException"), Fault("timeout"))
-        r = run("c16", fake)
-        self.assertEqual(r["result"], "PASS")
-        self.assertEqual(len(fake.ops("DeleteSecret")), 3)
-
-    def test_a_delete_that_happened_before_a_timeout_is_absent_on_retry(self):
-        fake = self.created()
-        fake.fault("DeleteSecret", Fault("timeout", after=True))
-        r = run("c16", fake)
-        self.assertEqual(r["result"], "PASS")
-        self.assertTrue(r["already_absent"])
-
-    def test_a_denied_delete_fails(self):
-        fake = self.created()
-        fake.fault("DeleteSecret", Fault("client", "AccessDeniedException"))
-        r = run("c16", fake)
-        self.assertEqual((r["result"], r["code"]), ("FAIL", "DELETE_AWS_AccessDeniedException"))
-        self.assertIn(BOOTSTRAP, fake.secrets)
-
-    def test_a_missing_persistent_secret_fails(self):
-        fake = self.created()
-        fake.secrets.pop(PERSISTENT)
-        r = run("c16", fake)
-        self.assertEqual(r["result"], "FAIL")
-        self.assertFalse(r["persistent_present"])
-
-    def test_a_list_failure_fails(self):
-        fake = self.created()
-        fake.fault("ListSecrets", Fault("client", "AccessDeniedException"))
-        r = run("c16", fake)
-        self.assertEqual((r["result"], r["list_count_exact"]), ("FAIL", -1))
-
-    def test_a_secret_that_never_disappears_fails_within_the_time_limit(self):
-        fake = self.created()
-        fake.op_DeleteSecret = lambda p: {"ARN": "x", "Name": BOOTSTRAP}  # accepted but nothing happens
-        r = run("c16", fake)
-        self.assertEqual(r["result"], "FAIL")
-        self.assertFalse(r["describe_not_found"])
-
-    def test_the_wrong_account_aborts(self):
-        fake = self.created()
-        fake.account = "111111111111"
-        self.assertEqual(run("c16", fake)["code"], "WRONG_ACCOUNT")
-        self.assertEqual(fake.ops("DeleteSecret"), [])
-
-
-def event(name, who="root", secret=None, extra=None, role=None):
+def event(name, who="root", secret=None, extra=None, role=None, cfn=False):
     ui = {"type": "Root"} if who == "root" else {
         "type": "AssumedRole", "sessionContext": {"sessionIssuer": {"userName": role or who}}}
+    if cfn:
+        ui["invokedBy"] = "cloudformation.amazonaws.com"
     req = {} if secret is None else {"secretId": f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{secret}-AbCdEf"}
     ev = {"eventName": name, "userIdentity": ui, "requestParameters": req or None}
     ev.update(extra or {})
@@ -622,11 +716,19 @@ class C24(unittest.TestCase):
     T = "2026-11-14T10:00:00Z"
 
     def normal(self):
+        # C-8G create (CloudFormation generates and stores; Secrets Manager's own redaction marker),
+        # the window opened, the identity-bootstrap task's reads, the window closed, C-8G status.
         return [
-            event("GetRandomPassword"),
-            event("CreateSecret", secret=PERSISTENT), event("CreateSecret", secret=BOOTSTRAP),
-            event("GetSecretValue", "role", BOOTSTRAP, role="munaxa-nonprod-identity-bootstrap-execution"),
-            event("DescribeSecret", secret=BOOTSTRAP), event("DeleteSecret", secret=BOOTSTRAP),
+            event("DescribeSecret", secret=PERSISTENT),
+            event("GetRandomPassword", cfn=True),
+            event("CreateSecret", secret=PERSISTENT, cfn=True,
+                  extra={"requestParameters": {"name": PERSISTENT, "secretString": "HIDDEN_DUE_TO_SECURITY_REASONS"}}),
+            event("PutResourcePolicy", secret=PERSISTENT, cfn=True),
+            event("PutResourcePolicy", secret=PERSISTENT, cfn=True),
+            event("GetSecretValue", "role", PERSISTENT, role="munaxa-nonprod-identity-bootstrap-execution"),
+            event("GetSecretValue", "role", "munaxa-nonprod/identity-migrate", role="munaxa-nonprod-identity-bootstrap-execution"),
+            event("PutResourcePolicy", secret=PERSISTENT, cfn=True),
+            event("GetResourcePolicy", secret=PERSISTENT), event("ListSecretVersionIds", secret=PERSISTENT),
         ]
 
     def run24(self, fake, **kw):
@@ -648,11 +750,18 @@ class C24(unittest.TestCase):
 
     def test_every_custody_breach_fails(self):
         breaches = {
-            "value-read-of-identity-operator": event("GetSecretValue", "role", PERSISTENT, role="munaxa-nonprod-identity-bootstrap-execution"),
+            "value-read-of-identity-operator-by-root": event("GetSecretValue", "root", PERSISTENT),
+            "value-read-of-identity-operator-by-role:munaxa-nonprod-identity-execution":
+                event("GetSecretValue", "role", PERSISTENT, role="munaxa-nonprod-identity-execution"),
             "value-read-by-root": event("GetSecretValue", "root", BOOTSTRAP),
+            "password-generated-outside-cloudformation": event("GetRandomPassword"),
+            "operator-secret-written-outside-cloudformation": event("PutSecretValue", secret=PERSISTENT),
+            "operator-policy-changed-outside-cloudformation": event("DeleteResourcePolicy", secret=PERSISTENT),
+            "legacy-bootstrap-secret-created": event("CreateSecret", secret=BOOTSTRAP, cfn=True),
             "value-read-by-role:munaxa-shared-deployer-nonprod": event("GetSecretValue", "role", BOOTSTRAP, role="munaxa-shared-deployer-nonprod"),
             "delete-of-identity-operator": event("DeleteSecret", secret=PERSISTENT),
-            "value-recorded-in-cloudtrail": event("CreateSecret", secret=BOOTSTRAP, extra={"requestParameters": {"name": BOOTSTRAP, "secretString": "x"}}),
+            "value-recorded-in-cloudtrail": event("CreateSecret", secret=PERSISTENT, cfn=True,
+                                                  extra={"requestParameters": {"name": PERSISTENT, "secretString": "x"}}),
             "batch-value-read": event("BatchGetSecretValue", "role", None, role="munaxa-nonprod-identity-bootstrap-execution"),
         }
         for finding, ev in breaches.items():

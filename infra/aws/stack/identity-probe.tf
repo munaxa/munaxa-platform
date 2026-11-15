@@ -48,7 +48,11 @@
 # runs as uid 0 (still read-only root filesystem, every capability dropped, no task role) and writes
 # the hand-off file 0644; the probe container stays the non-root identity user and can only read it.
 # "operator" restores the original single-container design above (the two operator fields of
-# identity-bootstrap, 15 checks, no database URL).
+# identity-bootstrap, 15 checks, no database URL). It is inert since the L-A0 redesign (owner
+# decisions D-BE4 and D-LA0, report 2026-11-15-identity-stage-e-owner-decisions, file 03): the
+# one-run identity-bootstrap secret is never created any more and the execution role can no longer
+# read it, so an operator-mode probe fails at task start. It is deliberately NOT pointed at
+# identity-operator: the probe container runs downloaded code and must never receive that password.
 #
 # It exists only once identity_probe_source pins a reviewed probe commit, so merging this file
 # changes no plan. Pinning it is a configuration PR with its own apply (README "Every

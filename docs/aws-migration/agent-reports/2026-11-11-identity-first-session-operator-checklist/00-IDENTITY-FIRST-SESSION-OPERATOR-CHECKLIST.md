@@ -1,5 +1,17 @@
 # First Identity non-production session: operator checklist (11 Nov 2026)
 
+> **Correction, 15 Nov 2026 (L-A0 redesign, owner decision D-LA0; report
+> `../2026-11-15-identity-stage-e-owner-decisions/03-LA0-SECURE-CREDENTIAL-DESIGN.md`).** Nobody
+> creates or deletes `munaxa-nonprod/identity-bootstrap` any more: owner guide C (step 12), the
+> `describe-secret` and `delete-secret` commands for it below, and PR #91 scripts C-8, C-8R and C-16
+> are superseded and must not be run. The identity-bootstrap task reads the persistent
+> `munaxa-nonprod/identity-operator` secret, which Secrets Manager generates through the CloudFormation
+> stack `munaxa-nonprod-identity-operator-secret` (connector script
+> `scripts/aws/connector/c8g-operator-secret-stack.py`, C-8G), and only while its read window is
+> open: C-8G `open-window` before step 13, C-8G `close-window` right after the last bootstrap step and
+> on every stop path before `down`. The final operator runbook's steps S-5, S-5b, S-6d and section 11
+> are the current procedure.
+
 > **Correction, 14 Nov 2026 (Stage E blocker BE-1, report
 > `../2026-11-14-identity-stage-e-blockers-remediation/01-BE1-TASK-DEFINITION-REVISION-FIX.md`).**
 > This document no longer names a task-definition revision. Revision 1 of each family was registered

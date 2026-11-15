@@ -258,12 +258,12 @@ MANIFEST = {
                         },
                         "IDENTITY_OWNER_EMAIL": {
                             "form": "partial",
-                            "secret": "munaxa-nonprod/identity-bootstrap",
+                            "secret": "munaxa-nonprod/identity-operator",
                             "key": "IDENTITY_OWNER_EMAIL"
                         },
                         "IDENTITY_OWNER_PASSWORD": {
                             "form": "partial",
-                            "secret": "munaxa-nonprod/identity-bootstrap",
+                            "secret": "munaxa-nonprod/identity-operator",
                             "key": "IDENTITY_OWNER_PASSWORD"
                         }
                     },
