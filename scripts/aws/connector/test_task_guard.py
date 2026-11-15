@@ -45,12 +45,16 @@ def read(*parts):
 SCRIPT = read("scripts", "aws", "connector", "e1-task-guard.py")
 MANIFEST = json.loads(read("infra", "aws", "stack", "envs", "nonprod.stage-e-tasks.json"))
 FAMILIES = MANIFEST["families"]
-PIN = {"commit": "0123456789abcdef0123456789abcdef01234567", "sha256": "ab" * 32}
+# The manifest's own pin once the D-PIN configuration sets it (owner decision, 15 Nov 2026); a
+# synthetic one while it is unpinned.
+PIN = FAMILIES["munaxa-nonprod-identity-probe"]["probePin"] if FAMILIES["munaxa-nonprod-identity-probe"]["probePin"]["commit"] \
+    else {"commit": "0123456789abcdef0123456789abcdef01234567", "sha256": "ab" * 32}
+UNPINNED = {"commit": "", "sha256": ""}
 
 
 def pinned_script(pin=PIN):
-    """The script as it will be once the probe pin PR sets the manifest's probePin."""
-    pattern = re.compile(r'"probePin": \{\s*"commit": "",\s*"sha256": ""\s*\}')
+    """The script with the manifest's probePin set to `pin` (UNPINNED gives the unpinned script)."""
+    pattern = re.compile(r'"probePin": \{\s*"commit": "[0-9a-f]*",\s*"sha256": "[0-9a-f]*"\s*\}')
     assert len(pattern.findall(SCRIPT)) == 1
     return pattern.sub(f'"probePin": {{"commit": "{pin['commit']}", "sha256": "{pin['sha256']}"}}', SCRIPT)
 
@@ -550,7 +554,7 @@ class Discover(unittest.TestCase):
 
     def test_an_unpinned_manifest_never_accepts_a_probe(self):
         fake = FakeEcs()
-        r = guard(fake, FAMILY="munaxa-nonprod-identity-probe")
+        r = guard(fake, pinned_script(UNPINNED), FAMILY="munaxa-nonprod-identity-probe")
         self.assertIn("identity-probe:probe-not-pinned-in-manifest", r["families"][0]["problems"])
         self.assertIn("throwaway-account:probe-not-pinned-in-manifest", r["families"][0]["problems"])
 

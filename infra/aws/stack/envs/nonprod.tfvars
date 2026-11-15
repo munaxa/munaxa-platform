@@ -102,3 +102,20 @@ secret_version_ids = {
   identity         = "80914756-68cd-420d-8094-0fd49afe3492"
   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
 }
+
+# Stage E owner decisions (15 Nov 2026, report 2026-11-15-identity-stage-e-owner-decisions, files 04
+# and 05). Each is an apply of its own plan, approved after the owner sees the exact plan.
+#
+# D-B3: the independent Testing session cleanup (session-cleanup.tf): 8 creates and the backstop
+# role's policy update. Needs the bootstrap apply with testing_session_cleanup = true (D-B2) first.
+session_cleanup_enabled = true
+
+# D-PIN: the Identity session probe (identity-probe.tf), pinned to the commit that merged PR #130
+# and the SHA-256 of infra/aws/stack/supporting/identity-session-probe.mjs at it (fetched from
+# raw.githubusercontent.com at that commit and hashed, 15 Nov 2026). 1 create. Throwaway mode
+# (identity_probe_account default, owner decision D-BE4). envs/nonprod.stage-e-tasks.json probePin
+# holds the same two values (test_task_guard.py keeps them equal).
+identity_probe_source = {
+  commit = "2f6d44317b921d4cf59649285f2481c8bef9fdb0"
+  sha256 = "7254a0bade48dcd3d1d3517a0597181967e4b753b6a5b455b26ff48e13a7e369"
+}
