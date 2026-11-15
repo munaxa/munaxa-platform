@@ -6,7 +6,20 @@
 //
 //   PASS <check>
 //   FAIL <check> <safe-code>
-//   SUMMARY pass=<n> fail=<n> total=15 result=PASS|FAIL
+//   SUMMARY pass=<n> fail=<n> total=<15|28> result=PASS|FAIL
+//
+// Two account modes (PROBE_ACCOUNT; Stage E blockers BE-3 and BE-4, report
+// 2026-11-14-identity-stage-e-blockers-remediation, files 03 and 04):
+//   operator   (default) the fifteen checks with the operator credential of
+//              munaxa-<env>/identity-bootstrap. Never enrolls MFA, never locks the account.
+//   throwaway  the identity-probe task definition's mode: the loader creates a synthetic account
+//              (stage-e-<16 hex>@stage-e.invalid, a random password, organisation
+//              munaxa-stage-e-checks, no role) before this file is imported, and passes its
+//              credential in the env object only. The fifteen checks run against it, then thirteen
+//              more: origin enforcement, refresh-token reuse detection, the MFA lifecycle (enrol,
+//              challenge, invalid code, TOTP replay, TOTP, status, recovery code, its single use,
+//              removal) and the login lockout, which runs last because it locks the account. The
+//              loader prints `INFO throwaway-sub <uuid>` so the account can be disabled afterwards.
 //
 // It never prints a password, token, cookie, header, response body, email address or error
 // message. Every output line goes through formatLine(), which accepts only known check names and
@@ -38,7 +51,7 @@
 //                    __Secure-mx_refresh (Path=/api/auth/refresh)
 //   routes           Identity 5277d71 auth.controller.ts, health.controller.ts
 //   edge rules       edge.tf rules 10, 21, 39 and the HTTPS default action (404 "Not found")
-import { createPublicKey, randomBytes, verify as verifySignature } from 'node:crypto';
+import { createHmac, createPublicKey, randomBytes, verify as verifySignature } from 'node:crypto';
 import { request as httpsRequest } from 'node:https';
 import { connect as tlsConnect } from 'node:tls';
 import { pathToFileURL } from 'node:url';
@@ -74,6 +87,14 @@ export const EXPECTED = Object.freeze({
   sessionCookie: '__Host-mx_session',
   refreshCookie: '__Secure-mx_refresh',
   refreshPath: '/api/auth/refresh',
+  // Throwaway mode only (BE-4): an organisation of its own, no role, nothing else in it.
+  throwawayOrganisation: 'munaxa-stage-e-checks',
+  throwawayIdentifier: /^stage-e-[0-9a-f]{16}@stage-e\.invalid$/,
+  challengeCookie: '__Host-mx_mfa',
+  // Sent as an Origin header only (never a request target); .invalid can never resolve (RFC 6761).
+  foreignOrigin: 'https://foreign-origin.invalid',
+  // @identity/config defaults: LOGIN_MAX_ATTEMPTS 10 per identifier; edge limit 20 per identifier.
+  lockoutMaxAttempts: 22,
 });
 
 /** The fifteen checks, in the order they run and print. */
@@ -95,7 +116,31 @@ export const CHECKS = Object.freeze([
   'unknown-host',
 ]);
 
-// Names the probe may print besides the fifteen checks.
+/** Throwaway mode runs these thirteen after the fifteen, in this order (lockout last). */
+export const THROWAWAY_CHECKS = Object.freeze([
+  'origin-enforced',
+  'refresh-reuse-detected',
+  'mfa-enrollment',
+  'mfa-challenge-required',
+  'mfa-invalid-code',
+  'mfa-totp-replay',
+  'mfa-totp',
+  'mfa-status',
+  'mfa-recovery-code',
+  'mfa-recovery-code-reuse',
+  'mfa-recovery-code-count',
+  'mfa-disable',
+  'lockout',
+]);
+
+export const ACCOUNT_MODES = Object.freeze(['operator', 'throwaway']);
+
+/** Every check the given mode runs, in order. */
+export function checksFor(mode = 'operator') {
+  return mode === 'throwaway' ? [...CHECKS, ...THROWAWAY_CHECKS] : [...CHECKS];
+}
+
+// Names the probe may print besides the checks.
 const META_NAMES = new Set(['config', 'probe']);
 
 // Environment variables that hold credentials. Copied once, then deleted from process.env before
@@ -123,17 +168,17 @@ const SAFE_CODE = /^[a-z0-9][a-z0-9-]{0,47}$/;
 
 /** One output line. Unknown names and codes are replaced, never echoed. */
 export function formatLine(check, ok, code) {
-  const name = CHECKS.includes(check) || META_NAMES.has(check) ? check : 'probe';
+  const name = CHECKS.includes(check) || THROWAWAY_CHECKS.includes(check) || META_NAMES.has(check) ? check : 'probe';
   if (ok === true) return `PASS ${name}`;
   const safe = typeof code === 'string' && SAFE_CODE.test(code) ? code : 'unsafe-code';
   return `FAIL ${name} ${safe}`;
 }
 
-export function formatSummary(results) {
+export function formatSummary(results, total = CHECKS.length) {
   const pass = results.filter((r) => r.ok).length;
   const fail = results.length - pass;
-  const complete = results.length === CHECKS.length;
-  return `SUMMARY pass=${pass} fail=${fail} total=${CHECKS.length} result=${
+  const complete = results.length === total;
+  return `SUMMARY pass=${pass} fail=${fail} total=${total} result=${
     complete && fail === 0 ? 'PASS' : 'FAIL'
   }`;
 }
@@ -329,7 +374,6 @@ const samePublicKeys = (a, b) => {
 // point the probe at another host, issuer or key.
 export const PINNED_ENV = Object.freeze([
   ['PROBE_HOST', EXPECTED.identityHost, 'host-mismatch'],
-  ['PROBE_ORGANISATION', EXPECTED.organisation, 'organisation-mismatch'],
   ['PROBE_SIGNING_KID', EXPECTED.kid, 'kid-mismatch'],
   ['PROBE_ISSUER', EXPECTED.iss, 'issuer-mismatch'],
   ['PROBE_AUDIENCES', EXPECTED.aud.join(','), 'audiences-mismatch'],
@@ -349,12 +393,22 @@ export function readConfig(env) {
   const password = env.IDENTITY_OWNER_PASSWORD ?? '';
   for (const name of [...CREDENTIAL_ENV, ...DATABASE_ENV]) delete env[name];
 
+  const mode = env.PROBE_ACCOUNT ?? 'operator';
+  if (!ACCOUNT_MODES.includes(mode)) return { ok: false, code: 'account-mode' };
+  const organisation = mode === 'throwaway' ? EXPECTED.throwawayOrganisation : EXPECTED.organisation;
+  if (env.PROBE_ORGANISATION !== undefined && env.PROBE_ORGANISATION !== organisation) {
+    return { ok: false, code: 'organisation-mismatch' };
+  }
+
   if (env.NODE_TLS_REJECT_UNAUTHORIZED === '0') return { ok: false, code: 'tls-verification-disabled' };
   const alb = (env.PROBE_ALB_DNS ?? '').trim().toLowerCase();
   if (alb === '') return { ok: false, code: 'missing-alb-dns' };
   if (!ALB_DNS.test(alb)) return { ok: false, code: 'invalid-alb-dns' };
   if (email === '' || !email.includes('@')) return { ok: false, code: 'missing-operator-email' };
   if (password === '') return { ok: false, code: 'missing-operator-password' };
+  // Throwaway mode must never run its MFA enrolment and lockout against a real account.
+  if (mode === 'throwaway' && !EXPECTED.throwawayIdentifier.test(email)) return { ok: false, code: 'not-a-throwaway-account' };
+  if (mode === 'operator' && EXPECTED.throwawayIdentifier.test(email)) return { ok: false, code: 'throwaway-in-operator-mode' };
 
   for (const [name, value, code] of PINNED_ENV) {
     if (env[name] !== undefined && env[name] !== value) return { ok: false, code };
@@ -376,7 +430,7 @@ export function readConfig(env) {
   }
   return {
     ok: true,
-    config: { albHost: alb, port: 443, email, password, publicKeys: COMMITTED_PUBLIC_KEYS },
+    config: { albHost: alb, port: 443, email, password, publicKeys: COMMITTED_PUBLIC_KEYS, mode, organisation },
   };
 }
 
@@ -482,6 +536,16 @@ const IDENTITY_CODES = new Map([
   ['AUTH_MFA_REQUIRED', 'mfa-required'],
   ['AUTH_PASSWORD_POLICY', 'password-policy'],
   ['AUTH_UNAVAILABLE', 'unavailable'],
+  ['AUTH_MFA_INVALID', 'mfa-invalid'],
+  ['AUTH_MFA_ENROLLMENT_REQUIRED', 'mfa-enrollment-required'],
+  ['AUTH_MFA_CHALLENGE_EXPIRED', 'mfa-challenge-expired'],
+  ['AUTH_MFA_NOT_ENROLLED', 'mfa-not-enrolled'],
+  ['AUTH_MFA_ALREADY_ENROLLED', 'mfa-already-enrolled'],
+  ['AUTH_MFA_REQUIRED_BY_POLICY', 'mfa-required-by-policy'],
+  ['AUTH_REAUTHENTICATION_REQUIRED', 'reauthentication-required'],
+  ['AUTH_UNAUTHENTICATED', 'unauthenticated'],
+  ['SECURITY_RATE_LIMITED', 'edge-rate-limited'],
+  ['SECURITY_CSRF_INVALID', 'csrf-invalid'],
 ]);
 
 const refusalCode = (response) => {
@@ -501,10 +565,18 @@ const expectFixedResponse = (response, status, text) => {
  * Runs the fifteen checks in order and returns [{ check, ok, code }]. `sensitive` collects every
  * credential and token value seen, for the output guard. Nothing here prints.
  */
-export async function runChecks(config, { nowSeconds = () => Math.floor(Date.now() / 1000), sensitive = new Set() } = {}) {
+export async function runChecks(
+  config,
+  {
+    nowSeconds = () => Math.floor(Date.now() / 1000),
+    sensitive = new Set(),
+    sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  } = {},
+) {
   const target = { albHost: config.albHost, port: config.port, ca: config.ca };
   const id = EXPECTED.identityHost;
   const origin = { origin: EXPECTED.origin };
+  const organisation = config.organisation ?? EXPECTED.organisation;
   const results = [];
   const state = { jar: {}, loggedIn: false, refreshed: false, loggedOut: false, replayToken: undefined };
   sensitive.add(config.email);
@@ -560,7 +632,7 @@ export async function runChecks(config, { nowSeconds = () => Math.floor(Date.now
   await run('login', async () => {
     const r = await httpsCall(target, id, 'POST', '/api/auth/login', {
       headers: origin,
-      body: { identifier: config.email, password: config.password, organisation: EXPECTED.organisation },
+      body: { identifier: config.email, password: config.password, organisation },
     });
     const jar = parseSetCookies(r.headers['set-cookie']);
     remember(jar);
@@ -606,7 +678,7 @@ export async function runChecks(config, { nowSeconds = () => Math.floor(Date.now
     const path = EXPECTED.refreshPath;
     const r = await httpsCall(target, id, 'POST', path, {
       headers: { ...origin, cookie: cookieHeaderFor(state.jar, path) },
-      body: { organisation: EXPECTED.organisation },
+      body: { organisation },
     });
     const jar = parseSetCookies(r.headers['set-cookie']);
     remember(jar);
@@ -648,7 +720,7 @@ export async function runChecks(config, { nowSeconds = () => Math.floor(Date.now
     const path = EXPECTED.refreshPath;
     const r = await httpsCall(target, id, 'POST', path, {
       headers: { ...origin, cookie: `${EXPECTED.refreshCookie}=${encodeURIComponent(state.replayToken)}` },
-      body: { organisation: EXPECTED.organisation },
+      body: { organisation },
     });
     for (const cookie of Object.values(parseSetCookies(r.headers['set-cookie']))) {
       if (cookie.value !== '') sensitive.add(cookie.value);
@@ -663,7 +735,7 @@ export async function runChecks(config, { nowSeconds = () => Math.floor(Date.now
     sensitive.add(wrong);
     const r = await httpsCall(target, id, 'POST', '/api/auth/login', {
       headers: origin,
-      body: { identifier: config.email, password: wrong, organisation: EXPECTED.organisation },
+      body: { identifier: config.email, password: wrong, organisation },
     });
     const jar = parseSetCookies(r.headers['set-cookie']);
     for (const cookie of Object.values(jar)) if (cookie.value !== '') sensitive.add(cookie.value);
@@ -697,7 +769,330 @@ export async function runChecks(config, { nowSeconds = () => Math.floor(Date.now
     expectFixedResponse(await httpsCall(target, EXPECTED.unknownHost, 'GET', '/'), 404, 'Not found');
   });
 
+  if (config.mode === 'throwaway') {
+    await runThrowawayChecks({ config, target, organisation, run, requires, remember, sensitive, nowSeconds, sleep });
+  }
   return results;
+}
+
+// --- TOTP (RFC 6238), for the throwaway account only ---------------------------------------------
+
+const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+/** RFC 4648 base32 (no padding needed). Throws ProbeError('totp-secret') on any other character. */
+export function base32Decode(text) {
+  const clean = String(text).replace(/=+$/, '').toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const out = [];
+  for (const ch of clean) {
+    const index = BASE32.indexOf(ch);
+    if (index === -1) fail('totp-secret');
+    value = (value << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  if (out.length < 10) fail('totp-secret');
+  return Buffer.from(out);
+}
+
+/**
+ * Reads an otpauth://totp/ URI. Returns { key, digits, period, algorithm }; the key is the decoded
+ * secret. Refuses anything Identity does not issue rather than guessing.
+ */
+export function parseOtpauth(uri, secret) {
+  let url;
+  try {
+    url = new URL(uri);
+  } catch {
+    fail('totp-uri');
+  }
+  if (url.protocol !== 'otpauth:' || url.host !== 'totp') fail('totp-uri');
+  const params = url.searchParams;
+  const fromUri = params.get('secret') ?? '';
+  if (secret !== undefined && fromUri !== '' && fromUri.toUpperCase() !== String(secret).toUpperCase()) fail('totp-uri');
+  const algorithm = (params.get('algorithm') ?? 'SHA1').toUpperCase();
+  const digits = Number.parseInt(params.get('digits') ?? '6', 10);
+  const period = Number.parseInt(params.get('period') ?? '30', 10);
+  if (!['SHA1', 'SHA256', 'SHA512'].includes(algorithm)) fail('totp-algorithm');
+  if (digits !== 6 && digits !== 8) fail('totp-digits');
+  if (period !== 30) fail('totp-period');
+  return { key: base32Decode(fromUri === '' ? secret : fromUri), digits, period, algorithm };
+}
+
+/** The TOTP code for time step `step`. */
+export function totpCode({ key, digits, algorithm }, step) {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const mac = createHmac(algorithm.toLowerCase(), key).update(counter).digest();
+  const offset = mac[mac.length - 1] & 0x0f;
+  const binary = (mac.readUInt32BE(offset) & 0x7fffffff) % 10 ** digits;
+  return String(binary).padStart(digits, '0');
+}
+
+// --- The throwaway-account checks (thirteen) -----------------------------------------------------
+
+/**
+ * Origin enforcement, refresh-token reuse, the MFA lifecycle and the lockout, against the
+ * throwaway account only (readConfig refuses any other identifier in this mode). Every secret,
+ * code, recovery code and token goes into `sensitive` before it is used.
+ */
+async function runThrowawayChecks({ config, target, organisation, run, requires, remember, sensitive, nowSeconds, sleep }) {
+  const id = EXPECTED.identityHost;
+  const origin = { origin: EXPECTED.origin };
+  const login = { identifier: config.email, password: config.password, organisation };
+  const st = { jar: {}, totp: undefined, codes: [], step: undefined, challenge: false, signedIn: false };
+
+  const keep = (r) => {
+    const jar = parseSetCookies(r.headers['set-cookie']);
+    for (const [name, cookie] of Object.entries(jar)) {
+      if (cookie.value !== '') sensitive.add(cookie.value);
+      if (cookie.value === '' || cookie.maxAge === 0) delete st.jar[name];
+      else st.jar[name] = cookie;
+    }
+    return jar;
+  };
+  const call = async (method, path, { body, headers = {}, withOrigin = true, cookies = true } = {}) => {
+    const cookie = cookies ? cookieHeaderFor(st.jar, path) : undefined;
+    const r = await httpsCall(target, id, method, path, {
+      headers: { ...(withOrigin ? origin : {}), ...(cookie === undefined ? {} : { cookie }), ...headers },
+      body,
+    });
+    keep(r);
+    return r;
+  };
+  const expectCode = (r, status, code) => {
+    if (r.status !== status || json(r)?.code !== code) fail(refusalCode(r));
+  };
+  const signIn = async () => {
+    st.jar = {};
+    const r = await call('POST', '/api/auth/login', { body: login });
+    if (r.status !== 200) fail(refusalCode(r));
+    if (!st.jar[EXPECTED.sessionCookie]) fail('no-session-cookie');
+  };
+  const signOut = async ({ strict = true } = {}) => {
+    const r = await call('POST', '/api/auth/logout');
+    if (strict && r.status !== 200) fail(`logout-${r.status}`);
+    st.jar = {};
+  };
+  const challenge = async () => {
+    st.jar = {};
+    const r = await call('POST', '/api/auth/login', { body: login });
+    expectCode(r, 401, 'AUTH_MFA_REQUIRED');
+    if (st.jar[EXPECTED.sessionCookie]) fail('session-before-mfa');
+    if (!st.jar[EXPECTED.challengeCookie]) fail('no-challenge-cookie');
+  };
+  const verify = (body) => call('POST', '/api/auth/mfa/verify', { body });
+  const currentStep = () => Math.floor(nowSeconds() / 30);
+  const code = (step) => {
+    const value = totpCode(st.totp, step);
+    sensitive.add(value);
+    return value;
+  };
+
+  // 16. A state-changing request without Identity's own Origin is refused before authentication,
+  //     even with the right credential: foreign Origin, then no Origin. No cookie may be set.
+  await run('origin-enforced', async () => {
+    for (const headers of [{ origin: EXPECTED.foreignOrigin }, {}]) {
+      const r = await httpsCall(target, id, 'POST', '/api/auth/login', { headers, body: login });
+      const jar = parseSetCookies(r.headers['set-cookie']);
+      for (const cookie of Object.values(jar)) if (cookie.value !== '') sensitive.add(cookie.value);
+      if (r.status === 200) fail('foreign-origin-accepted');
+      expectCode(r, 403, 'SECURITY_CSRF_INVALID');
+      if (Object.values(jar).some((c) => c.value !== '')) fail('cookie-issued');
+    }
+  });
+
+  // 17. Reuse of a rotated refresh token while its lineage is live: refused, and the whole lineage
+  //     ends, so the newest token is refused too.
+  await run('refresh-reuse-detected', async () => {
+    await signIn();
+    const first = st.jar[EXPECTED.refreshCookie]?.value;
+    const path = EXPECTED.refreshPath;
+    const rotated = await call('POST', path, { body: { organisation } });
+    if (rotated.status !== 200) fail(refusalCode(rotated));
+    const second = st.jar[EXPECTED.refreshCookie]?.value;
+    if (!first || !second || first === second) fail('refresh-not-rotated');
+    const reuse = await httpsCall(target, id, 'POST', path, {
+      headers: { ...origin, cookie: `${EXPECTED.refreshCookie}=${encodeURIComponent(first)}` },
+      body: { organisation },
+    });
+    for (const cookie of Object.values(parseSetCookies(reuse.headers['set-cookie']))) {
+      if (cookie.value !== '') sensitive.add(cookie.value);
+    }
+    if (reuse.status === 200) fail('reuse-accepted');
+    expectCode(reuse, 401, 'AUTH_INVALID_CREDENTIALS');
+    const after = await httpsCall(target, id, 'POST', path, {
+      headers: { ...origin, cookie: `${EXPECTED.refreshCookie}=${encodeURIComponent(second)}` },
+      body: { organisation },
+    });
+    for (const cookie of Object.values(parseSetCookies(after.headers['set-cookie']))) {
+      if (cookie.value !== '') sensitive.add(cookie.value);
+    }
+    if (after.status === 200) fail('lineage-not-revoked');
+    expectCode(after, 401, 'AUTH_INVALID_CREDENTIALS');
+    await signOut({ strict: false });
+  });
+
+  // 18. Enrolment from a session: re-authenticate with the password, start, confirm with a code.
+  //     The confirming step is remembered: Identity claims it, so it is the replay case below.
+  await run('mfa-enrollment', async () => {
+    await signIn();
+    const reauth = await call('POST', '/api/auth/reauthenticate', { body: { password: config.password } });
+    if (reauth.status !== 200) fail(`reauth-${refusalCode(reauth)}`);
+    const start = await call('POST', '/api/auth/mfa/enrollment', { body: {} });
+    if (start.status !== 200) fail(`start-${refusalCode(start)}`);
+    const started = json(start);
+    if (typeof started?.secret !== 'string' || typeof started?.uri !== 'string') fail('enrollment-body');
+    sensitive.add(started.secret);
+    sensitive.add(started.uri);
+    st.totp = parseOtpauth(started.uri, started.secret);
+    st.step = currentStep();
+    const confirm = await call('POST', '/api/auth/mfa/enrollment/confirm', { body: { code: code(st.step) } });
+    if (confirm.status !== 200) fail(`confirm-${refusalCode(confirm)}`);
+    const confirmed = json(confirm);
+    const codes = confirmed?.recoveryCodes;
+    if (confirmed?.ok !== true || !Array.isArray(codes) || codes.length < 4 || !codes.every((c) => typeof c === 'string' && c.length >= 8)) {
+      fail('recovery-codes');
+    }
+    if (new Set(codes).size !== codes.length) fail('recovery-codes-repeat');
+    for (const c of codes) sensitive.add(c);
+    st.codes = [...codes];
+    await signOut();
+  });
+
+  // 19. The right password alone is no longer a session: 401 AUTH_MFA_REQUIRED and only the
+  //     challenge cookie.
+  await run('mfa-challenge-required', async () => {
+    requires(st.totp !== undefined);
+    await challenge();
+    st.challenge = true;
+  });
+
+  // 20. A wrong code is refused and the challenge survives.
+  await run('mfa-invalid-code', async () => {
+    requires(st.challenge);
+    // A real code for a step far from now: well formed, never valid in Identity's window.
+    const now = currentStep();
+    const valid = new Set([-2, -1, 0, 1, 2].map((d) => code(now + d)));
+    let far = 1_000;
+    let wrong = code(now + far);
+    while (valid.has(wrong)) wrong = code(now + (far += 1));
+    const r = await verify({ code: wrong });
+    expectCode(r, 401, 'AUTH_MFA_INVALID');
+    if (st.jar[EXPECTED.sessionCookie]) fail('session-issued');
+  });
+
+  // 21. The code that confirmed the enrolment is spent: the same code again is refused.
+  await run('mfa-totp-replay', async () => {
+    requires(st.challenge && st.step !== undefined);
+    if (currentStep() > st.step + 1) fail('too-slow-to-test-replay');
+    const r = await verify({ code: code(st.step) });
+    if (r.status === 200) fail('replay-accepted');
+    expectCode(r, 401, 'AUTH_MFA_INVALID');
+  });
+
+  // 22. A fresh code (the next time step) redeems the challenge and issues the session.
+  await run('mfa-totp', async () => {
+    requires(st.challenge && st.step !== undefined);
+    while (currentStep() <= st.step) await sleep(1_000);
+    const step = currentStep();
+    const r = await verify({ code: code(step) });
+    if (r.status !== 200) fail(refusalCode(r));
+    if (!st.jar[EXPECTED.sessionCookie]) fail('no-session-cookie');
+    if (st.jar[EXPECTED.challengeCookie]) fail('challenge-not-cleared');
+    st.step = step;
+    st.signedIn = true;
+  });
+
+  // 23. Status: enrolled, with every recovery code left.
+  await run('mfa-status', async () => {
+    requires(st.signedIn);
+    const r = await call('GET', '/api/auth/mfa/status', { withOrigin: false });
+    expectStatus(r, 200);
+    const body = json(r);
+    if (body?.enrolled !== true) fail('not-enrolled');
+    if (body.recoveryCodesRemaining !== st.codes.length) fail('recovery-count');
+    await signOut();
+    st.signedIn = false;
+  });
+
+  // 24. A recovery code redeems a challenge once.
+  await run('mfa-recovery-code', async () => {
+    requires(st.codes.length >= 3);
+    await challenge();
+    const r = await verify({ recoveryCode: st.codes[0] });
+    if (r.status !== 200) fail(refusalCode(r));
+    if (!st.jar[EXPECTED.sessionCookie]) fail('no-session-cookie');
+    await signOut();
+  });
+
+  // 25. The same recovery code a second time is refused.
+  await run('mfa-recovery-code-reuse', async () => {
+    requires(st.codes.length >= 3);
+    await challenge();
+    const r = await verify({ recoveryCode: st.codes[0] });
+    if (r.status === 200) fail('reuse-accepted');
+    expectCode(r, 401, 'AUTH_MFA_INVALID');
+  });
+
+  // 26. Status after the use: one code fewer. The challenge from 25 is redeemed with a second code.
+  await run('mfa-recovery-code-count', async () => {
+    requires(st.codes.length >= 3 && st.jar[EXPECTED.challengeCookie] !== undefined);
+    const r = await verify({ recoveryCode: st.codes[1] });
+    if (r.status !== 200) fail(refusalCode(r));
+    const s = await call('GET', '/api/auth/mfa/status', { withOrigin: false });
+    expectStatus(s, 200);
+    if (json(s)?.recoveryCodesRemaining !== st.codes.length - 2) fail('recovery-count');
+    st.signedIn = true;
+  });
+
+  // 27. Removal (the helper's own clean-up of the factor): re-authenticate with the password and a
+  //     third recovery code, remove, and the status says not enrolled.
+  await run('mfa-disable', async () => {
+    requires(st.signedIn);
+    const reauth = await call('POST', '/api/auth/reauthenticate', {
+      body: { password: config.password, recoveryCode: st.codes[2] },
+    });
+    if (reauth.status !== 200) fail(`reauth-${refusalCode(reauth)}`);
+    const r = await call('DELETE', '/api/auth/mfa');
+    if (r.status !== 200) fail(refusalCode(r));
+    const s = await call('GET', '/api/auth/mfa/status', { withOrigin: false });
+    if (json(s)?.enrolled !== false) fail('still-enrolled');
+    await signOut();
+    st.signedIn = false;
+  });
+
+  // 28. Last, because it locks the account: wrong passwords until 429, then the right password is
+  //     refused too, with no cookie.
+  await run('lockout', async () => {
+    let limited = false;
+    for (let attempt = 0; attempt < EXPECTED.lockoutMaxAttempts && !limited; attempt += 1) {
+      const wrong = `probe-wrong-${randomBytes(18).toString('base64url')}`;
+      sensitive.add(wrong);
+      const r = await httpsCall(target, id, 'POST', '/api/auth/login', {
+        headers: origin,
+        body: { identifier: config.email, password: wrong, organisation },
+      });
+      const jar = parseSetCookies(r.headers['set-cookie']);
+      for (const cookie of Object.values(jar)) if (cookie.value !== '') sensitive.add(cookie.value);
+      if (r.status === 200) fail('wrong-password-accepted');
+      // Only Identity's own account lockout counts, never the edge's per-identifier rate limit
+      // (SECURITY_RATE_LIMITED; review finding C-6).
+      if (r.status === 429 && json(r)?.code === 'AUTH_RATE_LIMITED') limited = true;
+      else if (r.status === 429) fail(refusalCode(r));
+      else if (r.status !== 401 || json(r)?.code !== 'AUTH_INVALID_CREDENTIALS') fail(refusalCode(r));
+    }
+    if (!limited) fail('no-lockout');
+    const r = await httpsCall(target, id, 'POST', '/api/auth/login', { headers: origin, body: login });
+    const jar = parseSetCookies(r.headers['set-cookie']);
+    for (const cookie of Object.values(jar)) if (cookie.value !== '') sensitive.add(cookie.value);
+    if (r.status !== 429 || json(r)?.code !== 'AUTH_RATE_LIMITED') fail(r.status === 200 ? 'locked-account-signed-in' : refusalCode(r));
+    if (jar[EXPECTED.sessionCookie]?.value) fail('cookie-issued');
+  });
 }
 
 // --- Entry point ---------------------------------------------------------------------------------
@@ -724,13 +1119,15 @@ export async function main({ env = process.env, write = (line) => process.stdout
       emit(formatSummary([]));
       return 2;
     }
-    const config = { ...read.config, ...overrides };
+    const { clock, ...rest } = overrides;
+    const config = { ...read.config, ...rest };
     sensitive.add(config.email);
     sensitive.add(config.password);
-    const results = await runChecks(config, { sensitive });
+    const results = await runChecks(config, { sensitive, ...(overrides.clock ?? {}) });
+    const total = checksFor(config.mode).length;
     for (const r of results) emit(formatLine(r.check, r.ok, r.code));
-    emit(formatSummary(results));
-    return results.length === CHECKS.length && results.every((r) => r.ok) ? 0 : 1;
+    emit(formatSummary(results, total));
+    return results.length === total && results.every((r) => r.ok) ? 0 : 1;
   } catch {
     emit(formatLine('probe', false, 'internal-error'));
     emit(formatSummary([]));

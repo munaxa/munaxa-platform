@@ -586,3 +586,78 @@ run "r7_boundary_refuses_chained_deployer_sessions" {
     error_message = "R7: each workload boundary refuses every session that carries a source identity."
   }
 }
+
+# Stage E blocker BE-2: Testing's independent session cleanup (stack/session-cleanup.tf). Off by
+# default, so merging changes no IAM; on, it widens only the nonprod boundary and adds one nonprod
+# deployer policy with nonprod names, and the session deployer only reads.
+run "be2_session_cleanup_is_off_by_default" {
+  command = plan
+
+  assert {
+    condition = (
+      length([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s if startswith(s.Sid, "TestingSessionCleanup")]) == 0 &&
+      length(aws_iam_policy.deployer_session_cleanup) == 0 && length(aws_iam_role_policy_attachment.deployer_session_cleanup) == 0 &&
+      length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup"]) == 0
+    )
+    error_message = "With testing_session_cleanup unset, no IAM changes."
+  }
+}
+
+run "be2_session_cleanup_widens_only_nonprod" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = true
+  }
+
+  assert {
+    condition     = length([for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s if startswith(s.Sid, "TestingSessionCleanup")]) == 0
+    error_message = "The prod boundary never admits the Testing cleanup."
+  }
+  assert {
+    condition = alltrue(flatten([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : [
+      for r in s.Resource : r == "*" || strcontains(r, "munaxa-nonprod")
+    ] if startswith(s.Sid, "TestingSessionCleanup")]))
+    error_message = "The nonprod boundary admits the cleanup on nonprod names only (lookups on *)."
+  }
+  assert {
+    condition = alltrue([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement :
+      length(setsubtract(s.Action, ["elasticloadbalancing:DescribeLoadBalancers", "ecs:ListTasks", "secretsmanager:ListSecrets"])) == 0
+    if s.Sid == "TestingSessionCleanupLookups"])
+    error_message = "Only the three lookups are on *."
+  }
+  assert {
+    condition = alltrue([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement :
+      !contains(s.Action, "secretsmanager:GetSecretValue") && !contains(s.Action, "secretsmanager:PutSecretValue")
+    if startswith(s.Sid, "TestingSessionCleanup")])
+    error_message = "The cleanup statements never add a secret value action."
+  }
+  assert {
+    condition     = length(aws_iam_policy.deployer_session_cleanup) == 1 && aws_iam_role_policy_attachment.deployer_session_cleanup[0].role == "munaxa-shared-deployer-nonprod"
+    error_message = "One cleanup policy, attached to the nonprod deployer only."
+  }
+  assert {
+    condition = alltrue([for s in data.aws_iam_policy_document.deployer_session_cleanup[0].statement :
+      alltrue([for r in s.resources : r == "*" || strcontains(r, "munaxa-nonprod")])
+    ])
+    error_message = "The deployer's cleanup policy names nonprod resources only."
+  }
+  assert {
+    condition = alltrue([for s in data.aws_iam_policy_document.deployer_session_cleanup[0].statement :
+      !contains(s.resources, "*") || toset(s.actions) == toset(["states:ValidateStateMachineDefinition"])
+    ])
+    error_message = "Only definition validation is on *."
+  }
+  assert {
+    condition = anytrue([for s in data.aws_iam_policy_document.deployer_session_cleanup[0].statement :
+      s.sid == "PassTheCleanupRole" && toset(one(s.condition).values) == toset(["states.amazonaws.com"]) && toset(s.resources) == toset(["arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-session-cleanup"])
+    ])
+    error_message = "The deployer passes only the cleanup role, only to Step Functions."
+  }
+  assert {
+    condition = alltrue([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement :
+      alltrue([for a in s.actions : can(regex(":(Describe|List|Get)", a))])
+    if s.sid == "RefreshSessionCleanup"]) && length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup"]) == 1
+    error_message = "The session deployer gains reads only, so session plans still refresh after the cleanup is applied."
+  }
+}

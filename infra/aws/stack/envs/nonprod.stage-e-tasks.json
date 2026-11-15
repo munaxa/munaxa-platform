@@ -1,0 +1,601 @@
+{
+  "description": "Stage E blocker BE-1 (report 2026-11-14-identity-stage-e-blockers-remediation, file 01). The reviewed content of each nonprod task definition family Stage E runs, with no revision number: the guard connector script (scripts/aws/connector/e1-task-guard.py) finds the latest ACTIVE revision of each family and refuses it unless it matches this file. Each container's shape (shapeKeys), every environment name AND value, its other fields (extra), the command, and the task's cpu, memory and runtime platform are compared too; any task or container field not described here fails (review findings S-2, C-4; owner review B-1, B-8). Tests keep this file equal to envs/nonprod.tfvars and to what Terraform renders.",
+  "schema": 1,
+  "region": "eu-central-1",
+  "account": "229251310592",
+  "cluster": "munaxa-nonprod",
+  "network": {
+    "vpcName": "munaxa-nonprod",
+    "subnetNames": ["munaxa-nonprod-public-a", "munaxa-nonprod-public-b"],
+    "assignPublicIp": "ENABLED"
+  },
+  "families": {
+    "munaxa-nonprod-db-admin": {
+      "executionRole": "munaxa-nonprod-db-admin-execution",
+      "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
+      "securityGroup": "munaxa-nonprod-db-admin",
+      "service": false,
+      "containers": {
+        "db-admin": {
+          "image": "public.ecr.aws/docker/library/postgres@sha256:5983db9a9c6ad225a48a46cfe2e03e6680b1826662befd0465eb05b34cb1c64e",
+          "secrets": {
+            "PGUSER": {
+              "form": "rds",
+              "key": "username"
+            },
+            "PGPASSWORD": {
+              "form": "rds",
+              "key": "password"
+            },
+            "IDENTITY_APP_URL": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity",
+              "key": "DATABASE_URL",
+              "version": "80914756-68cd-420d-8094-0fd49afe3492"
+            },
+            "IDENTITY_OWNER_URL": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity-migrate",
+              "key": "DATABASE_MIGRATION_URL",
+              "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+            }
+          },
+          "environmentNames": ["HOME", "PGHOST", "PGPORT"],
+          "shape": {
+            "essential": true,
+            "user": "999:999",
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": ["ALL"]
+              }
+            },
+            "entryPoint": ["sh", "-c"],
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/ops",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "db-admin"
+              }
+            }
+          },
+          "commandSha256": "de2ea694d627845d1ca0cc97fbb6a1be3a04ca7787ce9c4feff7aec8671221ee",
+          "environment": {
+            "HOME": "/tmp",
+            "PGHOST": "munaxa-nonprod-pg.cjw44yig4u0v.eu-central-1.rds.amazonaws.com",
+            "PGPORT": "5432"
+          }
+        }
+      },
+      "commands": {
+        "default": null
+      },
+      "volumes": []
+    },
+    "munaxa-nonprod-identity-migrate": {
+      "executionRole": "munaxa-nonprod-identity-migrate-execution",
+      "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
+      "securityGroup": "munaxa-nonprod-identity-migrate",
+      "service": false,
+      "containers": {
+        "identity-migrate": {
+          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874",
+          "secrets": {
+            "DATABASE_MIGRATION_URL": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity-migrate",
+              "key": "DATABASE_MIGRATION_URL",
+              "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+            }
+          },
+          "environmentNames": ["NODE_ENV"],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": false,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": ["ALL"]
+              }
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/identity-migrate",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity-migrate"
+              }
+            }
+          },
+          "environment": {
+            "NODE_ENV": "production"
+          }
+        }
+      },
+      "commands": {
+        "default": null
+      },
+      "volumes": []
+    },
+    "munaxa-nonprod-identity-bootstrap": {
+      "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
+      "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
+      "securityGroup": "munaxa-nonprod-db-admin",
+      "service": false,
+      "containers": {
+        "identity-bootstrap": {
+          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+          "secrets": {
+            "DIRECT_DATABASE_URL": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity-migrate",
+              "key": "DATABASE_MIGRATION_URL",
+              "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+            },
+            "IDENTITY_OWNER_EMAIL": {
+              "form": "partial",
+              "secret": "munaxa-nonprod/identity-bootstrap",
+              "key": "IDENTITY_OWNER_EMAIL"
+            },
+            "IDENTITY_OWNER_PASSWORD": {
+              "form": "partial",
+              "secret": "munaxa-nonprod/identity-bootstrap",
+              "key": "IDENTITY_OWNER_PASSWORD"
+            }
+          },
+          "environmentNames": ["NODE_ENV"],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": ["ALL"]
+              }
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/ops",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity-bootstrap"
+              }
+            }
+          },
+          "command": [
+            "node",
+            "scripts/bootstrap-account.mjs",
+            "--organisation",
+            "munaxa-group",
+            "--organisation-name",
+            "Munaxa Group"
+          ],
+          "environment": {
+            "NODE_ENV": "production"
+          }
+        }
+      },
+      "commands": {
+        "default": null,
+        "seed-control-roles": {
+          "container": "identity-bootstrap",
+          "command": ["node", "scripts/seed-control-roles.mjs", "--organisation", "munaxa-group"]
+        },
+        "operator-admin-role": {
+          "container": "identity-bootstrap",
+          "command": [
+            "node",
+            "scripts/bootstrap-account.mjs",
+            "--organisation",
+            "munaxa-group",
+            "--role",
+            "control-operator-admin"
+          ]
+        }
+      },
+      "volumes": []
+    },
+    "munaxa-nonprod-identity-probe": {
+      "executionRole": "munaxa-nonprod-identity-bootstrap-execution",
+      "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
+      "securityGroup": "munaxa-nonprod-identity",
+      "service": false,
+      "containers": {
+        "throwaway-account": {
+          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+          "secrets": {
+            "DIRECT_DATABASE_URL": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity-migrate",
+              "key": "DATABASE_MIGRATION_URL",
+              "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+            }
+          },
+          "environmentNames": ["NODE_ENV", "PROBE_ACCOUNT", "PROBE_HANDOFF_DIR", "PROBE_STAGE"],
+          "shape": {
+            "essential": false,
+            "user": "0",
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": ["ALL"]
+              }
+            },
+            "mountPoints": [
+              {
+                "containerPath": "/stage-e",
+                "readOnly": false,
+                "sourceVolume": "stage-e-handoff"
+              }
+            ],
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/ops",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity-probe"
+              }
+            }
+          },
+          "probeLoader": true,
+          "environment": {
+            "NODE_ENV": "production",
+            "PROBE_ACCOUNT": "throwaway",
+            "PROBE_HANDOFF_DIR": "/stage-e",
+            "PROBE_STAGE": "account"
+          },
+          "extra": {
+            "stopTimeout": 10
+          }
+        },
+        "identity-probe": {
+          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+          "secrets": {},
+          "environmentNames": [
+            "NODE_ENV",
+            "PROBE_ACCOUNT",
+            "PROBE_AUDIENCES",
+            "PROBE_COMMIT",
+            "PROBE_CONTROL_API_HOST",
+            "PROBE_HANDOFF_DIR",
+            "PROBE_HOST",
+            "PROBE_ISSUER",
+            "PROBE_OPERATOR_HOST",
+            "PROBE_ORGANISATION",
+            "PROBE_PUBLIC_KEYS",
+            "PROBE_SHA256",
+            "PROBE_SIGNING_KID",
+            "PROBE_STAGE",
+            "PROBE_UNKNOWN_HOST"
+          ],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": ["ALL"]
+              }
+            },
+            "dependsOn": [
+              {
+                "condition": "SUCCESS",
+                "containerName": "throwaway-account"
+              }
+            ],
+            "mountPoints": [
+              {
+                "containerPath": "/stage-e",
+                "readOnly": true,
+                "sourceVolume": "stage-e-handoff"
+              }
+            ],
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/ops",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity-probe"
+              }
+            }
+          },
+          "probeLoader": true,
+          "environment": {
+            "NODE_ENV": "production",
+            "PROBE_ACCOUNT": "throwaway",
+            "PROBE_AUDIENCES": "munaxa-work,munaxa-control",
+            "PROBE_CONTROL_API_HOST": "control-api.test.munaxa.com",
+            "PROBE_HANDOFF_DIR": "/stage-e",
+            "PROBE_HOST": "id.test.munaxa.com",
+            "PROBE_ISSUER": "https://id.test.munaxa.com",
+            "PROBE_OPERATOR_HOST": "operator-test.munaxa.com",
+            "PROBE_ORGANISATION": "munaxa-stage-e-checks",
+            "PROBE_PUBLIC_KEYS": "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-----BEGIN PUBLIC KEY-----\\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1PulSDhEOvX3B61NzQwO20+q4+42\\n0KcstlgmQccrRJy+byuVwhz2HiJp1itFmUBkugYOR087NqwNr2Kowk5fRQ==\\n-----END PUBLIC KEY-----\"}]",
+            "PROBE_SIGNING_KID": "identity-nonprod-2026-11",
+            "PROBE_STAGE": "probe",
+            "PROBE_UNKNOWN_HOST": "unknown.test.munaxa.com"
+          },
+          "extra": {
+            "stopTimeout": 10
+          }
+        }
+      },
+      "commands": {
+        "default": {
+          "container": "identity-probe",
+          "environment": ["PROBE_ALB_DNS"]
+        }
+      },
+      "probePin": {
+        "commit": "",
+        "sha256": ""
+      },
+      "loaderSha256": "605478009042bea7ad60d683cc3a2afdcbfc3feb74c7c1bb7daac5e38392e01e",
+      "volumes": ["stage-e-handoff"]
+    },
+    "munaxa-nonprod-identity": {
+      "executionRole": "munaxa-nonprod-identity-execution",
+      "taskRole": null,
+      "task": {
+        "cpu": "512",
+        "memory": "1024",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
+      "securityGroup": "munaxa-nonprod-identity",
+      "service": true,
+      "containers": {
+        "identity": {
+          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+          "secrets": {
+            "DATABASE_URL": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity",
+              "key": "DATABASE_URL",
+              "version": "80914756-68cd-420d-8094-0fd49afe3492"
+            },
+            "IDENTITY_SIGNING_PRIVATE_KEY": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity",
+              "key": "IDENTITY_SIGNING_PRIVATE_KEY",
+              "version": "80914756-68cd-420d-8094-0fd49afe3492"
+            },
+            "IDENTITY_SIGNING_SECRET": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity",
+              "key": "IDENTITY_SIGNING_SECRET",
+              "version": "80914756-68cd-420d-8094-0fd49afe3492"
+            },
+            "REDIS_URL": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity",
+              "key": "REDIS_URL",
+              "version": "80914756-68cd-420d-8094-0fd49afe3492"
+            },
+            "REDIS_PASSWORD": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity",
+              "key": "REDIS_PASSWORD",
+              "version": "80914756-68cd-420d-8094-0fd49afe3492"
+            },
+            "MFA_ENCRYPTION_KEYS": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity",
+              "key": "MFA_ENCRYPTION_KEYS",
+              "version": "80914756-68cd-420d-8094-0fd49afe3492"
+            }
+          },
+          "environmentNames": [
+            "CSRF_TRUSTED_ORIGINS",
+            "IDENTITY_AUTH_AUDIENCE",
+            "IDENTITY_BASE_URL",
+            "IDENTITY_DEFAULT_ORGANISATION",
+            "IDENTITY_PASSWORD_RESET",
+            "IDENTITY_SIGNING_ALGORITHM",
+            "IDENTITY_SIGNING_KID",
+            "LOG_PRETTY",
+            "MFA_ENCRYPTION_PRIMARY_KID",
+            "MFA_POLICY",
+            "NODE_ENV",
+            "PORT",
+            "TRUST_PROXY_HOPS"
+          ],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": true,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": ["ALL"]
+              }
+            },
+            "dependsOn": [
+              {
+                "condition": "HEALTHY",
+                "containerName": "valkey"
+              }
+            ],
+            "healthCheck": {
+              "command": [
+                "CMD",
+                "node",
+                "-e",
+                "fetch('http://127.0.0.1:4001/api/auth/health/live').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+              ],
+              "interval": 15,
+              "retries": 3,
+              "startPeriod": 60,
+              "timeout": 5
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/identity",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "identity"
+              }
+            }
+          },
+          "environment": {
+            "CSRF_TRUSTED_ORIGINS": "https://id.test.munaxa.com,https://work.test.munaxa.com,https://operator-test.munaxa.com",
+            "IDENTITY_AUTH_AUDIENCE": "munaxa-work,munaxa-control",
+            "IDENTITY_BASE_URL": "https://id.test.munaxa.com",
+            "IDENTITY_DEFAULT_ORGANISATION": "",
+            "IDENTITY_PASSWORD_RESET": "disabled",
+            "IDENTITY_SIGNING_ALGORITHM": "ES256",
+            "IDENTITY_SIGNING_KID": "identity-nonprod-2026-11",
+            "LOG_PRETTY": "false",
+            "MFA_ENCRYPTION_PRIMARY_KID": "mfa-nonprod-2026-11",
+            "MFA_POLICY": "off",
+            "NODE_ENV": "production",
+            "PORT": "4001",
+            "TRUST_PROXY_HOPS": "1"
+          },
+          "extra": {
+            "portMappings": [
+              {
+                "containerPort": 4001,
+                "hostPort": 4001,
+                "protocol": "tcp"
+              }
+            ]
+          }
+        },
+        "valkey": {
+          "image": "public.ecr.aws/valkey/valkey@sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e",
+          "secrets": {
+            "REDIS_PASSWORD": {
+              "form": "full",
+              "secret": "munaxa-nonprod/identity",
+              "key": "REDIS_PASSWORD",
+              "version": "80914756-68cd-420d-8094-0fd49afe3492"
+            }
+          },
+          "environmentNames": [],
+          "shape": {
+            "essential": true,
+            "user": "999:999",
+            "readonlyRootFilesystem": false,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": ["ALL"]
+              }
+            },
+            "entryPoint": ["sh", "-c"],
+            "healthCheck": {
+              "command": [
+                "CMD-SHELL",
+                "valkey-cli -a \"$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"
+              ],
+              "interval": 10,
+              "retries": 5,
+              "startPeriod": 10,
+              "timeout": 3
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/identity",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "valkey"
+              }
+            }
+          },
+          "command": [
+            "umask 077 && printf 'requirepass %s\\n' \"$REDIS_PASSWORD\" > /tmp/valkey.conf && exec valkey-server /tmp/valkey.conf --bind 127.0.0.1 --port 6379 --protected-mode yes --maxmemory 128mb --maxmemory-policy noeviction --save '' --appendonly no"
+          ],
+          "environment": {}
+        }
+      },
+      "commands": {
+        "account-disable-plan": {
+          "container": "identity",
+          "command": [
+            "node",
+            "dist/ops/operator-cli.js",
+            "account-disable",
+            "--organisation",
+            "munaxa-stage-e-checks",
+            "--account-id",
+            "{ACCOUNT_ID}",
+            "--reference",
+            "stage-e-throwaway"
+          ]
+        },
+        "account-disable": {
+          "container": "identity",
+          "command": [
+            "node",
+            "dist/ops/operator-cli.js",
+            "account-disable",
+            "--organisation",
+            "munaxa-stage-e-checks",
+            "--account-id",
+            "{ACCOUNT_ID}",
+            "--reference",
+            "stage-e-throwaway",
+            "--apply"
+          ]
+        }
+      },
+      "volumes": []
+    }
+  },
+  "shapeKeys": [
+    "essential",
+    "user",
+    "privileged",
+    "readonlyRootFilesystem",
+    "linuxParameters",
+    "entryPoint",
+    "dependsOn",
+    "mountPoints",
+    "volumesFrom",
+    "healthCheck",
+    "logConfiguration",
+    "workingDirectory",
+    "dockerSecurityOptions",
+    "systemControls",
+    "links",
+    "interactive",
+    "pseudoTerminal"
+  ]
+}

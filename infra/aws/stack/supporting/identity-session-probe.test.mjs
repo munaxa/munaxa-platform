@@ -4,7 +4,7 @@
 //
 //   node --test infra/aws/stack/supporting/
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createHash, generateKeyPairSync, sign as signData } from 'node:crypto';
+import { createHash, createHmac, generateKeyPairSync, randomBytes, sign as signData } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:https';
 import { tmpdir } from 'node:os';
@@ -14,7 +14,13 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 
 import probe, {
+  ACCOUNT_MODES,
   CHECKS,
+  THROWAWAY_CHECKS,
+  base32Decode,
+  checksFor,
+  parseOtpauth,
+  totpCode,
   COMMITTED_PUBLIC_KEYS,
   EXPECTED,
   PINNED_ENV,
@@ -36,6 +42,10 @@ const PROBE_SOURCE = readFileSync(PROBE_PATH);
 const EMAIL = 'operator.probe@example.invalid';
 const PASSWORD = 'Correct-Horse-Battery-Staple-7731';
 const ALB = 'internal-munaxa-nonprod-1234567890.eu-central-1.elb.amazonaws.com';
+// The throwaway account the loader would create (synthetic test data).
+const TW_EMAIL = 'stage-e-0123456789abcdef@stage-e.invalid';
+const TW_PASSWORD = 'Tw-Synthetic-Pass-4471-zQ';
+const TW_ORG = 'munaxa-stage-e-checks';
 
 // --- Fixtures ------------------------------------------------------------------------------------
 
@@ -94,10 +104,31 @@ function makePki() {
 
 // --- The mock ALB + Identity ---------------------------------------------------------------------
 
+// RFC 6238 for the mock, written independently of the probe's totpCode.
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+const mockTotp = (secret, step) => {
+  let bits = '';
+  for (const ch of secret) bits += B32.indexOf(ch).toString(2).padStart(5, '0');
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => Number.parseInt(b, 2)));
+  const msg = Buffer.alloc(8);
+  msg.writeBigUInt64BE(BigInt(step));
+  const mac = createHmac('sha1', key).update(msg).digest();
+  const o = mac[19] & 15;
+  return String((mac.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+};
+
 function startMock({ tls = 'good', behaviour = {} } = {}) {
-  const log = { logins: [], wrongPasswordAttempts: 0, refreshes: [], logouts: [], requests: [] };
-  const sessions = new Map(); // refresh token -> { sid, revoked }
+  const log = { logins: [], wrongPasswordAttempts: 0, refreshes: [], logouts: [], requests: [], mfa: [] };
+  const sessions = new Map(); // refresh token -> { sid, used, account }
   const revokedSids = new Set();
+  const sidAccount = new Map();
+  const reauthenticated = new Set();
+  const challenges = new Map();
+  const clock = behaviour.clock ?? { t: Date.now() / 1000 };
+  const accounts = {
+    [EMAIL]: { password: PASSWORD, org: EXPECTED.organisation, failures: 0, mfa: undefined },
+    [TW_EMAIL]: { password: TW_PASSWORD, org: TW_ORG, failures: 0, mfa: undefined },
+  };
   let counter = 0;
 
   const sendJson = (res, status, body, cookies = []) => {
@@ -117,11 +148,12 @@ function startMock({ tls = 'good', behaviour = {} } = {}) {
         .filter(Boolean)
         .map((c) => [c.slice(0, c.indexOf('=')), decodeURIComponent(c.slice(c.indexOf('=') + 1))]),
     );
-  const issue = (sid) => {
+  const issue = (sid, account = accounts[EMAIL]) => {
     counter += 1;
+    sidAccount.set(sid, account);
     const access = behaviour.badAccessToken ?? makeJwt({ payload: { sid } });
     const refresh = `rt_${counter}_${Math.random().toString(36).slice(2)}`;
-    sessions.set(refresh, { sid, used: false });
+    sessions.set(refresh, { sid, used: false, account });
     return [
       `${EXPECTED.sessionCookie}=${encodeURIComponent(access)}; Path=/; Max-Age=900; Secure; HttpOnly; SameSite=Lax`,
       `${EXPECTED.refreshCookie}=${encodeURIComponent(refresh)}; Path=/api/auth/refresh; Max-Age=2592000; Secure; HttpOnly; SameSite=Strict`,
@@ -136,7 +168,34 @@ function startMock({ tls = 'good', behaviour = {} } = {}) {
     const path = req.url;
     const cookies = cookiesOf(req);
     const unsafe = req.method !== 'GET';
-    if (unsafe && req.headers.origin !== EXPECTED.origin) return sendJson(res, 403, { code: 'ORIGIN_REJECTED' });
+    if (unsafe && req.headers.origin !== EXPECTED.origin && !behaviour.originOpen) {
+      return sendJson(res, 403, { code: 'SECURITY_CSRF_INVALID' });
+    }
+    const principal = () => {
+      const token = cookies[EXPECTED.sessionCookie];
+      if (token === undefined) return undefined;
+      const sid = JSON.parse(Buffer.from(token.split('.')[1], 'base64url')).sid;
+      return revokedSids.has(sid) ? undefined : { sid, account: sidAccount.get(sid) };
+    };
+    const step = () => Math.floor(clock.t / 30);
+    const codeOk = (account, code) => {
+      for (const s of [step() - 1, step(), step() + 1]) {
+        if (mockTotp(account.mfa.secret, s) === code) {
+          if (account.mfa.claimed.has(s) && !behaviour.totpReplayAccepted) return false;
+          account.mfa.claimed.add(s);
+          return true;
+        }
+      }
+      return false;
+    };
+    const recoveryOk = (account, code) => {
+      if (!account.mfa.codes.includes(code)) return false;
+      if (account.mfa.used.has(code) && !behaviour.recoveryReuseAccepted) return false;
+      account.mfa.used.add(code);
+      return true;
+    };
+    const challengeCookie = (value, maxAge = 300) =>
+      `${EXPECTED.challengeCookie}=${value}; Path=/; Max-Age=${maxAge}; Secure; HttpOnly; SameSite=Strict`;
     if (req.method === 'GET' && path === '/api/auth/health/live') return sendJson(res, 200, { status: 'ok' });
     if (req.method === 'GET' && path === '/api/auth/health/ready') {
       return sendJson(res, 200, {
@@ -155,24 +214,99 @@ function startMock({ tls = 'good', behaviour = {} } = {}) {
     }
     if (req.method === 'POST' && path === '/api/auth/login') {
       log.logins.push({ organisation: body.organisation, origin: req.headers.origin });
-      if (body.organisation !== EXPECTED.organisation) return sendJson(res, 401, { code: 'AUTH_INVALID_CREDENTIALS' });
-      if (body.identifier !== EMAIL || body.password !== PASSWORD) {
+      const account = accounts[body.identifier];
+      if (behaviour.edgeLimitInsteadOfLockout && account !== undefined && account.failures >= 5) {
+        return sendJson(res, 429, { code: 'SECURITY_RATE_LIMITED' });
+      }
+      if (account !== undefined && account.failures >= 10 && !behaviour.noLockout) {
+        return sendJson(res, 429, { code: 'AUTH_RATE_LIMITED' });
+      }
+      if (account === undefined || body.organisation !== account.org) return sendJson(res, 401, { code: 'AUTH_INVALID_CREDENTIALS' });
+      if (body.password !== account.password) {
         log.wrongPasswordAttempts += 1;
+        account.failures += 1;
         return sendJson(res, behaviour.wrongPasswordStatus ?? 401, { code: behaviour.wrongPasswordCode ?? 'AUTH_INVALID_CREDENTIALS' });
       }
-      return sendJson(res, 200, { ok: true }, issue(`ses_${counter + 1}`));
+      if (account.mfa?.enrolled && !behaviour.mfaNotRequired) {
+        const token = `ch_${(counter += 1)}_${randomBytes(6).toString('hex')}`;
+        challenges.set(token, account);
+        return sendJson(res, 401, { code: 'AUTH_MFA_REQUIRED', expiresInSeconds: 300 }, [challengeCookie(token)]);
+      }
+      return sendJson(res, 200, { ok: true }, issue(`ses_${counter + 1}`, account));
+    }
+    if (req.method === 'POST' && path === '/api/auth/mfa/verify') {
+      const account = challenges.get(cookies[EXPECTED.challengeCookie]);
+      log.mfa.push({ route: 'verify', kind: body.code !== undefined ? 'code' : 'recovery' });
+      if (account === undefined) return sendJson(res, 401, { code: 'AUTH_MFA_CHALLENGE_EXPIRED' });
+      const ok = body.code !== undefined ? codeOk(account, body.code) : recoveryOk(account, body.recoveryCode);
+      if (!ok) return sendJson(res, 401, { code: 'AUTH_MFA_INVALID' });
+      challenges.delete(cookies[EXPECTED.challengeCookie]);
+      return sendJson(res, 200, { ok: true }, [...issue(`ses_${counter + 1}`, account), challengeCookie('', 0)]);
+    }
+    if (req.method === 'POST' && path === '/api/auth/reauthenticate') {
+      const p = principal();
+      log.mfa.push({ route: 'reauthenticate' });
+      if (p === undefined) return sendJson(res, 401, { code: 'AUTH_UNAUTHENTICATED' });
+      if (body.password !== p.account.password) return sendJson(res, 401, { code: 'AUTH_INVALID_CREDENTIALS' });
+      if (p.account.mfa?.enrolled) {
+        const ok = body.code !== undefined ? codeOk(p.account, body.code) : recoveryOk(p.account, body.recoveryCode ?? '');
+        if (!ok) return sendJson(res, 401, { code: 'AUTH_MFA_INVALID' });
+      }
+      reauthenticated.add(p.sid);
+      return sendJson(res, 200, { ok: true, expiresInSeconds: 300 });
+    }
+    if (req.method === 'POST' && path === '/api/auth/mfa/enrollment') {
+      const p = principal();
+      log.mfa.push({ route: 'enrollment' });
+      if (p === undefined) return sendJson(res, 401, { code: 'AUTH_UNAUTHENTICATED' });
+      if (!reauthenticated.has(p.sid)) return sendJson(res, 403, { code: 'AUTH_REAUTHENTICATION_REQUIRED' });
+      if (p.account.mfa?.enrolled) return sendJson(res, 409, { code: 'AUTH_MFA_ALREADY_ENROLLED' });
+      const secret = [...randomBytes(20)].map((b) => B32[b & 31]).join('');
+      p.account.mfa = { enrolled: false, secret, claimed: new Set(), codes: [], used: new Set() };
+      return sendJson(res, 200, { secret, uri: `otpauth://totp/Munaxa:probe?secret=${secret}&issuer=Munaxa&algorithm=SHA1&digits=6&period=30` });
+    }
+    if (req.method === 'POST' && path === '/api/auth/mfa/enrollment/confirm') {
+      const p = principal();
+      log.mfa.push({ route: 'confirm' });
+      if (p === undefined || p.account.mfa === undefined) return sendJson(res, 401, { code: 'AUTH_UNAUTHENTICATED' });
+      if (!codeOk(p.account, body.code)) return sendJson(res, 401, { code: 'AUTH_MFA_INVALID' });
+      p.account.mfa.enrolled = true;
+      p.account.mfa.codes = Array.from({ length: 10 }, () => randomBytes(6).toString('hex'));
+      return sendJson(res, 200, { ok: true, recoveryCodes: [...p.account.mfa.codes], signedIn: true });
+    }
+    if (req.method === 'GET' && path === '/api/auth/mfa/status') {
+      const p = principal();
+      if (p === undefined) return sendJson(res, 401, { code: 'AUTH_UNAUTHENTICATED' });
+      const m = p.account.mfa;
+      return sendJson(res, 200, {
+        available: true,
+        enrolled: m?.enrolled === true,
+        required: false,
+        recoveryCodesRemaining: m?.enrolled ? m.codes.filter((c) => !m.used.has(c)).length : 0,
+        reauthenticated: reauthenticated.has(p.sid),
+      });
+    }
+    if (req.method === 'DELETE' && path === '/api/auth/mfa') {
+      const p = principal();
+      log.mfa.push({ route: 'remove' });
+      if (p === undefined) return sendJson(res, 401, { code: 'AUTH_UNAUTHENTICATED' });
+      if (!reauthenticated.has(p.sid)) return sendJson(res, 403, { code: 'AUTH_REAUTHENTICATION_REQUIRED' });
+      p.account.mfa = undefined;
+      return sendJson(res, 200, { ok: true });
     }
     if (req.method === 'POST' && path === '/api/auth/refresh') {
       log.refreshes.push({ organisation: body.organisation, hadRefreshCookie: cookies[EXPECTED.refreshCookie] !== undefined });
       const record = sessions.get(cookies[EXPECTED.refreshCookie]);
+      // Reuse of a rotated token ends the whole lineage (Identity revokes the session).
+      if (record !== undefined && record.used && !behaviour.noLineageRevocation) revokedSids.add(record.sid);
       const ok =
-        body.organisation === EXPECTED.organisation &&
+        body.organisation === record?.account.org &&
         record !== undefined &&
         !record.used &&
         (behaviour.replayAccepted === true || !revokedSids.has(record.sid));
       if (!ok) return sendJson(res, 401, { code: 'AUTH_INVALID_CREDENTIALS' }, cleared);
       record.used = true;
-      return sendJson(res, 200, { ok: true }, behaviour.noRotation ? [] : issue(record.sid));
+      return sendJson(res, 200, { ok: true }, behaviour.noRotation ? [] : issue(record.sid, record.account));
     }
     if (req.method === 'POST' && path === '/api/auth/logout') {
       log.logouts.push({ hadRefreshCookie: cookies[EXPECTED.refreshCookie] !== undefined });
@@ -204,7 +338,7 @@ function startMock({ tls = 'good', behaviour = {} } = {}) {
     });
   });
   return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port, log }));
+    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port, log, accounts }));
   });
 }
 
@@ -630,6 +764,189 @@ describe('the fifteen checks against a mock ALB and Identity', () => {
   });
 });
 
+describe('throwaway mode (BE-3, BE-4): the thirteen extra checks', () => {
+  // A fake clock shared by the probe and the mock: sleep() advances it, so no test waits.
+  const fakeClock = () => {
+    const clock = { t: Date.now() / 1000 };
+    return {
+      clock,
+      nowSeconds: () => Math.floor(clock.t),
+      sleep: async (ms) => {
+        clock.t += ms / 1000;
+      },
+    };
+  };
+  const twConfig = (port, extra = {}) =>
+    configFor(port, { email: TW_EMAIL, password: TW_PASSWORD, mode: 'throwaway', organisation: TW_ORG, ...extra });
+  const runTw = async (behaviour = {}, extra = {}) => {
+    const fc = fakeClock();
+    return withMock({ behaviour: { clock: fc.clock, ...behaviour } }, async (mock) => {
+      const results = await runChecks(twConfig(mock.port, extra), { nowSeconds: fc.nowSeconds, sleep: fc.sleep });
+      return { results, mock, r: byCheck(results) };
+    });
+  };
+
+  test('all twenty-eight pass, in order, against the throwaway organisation', async () => {
+    const { results, mock } = await runTw();
+    assert.deepEqual(results.map((r) => r.check), checksFor('throwaway'));
+    assert.deepEqual(results.filter((r) => !r.ok), []);
+    for (const login of mock.log.logins) assert.equal(login.organisation, TW_ORG);
+    // The operator account is never touched in this mode.
+    assert.equal(mock.accounts[EMAIL].failures, 0);
+    assert.equal(mock.accounts[EMAIL].mfa, undefined);
+    // The factor was removed by the probe itself, and the account ended locked.
+    assert.equal(mock.accounts[TW_EMAIL].mfa, undefined);
+    assert.ok(mock.accounts[TW_EMAIL].failures >= 10);
+  });
+
+  test('the lists: fifteen plus thirteen, lockout last, no name shared', () => {
+    assert.equal(CHECKS.length, 15);
+    assert.equal(THROWAWAY_CHECKS.length, 13);
+    assert.equal(checksFor('throwaway').at(-1), 'lockout');
+    assert.equal(new Set(checksFor('throwaway')).size, 28);
+    assert.deepEqual(checksFor('operator'), [...CHECKS]);
+    assert.deepEqual([...ACCOUNT_MODES], ['operator', 'throwaway']);
+  });
+
+  test('operator mode never reaches an MFA route and never locks the account', async () => {
+    await withMock({}, async ({ port, log, accounts }) => {
+      const results = await runChecks(configFor(port));
+      assert.equal(results.length, 15);
+      assert.deepEqual(log.mfa, []);
+      assert.equal(accounts[EMAIL].failures, 1);
+    });
+  });
+
+  const failures = [
+    ['originOpen', 'origin-enforced', 'foreign-origin-accepted'],
+    ['noLineageRevocation', 'refresh-reuse-detected', 'lineage-not-revoked'],
+    ['mfaNotRequired', 'mfa-challenge-required', 'status-200'],
+    ['totpReplayAccepted', 'mfa-totp-replay', 'replay-accepted'],
+    ['recoveryReuseAccepted', 'mfa-recovery-code-reuse', 'reuse-accepted'],
+    ['noLockout', 'lockout', 'no-lockout'],
+    ['edgeLimitInsteadOfLockout', 'lockout', 'status-429-edge-rate-limited'],
+  ];
+  for (const [flag, check, code] of failures) {
+    test(`a weakened Identity fails ${check} (${code})`, async () => {
+      const { r } = await runTw({ [flag]: true });
+      assert.equal(r[check].ok, false, check);
+      assert.equal(r[check].code, code);
+    });
+  }
+
+  test('a wrong throwaway password fails login and blocks only what depends on it', async () => {
+    const { r } = await runTw({}, { password: 'Not-The-Password-123' });
+    assert.equal(r.login.code, 'status-401-invalid-credentials');
+    assert.equal(r['mfa-enrollment'].code, 'status-401-invalid-credentials');
+    assert.equal(r['mfa-challenge-required'].code, 'blocked');
+    assert.equal(r['origin-enforced'].ok, true);
+  });
+
+  test('main prints only allow-listed lines and no credential, secret, code or token', async () => {
+    const fc = fakeClock();
+    await withMock({ behaviour: { clock: fc.clock } }, async ({ port, accounts }) => {
+      const lines = [];
+      const env = {
+        PROBE_ALB_DNS: ALB,
+        PROBE_ACCOUNT: 'throwaway',
+        PROBE_ORGANISATION: TW_ORG,
+        IDENTITY_OWNER_EMAIL: TW_EMAIL,
+        IDENTITY_OWNER_PASSWORD: TW_PASSWORD,
+      };
+      let secretSeen;
+      const code = await main({
+        env,
+        write: (line) => lines.push(line),
+        overrides: {
+          albHost: '127.0.0.1', port, ca: pki.ca, publicKeys: TEST_KEYS,
+          clock: { nowSeconds: fc.nowSeconds, sleep: async (ms) => { secretSeen ??= accounts[TW_EMAIL].mfa?.secret; await fc.sleep(ms); } },
+        },
+      });
+      assert.equal(code, 0);
+      assert.equal(lines.length, 29);
+      assert.equal(lines.at(-1), 'SUMMARY pass=28 fail=0 total=28 result=PASS');
+      const text = lines.join('\n');
+      assert.ok(secretSeen);
+      for (const secret of [TW_EMAIL, TW_PASSWORD, secretSeen, 'otpauth', 'eyJ', 'mx_', 'rt_', 'ch_', '@']) {
+        assert.equal(text.includes(secret), false, secret);
+      }
+      for (const line of lines) assert.match(line, /^(PASS [a-z-]+|FAIL [a-z-]+ [a-z0-9-]+|SUMMARY .+)$/);
+    });
+  });
+});
+
+describe('throwaway mode configuration', () => {
+  const twEnv = (extra = {}) => ({
+    PROBE_ALB_DNS: ALB,
+    PROBE_ACCOUNT: 'throwaway',
+    IDENTITY_OWNER_EMAIL: TW_EMAIL,
+    IDENTITY_OWNER_PASSWORD: TW_PASSWORD,
+    ...extra,
+  });
+
+  test('throwaway mode pins its own organisation', () => {
+    const read = readConfig(twEnv({ PROBE_ORGANISATION: TW_ORG }));
+    assert.equal(read.ok, true);
+    assert.equal(read.config.organisation, TW_ORG);
+    assert.equal(read.config.mode, 'throwaway');
+    assert.equal(readConfig(twEnv({ PROBE_ORGANISATION: 'munaxa-group' })).code, 'organisation-mismatch');
+    assert.equal(readConfig({ PROBE_ALB_DNS: ALB, IDENTITY_OWNER_EMAIL: EMAIL, IDENTITY_OWNER_PASSWORD: PASSWORD, PROBE_ORGANISATION: TW_ORG }).code, 'organisation-mismatch');
+  });
+
+  test('throwaway mode refuses any identifier that is not a throwaway one', () => {
+    for (const email of [EMAIL, 'stage-e-0123@stage-e.invalid', 'stage-e-0123456789abcdef@example.com', `x${TW_EMAIL}`]) {
+      assert.equal(readConfig(twEnv({ IDENTITY_OWNER_EMAIL: email })).code, 'not-a-throwaway-account', email);
+    }
+  });
+
+  test('operator mode refuses a throwaway identifier, and an unknown mode is refused', () => {
+    assert.equal(readConfig({ PROBE_ALB_DNS: ALB, IDENTITY_OWNER_EMAIL: TW_EMAIL, IDENTITY_OWNER_PASSWORD: 'x' }).code, 'throwaway-in-operator-mode');
+    assert.equal(readConfig(twEnv({ PROBE_ACCOUNT: 'admin' })).code, 'account-mode');
+  });
+
+  test('the credential and every database URL are deleted in throwaway mode too', () => {
+    const env = twEnv({ DIRECT_DATABASE_URL: 'postgres://x' });
+    readConfig(env);
+    for (const name of ['IDENTITY_OWNER_EMAIL', 'IDENTITY_OWNER_PASSWORD', 'DIRECT_DATABASE_URL']) assert.equal(name in env, false);
+  });
+});
+
+describe('TOTP', () => {
+  // RFC 6238 Appendix B, SHA-1 seed "12345678901234567890", 8 digits.
+  const RFC = Buffer.from('12345678901234567890');
+  test('matches the RFC 6238 test vectors', () => {
+    const cases = [[59, '94287082'], [1111111109, '07081804'], [1111111111, '14050471'], [1234567890, '89005924'], [2000000000, '69279037']];
+    for (const [time, expected] of cases) {
+      assert.equal(totpCode({ key: RFC, digits: 8, algorithm: 'SHA1' }, Math.floor(time / 30)), expected);
+    }
+  });
+
+  test('base32 and otpauth parsing', () => {
+    assert.deepEqual(base32Decode('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'), RFC);
+    const p = parseOtpauth('otpauth://totp/Munaxa:x?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&algorithm=SHA1&digits=6&period=30');
+    assert.equal(p.digits, 6);
+    assert.equal(p.algorithm, 'SHA1');
+    assert.deepEqual(p.key, RFC);
+  });
+
+  test('refuses what Identity does not issue', () => {
+    const codeOf = (fn) => {
+      try {
+        fn();
+        return 'none';
+      } catch (error) {
+        return error.code;
+      }
+    };
+    assert.equal(codeOf(() => parseOtpauth('https://x/?secret=GEZDGNBVGY3TQOJQ')), 'totp-uri');
+    assert.equal(codeOf(() => parseOtpauth('otpauth://totp/x?secret=GEZDGNBVGY3TQOJQ&algorithm=MD5')), 'totp-algorithm');
+    assert.equal(codeOf(() => parseOtpauth('otpauth://totp/x?secret=GEZDGNBVGY3TQOJQ&period=60')), 'totp-period');
+    assert.equal(codeOf(() => parseOtpauth('otpauth://totp/x?secret=GEZDGNBVGY3TQOJQ', 'AAAAAAAAAAAAAAAA')), 'totp-uri');
+    assert.equal(codeOf(() => base32Decode('not base32!')), 'totp-secret');
+    assert.equal(codeOf(() => base32Decode('GEZDG')), 'totp-secret');
+  });
+});
+
 describe('certificate verification is never disabled', () => {
   test('a certificate for another name fails every check with tls-name-mismatch', async () => {
     await withMock({ tls: 'wrong-name' }, async ({ port }) => {
@@ -684,7 +1001,8 @@ describe('the probe source', () => {
   test('makes no AWS call and names no URL beyond the expected origin', () => {
     assert.equal(/amazonaws\.com\/|aws-sdk|@aws-sdk/.test(code.replace(/elb\\\.amazonaws\\\.com/g, '')), false);
     const urls = [...code.matchAll(/https:\/\/[a-z0-9.-]+/g)].map((m) => m[0]);
-    assert.deepEqual([...new Set(urls)].sort(), ['https://id.test.munaxa.com']);
+    // The second is the foreign Origin header of origin-enforced, never a request target.
+    assert.deepEqual([...new Set(urls)].sort(), ['https://foreign-origin.invalid', 'https://id.test.munaxa.com']);
   });
 
   test('fits the loader size cap', () => {

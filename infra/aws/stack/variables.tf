@@ -593,3 +593,43 @@ variable "identity_probe_source" {
     error_message = "identity_probe_source is both empty, or a full 40-character lowercase commit and a 64-character lowercase SHA-256."
   }
 }
+
+variable "identity_probe_account" {
+  description = "Which account the Identity session probe signs in with (identity-probe.tf): throwaway (a synthetic account the loader creates, 28 checks) or operator (the identity-bootstrap credential, 15 checks)."
+  type        = string
+  # Stage E blocker BE-4 (report 2026-11-14-identity-stage-e-blockers-remediation, file 04): the
+  # operator account is not signed in to during Stage E. The probe has no task definition until
+  # identity_probe_source is pinned, so this default changes no plan on main.
+  default = "throwaway"
+
+  validation {
+    condition     = contains(["throwaway", "operator"], var.identity_probe_account)
+    error_message = "identity_probe_account is throwaway or operator."
+  }
+}
+
+variable "session_cleanup_enabled" {
+  description = "Nonprod only: the independent Testing session cleanup (session-cleanup.tf). Needs the backstop (session_backstop_schedule) and the bootstrap testing_session_cleanup apply first."
+  type        = bool
+  # Off by default: merging session-cleanup.tf changes no plan (the session workflow refuses any
+  # change beyond the session switches, so an unapplied resource would stop every scheduled `down`).
+  # Enabling it is its own configuration PR and owner-approved apply (Stage B, report
+  # 2026-11-14-identity-stage-e-blockers-remediation, file 02).
+  default = false
+
+  validation {
+    condition     = !var.session_cleanup_enabled || (var.environment == "nonprod" && var.session_backstop_schedule != "")
+    error_message = "The session cleanup exists only in nonprod, and needs the backstop (its scheduler role)."
+  }
+}
+
+variable "session_cleanup_schedule" {
+  description = "Nonprod only: when the daily session cleanup run R starts (session-cleanup.tf), in UTC. After the 21:00 UTC backstop."
+  type        = string
+  default     = "cron(5 21 * * ? *)"
+
+  validation {
+    condition     = can(regex("^cron\\(.+\\)$", var.session_cleanup_schedule))
+    error_message = "An EventBridge Scheduler cron() expression."
+  }
+}
