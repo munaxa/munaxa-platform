@@ -114,6 +114,17 @@ run "stage_e_task_definitions_match_the_manifest" {
     override_during = plan
     values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution" }
   }
+  # The execution policy's other resources, so its JSON is known at plan time (L-A0 asserts below).
+  override_resource {
+    target          = aws_kms_key.data
+    override_during = plan
+    values          = { arn = "arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37" }
+  }
+  override_resource {
+    target          = aws_cloudwatch_log_group.ops
+    override_during = plan
+    values          = { arn = "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/ops" }
+  }
 
   variables {
     # envs/nonprod.tfvars' values for everything a Stage E environment value comes from, so the
@@ -191,6 +202,34 @@ run "stage_e_task_definitions_match_the_manifest" {
       aws_ecs_task_definition.identity_probe[0].family == "munaxa-nonprod-identity-probe"
     )
     error_message = "The manifest's run-only family names are the ones Terraform registers (the two module families are <prefix>-<name>, modules/service local.id)."
+  }
+
+  # L-A0 redesign (owner decision D-LA0, report 2026-11-15-identity-stage-e-owner-decisions, file 03):
+  # the bootstrap reads the persistent operator secret that Secrets Manager generated, there is no
+  # one-run identity-bootstrap copy, and the execution role can read nothing else of the operator's.
+  assert {
+    condition = (
+      toset([for s in jsondecode(aws_ecs_task_definition.identity_bootstrap[0].container_definitions)[0].secrets : s.valueFrom if startswith(s.name, "IDENTITY_OWNER_")]) == toset([
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-operator:IDENTITY_OWNER_EMAIL::",
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-operator:IDENTITY_OWNER_PASSWORD::",
+      ]) &&
+      length(jsondecode(aws_ecs_task_definition.identity_bootstrap[0].container_definitions)[0].secrets) == 3 &&
+      !strcontains(aws_ecs_task_definition.identity_bootstrap[0].container_definitions, "identity-bootstrap:") &&
+      !strcontains(aws_ecs_task_definition.identity_probe[0].container_definitions, "identity-operator")
+    )
+    error_message = "L-A0: identity-bootstrap reads IDENTITY_OWNER_* from munaxa-nonprod/identity-operator only, and the probe never names identity-operator."
+  }
+
+  assert {
+    condition = (
+      one([for s in jsondecode(aws_iam_role_policy.identity_bootstrap_execution[0].policy).Statement : s if s.Action == "secretsmanager:GetSecretValue"]).Resource == [
+        aws_secretsmanager_secret.service["identity-migrate"].arn,
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-operator-??????",
+      ] &&
+      !strcontains(aws_iam_role_policy.identity_bootstrap_execution[0].policy, "identity-bootstrap-") &&
+      length([for s in jsondecode(aws_iam_role_policy.identity_bootstrap_execution[0].policy).Statement : s if strcontains(jsonencode(s.Action), "secretsmanager")]) == 1
+    )
+    error_message = "L-A0: the identity-bootstrap execution role reads only the identity-migrate bundle and the operator secret (exact, ?????? suffix), never the legacy one-run secret."
   }
 
   assert {
