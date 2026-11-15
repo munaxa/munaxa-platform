@@ -12,3 +12,5 @@ munaxalanding.bak
 storybook-static/
 # Owner-provided AWS output, kept byte for byte (sha256 in SHA256SUMS)
 docs/aws-migration/agent-reports/**/diagnostic-*-results/
+# Terraform templatefile (holds ${...} placeholders, valid JSON only after rendering)
+infra/aws/stack/session-cleanup/definition.asl.json

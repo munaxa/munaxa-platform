@@ -163,7 +163,35 @@ resource "aws_iam_policy" "workload_boundary" {
           "arn:aws:ecs:${var.region}:${var.account_id}:service/munaxa-${each.key}/*",
         ]
       },
-    ] : [])
+      ] : [], [for statement in [
+        # Testing's independent session cleanup (stack/session-cleanup.tf, BE-2): the cleanup role
+        # deletes the one-run bootstrap secret and the session ALB, stops tasks and the database; the
+        # backstop scheduler role starts the cleanup state machine. Nonprod names only.
+        {
+          Sid    = "TestingSessionCleanup"
+          Effect = "Allow"
+          Action = [
+            "secretsmanager:DeleteSecret", "elasticloadbalancing:DeleteLoadBalancer",
+            "ecs:DescribeServices", "ecs:StopTask", "rds:DescribeDBInstances", "states:StartExecution",
+          ]
+          Resource = [
+            "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:munaxa-${each.key}/identity-bootstrap-??????",
+            "arn:aws:elasticloadbalancing:${var.region}:${var.account_id}:loadbalancer/app/munaxa-${each.key}/*",
+            "arn:aws:ecs:${var.region}:${var.account_id}:service/munaxa-${each.key}/*",
+            "arn:aws:ecs:${var.region}:${var.account_id}:task/munaxa-${each.key}/*",
+            "arn:aws:rds:${var.region}:${var.account_id}:db:munaxa-${each.key}-*",
+            "arn:aws:states:${var.region}:${var.account_id}:stateMachine:munaxa-${each.key}-session-cleanup",
+          ]
+        },
+        {
+          # None has a resource-level permission for the lookup (ListTasks takes the cluster as a
+          # condition key; ListSecrets returns names and metadata, never a value).
+          Sid      = "TestingSessionCleanupLookups"
+          Effect   = "Allow"
+          Action   = ["elasticloadbalancing:DescribeLoadBalancers", "ecs:ListTasks", "secretsmanager:ListSecrets"]
+          Resource = ["*"]
+        },
+    ] : statement if each.key == "nonprod" && var.testing_session_cleanup])
   })
 }
 
