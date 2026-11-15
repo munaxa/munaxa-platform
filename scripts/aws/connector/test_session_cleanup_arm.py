@@ -124,7 +124,7 @@ def run(fake, **inputs):
 class Gate(unittest.TestCase):
     def test_rules_and_shared_helpers(self):
         self.assertEqual(h.check_source(SCRIPT), [])
-        with open(os.path.join(HERE, "c16-delete-bootstrap-secret.py"), encoding="utf-8") as f:
+        with open(os.path.join(HERE, "c8g-operator-secret-stack.py"), encoding="utf-8") as f:
             self.assertEqual(h.shared_block(SCRIPT), h.shared_block(f.read()))
 
     def test_a_healthy_cleanup_passes_and_nothing_is_written(self):
