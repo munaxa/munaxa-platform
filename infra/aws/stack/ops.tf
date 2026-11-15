@@ -192,10 +192,16 @@ module "migrate" {
 #
 # Identity's bootstrap scripts (munaxa-identity docs/runbooks/aws.md, "Operator organisation and
 # Control roles"), run from the runtime image as identity_owner. The operator's email and password
-# come from a one-run secret, munaxa-<env>/identity-bootstrap (IDENTITY_OWNER_EMAIL,
-# IDENTITY_OWNER_PASSWORD), which the owner creates before the runs and deletes after them, never
-# from a run-task environment override (reviewer R-16). The default command is step 1; steps 2 and
-# 3 override only the command, whose arguments are not secret. Run with db_admin_group.
+# come from the persistent operator secret munaxa-<env>/identity-operator (its IDENTITY_OWNER_EMAIL
+# and IDENTITY_OWNER_PASSWORD keys), never from a run-task environment override (reviewer R-16).
+# L-A0 redesign (owner decision D-LA0, report 2026-11-15-identity-stage-e-owner-decisions, file 03):
+# Secrets Manager generates the password through CloudFormation
+# (infra/aws/cloudformation/identity-operator-secret.template.json, connector script C-8G), so there
+# is no second, one-run copy any more. The secret's resource policy denies this role's read unless
+# the owner has opened the stack's read window (C-8G open-window) for the bootstrap runs; it is
+# closed again right after them. bootstrap-account.mjs checks the password against the real policy
+# before it writes anything. The default command is step 1; steps 2 and 3 override only the
+# command, whose arguments are not secret. Run with db_admin_group.
 
 resource "aws_iam_role" "identity_bootstrap_execution" {
   count = local.defined.identity_api ? 1 : 0
@@ -222,12 +228,13 @@ resource "aws_iam_role_policy" "identity_bootstrap_execution" {
         Resource = "arn:aws:ecr:${var.region}:${var.account_id}:repository/munaxa-identity/api"
       },
       {
-        Sid    = "ReadOwnerUrlAndOneRunSecret"
+        Sid    = "ReadOwnerUrlAndOperatorSecret"
         Effect = "Allow"
         Action = "secretsmanager:GetSecretValue"
         Resource = [
           aws_secretsmanager_secret.service["identity-migrate"].arn,
-          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap-??????",
+          # Only while the secret's own resource policy has the read window open (C-8G).
+          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-operator-??????",
         ]
       },
       {
@@ -275,8 +282,8 @@ resource "aws_ecs_task_definition" "identity_bootstrap" {
     ]
     secrets = [
       { name = "DIRECT_DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.service["identity-migrate"].arn}:DATABASE_MIGRATION_URL::${lookup(var.secret_version_ids, "identity-migrate", "")}" },
-      { name = "IDENTITY_OWNER_EMAIL", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap:IDENTITY_OWNER_EMAIL::" },
-      { name = "IDENTITY_OWNER_PASSWORD", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-bootstrap:IDENTITY_OWNER_PASSWORD::" },
+      { name = "IDENTITY_OWNER_EMAIL", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-operator:IDENTITY_OWNER_EMAIL::" },
+      { name = "IDENTITY_OWNER_PASSWORD", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-operator:IDENTITY_OWNER_PASSWORD::" },
     ]
     logConfiguration = {
       logDriver = "awslogs"
