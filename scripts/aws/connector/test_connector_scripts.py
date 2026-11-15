@@ -383,6 +383,19 @@ class SourceRules(unittest.TestCase):
         blocks = {h.shared_block(source(key)) for key in SCRIPTS}
         self.assertEqual(len(blocks), 1)
 
+    def test_review_c1_the_forbidden_operations_cannot_be_narrowed(self):
+        # Every other check reads h.FORBIDDEN_OPERATIONS, so a narrower set would narrow them all
+        # silently (review C, finding 1). The set may grow; it may never lose one of these.
+        pinned = {"GetSecretValue", "BatchGetSecretValue", "GetRandomPassword", "CreateSecret", "PutSecretValue",
+                  "UpdateSecret", "RotateSecret", "DeleteSecret", "RestoreSecret", "PutResourcePolicy",
+                  "DeleteResourcePolicy"}
+        self.assertLessEqual(pinned, set(h.FORBIDDEN_OPERATIONS))
+        for op in sorted(pinned):
+            with self.subTest(op=op):
+                code = ("async def f():\n    return await call_boto3(service_name='secretsmanager', "
+                        f"operation_name='{op}', region_name='x', params={{}})\nresult = 1\nresult")
+                self.assertIn(f"forbidden-operation {op}", h.check_source(code))
+
     def test_no_script_names_a_value_read(self):
         for key in SCRIPTS:
             tree_ops = re.findall(r'aws\("[a-z]+", "([A-Za-z]+)"', source(key))
@@ -556,6 +569,16 @@ class C8G(unittest.TestCase):
         self.assertEqual(run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)["code"], "WRONG_ACCOUNT")
         self.assertEqual([c[1] for c in fake.calls], ["GetCallerIdentity"])
 
+    def test_review_c4_a_denied_or_malformed_caller_check_aborts(self):
+        fake = FakeAws()
+        fake.fault("GetCallerIdentity", Fault("client", "AccessDenied"))
+        self.assertEqual(run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)["code"], "CALLER_AWS_AccessDenied")
+        self.assertEqual([c[1] for c in fake.calls], ["GetCallerIdentity"])
+        fake = FakeAws()
+        fake.op_GetCallerIdentity = lambda params: ["not", "a", "dict"]
+        self.assertEqual(run8g(fake)["code"], "WRONG_ACCOUNT")
+        self.assertEqual([c[1] for c in fake.calls], ["GetCallerIdentity"])
+
     def test_create_refuses_an_existing_stack_or_secret(self):
         fake = created()
         r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
@@ -697,6 +720,14 @@ class C8G(unittest.TestCase):
             "legacy-bootstrap-secret-present": lambda fk: fk.secrets.update({BOOTSTRAP: {"ARN": fk.arn(BOOTSTRAP), "Name": BOOTSTRAP, "versions": {}}}),
             "stack-status": lambda fk: fk.stack.update(status="UPDATE_ROLLBACK_FAILED"),
             "window-mismatch (expiry)": lambda fk: fk.stack["params"].update(WindowExpiresAt="2099-01-01T00:00:00Z"),
+            # Review C-2 and C-3: the principal of the root-read rule, and the shape of the expiry value.
+            "policy-root-read (principal)": lambda fk: policy(fk, lambda d: d["Statement"][1]["Condition"]["StringEquals"].update(
+                {"aws:PrincipalArn": READER_ARN})),
+            "policy-expiry (not ISO)": lambda fk: policy(fk, lambda d: d["Statement"][2]["Condition"]["DateGreaterThan"].update(
+                {"aws:CurrentTime": "tomorrow"})),
+            "policy-expiry (missing)": lambda fk: policy(fk, lambda d: d["Statement"][2]["Condition"]["DateGreaterThan"].pop("aws:CurrentTime")),
+            "policy-expiry (not a string)": lambda fk: policy(fk, lambda d: d["Statement"][2]["Condition"]["DateGreaterThan"].update(
+                {"aws:CurrentTime": ["2000-01-01T00:00:00Z"]})),
         }
         for problem, mutate in cases.items():
             with self.subTest(problem=problem):
