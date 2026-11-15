@@ -80,6 +80,7 @@ class FakeAws:
         self.final_status = "CREATE_COMPLETE"
         self.update_status = "UPDATE_COMPLETE"
         self.in_progress_polls = 0
+        self.physical = None
 
     # --- helpers -------------------------------------------------------------------------------
     def fault(self, operation, *faults):
@@ -315,6 +316,23 @@ class FakeAws:
                            for k, v in self.stack["params"].items()],
             "Tags": copy.deepcopy(self.stack["tags"]), "EnableTerminationProtection": self.stack["protection"]}]}
 
+    def op_DescribeStackResource(self, params):
+        if self.stack is None:
+            raise self.err("ValidationError", "DescribeStackResource", params)
+        assert params["LogicalResourceId"] == "OperatorSecret"
+        arn = self.physical or (self.secrets[SECRET_NAME]["ARN"] if SECRET_NAME in self.secrets else "")
+        return {"StackResourceDetail": {"LogicalResourceId": "OperatorSecret", "PhysicalResourceId": arn}}
+
+    def op_UpdateTerminationProtection(self, params):
+        self.stack["protection"] = params["EnableTerminationProtection"]
+        return {"StackId": self.stack["id"]}
+
+    def op_DeleteStack(self, params):
+        if self.stack["protection"]:
+            raise self.err("ValidationError", "DeleteStack", params)
+        self.stack = None  # DeletionPolicy Retain: a created secret stays
+        return {}
+
     def op_GetTemplate(self, params):
         if self.stack is None:
             raise self.err("ValidationError", "GetTemplate", params)
@@ -457,7 +475,7 @@ class C8GTemplate(unittest.TestCase):
     def test_the_policy_denies_reads_except_root_and_the_open_window(self):
         pol = self.t["Resources"]["OperatorSecretPolicy"]["Properties"]
         self.assertIs(pol["BlockPublicPolicy"], True)
-        read, change = pol["ResourcePolicy"]["Statement"]
+        read, _root, _expiry, change = pol["ResourcePolicy"]["Statement"]
         self.assertEqual((read["Effect"], read["Principal"], read["Action"]), ("Deny", "*", ["secretsmanager:GetSecretValue"]))
         yes, no = read["Condition"]["StringNotEquals"]["aws:PrincipalArn"]["Fn::If"][1:]
         self.assertEqual([x["Fn::Sub"] for x in no], ["arn:aws:iam::${AWS::AccountId}:root"])
@@ -468,6 +486,16 @@ class C8GTemplate(unittest.TestCase):
                        "secretsmanager:DeleteResourcePolicy", "secretsmanager:UpdateSecretVersionStage", "secretsmanager:RotateSecret"):
             self.assertIn(action, change["Action"])
         self.assertNotIn("Allow", json.dumps(pol["ResourcePolicy"]))
+
+    def test_root_reads_only_through_cloudformation_and_the_window_expires(self):
+        sts = {x["Sid"]: x for x in self.t["Resources"]["OperatorSecretPolicy"]["Properties"]["ResourcePolicy"]["Statement"]}
+        root = sts["RootReadsOnlyThroughCloudFormation"]
+        self.assertEqual(root["Action"], ["secretsmanager:GetSecretValue"])
+        self.assertEqual(root["Condition"]["ForAllValues:StringNotEquals"]["aws:CalledVia"], ["cloudformation.amazonaws.com"])
+        exp = sts["BootstrapWindowExpires"]
+        self.assertEqual(exp["Condition"]["DateGreaterThan"]["aws:CurrentTime"], {"Ref": "WindowExpiresAt"})
+        self.assertTrue(exp["Condition"]["StringEquals"]["aws:PrincipalArn"]["Fn::Sub"].endswith("munaxa-nonprod-identity-bootstrap-execution"))
+        self.assertEqual(self.t["Parameters"]["WindowExpiresAt"]["Default"], "2000-01-01T00:00:00Z")
 
     def test_the_reader_role_is_the_one_terraform_creates(self):
         with open(os.path.join(HERE, "..", "..", "..", "infra", "aws", "stack", "ops.tf"), encoding="utf-8") as f:
@@ -488,7 +516,8 @@ class C8G(unittest.TestCase):
         self.assertFalse(password_in_calls(fake))
         create = fake.ops("CreateStack")[0][2]
         self.assertEqual({p["ParameterKey"]: p["ParameterValue"] for p in create["Parameters"]},
-                         {"OperatorEmail": EMAIL, "Generation": "1", "BootstrapReadWindow": "closed"})
+                         {"OperatorEmail": EMAIL, "Generation": "1", "BootstrapReadWindow": "closed",
+                          "WindowExpiresAt": "2000-01-01T00:00:00Z"})
         self.assertIs(create["EnableTerminationProtection"], True)
         self.assertEqual(create["OnFailure"], "ROLLBACK")
         self.assertNotIn(EMAIL, create["TemplateBody"])
@@ -567,7 +596,7 @@ class C8G(unittest.TestCase):
         fake = FakeAws()
         fake.in_progress_polls = 100
         r = run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
-        self.assertEqual(r["code"], "STILL_IN_PROGRESS")
+        self.assertEqual((r["result"], r["next"]), ("IN_PROGRESS", "status"))
         fake = FakeAws()
         fake.in_progress_polls = 3
         self.assertEqual(run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)["result"], "CREATED")
@@ -579,12 +608,14 @@ class C8G(unittest.TestCase):
         upd = fake.ops("UpdateStack")[0][2]
         self.assertIs(upd["UsePreviousTemplate"], True)
         self.assertEqual(upd["Parameters"][0], {"ParameterKey": "OperatorEmail", "UsePreviousValue": True})
+        self.assertRegex(r["expires_at"], r"^20\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
         s = run8g(fake)
-        self.assertEqual((s["result"], s["window_policy"], s["window_parameter"]), ("PASS", "open", "open"))
-        self.assertIn(READER_ARN, fake.secrets[PERSISTENT]["policy"])
+        self.assertEqual((s["result"], s["window_policy"], s["window_parameter"], s["window_effective"], s["window_expires_at"]),
+                         ("PASS", "open", "open", "open", r["expires_at"]))
+        self.assertIn(READER_ARN, json.dumps(json.loads(fake.secrets[PERSISTENT]["policy"])["Statement"][0]))
         self.assertEqual(len(fake.secrets[PERSISTENT]["versions"]), 1)  # a window change never regenerates
         self.assertEqual(run8g(fake, MODE="close-window")["result"], "WINDOW_CLOSED")
-        self.assertNotIn(READER_ARN, fake.secrets[PERSISTENT]["policy"])
+        self.assertNotIn(READER_ARN, json.dumps(json.loads(fake.secrets[PERSISTENT]["policy"])["Statement"][0]))
         fake.calls.clear()
         self.assertEqual(run8g(fake, MODE="close-window")["result"], "ALREADY_CLOSED")
         self.assertEqual(fake.ops("UpdateStack"), [])
@@ -644,10 +675,15 @@ class C8G(unittest.TestCase):
                 {"aws:PrincipalArn": [ROOT_ARN, f"arn:aws:iam::{ACCOUNT}:role/munaxa-shared/munaxa-shared-deployer-nonprod"]})),
             "policy-statements": lambda fk: policy(fk, lambda d: d["Statement"].pop()),
             "policy-not-deny-all": lambda fk: policy(fk, lambda d: read(d).update(Effect="Allow")),
-            "policy-read-actions": lambda fk: policy(fk, lambda d: read(d).update(Action=["secretsmanager:DescribeSecret"])),
-            "policy-change-actions": lambda fk: policy(fk, lambda d: d["Statement"][1].update(Action=["secretsmanager:TagResource"])),
-            "policy-changers": lambda fk: policy(fk, lambda d: d["Statement"][1]["Condition"]["StringNotEquals"].update(
+            "policy-actions": lambda fk: policy(fk, lambda d: read(d).update(Action=["secretsmanager:DescribeSecret"])),
+            "policy-root-read": lambda fk: policy(fk, lambda d: d["Statement"][1]["Condition"]["ForAllValues:StringNotEquals"].update(
+                {"aws:CalledVia": ["ecs.amazonaws.com"]})),
+            "policy-expiry": lambda fk: policy(fk, lambda d: d["Statement"][2]["Condition"]["StringEquals"].update(
+                {"aws:PrincipalArn": ROOT_ARN})),
+            "policy-condition": lambda fk: policy(fk, lambda d: d["Statement"][2]["Condition"].pop("DateGreaterThan")),
+            "policy-changers": lambda fk: policy(fk, lambda d: d["Statement"][3]["Condition"]["StringNotEquals"].update(
                 {"aws:PrincipalArn": READER_ARN})),
+            "secret-not-the-stacks": lambda fk: setattr(fk, "physical", "arn:aws:secretsmanager:eu-central-1:229251310592:secret:other-Zz9999"),
             "policy-malformed": lambda fk: fk.secrets[PERSISTENT].update(policy="{not json"),
             "window-mismatch": lambda fk: fk.stack["params"].update(BootstrapReadWindow="open"),
             "stack-tags": lambda fk: fk.stack.update(tags=[]),
@@ -659,7 +695,8 @@ class C8G(unittest.TestCase):
             "scheduled-for-deletion": lambda fk: fk.secrets[PERSISTENT].update(DeletedDate="2026-11-20T00:00:00Z"),
             "current-version": lambda fk: [v.update(stages=[]) for v in fk.secrets[PERSISTENT]["versions"].values()],
             "legacy-bootstrap-secret-present": lambda fk: fk.secrets.update({BOOTSTRAP: {"ARN": fk.arn(BOOTSTRAP), "Name": BOOTSTRAP, "versions": {}}}),
-            "stack-status": lambda fk: fk.stack.update(status="UPDATE_ROLLBACK_COMPLETE"),
+            "stack-status": lambda fk: fk.stack.update(status="UPDATE_ROLLBACK_FAILED"),
+            "window-mismatch (expiry)": lambda fk: fk.stack["params"].update(WindowExpiresAt="2099-01-01T00:00:00Z"),
         }
         for problem, mutate in cases.items():
             with self.subTest(problem=problem):
@@ -667,8 +704,63 @@ class C8G(unittest.TestCase):
                 mutate(fake)
                 r = run8g(fake)
                 self.assertEqual(r["result"], "FAIL")
-                self.assertIn(problem, r["problems"])
+                self.assertIn(problem.split(" ")[0], r["problems"])
                 self.assertEqual(leaks(r, fake), [])
+
+    def test_review_a1_a_rolled_back_update_can_still_close_the_window(self):
+        fake = created()
+        run8g(fake, MODE="open-window")
+        fake.stack["status"] = "UPDATE_ROLLBACK_COMPLETE"  # a later update failed and rolled back
+        self.assertEqual(run8g(fake, MODE="close-window")["result"], "WINDOW_CLOSED")
+        s = run8g(fake)
+        self.assertEqual((s["result"], s["window_effective"]), ("PASS", "closed"))
+
+    def test_review_b_m2_an_update_still_running_says_in_progress(self):
+        fake = created()
+        fake.stack["status"] = "UPDATE_IN_PROGRESS"
+        self.assertEqual(run8g(fake, MODE="close-window")["result"], "IN_PROGRESS")
+        fake = created()
+        fake.overrides["UpdateStack"] = lambda p: (fake.stack.update(status="UPDATE_IN_PROGRESS"), {"StackId": fake.stack["id"]})[1]
+        self.assertEqual(run8g(fake, MODE="open-window")["result"], "IN_PROGRESS")
+        self.assertEqual(len(fake.ops("UpdateStack")), 1)
+
+    def test_review_b_m3_the_window_expires_by_itself(self):
+        fake = created()
+        run8g(fake, MODE="open-window", WINDOW_MINUTES=5)
+        past = "2001-01-01T00:00:00Z"
+        fake.stack["params"]["WindowExpiresAt"] = past
+        fake.secrets[PERSISTENT]["policy"] = fake.secrets[PERSISTENT]["policy"].replace(
+            json.loads(fake.secrets[PERSISTENT]["policy"])["Statement"][2]["Condition"]["DateGreaterThan"]["aws:CurrentTime"], past)
+        s = run8g(fake)
+        self.assertEqual((s["result"], s["window_policy"], s["window_effective"]), ("PASS", "open", "closed"))
+        for bad in (4, 121, True, "60"):
+            self.assertEqual(run8g(fake, MODE="open-window", WINDOW_MINUTES=bad)["code"], "WINDOW_MINUTES_OUT_OF_RANGE")
+        self.assertEqual(run8g(fake, MODE="close-window")["result"], "WINDOW_CLOSED")
+        self.assertEqual(run8g(fake)["window_expires_at"], "2000-01-01T00:00:00Z")
+
+    def test_review_a5_regenerate_fails_if_the_version_did_not_change(self):
+        fake = created()
+        fake.overrides["UpdateStack"] = lambda p: (fake.stack.update(status="UPDATE_COMPLETE"), {"StackId": fake.stack["id"]})[1]  # nothing regenerated
+        r = run8g(fake, MODE="regenerate", NO_ACCOUNT_CONFIRMED=True, EXPECTED_GENERATION=1)
+        self.assertEqual((r["result"], r["code"]), ("FAIL", "NOT_REGENERATED"))
+
+    def test_review_a2_a_failed_create_can_be_removed(self):
+        fake = FakeAws()
+        fake.final_status = "ROLLBACK_COMPLETE"
+        run8g(fake, MODE="create", OPERATOR_EMAIL=EMAIL)
+        r = run8g(fake, MODE="remove-failed-create")
+        self.assertEqual((r["result"], r["retained_secret_left"]), ("REMOVED", True))
+        self.assertIsNone(fake.stack)
+        self.assertEqual([c[1] for c in fake.calls if c[0] == "secretsmanager" and c[1] not in ("DescribeSecret",)], [])
+        fake = created()
+        r = run8g(fake, MODE="remove-failed-create")
+        self.assertEqual(r["code"], "NOT_A_FAILED_CREATE")
+        self.assertEqual(fake.ops("DeleteStack"), [])
+
+    def test_kms_alias_arn_is_accepted(self):
+        fake = created()
+        fake.secrets[PERSISTENT]["KmsKeyId"] = "arn:aws:kms:eu-central-1:229251310592:alias/munaxa-nonprod-data"
+        self.assertEqual(run8g(fake)["result"], "PASS")
 
     def test_status_of_nothing_and_of_failures(self):
         fake = FakeAws()

@@ -10,16 +10,25 @@
 #
 # One secret, no copy: munaxa-nonprod/identity-operator holds IDENTITY_OWNER_EMAIL,
 # IDENTITY_OWNER_PASSWORD, IDENTITY_ORGANISATION and IDENTITY_SECRET_GENERATION. Its resource policy
-# denies every value read except by root, and by the identity-bootstrap execution role only while the
-# stack parameter BootstrapReadWindow is "open". Every change except by root is denied.
+# denies every value read except (a) by the identity-bootstrap execution role while the stack
+# parameter BootstrapReadWindow is "open" AND before WindowExpiresAt (open-window sets it
+# WINDOW_MINUTES ahead, so a lost session's window closes itself), and (b) by root only through
+# CloudFormation (aws:CalledVia): a direct GetSecretValue by root, which is the connector's own
+# principal, or from the console, is denied (review B-M1). Every change except by root is denied.
 #
 # MODE (one per connector call):
 #   create        stack absent and secret absent -> CreateStack (window closed), wait for CREATE_COMPLETE
 #   open-window   just before the identity-bootstrap task (E-1 run); UpdateStack, previous template
 #   close-window  right after it, and on every exit path before `down` (replaces C-16)
 #   regenerate    new password (Generation + 1) ONLY while no Identity account exists for the email;
-#                 needs NO_ACCOUNT_CONFIRMED = True and EXPECTED_GENERATION = the current generation
+#                 needs NO_ACCOUNT_CONFIRMED = True and EXPECTED_GENERATION = the current generation;
+#                 FAILs unless AWSCURRENT really changed
+#   remove-failed-create  only for a stack in ROLLBACK_COMPLETE (a create that failed): turns off
+#                 termination protection and deletes the stack; reports whether a retained secret is
+#                 left (its removal is a separate owner-approved root step, never a connector call)
 #   status        read-only metadata check (replaces C-8v); run after every other mode
+# A stack in UPDATE_ROLLBACK_COMPLETE is updatable, so open-window and close-window still work after a
+# failed update (review A-1/B-M2); a change still in progress returns IN_PROGRESS: run status again.
 #
 # The operator edits only the INPUT lines, in the session copy, never in this repository. The email
 # is private runtime input: an unedited "create" copy aborts with EMAIL_NOT_SET, and the other modes
@@ -29,10 +38,11 @@
 # Returns names, ARNs, statuses, counts and codes only. Never the email, never a value, never an AWS
 # message (ResourceStatusReason and error messages are not read into the result). NOT RUN.
 
-MODE = "status"  # INPUT: create | open-window | close-window | regenerate | status
+MODE = "status"  # INPUT: create | open-window | close-window | regenerate | remove-failed-create | status
 OPERATOR_EMAIL = "<IDENTITY_OPERATOR_EMAIL>"  # INPUT: MODE create only (private, never committed)
 EXPECTED_GENERATION = 0  # INPUT: MODE regenerate only, the generation that status reports now
 NO_ACCOUNT_CONFIRMED = False  # INPUT: MODE regenerate only, True once the owner confirms no account exists
+WINDOW_MINUTES = 60  # INPUT: MODE open-window only, 5 to 120; the window then closes itself
 
 # --- shared helpers v1 (identical in every connector script) ---
 # Sandbox rules (sandbox_harness.py check_source): no import, no dunder name, no getattr/hasattr/type,
@@ -84,8 +94,10 @@ ROOT_ARN = "arn:aws:iam::" + ACCOUNT + ":root"
 READER_ARN = "arn:aws:iam::" + ACCOUNT + ":role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution"
 EXPECTED_TAGS = ["Environment=nonprod", "ManagedBy=cloudformation/" + STACK, "Project=munaxa", "Stack=shared"]
 STACK_TAGS = [{"Key": t.split("=", 1)[0], "Value": t.split("=", 1)[1]} for t in EXPECTED_TAGS]
-STABLE = ("CREATE_COMPLETE", "UPDATE_COMPLETE")
-MODES = ("create", "open-window", "close-window", "regenerate", "status")
+STABLE = ("CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE")
+MODES = ("create", "open-window", "close-window", "regenerate", "remove-failed-create", "status")
+CLOSED_AT = "2000-01-01T00:00:00Z"
+ISO_Z = re.compile(r"^20[0-9]{2}-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z$")
 RETRYABLE = ("PY_TIMEOUT", "AWS_Throttling", "AWS_ThrottlingException")
 EMAIL_SHAPE = re.compile(r"^[A-Za-z0-9.!#$%&*+/=?^_{|}~-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$")
 
@@ -111,6 +123,12 @@ TEMPLATE_TEXT = r'''{
       "Type": "String",
       "Default": "closed",
       "AllowedValues": ["closed", "open"]
+    },
+    "WindowExpiresAt": {
+      "Type": "String",
+      "Default": "2000-01-01T00:00:00Z",
+      "AllowedPattern": "^20[0-9]{2}-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z$",
+      "ConstraintDescription": "UTC, YYYY-MM-DDThh:mm:ssZ; after it the bootstrap execution role is denied even with the window open"
     }
   },
   "Conditions": {
@@ -202,6 +220,42 @@ TEMPLATE_TEXT = r'''{
               }
             },
             {
+              "Sid": "RootReadsOnlyThroughCloudFormation",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": ["secretsmanager:GetSecretValue"],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "aws:PrincipalArn": {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                  }
+                },
+                "ForAllValues:StringNotEquals": {
+                  "aws:CalledVia": ["cloudformation.amazonaws.com"]
+                }
+              }
+            },
+            {
+              "Sid": "BootstrapWindowExpires",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": ["secretsmanager:GetSecretValue"],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "aws:PrincipalArn": {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/munaxa-shared/munaxa-nonprod-identity-bootstrap-execution"
+                  }
+                },
+                "DateGreaterThan": {
+                  "aws:CurrentTime": {
+                    "Ref": "WindowExpiresAt"
+                  }
+                }
+              }
+            },
+            {
               "Sid": "ChangesOnlyByRoot",
               "Effect": "Deny",
               "Principal": "*",
@@ -250,6 +304,11 @@ TEMPLATE_TEXT = r'''{
       "Value": {
         "Ref": "BootstrapReadWindow"
       }
+    },
+    "WindowExpiresAt": {
+      "Value": {
+        "Ref": "WindowExpiresAt"
+      }
     }
   }
 }'''
@@ -285,7 +344,7 @@ async def stack_state():
         return None, ""
     params = {}
     for p in s.get("Parameters") or []:
-        if isinstance(p, dict) and p.get("ParameterKey") in ("Generation", "BootstrapReadWindow"):
+        if isinstance(p, dict) and p.get("ParameterKey") in ("Generation", "BootstrapReadWindow", "WindowExpiresAt"):
             params[p["ParameterKey"]] = str(p.get("ParameterValue", ""))
     tags = sorted(str(t.get("Key")) + "=" + str(t.get("Value")) for t in (s.get("Tags") or []) if isinstance(t, dict))
     return {"status": status, "params": params, "tags": tags,
@@ -317,6 +376,11 @@ async def template_matches():
     return "" if body == TEMPLATE else "TEMPLATE_DRIFT"
 
 
+def now_iso(minutes=0):
+    t = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=minutes)
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 async def wait_stable(expected, seconds=40):
     """Poll DescribeStacks every 5 s until a terminal status. Statuses only, never a reason."""
     waited = 0
@@ -325,7 +389,7 @@ async def wait_stable(expected, seconds=40):
         if code:
             return "", code
         if state is None:
-            return "ABSENT", "STACK_ABSENT"
+            return "ABSENT", ("" if expected == "ABSENT" else "STACK_ABSENT")
         status = state["status"]
         if status == expected:
             return status, ""
@@ -337,14 +401,16 @@ async def wait_stable(expected, seconds=40):
         waited += 5
 
 
-async def update(window, generation):
+async def update(window, generation, expires):
     """UpdateStack with the previous template; the email is never sent (UsePreviousValue)."""
     params = [
         {"ParameterKey": "OperatorEmail", "UsePreviousValue": True},
         {"ParameterKey": "Generation", "ParameterValue": generation},
         {"ParameterKey": "BootstrapReadWindow", "ParameterValue": window},
+        {"ParameterKey": "WindowExpiresAt", "ParameterValue": expires},
     ]
     token = "c8g-" + str(uuid.uuid4())
+    retried = False
     for attempt in (1, 2):
         try:
             await aws("cloudformation", "UpdateStack", {"StackName": STACK, "UsePreviousTemplate": True,
@@ -353,59 +419,67 @@ async def update(window, generation):
         except Exception as e:
             code = code_of(e)
             if attempt == 1 and code in RETRYABLE:
+                retried = True
                 continue  # same ClientRequestToken: CloudFormation treats the retry as the same request
             return "UPDATE_" + code
-    status, code = await wait_stable("UPDATE_COMPLETE")
+    # The connector stops a run at about 60 s: a retried call leaves less time to wait (review A-4).
+    status, code = await wait_stable("UPDATE_COMPLETE", 15 if retried else 35)
     return code
 
 
 def policy_window(text):
-    """('open'|'closed', '') from the live resource policy, or ('', code) if it is not the reviewed shape."""
+    """(window, expires, '') from the live resource policy, where window is 'open' or 'closed' as the
+    policy states it; or ('', '', code) if the policy is not exactly the reviewed shape."""
     try:
         doc = json.loads(text)
     except Exception:
-        return "", "POLICY_MALFORMED"
+        return "", "", "POLICY_MALFORMED"
     if not isinstance(doc, dict) or not isinstance(doc.get("Statement"), list):
-        return "", "POLICY_MALFORMED"
+        return "", "", "POLICY_MALFORMED"
     sids = {}
     for st in doc["Statement"]:
         if not isinstance(st, dict):
-            return "", "POLICY_MALFORMED"
+            return "", "", "POLICY_MALFORMED"
         sids[str(st.get("Sid"))] = st
-    if sorted(sids) != ["ChangesOnlyByRoot", "ValueReadOnlyByRootOrTheOpenBootstrapWindow"] or len(doc["Statement"]) != 2:
-        return "", "POLICY_STATEMENTS"
-    for st in sids.values():
+    expected = {x["Sid"]: x for x in TEMPLATE["Resources"]["OperatorSecretPolicy"]["Properties"]["ResourcePolicy"]["Statement"]}
+    if sorted(sids) != sorted(expected) or len(doc["Statement"]) != len(expected):
+        return "", "", "POLICY_STATEMENTS"
+    for sid, st in sids.items():
         if st.get("Effect") != "Deny" or st.get("Principal") not in ("*", {"AWS": "*"}) or st.get("Resource") != "*":
-            return "", "POLICY_NOT_DENY_ALL"
-    read = sids["ValueReadOnlyByRootOrTheOpenBootstrapWindow"]
-    actions = read.get("Action")
-    actions = [actions] if isinstance(actions, str) else actions
-    if actions != ["secretsmanager:GetSecretValue"]:
-        return "", "POLICY_READ_ACTIONS"
+            return "", "", "POLICY_NOT_DENY_ALL"
+        got = st.get("Action")
+        got = [got] if isinstance(got, str) else got
+        if not isinstance(got, list) or sorted(got) != sorted(expected[sid]["Action"]):
+            return "", "", "POLICY_ACTIONS"
+        cond = st.get("Condition")
+        if not isinstance(cond, dict) or sorted(cond) != sorted(expected[sid]["Condition"]):
+            return "", "", "POLICY_CONDITION"
+
+    def one(value):
+        return [str(value)] if isinstance(value, str) else sorted(str(v) for v in value) if isinstance(value, list) else None
+
     try:
-        allowed = read["Condition"]["StringNotEquals"]["aws:PrincipalArn"]
+        allowed = one(sids["ValueReadOnlyByRootOrTheOpenBootstrapWindow"]["Condition"]["StringNotEquals"]["aws:PrincipalArn"])
+        root_rule = sids["RootReadsOnlyThroughCloudFormation"]["Condition"]
+        expiry_rule = sids["BootstrapWindowExpires"]["Condition"]
+        changers = one(sids["ChangesOnlyByRoot"]["Condition"]["StringNotEquals"]["aws:PrincipalArn"])
     except Exception:
-        return "", "POLICY_READ_CONDITION"
-    if not isinstance(read.get("Condition"), dict) or len(read["Condition"]) != 1:
-        return "", "POLICY_READ_CONDITION"
-    allowed = sorted([allowed] if isinstance(allowed, str) else [str(a) for a in allowed])
+        return "", "", "POLICY_CONDITION"
     if allowed == [ROOT_ARN]:
         window = "closed"
     elif allowed == sorted([ROOT_ARN, READER_ARN]):
         window = "open"
     else:
-        return "", "POLICY_READERS"
-    try:
-        changers = sids["ChangesOnlyByRoot"]["Condition"]["StringNotEquals"]["aws:PrincipalArn"]
-    except Exception:
-        return "", "POLICY_CHANGE_CONDITION"
-    if changers not in (ROOT_ARN, [ROOT_ARN]):
-        return "", "POLICY_CHANGERS"
-    expected = TEMPLATE["Resources"]["OperatorSecretPolicy"]["Properties"]["ResourcePolicy"]["Statement"][1]["Action"]
-    got = sids["ChangesOnlyByRoot"].get("Action")
-    if sorted([got] if isinstance(got, str) else got) != sorted(expected):
-        return "", "POLICY_CHANGE_ACTIONS"
-    return window, ""
+        return "", "", "POLICY_READERS"
+    if one(root_rule["StringEquals"].get("aws:PrincipalArn")) != [ROOT_ARN] or \
+            one(root_rule["ForAllValues:StringNotEquals"].get("aws:CalledVia")) != ["cloudformation.amazonaws.com"]:
+        return "", "", "POLICY_ROOT_READ"
+    expires = expiry_rule["DateGreaterThan"].get("aws:CurrentTime")
+    if one(expiry_rule["StringEquals"].get("aws:PrincipalArn")) != [READER_ARN] or not isinstance(expires, str) or not ISO_Z.match(expires):
+        return "", "", "POLICY_EXPIRY"
+    if changers != [ROOT_ARN]:
+        return "", "", "POLICY_CHANGERS"
+    return window, expires, ""
 
 
 async def status():
@@ -420,6 +494,7 @@ async def status():
     out = {"result": "FAIL", "problems": [], "stack_status": state["status"],
            "generation": state["params"].get("Generation", ""),
            "window_parameter": state["params"].get("BootstrapReadWindow", ""),
+           "window_expires_at": state["params"].get("WindowExpiresAt", ""),
            "termination_protection": state["termination_protection"]}
     problems = out["problems"]
     if state["status"] not in STABLE:
@@ -431,6 +506,12 @@ async def status():
     drift = await template_matches()
     if drift:
         problems.append(drift.lower().replace("_", "-"))
+    try:
+        res = await aws("cloudformation", "DescribeStackResource", {"StackName": STACK, "LogicalResourceId": "OperatorSecret"})
+        physical = str(res.get("StackResourceDetail", {}).get("PhysicalResourceId", "")) if isinstance(res, dict) else ""
+    except Exception as e:
+        physical = ""
+        problems.append("stack-resource-" + code_of(e).lower())
     try:
         d = await aws("secretsmanager", "DescribeSecret", {"SecretId": SECRET})
         v = await aws("secretsmanager", "ListSecretVersionIds", {"SecretId": SECRET})
@@ -446,8 +527,11 @@ async def status():
     out["arn"] = str(d.get("ARN", ""))
     if d.get("Name") != SECRET or not out["arn"].startswith("arn:aws:secretsmanager:" + REGION + ":" + ACCOUNT + ":secret:" + SECRET + "-"):
         problems.append("secret-name")
+    if physical and physical != out["arn"]:
+        problems.append("secret-not-the-stacks")  # review A-8: a same-name secret made outside the stack
     kms = str(d.get("KmsKeyId", ""))
-    if not (kms.endswith("key/" + DATA_KEY_ID) or kms == "alias/munaxa-nonprod-data"):
+    if not (kms.endswith("key/" + DATA_KEY_ID) or kms in ("alias/munaxa-nonprod-data",
+            "arn:aws:kms:" + REGION + ":" + ACCOUNT + ":alias/munaxa-nonprod-data")):
         problems.append("kms-key")
     tags = sorted(str(t.get("Key")) + "=" + str(t.get("Value")) for t in (d.get("Tags") or []) if isinstance(t, dict))
     if tags != EXPECTED_TAGS:
@@ -462,11 +546,12 @@ async def status():
     out["current_version"] = str(current[0].get("VersionId", "")) if len(current) == 1 else ""
     if len(current) != 1:
         problems.append("current-version")
-    window, code = policy_window(p.get("ResourcePolicy", ""))
+    window, expires, code = policy_window(p.get("ResourcePolicy", ""))
     out["window_policy"] = window
+    out["window_effective"] = "open" if window == "open" and expires > now_iso() else ("closed" if window else "")
     if code:
         problems.append(code.lower().replace("_", "-"))
-    elif window != out["window_parameter"]:
+    elif window != out["window_parameter"] or expires != out["window_expires_at"]:
         problems.append("window-mismatch")
     legacy = await secret_absent(LEGACY_BOOTSTRAP)
     if legacy:
@@ -495,12 +580,14 @@ async def create():
             {"ParameterKey": "OperatorEmail", "ParameterValue": OPERATOR_EMAIL},
             {"ParameterKey": "Generation", "ParameterValue": "1"},
             {"ParameterKey": "BootstrapReadWindow", "ParameterValue": "closed"},
+            {"ParameterKey": "WindowExpiresAt", "ParameterValue": CLOSED_AT},
         ],
         "OnFailure": "ROLLBACK",
         "EnableTerminationProtection": True,
         "Tags": STACK_TAGS,
         "ClientRequestToken": "c8g-" + str(uuid.uuid4()),
     }
+    retried = False
     for attempt in (1, 2):
         try:
             await aws("cloudformation", "CreateStack", params)
@@ -508,37 +595,85 @@ async def create():
         except Exception as e:
             code = code_of(e)
             if attempt == 1 and code in RETRYABLE:
+                retried = True
                 continue  # same ClientRequestToken: CloudFormation treats the retry as the same request
             if code == "AWS_AlreadyExistsException":
                 return {"result": "ABORT", "code": "STACK_EXISTS", "next": "status"}
             return {"result": "ABORT", "code": "CREATE_" + code, "next": "status"}
     params = None
-    final, code = await wait_stable("CREATE_COMPLETE")
+    final, code = await wait_stable("CREATE_COMPLETE", 15 if retried else 35)
+    if code == "STILL_IN_PROGRESS":
+        return {"result": "IN_PROGRESS", "stack_status": final, "next": "status"}
     if code:
         return {"result": "FAIL", "code": code, "stack_status": final, "next": "status"}
     return {"result": "CREATED", "stack_status": final, "next": "status"}
 
 
 async def set_window(target):
+    if target == "open" and (not isinstance(WINDOW_MINUTES, int) or isinstance(WINDOW_MINUTES, bool) or not 5 <= WINDOW_MINUTES <= 120):
+        return {"result": "ABORT", "code": "WINDOW_MINUTES_OUT_OF_RANGE"}
     state, code = await stack_state()
     if code:
         return {"result": "ABORT", "code": code}
     if state is None:
         return {"result": "ABORT", "code": "STACK_ABSENT"}
+    if state["status"].endswith("_IN_PROGRESS"):
+        return {"result": "IN_PROGRESS", "stack_status": state["status"], "next": "status"}
     if state["status"] not in STABLE:
         return {"result": "ABORT", "code": "STACK_" + state["status"]}
     drift = await template_matches()
     if drift:
         return {"result": "ABORT", "code": drift}
-    if state["params"].get("BootstrapReadWindow") == target:
-        return {"result": "ALREADY_" + target.upper(), "next": "status"}
+    current = state["params"].get("BootstrapReadWindow")
+    expires = state["params"].get("WindowExpiresAt", "")
+    if target == "closed" and current == "closed" and expires == CLOSED_AT:
+        return {"result": "ALREADY_CLOSED", "next": "status"}
     generation = state["params"].get("Generation", "")
     if not re.match(r"^[1-9][0-9]{0,2}$", generation):
         return {"result": "ABORT", "code": "GENERATION_UNKNOWN"}
-    code = await update(target, generation)
+    new_expiry = now_iso(WINDOW_MINUTES) if target == "open" else CLOSED_AT
+    code = await update(target, generation, new_expiry)
+    if code == "STILL_IN_PROGRESS":
+        return {"result": "IN_PROGRESS", "next": "status"}
     if code:
         return {"result": "FAIL", "code": code, "next": "status"}
-    return {"result": "WINDOW_" + target.upper(), "next": "status"}
+    out = {"result": "WINDOW_" + target.upper(), "next": "status"}
+    if target == "open":
+        out["expires_at"] = new_expiry
+    return out
+
+
+async def current_version():
+    try:
+        v = await aws("secretsmanager", "ListSecretVersionIds", {"SecretId": SECRET})
+    except Exception as e:
+        return "", "VERSIONS_" + code_of(e)
+    current = [x for x in (v.get("Versions") or []) if isinstance(x, dict) and "AWSCURRENT" in (x.get("VersionStages") or [])] \
+        if isinstance(v, dict) else []
+    if len(current) != 1:
+        return "", "VERSIONS_MALFORMED"
+    return str(current[0].get("VersionId", "")), ""
+
+
+async def remove_failed_create():
+    state, code = await stack_state()
+    if code:
+        return {"result": "ABORT", "code": code}
+    if state is None:
+        return {"result": "ABORT", "code": "STACK_ABSENT"}
+    if state["status"] != "ROLLBACK_COMPLETE":
+        return {"result": "ABORT", "code": "NOT_A_FAILED_CREATE", "stack_status": state["status"]}
+    try:
+        await aws("cloudformation", "UpdateTerminationProtection", {"StackName": STACK, "EnableTerminationProtection": False})
+        await aws("cloudformation", "DeleteStack", {"StackName": STACK, "ClientRequestToken": "c8g-" + str(uuid.uuid4())})
+    except Exception as e:
+        return {"result": "FAIL", "code": "DELETE_" + code_of(e), "next": "status"}
+    final, code = await wait_stable("ABSENT", 35)
+    if code:
+        return {"result": "FAIL", "code": code, "next": "status"}
+    left = await secret_absent(SECRET)
+    return {"result": "REMOVED", "retained_secret_left": left == "SECRET_EXISTS",
+            "code": "" if left in ("", "SECRET_EXISTS") else left, "next": "status"}
 
 
 async def regenerate():
@@ -560,9 +695,17 @@ async def regenerate():
     drift = await template_matches()
     if drift:
         return {"result": "ABORT", "code": drift}
-    code = await update("closed", str(EXPECTED_GENERATION + 1))
+    before, code = await current_version()
+    if code:
+        return {"result": "ABORT", "code": code}
+    code = await update("closed", str(EXPECTED_GENERATION + 1), CLOSED_AT)
     if code:
         return {"result": "FAIL", "code": code, "next": "status"}
+    after, code = await current_version()
+    if code or after == before:
+        # Review A-5: CloudFormation documents a new version for a GenerateSecretString change; this
+        # proves it, and a FAIL here means the old password is still current.
+        return {"result": "FAIL", "code": code or "NOT_REGENERATED", "next": "status"}
     return {"result": "REGENERATED", "generation": str(EXPECTED_GENERATION + 1), "next": "status"}
 
 
@@ -580,6 +723,8 @@ async def c8g():
         return await set_window("closed")
     if MODE == "regenerate":
         return await regenerate()
+    if MODE == "remove-failed-create":
+        return await remove_failed_create()
     return await status()
 
 
