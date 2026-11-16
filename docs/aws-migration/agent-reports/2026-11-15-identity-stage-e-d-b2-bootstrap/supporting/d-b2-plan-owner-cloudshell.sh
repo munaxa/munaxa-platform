@@ -38,13 +38,24 @@ if aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate.tflock >/
 aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate --query '{modified:LastModified,version:VersionId,sse:ServerSideEncryption}' --output text || stop "bootstrap state object not readable"
 
 echo "== 2 Terraform 1.16.5"
+# Revision 2 (16 Nov): CloudShell's persistent home is only 1 GB, and the first run stopped here with
+# "curl: (23) Failure writing output". The Terraform binary, the AWS provider (several hundred MB)
+# and the clone now go to a private work directory on CloudShell's larger, temporary disk. Only the
+# log, the saved plan, its JSON and the small comparison files stay in $W (home, mode 700).
+rm -f "$W"/terraform_1.16.5_linux_amd64.zip "$W"/terraform; rm -rf "$W"/plugin-cache "$W"/munaxa-platform
+echo "-- free space (home is persistent, the work directory is temporary):"; df -h "$HOME" /tmp | sed 's/^/     /'
+[ "$(df -Pk "$HOME" | awk 'NR==2{print $4}')" -ge 51200 ] || { du -sh "$HOME"/* "$HOME"/.[!.]* 2>/dev/null | sort -h | tail -8 | sed 's/^/     /'; stop "home has less than 50 MB free: delete old files in $HOME (sizes listed above) and run again"; }
+T=$(mktemp -d /tmp/munaxa-d-b2.XXXXXX) || stop "temporary work directory"; chmod 700 "$T"
+[ "$(df -Pk "$T" | awk 'NR==2{print $4}')" -ge 2097152 ] || stop "the temporary disk has less than 2 GB free"
+ok "work directory $T (temporary), log and plan in $W"
+cd "$T" || stop "work directory"
 curl -fsSLO https://releases.hashicorp.com/terraform/1.16.5/terraform_1.16.5_linux_amd64.zip || stop "download"
 echo "2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4  terraform_1.16.5_linux_amd64.zip" | sha256sum -c - || stop "terraform checksum"
-unzip -o -q terraform_1.16.5_linux_amd64.zip terraform && export PATH=$W:$PATH TF_PLUGIN_CACHE_DIR=$W/plugin-cache TF_IN_AUTOMATION=1
+unzip -o -q terraform_1.16.5_linux_amd64.zip terraform && export PATH=$T:$PATH TF_PLUGIN_CACHE_DIR=$T/plugin-cache TF_IN_AUTOMATION=1 TF_DATA_DIR=$T/tfdata
 mkdir -p "$TF_PLUGIN_CACHE_DIR"; terraform version | head -1
 
 echo "== 3 pinned clone"
-rm -rf munaxa-platform && git clone -q https://github.com/munaxa/munaxa-platform.git && cd munaxa-platform || stop "clone"
+git clone -q https://github.com/munaxa/munaxa-platform.git && cd munaxa-platform || stop "clone"
 git checkout -q --detach "$PIN" && [ "$(git rev-parse HEAD)" = "$PIN" ] || stop "HEAD is not $PIN"
 F=$(git diff --name-only 9e45133dd419c03beb8f51f3ec8ee1559dca9f0a HEAD -- infra/aws/bootstrap | tr '\n' ' ')
 [ "$F" = "infra/aws/bootstrap/iam.tf infra/aws/bootstrap/iam_session.tf infra/aws/bootstrap/iam_session_cleanup.tf infra/aws/bootstrap/tests/bootstrap.tftest.hcl infra/aws/bootstrap/variables.tf " ] || stop "bootstrap files changed since the last apply (9e45133) differ: $F"
