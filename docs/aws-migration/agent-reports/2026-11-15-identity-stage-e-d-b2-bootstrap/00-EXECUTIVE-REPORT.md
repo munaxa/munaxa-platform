@@ -11,7 +11,7 @@ Plan-Review Gate".
 | --- | --- |
 | Repository inspection | Done at `main` `9752146f48f56972c72fd1808ce240300c2f1196` (contains #130 `2f6d443`, #131 `ac0ae60`, #132 `3ea00f9`, #133 `09b44ac`, #129). The source matches the report of 15 Nov: same variable, same four addresses, same statements. File 01 |
 | Offline validation | Bootstrap `terraform test` 14 passed, 0 failed. The four policies rendered offline with `testing_session_cleanup` false and true (Terraform 1.16.5, AWS provider 6.67.0, no credentials): exactly 2 statements added to the nonprod boundary, 1 to the session-read policy, a new 4-statement policy. Files 03, 04 |
-| Owner-operated CloudShell actions | **Not yet run.** Script `supporting/d-b2-plan-owner-cloudshell.sh` (SHA-256 `2712fd0a…062eef`) prepared, plan only. File 02 |
+| Owner-operated CloudShell actions | Revision 1 run 16 Nov 07:33 UTC: step 1 passed, stopped at step 2 (CloudShell 1 GB home full, curl error 23), nothing planned or applied. **Revision 2** `supporting/d-b2-plan-owner-cloudshell.sh` (commit `3d0cdd1`, SHA-256 `67583797…4855e7`) prepared, plan only. File 02 |
 | AWS read-only calls by Claude | **None.** The AWS connector asked to be signed in again, so the read-only checks (live policies, state lock, attachment count) were moved into the owner's script |
 | AWS plan generation | **None yet** (owner step) |
 | AWS writes | **None** |
