@@ -660,4 +660,18 @@ run "be2_session_cleanup_widens_only_nonprod" {
     if s.sid == "RefreshSessionCleanup"]) && length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup"]) == 1
     error_message = "The session deployer gains reads only, so session plans still refresh after the cleanup is applied."
   }
+  # Scheduled down run 44274042137 (18 Nov 2026) failed at refresh: the provider's state machine read
+  # also calls ListStateMachineVersions. Every refresh read of the applied cleanup resources must be
+  # here (or in deployer_read: scheduler:GetSchedule, cloudwatch:DescribeAlarms), and no write.
+  assert {
+    condition = alltrue([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement :
+      length(setsubtract([
+        "states:DescribeStateMachine", "states:ListStateMachineVersions", "states:ListTagsForResource",
+        "sns:GetTopicAttributes", "sns:ListTagsForResource", "cloudwatch:ListTagsForResource",
+      ], s.actions)) == 0 &&
+      !contains(s.actions, "states:ValidateStateMachineDefinition") &&
+      alltrue([for r in s.resources : strcontains(r, ":munaxa-nonprod-")])
+    if s.sid == "RefreshSessionCleanup"])
+    error_message = "The session deployer refreshes the cleanup state machine (incl. its versions), topic and alarms, on nonprod names only, and never validates a definition."
+  }
 }
