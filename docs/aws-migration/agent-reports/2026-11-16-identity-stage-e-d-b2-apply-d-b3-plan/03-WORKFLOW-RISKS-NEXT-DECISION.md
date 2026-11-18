@@ -1,5 +1,18 @@
 # 03. Workflow status, risks, next decision, actions not performed
 
+> **Status note, 18 Nov 2026.** This file was written before the D-B3/D-PIN apply. It records
+> what was known up to 18 Nov 08:31 UTC. Since then:
+>
+> - D-B3/D-PIN was applied in run 44267788619 (file 04).
+> - §3 "next owner decision" has been taken.
+> - §4 "no apply" applied only until then.
+> - Risk 1 happened in a different form. The first scheduled `down` after the apply, run
+>   44274042137 (09:14 UTC), still failed at "Plan the switches". The cause was
+>   `states:ListStateMachineVersions`, not `ValidateStateMachineDefinition`.
+>
+> The repository fix is PR #137 (not applied). See
+> `2026-11-18-identity-post-d-b3-verification-next-gates/` files 03 and 04.
+
 ## 1. Scheduled Testing `down` ("Deployment failed", 18 Nov)
 
 These are the `aws-session.yml` runs since the 15 Nov merges:

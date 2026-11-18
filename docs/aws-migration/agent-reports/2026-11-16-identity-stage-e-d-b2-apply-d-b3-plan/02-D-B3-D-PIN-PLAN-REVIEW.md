@@ -1,5 +1,11 @@
 # 02. D-B3/D-PIN nonprod plan (plan only, not applied)
 
+> **Status note, 18 Nov 2026.** This file records the plan-only run 43868859420 as reviewed on
+> 16-18 Nov. That run's plan was never applied, because plan mode has no apply job. The same 12
+> changes were applied on 18 Nov 08:33-08:34 UTC from a fresh, enforced plan in run 44267788619,
+> and the follow-up plan run 44268194074 showed no changes (file 04). "Ready for owner review"
+> below is the status at the time of the review.
+
 ## 1. Inputs checked before the plan
 
 | Check | Result |
