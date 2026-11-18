@@ -439,5 +439,24 @@ class Workflow(unittest.TestCase):
         self.assertIn("type: string", m.group(1))
 
 
+class LiveSandboxErrors(unittest.TestCase):
+    """18 Nov 2026: the live connector sandbox has no `ClientError` name, so `isinstance(e, ClientError)`
+    raised NameError on every AWS error. Shared helpers v2 read the botocore `.response` instead."""
+
+    def test_no_connector_script_names_client_error(self):
+        for name in sorted(os.listdir(HERE)):
+            if name.endswith(".py") and not name.startswith(("test_", "sandbox_")):
+                with open(os.path.join(HERE, name), encoding="utf-8") as f:
+                    with self.subTest(script=name):
+                        self.assertEqual(arm.h.check_source(f.read()), [])
+        self.assertIn("forbidden-name ClientError", arm.h.check_source("try:\n    x = 1\nexcept ClientError:\n    x = 2\nresult = x\nresult\n"))
+
+    def test_an_aws_error_still_gives_its_code_without_the_name(self):
+        fake = arm.Fake()
+        fake.faults["DescribeAlarms"] = ["AccessDeniedException"]
+        r = arm.run(fake)
+        self.assertEqual(r["checks"]["alarms_error"], "AWS_AccessDeniedException")
+
+
 if __name__ == "__main__":
     unittest.main()
