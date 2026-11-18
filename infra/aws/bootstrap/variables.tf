@@ -96,7 +96,10 @@ variable "budget_alert_emails" {
 variable "testing_session_cleanup" {
   description = "Testing's independent session cleanup (stack/session-cleanup.tf, Stage E blocker BE-2): widens the nonprod workload boundary for the cleanup role and lets the nonprod deployer manage the state machine and its alarm topic. Applied by root, before the stack apply that enables it."
   type        = bool
-  # Off: merging changes nothing in IAM. Turning it on is the Stage B-2 root apply (report
-  # 2026-11-14-identity-stage-e-blockers-remediation, file 02).
-  default = false
+  # On (R-8, 18 Nov 2026): D-B2 (16 Nov) and D-B2R (18 Nov) applied these statements with
+  # -var testing_session_cleanup=true, and the cleanup is live. A root plan without the flag would
+  # otherwise remove them and break the nonprod session deployer and the cleanup role. Prod is
+  # unaffected either way: every use is gated on the nonprod key. Pass false only to retire the
+  # cleanup, in a reviewed plan.
+  default = true
 }
