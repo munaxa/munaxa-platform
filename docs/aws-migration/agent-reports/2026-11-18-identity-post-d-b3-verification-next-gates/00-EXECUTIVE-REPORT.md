@@ -3,7 +3,7 @@
 **Status:**
 
 - **D-B2 and D-B3/D-PIN: APPLIED AND VERIFIED** (records).
-- **Scheduled shutdown: STILL FAILING AT THE SWITCH PLAN** (new cause, fix PREPARED, OWNER ACTION REQUIRED).
+- **Scheduled shutdown: STILL FAILING AT THE SWITCH PLAN** (new cause). Fix PR #137 MERGED a976b1a; owner plan 13:33 UTC PLAN VERIFIED (0/1/0, plan SHA-256 `2b90ec35…d34e`, file 12); apply NOT DONE, needs the owner's yes.
 - **D-B5 and the dry run: PREPARED, OWNER ACTION REQUIRED.**
 - **H-20: BLOCKED.**
 - **Live AWS check: VERIFIED at about 12:43 UTC** (addendum, file 11): nothing running, database stopped, 0 cleanup executions, `not-run` alarm in ALARM, no subscriber, session policy lacks the one read that PR #137 adds.
@@ -65,4 +65,5 @@ It is also the precondition for any later session.
 | 09 | Tests and independent review |
 | 10 | Risks, next owner decisions, actions not performed |
 | 11 | Addendum: live read-only AWS check (12:43 UTC) |
+| 12 | D-B2R owner plan review (PLAN VERIFIED, not applied) |
 | `supporting/` | `d-b2r-plan-owner-cloudshell.sh`, `d-b2r-apply-owner-cloudshell.sh`, `d-b5-alert-subscription.py`, `d-b4-dry-run-idle.py`, `test_next_gate_connector_scripts.py` (none run against AWS) |
