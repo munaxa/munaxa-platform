@@ -247,6 +247,28 @@ class GateScript(unittest.TestCase):
                 self.assert_fails(r, check)
                 self.assertTrue(set(r["calls"]) <= READ_OPS, r["calls"])
 
+    def test_the_real_cli_timestamp_format_and_a_future_stop_date(self):
+        # AWS CLI v2 prints e.g. 2026-11-18T21:05:23.202000+00:00 (review L-4).
+        fake, h = healthy()
+        fake.succeeded[0]["stopDate"] = "2026-11-20T07:00:00.202000+00:00"
+        self.assertEqual(self.gate(fake, h)["code"], 0)
+        fake, h = healthy()
+        fake.succeeded[0]["stopDate"] = "2026-11-20T07:00:00.202000+03:00"
+        self.assert_fails(self.gate(fake, h), "succeeded_within_26h")
+        fake, h = healthy()
+        fake.succeeded[0]["stopDate"] = (arm.now() + datetime.timedelta(hours=1)).isoformat()
+        self.assert_fails(self.gate(fake, h), "succeeded_within_26h")
+        fake, h = healthy()
+        fake.succeeded[0]["stopDate"] = 1763542800
+        self.assert_fails(self.gate(fake, h), "succeeded_within_26h")
+
+    def test_an_abort_leaves_every_check_false(self):
+        fake, _ = healthy()
+        r = self.gate(fake, "bad")
+        self.assertEqual(len(r["checks"]), 10)
+        self.assertFalse(any(r["checks"].values()))
+        self.assertEqual(r["errors"], {})
+
     def test_missing_current_s_fails(self):
         fake, h = healthy()
         s = [n for n in fake.schedules if n.startswith(NAME + "-s-")]
@@ -291,9 +313,10 @@ class GateScript(unittest.TestCase):
 
     def test_a_hard_stop_too_near_too_far_or_past_21_utc_aborts(self):
         fake, _ = healthy()
-        for bad, code in (("2026-11-20T10:20:00Z", "HARD_STOP_NOT_IN_30_MIN_TO_6_HOURS"),
-                          ("2026-11-20T09:00:00Z", "HARD_STOP_NOT_IN_30_MIN_TO_6_HOURS"),
-                          ("2026-11-20T16:01:00Z", "HARD_STOP_NOT_IN_30_MIN_TO_6_HOURS"),
+        for bad, code in (("2026-11-20T10:20:00Z", "HARD_STOP_NOT_IN_1_TO_6_HOURS"),
+                          ("2026-11-20T10:59:00Z", "HARD_STOP_NOT_IN_1_TO_6_HOURS"),
+                          ("2026-11-20T09:00:00Z", "HARD_STOP_NOT_IN_1_TO_6_HOURS"),
+                          ("2026-11-20T16:01:00Z", "HARD_STOP_NOT_IN_1_TO_6_HOURS"),
                           ("2026-11-20T15:00:00Z", None)):
             with self.subTest(hard_stop=bad):
                 r = self.gate(fake, bad)
@@ -422,12 +445,17 @@ class Workflow(unittest.TestCase):
         self.assertIn('AWS_SESSION_TOKEN="$DEPLOYER_AWS_SESSION_TOKEN"', run)
         self.assertNotIn("${{", run)
 
+    def test_a_failed_gate_never_stops_the_database(self):
+        # Review M-1: a refused `up` must not stop the database of a session that is already live.
+        self.assertIn("steps.h20.outcome != 'failure'", self.step("Stop the database")["if"])
+
     def test_no_continue_on_error_anywhere(self):
         self.assertNotRegex(self.text, r"(?m)^\s*continue-on-error\s*:")
 
     def test_down_never_depends_on_the_gate(self):
         self.assertNotIn("h20", self.text.split("\n  session:\n", 1)[0])  # the database job
-        self.assertNotIn("h20", self.step("Stop the database")["if"])
+        stop = self.step("Stop the database")["if"]
+        self.assertIn("env.SESSION == 'down' ||", stop)  # down stops whatever the gate did
         for name in ("terraform init", "Plan the switches", "Apply the switches"):
             # For down, env.SESSION != 'up' holds, so these never wait on a skipped gate.
             self.assertIn("env.SESSION != 'up' ||", self.step(name)["if"])

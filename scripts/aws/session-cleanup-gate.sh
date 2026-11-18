@@ -25,7 +25,7 @@
 # new: the workflow refuses an unarmed session, while the connector only allows its own P and S.
 #
 # Input: HARD_STOP_UTC, the session's hard stop H as YYYY-MM-DDTHH:MM:00Z, required. H must be at
-# least 30 minutes and at most 6 hours ahead, and S (H + 30 min) must not reach the 21:00 UTC backstop
+# least 1 hour and at most 6 hours ahead (as `arm` requires), and S (H + 30 min) must not reach the 21:00 UTC backstop
 # or the 21:05 UTC daily cleanup R (the connector's `arm` rule).
 #
 # Output: check names, true/false, error codes, alarm states and schedule names only. Never an AWS
@@ -101,8 +101,9 @@ finish() {
   exit 1
 }
 
+# An input, clock or caller problem: no check is evaluated, so all ten stay false, and the reason is
+# printed on its own line (review L-3), not as one check's code.
 abort() {
-  errors[own_session_armed]=$1
   notes+=("abort $1")
   finish
 }
@@ -114,7 +115,9 @@ h=$(date -u -d "$hard_stop" +%s 2>/dev/null) || abort HARD_STOP_SHAPE
 [ "$(date -u -d "@$h" +%Y-%m-%dT%H:%M:%SZ)" = "$hard_stop" ] || abort HARD_STOP_SHAPE
 now=$(date -u +%s)
 [[ "$now" =~ ^[0-9]+$ ]] || abort CLOCK
-if [ "$h" -lt $((now + 1800)) ] || [ "$h" -gt $((now + 21600)) ]; then abort HARD_STOP_NOT_IN_30_MIN_TO_6_HOURS; fi
+# At least 60 minutes, as the connector's `arm` requires (review M-2): the job may take up to 50
+# minutes, and P at H must never fire while this `up` is still applying.
+if [ "$h" -lt $((now + 3600)) ] || [ "$h" -gt $((now + 21600)) ]; then abort HARD_STOP_NOT_IN_1_TO_6_HOURS; fi
 s=$((h + 1800))
 for day in 0 1; do
   d=$(date -u -d "@$((now + day * 86400))" +%Y-%m-%d)

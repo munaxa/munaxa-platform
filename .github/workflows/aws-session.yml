@@ -194,9 +194,11 @@ jobs:
       # working (R succeeded within 26 h as a real run, nothing running, R enabled with the right
       # target, role and input, both alarms present and not in ALARM) and this session's own P and S
       # must be armed, with no other session's P or S left. Read-only, fails closed on any error.
-      # On a failure GitHub skips every later step, and the steps below also name this one, so they
-      # can never run after a failed or skipped gate. `down` never runs it: a broken cleanup must
-      # never block a shutdown. No continue-on-error, here or anywhere in this workflow.
+      # On a failure GitHub skips init, plan, database start and apply, and those steps also name this
+      # one, so they can never run after a failed or skipped gate. The final "Stop the database" step
+      # does not run after a failed gate either (review M-1): a refused `up` started nothing, and
+      # stopping the database could break a session that is already live. `down` never runs the gate:
+      # a broken cleanup must never block a shutdown. No continue-on-error, here or anywhere here.
       - name: H-20 gate
         id: h20
         if: env.SESSION == 'up'
@@ -266,6 +268,7 @@ jobs:
           rm -f apply.stdout
           echo "Session $SESSION applied." | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # Not after a failed H-20 gate (that `up` started nothing; review M-1).
       # Runs on `down` even when the plan or apply above failed (the database job has normally
       # stopped it already; this catches one the switches started), and on an `up` that failed or
       # was cancelled (timeout-minutes cancels the job, and failure() is false then), so a session
@@ -273,7 +276,7 @@ jobs:
       - name: Stop the database
         if: >-
           always() && steps.deployer.outcome == 'success' && steps.stack.outputs.exists == 'true'
-          && (env.SESSION == 'down' || (env.SESSION == 'up' && !success()))
+          && (env.SESSION == 'down' || (env.SESSION == 'up' && !success() && steps.h20.outcome != 'failure'))
         working-directory: .
         run: |
           set -euo pipefail
