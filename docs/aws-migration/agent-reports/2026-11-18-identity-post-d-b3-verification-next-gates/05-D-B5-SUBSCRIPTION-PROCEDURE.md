@@ -23,7 +23,7 @@ reports it confirmed.
 ## 2. Script
 
 The script is `supporting/d-b5-alert-subscription.py`, with SHA-256 `1938dfd0…c170` in this
-commit. It follows the connector sandbox rules (`sandbox_harness.check_source`: no import, no
+commit (superseded 18 Nov 21:55 UTC by shared helpers v2, `7ec3c1f8…855d`, file 17 §4). It follows the connector sandbox rules (`sandbox_harness.check_source`: no import, no
 reflection, literal operations only) and uses the shared helpers verbatim.
 
 | Mode | Calls | Writes |

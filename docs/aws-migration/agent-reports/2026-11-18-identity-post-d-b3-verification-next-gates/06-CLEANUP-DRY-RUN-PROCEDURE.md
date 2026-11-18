@@ -34,7 +34,7 @@ even scheduled.
 
 ## 2. Script
 
-The script is `supporting/d-b4-dry-run-idle.py`, with SHA-256 `5cd70078…b9ea` in this commit. It
+The script is `supporting/d-b4-dry-run-idle.py`, with SHA-256 `5cd70078…b9ea` in this commit (superseded 18 Nov 21:55 UTC by shared helpers v2, `7b57f5c7…5a29`, file 17 §5). It
 follows the sandbox rules and uses the shared helpers verbatim.
 
 ### `precheck` (read-only)

@@ -1,6 +1,8 @@
 # 16. Design proposal: enforce H-20 before every Testing `up`
 
-**Status: PROPOSAL ONLY. Not implemented.** It needs a separate owner approval for the code PR and
+> **Update 18 Nov 21:55 UTC:** implemented in PR #140 (unmerged, not live), with two changes from this design: a tenth check, splitting R's role and input, and a hard stop at least 60 minutes ahead. A failed gate also no longer triggers the database stop. See file 17 §3.
+
+**Status at writing: PROPOSAL ONLY. Not implemented.** It needs a separate owner approval for the code PR and
 another for its bootstrap apply. H-20 itself is unchanged.
 
 ## 1. Problem

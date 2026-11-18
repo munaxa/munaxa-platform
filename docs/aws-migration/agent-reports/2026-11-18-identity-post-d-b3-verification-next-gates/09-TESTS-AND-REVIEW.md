@@ -35,8 +35,8 @@ instead exercised with stubs (section 3).
 
 | Script | Test | Result |
 | --- | --- | --- |
-| `d-b5-alert-subscription.py` (`1938dfd0…c170`) | `sandbox_harness.check_source` | no violation |
-| `d-b4-dry-run-idle.py` (`5cd70078…b9ea`) | `sandbox_harness.check_source` | no violation |
+| `d-b5-alert-subscription.py` (`1938dfd0…c170`; now `7ec3c1f8…855d`, §7) | `sandbox_harness.check_source` | no violation |
+| `d-b4-dry-run-idle.py` (`5cd70078…b9ea`; now `7b57f5c7…5a29`, §7) | `sandbox_harness.check_source` | no violation |
 | both | `python3 -I -m unittest discover -s <folder>/supporting -p 'test_*.py'` | **20/20 pass** (11 D-B5, 9 D-B4) |
 | `d-b2r-plan-owner-cloudshell.sh` (`d7049449…8bf4`) | stubbed `aws`, `terraform`, `git`, `curl`, `unzip` | good path PLAN VERIFIED; extra action, extra address, wrong summary, drift, missing fix, short pin and lock 403 all STOP |
 | `d-b2r-apply-owner-cloudshell.sh` (`948053a7…f83a`) | same stubs | good path verified; wrong plan SHA, live policy not updated, wrong apply summary, and an apply after a later stopped plan run all STOP |
@@ -99,3 +99,19 @@ conclusions. It found nothing Critical or High. Every finding was fixed before t
   - The CI re-run is now recorded.
   - In the design: the deployer credential export, the database-stop side effect, and the existing bootstrap assertion that needs an update.
 - **Checked with no finding:** no secret, credential, full subscription ARN or personal e-mail; all SHA-256 values, blob ids and test counts are consistent; the R-7 statement about `--enforce` refusing an empty declaration is correct.
+
+## 7. Third round (18 Nov, 21:33–22:00 UTC, file 17)
+
+- **PR #139 (R-8).**
+  - Bootstrap `terraform test`: 16/16.
+  - `fmt` and `validate`: pass.
+  - Mutation (default back to `false`): the new run fails.
+- **PR #140 (H-20)**, at head `f121216`.
+  - Connector suite: 141/141, including 22 gate, parity and workflow tests.
+  - Bootstrap: 18/18.
+  - `shellcheck` 0.11.0: clean, and it now runs in CI.
+  - Prettier on the workflows: pass.
+  - Mutations all fail as expected: forced PASS, skipped condition 10, gate dropped from DB start, `states:StartExecution` added, a duplicate read added.
+- **Supporting scripts here** (D-B4 and D-B5, now shared helpers v2): 20/20 pass, against both the harness on `main` and the stricter harness of PR #140.
+- **Independent review of #139 and #140** (a separate reviewer, read-only, without my conclusions): no Critical or High. M-1, M-2, L-1, L-3 and L-4 are fixed. L-2, L-5, L-6 and L-7 are noted (file 17 §3). There is no finding on R-8.
+- **CI:** reported in the final message once available.

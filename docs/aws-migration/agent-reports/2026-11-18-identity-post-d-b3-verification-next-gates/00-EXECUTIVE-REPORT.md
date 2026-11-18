@@ -1,15 +1,17 @@
 # Post D-B3 verification and next Identity gates: executive report (18 Nov 2026)
 
-**Status:**
+**Current status (18 Nov 2026, 21:55 UTC; this list supersedes every older status line in this folder):**
 
-- **D-B2 and D-B3/D-PIN: APPLIED AND VERIFIED** (records).
-- **D-B2R: APPLIED AND VERIFIED** 18 Nov 13:37 UTC by the owner (0/1/0, post-apply no changes; live policy v3 re-read by Claude; file 13). Scheduled shutdown switch plan: NOT VERIFIED until the next scheduled run.
-- **D-B5 and the dry run: PREPARED — OWNER ACTION REQUIRED** (not authorized, not run).
-- **First real cleanup run R: SUCCEEDED 18 Nov 21:05:22–21:05:23 UTC** (input `{"dryRun":false}`, no write scheduled, every branch ok; VERIFIED LIVE — READ ONLY, file 14).
-- **H-20: BLOCKED** on one condition: the `not-run` alarm was still ALARM at 21:30 UTC (expected to clear after the 21:00–22:00 UTC period is evaluated). The other seven conditions pass live (file 14 §3). Not enforced by `aws-session.yml`; enforcement design in file 16 (proposal only).
-- **Scheduled `down` after the fix: WAITING FOR SCHEDULE.** The 19:17 UTC slot had not started by 21:28 UTC (file 14).
-- **Live AWS check: VERIFIED at about 12:43 UTC** (addendum, file 11): nothing running, database stopped, 0 cleanup executions, `not-run` alarm in ALARM, no subscriber, session policy then still lacked the one read that PR #137 adds (that was before the 13:37 UTC apply; it is now present, file 13).
-- **Stage E: NOT AUTHORIZED.**
+- **D-B2, D-B3/D-PIN, D-B2R: APPLIED AND VERIFIED.** D-B2R was applied at 13:37 UTC by the owner (file 13).
+- **First real cleanup run R: SUCCEEDED**, 21:05:22–21:05:23 UTC, input `{"dryRun":false}`, no write needed. VERIFIED LIVE (files 14, 17).
+- **H-20: BLOCKED on one condition.** The `not-run` alarm was still ALARM at 21:50 UTC. CloudWatch evaluates the 21:00 hour, which has one success, only after 22:00 UTC. The other seven conditions pass live. VERIFIED LIVE (file 17 §1).
+- **Scheduled `down` after the fix: WAITING FOR SCHEDULE.** GitHub had not started the 19:17 UTC slot by 21:36 UTC, and no replacement was dispatched.
+- **H-20 enforcement: PREPARED in PR #140.** It adds a gate before every `up` and two read actions in bootstrap. Independent review is done and CI is pending. Not merged and not live: it needs a merge yes, then an owner bootstrap plan and a separate apply yes.
+- **R-8: PREPARED in PR #139.** The cleanup flag defaults to true. Not merged. Merge it before #140.
+- **Connector fix: PREPARED.** The live sandbox has no `ClientError`. Fixed in PR #140 and in the D-B4/D-B5 scripts here (file 17 §3).
+- **D-B5 (subscribe `alert@munaxa.com`): WAITING FOR OWNER AUTHORIZATION.** File 17 §4.
+- **D-B4 (one idle dry run): WAITING FOR OWNER AUTHORIZATION.** Window 19 Nov 00:00–20:39 UTC, which is 03:00–23:39 Jordan time. File 17 §5.
+- **Stage E: NOT AUTHORIZED.** Production is out of scope.
 
 **Owner instruction.** 18 Nov 2026, 09:59 UTC, "Post D-B3 Verification, Report Correction and
 Next-Gate Preparation". The owner asked that nothing be merged automatically.
@@ -37,11 +39,11 @@ Next-Gate Preparation". The owner asked that nothing be merged automatically.
 - No SNS subscription, dry run, real cleanup, RDS start, ECS service or task, migration, bootstrap, DB-admin task, operator secret, C-8G or Stage E.
 - No secret value was read.
 - No production change.
-- Claude merged only PR #137, on the owner's explicit yes (13:24 UTC). This PR is not merged and not approved by Claude.
+- Claude merged only PR #137, on the owner's explicit yes (13:24 UTC). This PR, #139 and #140 are not merged and not approved by Claude.
 
 ## Recommendation
 
-**Current (after the D-B2R apply):** see file 15 §3. The original 10:35 UTC recommendation below was carried out at 13:24–13:37 UTC.
+**Current (21:55 UTC):** see file 15 §3. The original 10:35 UTC recommendation below was carried out at 13:24–13:37 UTC.
 
 The next safe action was **D-B2R**:
 
@@ -73,5 +75,6 @@ It is also the precondition for any later session.
 | 13 | D-B2R apply result (APPLIED AND VERIFIED 13:37 UTC) |
 | 14 | After D-B2R: scheduled `down` and the first real cleanup run (R) |
 | 15 | Current status, risks, next owner decisions, actions not performed (14:30 UTC) |
-| 16 | Design proposal: enforce H-20 before every Testing `up` (not implemented) |
-| `supporting/` | `d-b2r-plan-owner-cloudshell.sh`, `d-b2r-apply-owner-cloudshell.sh`, `d-b5-alert-subscription.py`, `d-b4-dry-run-idle.py`, `test_next_gate_connector_scripts.py` (none run against AWS) |
+| 16 | Design proposal: enforce H-20 before every Testing `up` (now implemented in PR #140, file 17) |
+| 17 | Evening round (21:33 UTC brief): live state, R-8 PR #139, H-20 PR #140, connector fix, D-B5/D-B4 owner instructions, bootstrap plan gates |
+| `supporting/` | `d-b2r-plan-owner-cloudshell.sh` and `d-b2r-apply-owner-cloudshell.sh` (run by the owner), `d-b5-alert-subscription.py` and `d-b4-dry-run-idle.py` (shared helpers v2, not run against AWS), `test_next_gate_connector_scripts.py` |
