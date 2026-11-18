@@ -8,7 +8,7 @@ This file supersedes file 10's sections 1 and 2 for the current state. File 10 i
 | --- | --- | --- |
 | **Repository** | `main` `a976b1a` includes PR #137. PR #138 (this report, documentation and procedure scripts that have not been run) is open and unmerged | VERIFIED FROM GITHUB RECORDS |
 | **Applied infrastructure** | D-B2 (16 Nov), D-B3/D-PIN (18 Nov 08:34, run 44267788619) and D-B2R (18 Nov 13:37, owner CloudShell) are applied. The live session-read policy is `v3` and includes `states:ListStateMachineVersions` | D-B2R VERIFIED FROM OWNER LOG and VERIFIED LIVE — READ ONLY |
-| **Operational execution** | No scheduled `down` since the fix. The cleanup state machine has 0 executions (R first fires 21:05 UTC). No dry run. No subscription. No session | WAITING FOR SCHEDULE (file 14) |
+| **Operational execution** | R's first real run SUCCEEDED at 21:05 UTC (no write needed). No scheduled `down` since the fix (19:17 UTC slot not started at 21:28 UTC). No dry run. No subscription. No session | R VERIFIED LIVE — READ ONLY; `down` WAITING FOR SCHEDULE (file 14) |
 | **Authorization to proceed** | D-B5, D-B4 and Stage E are not authorized | NOT AUTHORIZED |
 
 ## 2. Risks

@@ -5,8 +5,9 @@
 - **D-B2 and D-B3/D-PIN: APPLIED AND VERIFIED** (records).
 - **D-B2R: APPLIED AND VERIFIED** 18 Nov 13:37 UTC by the owner (0/1/0, post-apply no changes; live policy v3 re-read by Claude; file 13). Scheduled shutdown switch plan: NOT VERIFIED until the next scheduled run.
 - **D-B5 and the dry run: PREPARED — OWNER ACTION REQUIRED** (not authorized, not run).
-- **H-20: BLOCKED** (no real cleanup success yet; `not-run` in ALARM; R first fires 18 Nov 21:05 UTC). Not enforced by `aws-session.yml`; enforcement design in file 16 (proposal only).
-- **Scheduled `down` after the fix and R's first run: WAITING FOR SCHEDULE** (file 14).
+- **First real cleanup run R: SUCCEEDED 18 Nov 21:05:22–21:05:23 UTC** (input `{"dryRun":false}`, no write scheduled, every branch ok; VERIFIED LIVE — READ ONLY, file 14).
+- **H-20: BLOCKED** on one condition: the `not-run` alarm was still ALARM at 21:30 UTC (expected to clear after the 21:00–22:00 UTC period is evaluated). The other seven conditions pass live (file 14 §3). Not enforced by `aws-session.yml`; enforcement design in file 16 (proposal only).
+- **Scheduled `down` after the fix: WAITING FOR SCHEDULE.** The 19:17 UTC slot had not started by 21:28 UTC (file 14).
 - **Live AWS check: VERIFIED at about 12:43 UTC** (addendum, file 11): nothing running, database stopped, 0 cleanup executions, `not-run` alarm in ALARM, no subscriber, session policy then still lacked the one read that PR #137 adds (that was before the 13:37 UTC apply; it is now present, file 13).
 - **Stage E: NOT AUTHORIZED.**
 
