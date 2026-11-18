@@ -140,6 +140,12 @@ jobs:
           shellcheck scripts/aws/stop-database.sh scripts/aws/stop-database.test.sh
           scripts/aws/stop-database.test.sh
 
+      # H-20 enforced: the gate before every Testing `up` (aws-session.yml). Its behaviour, its parity
+      # with the connector gate and the workflow's structure are tested in scripts/aws/connector
+      # (test_session_cleanup_gate_workflow.py, in the step above); here it must also pass shellcheck.
+      - name: The session cleanup gate script is clean
+        run: shellcheck scripts/aws/session-cleanup-gate.sh
+
   plan:
     name: Plan ${{ inputs.environment }} (${{ inputs.action }})
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
