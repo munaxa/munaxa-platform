@@ -29,7 +29,7 @@ instead exercised with stubs (section 3).
 | Mutation check | Removing `states:ListStateMachineVersions`, or adding `states:ValidateStateMachineDefinition`, each makes the suite fail (13/14 pass, the new assertion fails), so both regressions are caught |
 | Offline render | session-read policy 1,470 → 1,504 characters, well under the 6,144 limit |
 | GitHub CI on head `cc9a7bb` | all checks success (Lint/Typecheck/Test/Build, Façades, Accessibility, "Format, validate, mocked plan tests"). The plan and apply jobs were skipped, as designed for a PR |
-| Merge status | **UNMERGED** (not authorized to merge) |
+| Merge status | At 10:35 UTC **UNMERGED**. Squash-merged 13:24 UTC as `a976b1a` on the owner's explicit yes; same blob ids |
 
 ## 3. Supporting scripts of this report
 

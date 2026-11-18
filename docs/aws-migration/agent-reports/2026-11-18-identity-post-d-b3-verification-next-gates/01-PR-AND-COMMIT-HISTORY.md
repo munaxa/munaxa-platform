@@ -14,7 +14,7 @@ The times are the commit times in UTC.
 | #136 | Temporarily ignore GHSA-fc5q-39xc-vjpf (picomatch) | `d4d1ff23a85770f1c242f68758de30ea2632e866` | 18 Nov 08:49 | dependency config + docs |
 | #135 | Report: D-B2 applied, D-B3/D-PIN plan, then apply (file 04) | `3453f13637907bfc0cd39ace12a0672e5f1e1bf7` | 18 Nov 09:04 | docs |
 
-PRs opened by this task (both unmerged; this task does not merge them):
+PRs opened by this task (as of 10:35 UTC both unmerged; #137 was merged at 13:24 UTC on the owner's yes as `a976b1af9e7fbfb003e0ed9d0dea8235e015f1cd`; this report's PR stays unmerged):
 
 | PR | Branch | Kind |
 | --- | --- | --- |

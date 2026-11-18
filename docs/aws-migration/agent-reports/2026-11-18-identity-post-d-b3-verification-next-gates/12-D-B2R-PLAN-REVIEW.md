@@ -1,6 +1,6 @@
 # D-B2R owner plan: Claude's review (18 Nov 2026)
 
-**Status: PLAN VERIFIED — READY FOR OWNER APPROVAL. NOT APPLIED.**
+**Status: PLAN VERIFIED.** At the time of this review it was READY FOR OWNER APPROVAL and not applied. The owner then applied it at 13:35–13:37 UTC (file 13).
 
 - **13:24 UTC.** The owner approved the merge of PR #137, which was squash-merged as `a976b1af9e7fbfb003e0ed9d0dea8235e015f1cd`. The blob ids on `main` are unchanged (`iam_session.tf` `a38ceb2b…`, tests `de8b6365…`).
 - **13:32–13:33 UTC.** The owner ran the plan script in root CloudShell, eu-central-1. It was downloaded from commit `9458081`, and SHA-256 `d7049449…8bf4` was checked before it ran (`d-b2r-plan.sh: OK`). The pin given was `a976b1a…`.
@@ -26,7 +26,7 @@
 - Some lines appear twice, and two lines are run together. These are terminal copy artifacts, and every step appears once in order.
 - The line `2026-11-16T12:40:34+00:00 aws:kms T_Vz…` is the state object's last-modified time, its encryption and its version id. That is the D-B2 apply time, and the value is not a secret.
 
-## Apply (separate owner yes/no, not done)
+## Apply (separate owner yes/no; done by the owner 13:35–13:37 UTC, file 13)
 
 Run in the same CloudShell, where `~/munaxa-d-b2r/d-b2r.tfplan` is saved. Apply script commit `9458081`, SHA-256 `948053a7…f83a`:
 

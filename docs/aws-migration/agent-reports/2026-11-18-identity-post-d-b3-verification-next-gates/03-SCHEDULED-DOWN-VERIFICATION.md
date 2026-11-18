@@ -1,5 +1,14 @@
 # 03. Scheduled Testing shutdown after the D-B3 apply
 
+> **Status note, 18 Nov 2026 about 14:30 UTC.** This file was written before D-B2R (10:00–10:35 UTC) and is kept as that record.
+> Since then:
+> - PR #137 was squash-merged with the owner's approval as `a976b1af9e7fbfb003e0ed9d0dea8235e015f1cd`, at 13:24 UTC.
+> - The owner plan passed at 13:33 UTC (file 12).
+> - The owner applied that reviewed plan at 13:35–13:37 UTC: 0 added, 1 changed, 0 destroyed; post-apply plan no changes; 70 resources (VERIFIED FROM OWNER LOG, file 13).
+> - Claude re-read the live policy: version `v3` contains `states:ListStateMachineVersions` (VERIFIED LIVE — READ ONLY, file 13).
+> - Still NOT VERIFIED: a scheduled `down` passing "Plan the switches" (file 14).
+
+
 ## 1. Runs of `aws-session.yml` since the 15 Nov merges
 
 From the GitHub Actions API, 18 Nov 2026 about 10:00 UTC. All are `schedule` events on `main`.
@@ -49,7 +58,7 @@ because no identity-based policy allows the states:ListStateMachineVersions acti
 | 4 | Is the cleanup state machine active? | It exists: the provider's `DescribeStateMachine` read succeeded and the error came at the next call, `ListStateMachineVersions`. The apply created it at 08:34. Its `status` field (ACTIVE) was not read | **NOT VERIFIED** (connector) |
 | 5 | Did any cleanup execution occur? | Nothing in the repository or the reports started one. Schedule R first fires 18 Nov 21:05 UTC, after this report | **NOT VERIFIED** live. None expected before 21:05 UTC |
 | 6 | Was any ECS task or service started? | No `up` run exists, and the session plan failed before any apply. An `up` is the only path in the repository that creates services | VERIFIED from records. Live: **NOT VERIFIED** |
-| 7 | Any remaining IAM or workflow failure? | **Yes.** The session role lacks `states:ListStateMachineVersions`. Every scheduled `down` will fail at "Plan the switches" until the fix is applied. A Testing `up` would fail the same way, so no session can start | VERIFIED (log + provider source) |
+| 7 | Any remaining IAM or workflow failure? | **Yes (at 09:15 UTC; fixed by the D-B2R apply at 13:37 UTC, file 13).** The session role lacks `states:ListStateMachineVersions`. Every scheduled `down` will fail at "Plan the switches" until the fix is applied. A Testing `up` would fail the same way, so no session can start | VERIFIED (log + provider source) |
 
 ## 4. Root cause and minimum safe correction
 

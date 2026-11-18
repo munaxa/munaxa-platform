@@ -1,5 +1,14 @@
 # 07. H-20 gate re-evaluation
 
+> **Status note, 18 Nov 2026 about 14:30 UTC.** This file was written before D-B2R (10:00–10:35 UTC) and is kept as that record.
+> Since then:
+> - PR #137 was squash-merged with the owner's approval as `a976b1af9e7fbfb003e0ed9d0dea8235e015f1cd`, at 13:24 UTC.
+> - The owner plan passed at 13:33 UTC (file 12).
+> - The owner applied that reviewed plan at 13:35–13:37 UTC: 0 added, 1 changed, 0 destroyed; post-apply plan no changes; 70 resources (VERIFIED FROM OWNER LOG, file 13).
+> - Claude re-read the live policy: version `v3` contains `states:ListStateMachineVersions` (VERIFIED LIVE — READ ONLY, file 13).
+> - Still NOT VERIFIED: a scheduled `down` passing "Plan the switches" (file 14).
+
+
 **Overall status: BLOCKED.** H-20 has not passed. At least one condition cannot be true yet: a
 real cleanup success within 26 h needs R to run first, at 18 Nov 21:05 UTC at the earliest. The
 live conditions were not read today (connector sign-in, file 03 §5). H-20 was not run, bypassed

@@ -1,7 +1,17 @@
 # 04. D-B2R: the session role's refresh fix (PR #137) and its owner procedure
 
-**Status: PREPARED, OWNER ACTION REQUIRED.** The code is in PR #137, which is unmerged. The owner
-scripts are tested offline. Nothing is applied.
+> **Status note, 18 Nov 2026 about 14:30 UTC.** This file was written before D-B2R (10:00–10:35 UTC) and is kept as that record.
+> Since then:
+> - PR #137 was squash-merged with the owner's approval as `a976b1af9e7fbfb003e0ed9d0dea8235e015f1cd`, at 13:24 UTC.
+> - The owner plan passed at 13:33 UTC (file 12).
+> - The owner applied that reviewed plan at 13:35–13:37 UTC: 0 added, 1 changed, 0 destroyed; post-apply plan no changes; 70 resources (VERIFIED FROM OWNER LOG, file 13).
+> - Claude re-read the live policy: version `v3` contains `states:ListStateMachineVersions` (VERIFIED LIVE — READ ONLY, file 13).
+> - Still NOT VERIFIED: a scheduled `down` passing "Plan the switches" (file 14).
+
+
+**Status: APPLIED AND VERIFIED** (18 Nov 13:37 UTC; files 12 and 13). At the time of writing
+(10:35 UTC) it was: PREPARED, OWNER ACTION REQUIRED; PR #137 unmerged; the owner scripts tested
+offline; nothing applied.
 
 ## 1. The change (PR #137, code)
 
@@ -91,7 +101,7 @@ The scripts cannot be run against AWS by Claude. The real check is the owner's r
 **If PR #137 changes before merge**, the blob ids in the plan script must be updated in this report
 first.
 
-## 4. While this is not applied
+## 4. While this was not applied (until 18 Nov 13:37 UTC)
 
 - Every scheduled `down` fails at "Plan the switches". The database is still stopped by the separate job and by the 21:00 UTC AWS backstop.
 - No ALB or service exists to scale in, because no session has started.
