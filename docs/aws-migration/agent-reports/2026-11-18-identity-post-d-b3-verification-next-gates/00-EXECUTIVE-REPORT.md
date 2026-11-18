@@ -6,7 +6,7 @@
 - **Scheduled shutdown: STILL FAILING AT THE SWITCH PLAN** (new cause, fix PREPARED, OWNER ACTION REQUIRED).
 - **D-B5 and the dry run: PREPARED, OWNER ACTION REQUIRED.**
 - **H-20: BLOCKED.**
-- **Live AWS check: BLOCKED** (connector sign-in).
+- **Live AWS check: VERIFIED at about 12:43 UTC** (addendum, file 11): nothing running, database stopped, 0 cleanup executions, `not-run` alarm in ALARM, no subscriber, session policy lacks the one read that PR #137 adds.
 - **Stage E: NOT AUTHORIZED.**
 
 **Owner instruction.** 18 Nov 2026, 09:59 UTC, "Post D-B3 Verification, Report Correction and
@@ -64,4 +64,5 @@ It is also the precondition for any later session.
 | 08 | Audit exception assessment |
 | 09 | Tests and independent review |
 | 10 | Risks, next owner decisions, actions not performed |
+| 11 | Addendum: live read-only AWS check (12:43 UTC) |
 | `supporting/` | `d-b2r-plan-owner-cloudshell.sh`, `d-b2r-apply-owner-cloudshell.sh`, `d-b5-alert-subscription.py`, `d-b4-dry-run-idle.py`, `test_next_gate_connector_scripts.py` (none run against AWS) |
