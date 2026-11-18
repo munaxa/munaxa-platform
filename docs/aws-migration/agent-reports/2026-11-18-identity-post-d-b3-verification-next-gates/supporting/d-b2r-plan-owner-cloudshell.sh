@@ -20,7 +20,10 @@
 # -var testing_session_cleanup=true and checks it is exactly ONE in-place update of the session-read
 # policy, adding exactly states:ListStateMachineVersions.
 #
-# What it never does: apply, import, state edits, any AWS write. No secret is read or printed.
+# What it never does: apply, import, state edits, any AWS write other than Terraform's own state lock
+# object (bootstrap/terraform.tfstate.tflock, created and removed by `terraform plan`, use_lockfile).
+# No secret is read or printed. The plan JSON (it holds the prior bootstrap state) is deleted after the
+# checks; the saved plan stays for the apply and is deleted by the apply script.
 set -uo pipefail
 umask 077
 W=$HOME/munaxa-d-b2r; mkdir -p "$W"; chmod 700 "$W"; cd "$W" || exit 1
@@ -34,6 +37,9 @@ ACCOUNT=229251310592
 D_B2=9752146f48f56972c72fd1808ce240300c2f1196   # the bootstrap code applied by D-B2 on 16 Nov
 BLOB_SESSION=a38ceb2b3b0ab6418f612eb9afab5f539f8304bb  # infra/aws/bootstrap/iam_session.tf, reviewed
 BLOB_TESTS=de8b636516d96cca0fd17cc293feb90131527d16    # infra/aws/bootstrap/tests/bootstrap.tftest.hcl, reviewed
+# The lock object: present = stop; 404 = none; any other answer = cannot tell, stop (review L-5).
+lock_absent() { local o; o=$(aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate.tflock 2>&1) && return 1
+  grep -qE '\(404\)|Not Found' <<<"$o" && return 0; echo "$o" | head -2; stop "could not check the bootstrap lock (not a 404)"; }
 date -u +"start %FT%TZ"
 
 echo "== 1 account, caller, region, lock"
@@ -42,7 +48,7 @@ export AWS_REGION=eu-central-1 AWS_DEFAULT_REGION=eu-central-1; ok "region eu-ce
 ID=$(aws sts get-caller-identity --output json) || stop "get-caller-identity failed"
 [ "$(jq -r .Account <<<"$ID")" = $ACCOUNT ] || stop "account is $(jq -r .Account <<<"$ID")"; ok "account $ACCOUNT"
 [ "$(jq -r .Arn <<<"$ID")" = "arn:aws:iam::$ACCOUNT:root" ] || stop "caller is $(jq -r .Arn <<<"$ID"), not root"; ok "caller root"
-if aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate.tflock >/dev/null 2>&1; then stop "bootstrap state lock exists"; fi; ok "no bootstrap lock"
+lock_absent || stop "bootstrap state lock exists"; ok "no bootstrap lock"
 aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate --query '{modified:LastModified,version:VersionId,sse:ServerSideEncryption}' --output text || stop "bootstrap state object not readable"
 
 echo "== 2 Terraform 1.16.5 in a temporary work directory (CloudShell home is only 1 GB)"
@@ -53,8 +59,10 @@ ok "work directory $T (temporary), log and plan in $W"
 cd "$T" || stop "work directory"
 curl -fsSLO https://releases.hashicorp.com/terraform/1.16.5/terraform_1.16.5_linux_amd64.zip || stop "download"
 echo "2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4  terraform_1.16.5_linux_amd64.zip" | sha256sum -c - || stop "terraform checksum"
-unzip -o -q terraform_1.16.5_linux_amd64.zip terraform && export PATH=$T:$PATH TF_PLUGIN_CACHE_DIR=$T/plugin-cache TF_IN_AUTOMATION=1 TF_DATA_DIR=$T/tfdata
-mkdir -p "$TF_PLUGIN_CACHE_DIR"; terraform version | head -1
+unzip -o -q terraform_1.16.5_linux_amd64.zip terraform || stop "unzip terraform"
+export PATH=$T:$PATH TF_PLUGIN_CACHE_DIR=$T/plugin-cache TF_IN_AUTOMATION=1 TF_DATA_DIR=$T/tfdata
+mkdir -p "$TF_PLUGIN_CACHE_DIR"
+[ "$(command -v terraform)" = "$T/terraform" ] && [ "$(terraform version | head -1)" = "Terraform v1.16.5" ] || stop "terraform is not the checked 1.16.5 binary"; ok "Terraform v1.16.5 ($T/terraform)"
 
 echo "== 3 pinned clone"
 git clone -q https://github.com/munaxa/munaxa-platform.git && cd munaxa-platform || stop "clone"
@@ -130,7 +138,8 @@ N=$(jq -r --arg a "$A" '.resource_changes[]|select(.address==$a)|.change.after.p
 [ "$N" -le 6144 ] || stop "the policy would be $N characters (limit 6,144)"; ok "policy $N characters"
 
 echo "== 10 result"
-( cd "$W" && sha256sum d-b2r.tfplan d-b2r.plan.json expected.json norm.jq )
-if aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate.tflock >/dev/null 2>&1; then stop "bootstrap lock left behind"; fi; ok "no bootstrap lock left"
+( cd "$W" && sha256sum d-b2r.tfplan expected.json norm.jq )
+rm -f "$W/d-b2r.plan.json" "$W/live.json"; ok "plan JSON deleted (it holds the prior state); the saved plan stays for the apply"
+lock_absent || stop "bootstrap lock left behind"; ok "no bootstrap lock left"
 date -u +"D-B2R PLAN VERIFIED, NOT APPLIED %FT%TZ"
 echo "Paste $W/d-b2r-plan.log to the thread. Keep $W: the saved plan is applied only after a separate owner approval."

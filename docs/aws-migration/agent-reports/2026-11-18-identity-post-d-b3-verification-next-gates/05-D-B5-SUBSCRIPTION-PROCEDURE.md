@@ -17,7 +17,7 @@ reports it confirmed.
 
 ## 2. Script
 
-The script is `supporting/d-b5-alert-subscription.py`, with SHA-256 `088acfbe…ca3d` in this
+The script is `supporting/d-b5-alert-subscription.py`, with SHA-256 `1938dfd0…c170` in this
 commit. It follows the connector sandbox rules (`sandbox_harness.check_source`: no import, no
 reflection, literal operations only) and uses the shared helpers verbatim.
 
@@ -33,20 +33,22 @@ reflection, literal operations only) and uses the shared helpers verbatim.
 - **Topic policy.** The precheck requires the `TlsOnly` deny to still be present.
 - **Address.** It refuses any address other than the approved one, before any AWS call.
 - **No duplicate.** It refuses to subscribe if any subscription for the address already exists, confirmed or pending, so a second run can never create a second subscription.
+- **Empty topic only.** The precheck and `subscribe` both require the topic to have no subscription at all and the counts confirmed, pending and deleted to be 0/0/0. Any other subscription is a stop (`TOPIC_HAS_ANOTHER_SUBSCRIPTION`).
+- **ARN suffix only.** The script returns only the last 4 characters of the subscription ARN. The full ARN would allow an unauthenticated unsubscribe, so it is never printed and never committed. `verify` fails with `NOT_AN_EMAIL_SUBSCRIPTION` if the address is subscribed with any other protocol.
 - **No other write.** It never calls `Publish` (no test message), `Unsubscribe`, `ConfirmSubscription`, `SetTopicAttributes` or `SetSubscriptionAttributes`. The tests check this.
 - **Codes only.** Errors are returned as codes, never as messages. No credential or token is read, and the confirmation token exists only in the e-mail.
 - **Confirmed means confirmed by AWS.** `verify` says CONFIRMED only when AWS reports `PendingConfirmation = "false"` for exactly one email subscription to the address. Otherwise it says PENDING or ABSENT.
 
-**Offline tests:** `supporting/test_next_gate_connector_scripts.py`, 8 D-B5 tests against a fake
+**Offline tests:** `supporting/test_next_gate_connector_scripts.py`, 11 D-B5 tests against a fake
 AWS, all pass (file 09).
 
 ## 3. Procedure
 
 1. **Owner yes/no (D-B5 execution).** This is the only approval needed for steps 2 to 4.
-2. **Claude runs `precheck`.** Expected: `PASS`, `address_not_yet_subscribed: true`, and counts 0/0/0. Any other result: stop and report.
+2. **Claude runs `precheck`.** Expected: `PASS`, `address_not_yet_subscribed: true` and `topic_has_no_subscription: true` (counts 0/0/0, enforced). Any other result: stop and report.
 3. **Claude runs `subscribe`.** Expected: `SUBSCRIBED_PENDING_CONFIRMATION`. AWS sends one e-mail, "AWS Notification - Subscription Confirmation", to `alert@munaxa.com`.
 4. **Owner action:** open that e-mail and click "Confirm subscription". The link expires after 3 days. If it expires, the pending subscription disappears and step 3 may be repeated after a new precheck.
-5. **Claude runs `verify`.** Expected: `CONFIRMED`, with the real subscription ARN. Until then the status is reported as PENDING, never as subscribed.
+5. **Claude runs `verify`.** Expected: `CONFIRMED`, with the last 4 characters of the subscription ARN (the full ARN is not recorded anywhere). Until then the status is reported as PENDING, never as subscribed.
 
 **Read-only verification at any time:** `verify`, or `precheck`, which lists the topic's
 subscriptions with endpoint and pending flag.

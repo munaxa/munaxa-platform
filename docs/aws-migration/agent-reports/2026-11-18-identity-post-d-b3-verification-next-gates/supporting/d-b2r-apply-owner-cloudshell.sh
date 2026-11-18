@@ -26,10 +26,16 @@ PIN=${1:?usage: d-b2r-apply-owner-cloudshell.sh <main commit SHA> <saved plan SH
 PLAN_SHA=${2:?usage: d-b2r-apply-owner-cloudshell.sh <main commit SHA> <saved plan SHA-256>}
 [[ "$PIN" =~ ^[0-9a-f]{40}$ ]] || stop "PIN must be a full 40-character commit SHA"
 [[ "$PLAN_SHA" =~ ^[0-9a-f]{64}$ ]] || stop "the plan SHA-256 must be 64 hex characters"
-grep -q "^OK   pin $PIN on main" "$W/d-b2r-plan.log" || stop "the plan log does not show a verified plan at $PIN"
-grep -q '^D-B2R PLAN VERIFIED, NOT APPLIED' "$W/d-b2r-plan.log" || stop "the plan script did not finish with PLAN VERIFIED"
+# Only the LAST plan run counts (the log is appended to on every run; review L-2).
+LAST=$(awk '/^start [0-9]{4}-/{buf=""} {buf=buf $0 "\n"} END{printf "%s", buf}' "$W/d-b2r-plan.log" 2>/dev/null)
+grep -q "^OK   pin $PIN on main" <<<"$LAST" || stop "the last plan run does not show a verified plan at $PIN"
+grep -q '^D-B2R PLAN VERIFIED, NOT APPLIED' <<<"$LAST" || stop "the last plan run did not finish with PLAN VERIFIED"
+grep -q '^STOP: ' <<<"$LAST" && stop "the last plan run has a STOP line"
 B=munaxa-shared-tfstate-229251310592
 ACCOUNT=229251310592
+# The lock object: present = stop; 404 = none; any other answer = cannot tell, stop (review L-5).
+lock_absent() { local o; o=$(aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate.tflock 2>&1) && return 1
+  grep -qE '\(404\)|Not Found' <<<"$o" && return 0; echo "$o" | head -2; stop "could not check the bootstrap lock (not a 404)"; }
 date -u +"start %FT%TZ"
 
 echo "== 1 account, caller, region, lock, saved plan"
@@ -38,7 +44,7 @@ export AWS_REGION=eu-central-1 AWS_DEFAULT_REGION=eu-central-1; ok "region eu-ce
 ID=$(aws sts get-caller-identity --output json) || stop "get-caller-identity failed"
 [ "$(jq -r .Account <<<"$ID")" = $ACCOUNT ] || stop "account is $(jq -r .Account <<<"$ID")"; ok "account $ACCOUNT"
 [ "$(jq -r .Arn <<<"$ID")" = "arn:aws:iam::$ACCOUNT:root" ] || stop "caller is not root"; ok "caller root"
-if aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate.tflock >/dev/null 2>&1; then stop "bootstrap state lock exists"; fi; ok "no bootstrap lock"
+lock_absent || stop "bootstrap state lock exists"; ok "no bootstrap lock"
 [ -f "$W/d-b2r.tfplan" ] || stop "saved plan $W/d-b2r.tfplan is missing"
 echo "$PLAN_SHA  $W/d-b2r.tfplan" | sha256sum -c - || stop "the saved plan is not the reviewed one"
 echo "0f0dbb24726881de4aa932885ff9f33f034b51bf260745c06930dae652eafed2  $W/expected.json" | sha256sum -c - || stop "expected.json differs from the plan script's"
@@ -52,13 +58,19 @@ T=$(mktemp -d /tmp/munaxa-d-b2r-apply.XXXXXX) || stop "temporary work directory"
 cd "$T" || stop "work directory"
 curl -fsSLO https://releases.hashicorp.com/terraform/1.16.5/terraform_1.16.5_linux_amd64.zip || stop "download"
 echo "2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4  terraform_1.16.5_linux_amd64.zip" | sha256sum -c - || stop "terraform checksum"
-unzip -o -q terraform_1.16.5_linux_amd64.zip terraform && export PATH=$T:$PATH TF_PLUGIN_CACHE_DIR=$T/plugin-cache TF_IN_AUTOMATION=1 TF_DATA_DIR=$T/tfdata
-mkdir -p "$TF_PLUGIN_CACHE_DIR"; terraform version | head -1
+unzip -o -q terraform_1.16.5_linux_amd64.zip terraform || stop "unzip terraform"
+export PATH=$T:$PATH TF_PLUGIN_CACHE_DIR=$T/plugin-cache TF_IN_AUTOMATION=1 TF_DATA_DIR=$T/tfdata
+mkdir -p "$TF_PLUGIN_CACHE_DIR"
+[ "$(command -v terraform)" = "$T/terraform" ] && [ "$(terraform version | head -1)" = "Terraform v1.16.5" ] || stop "terraform is not the checked 1.16.5 binary"; ok "Terraform v1.16.5 ($T/terraform)"
 
 echo "== 3 pinned clone and init"
 git clone -q https://github.com/munaxa/munaxa-platform.git && cd munaxa-platform || stop "clone"
 git checkout -q --detach "$PIN" && [ "$(git rev-parse HEAD)" = "$PIN" ] || stop "HEAD is not $PIN"
 git merge-base --is-ancestor "$PIN" origin/main || stop "$PIN is not on main"
+F=$(git diff --name-only 9752146f48f56972c72fd1808ce240300c2f1196 HEAD -- infra/aws/bootstrap | tr '\n' ' ')
+[ "$F" = "infra/aws/bootstrap/iam_session.tf infra/aws/bootstrap/tests/bootstrap.tftest.hcl " ] || stop "bootstrap files changed since the D-B2 apply are not exactly the two reviewed ones: $F"
+[ "$(git rev-parse HEAD:infra/aws/bootstrap/iam_session.tf)" = a38ceb2b3b0ab6418f612eb9afab5f539f8304bb ] || stop "iam_session.tf is not the reviewed content"
+[ "$(git rev-parse HEAD:infra/aws/bootstrap/tests/bootstrap.tftest.hcl)" = de8b636516d96cca0fd17cc293feb90131527d16 ] || stop "bootstrap.tftest.hcl is not the reviewed content"
 cd infra/aws/bootstrap
 grep -q 'h1:EB9ixYOZrSlYD7wtJxf88qwoyyWrlKDKxhzaCLIb3t4=' .terraform.lock.hcl || stop "provider lock hash"
 grep -q 'version     = "6.67.0"' .terraform.lock.hcl || stop "provider version is not 6.67.0"
@@ -94,7 +106,8 @@ for k in munaxa-shared-workload-boundary:boundary bootstrap/munaxa-shared-deploy
 done
 
 echo "== 7 result"
-if aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate.tflock >/dev/null 2>&1; then stop "bootstrap lock left behind"; fi; ok "no bootstrap lock left"
+lock_absent || stop "bootstrap lock left behind"; ok "no bootstrap lock left"
 aws s3api head-object --bucket $B --key bootstrap/terraform.tfstate --query '{modified:LastModified,version:VersionId}' --output text
+rm -f "$W/d-b2r.tfplan" "$W/post-live.json"; ok "saved plan deleted (it holds the prior state); logs kept in $W"
 date -u +"D-B2R APPLIED AND VERIFIED %FT%TZ"
 echo "Paste $W/d-b2r-apply.log to the thread. The next scheduled Testing down shows whether the switch plan passes."

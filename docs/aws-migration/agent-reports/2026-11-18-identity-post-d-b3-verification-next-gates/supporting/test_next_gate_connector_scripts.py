@@ -62,6 +62,7 @@ class FakeSns(Base):
     def __init__(self):
         super().__init__()
         self.subs = []  # (endpoint, arn or "PendingConfirmation", confirmed)
+        self.deleted, self.protocol = "0", "email"
         self.policy = {"Statement": [{"Sid": "CloudWatchAlarmsOfThisAccount", "Effect": "Allow"},
                                      {"Sid": "TlsOnly", "Effect": "Deny"}]}
 
@@ -70,10 +71,10 @@ class FakeSns(Base):
             raise h.ClientError("NotFound", "", "GetTopicAttributes")
         return {"Attributes": {"TopicArn": TOPIC, "Owner": ACCOUNT, "Policy": json.dumps(self.policy),
                                "SubscriptionsConfirmed": str(sum(1 for s in self.subs if s[2])),
-                               "SubscriptionsPending": str(sum(1 for s in self.subs if not s[2])), "SubscriptionsDeleted": "0"}}
+                               "SubscriptionsPending": str(sum(1 for s in self.subs if not s[2])), "SubscriptionsDeleted": self.deleted}}
 
     def op_ListSubscriptionsByTopic(self, p):
-        return {"Subscriptions": [{"Protocol": "email", "Endpoint": e, "TopicArn": TOPIC,
+        return {"Subscriptions": [{"Protocol": self.protocol, "Endpoint": e, "TopicArn": TOPIC,
                                    "SubscriptionArn": a if c else "PendingConfirmation"} for e, a, c in self.subs]}
 
     def op_Subscribe(self, p):
@@ -117,6 +118,9 @@ class DB5(unittest.TestCase):
         f = FakeSns()
         r = b5(f, MODE="subscribe")
         self.assertEqual(r["result"], "SUBSCRIBED_PENDING_CONFIRMATION", r)
+        # Only the last 4 characters of the subscription ARN leave the script (review M-1).
+        self.assertEqual(r["subscription_arn_suffix"], f.subs[0][1][-4:])
+        self.assertNotIn(f.subs[0][1], json.dumps(r))
         self.assertEqual(f.ops("Subscribe"), [{"TopicArn": TOPIC, "Protocol": "email", "Endpoint": "alert@munaxa.com", "ReturnSubscriptionArn": True}])
         self.assertEqual(f.writes(), ["Subscribe"])
 
@@ -126,6 +130,26 @@ class DB5(unittest.TestCase):
         r = b5(f, MODE="subscribe")
         self.assertEqual(r["code"], "ALREADY_SUBSCRIBED_OR_PENDING")
         self.assertEqual(len(f.ops("Subscribe")), 1)
+
+    def test_another_subscription_on_the_topic_blocks_precheck_and_subscribe(self):
+        f = FakeSns()
+        f.subs.append(("other@example.com", TOPIC + ":9999-x", True))
+        self.assertEqual(b5(f, MODE="precheck")["result"], "FAIL")
+        self.assertEqual(b5(f, MODE="subscribe")["code"], "TOPIC_HAS_ANOTHER_SUBSCRIPTION")
+        self.assertEqual(f.ops("Subscribe"), [])
+
+    def test_counts_not_zero_block_precheck_and_subscribe(self):
+        f = FakeSns()
+        f.deleted = "1"
+        self.assertEqual(b5(f, MODE="precheck")["result"], "FAIL")
+        self.assertEqual(b5(f, MODE="subscribe")["code"], "TOPIC_HAS_ANOTHER_SUBSCRIPTION")
+        self.assertEqual(f.ops("Subscribe"), [])
+
+    def test_verify_fails_on_a_non_email_protocol(self):
+        f = FakeSns()
+        f.subs.append(("alert@munaxa.com", TOPIC + ":0000-0", True))
+        f.protocol = "email-json"
+        self.assertEqual(b5(f, MODE="verify")["code"], "NOT_AN_EMAIL_SUBSCRIPTION")
 
     def test_another_address_is_refused_before_any_call(self):
         f = FakeSns()
@@ -141,6 +165,7 @@ class DB5(unittest.TestCase):
         f.confirm()
         r = b5(f, MODE="verify")
         self.assertEqual(r["result"], "CONFIRMED", r)
+        self.assertNotIn(f.subs[0][1], json.dumps(r))
         self.assertEqual(f.writes(), ["Subscribe"])
 
     def test_wrong_account_and_denied_subscribe(self):
@@ -181,6 +206,7 @@ class FakeSfn(Base):
         super().__init__()
         self.definition = rendered_definition()
         self.running, self.services, self.tasks, self.alb, self.db = [], [], [], False, "stopped"
+        self.ecs_token = None
         self.executions = {}
         self.history_resources = ["listSecrets", "describeLoadBalancers", "describeServices", "listTasks", "describeDBInstances"]
         self.output = {"dryRun": True, "results": [{"component": "secret", "status": "absent", "ok": True},
@@ -195,7 +221,10 @@ class FakeSfn(Base):
         return {"executions": self.running}
 
     def op_ListServices(self, p):
-        return {"serviceArns": self.services}
+        r = {"serviceArns": self.services}
+        if self.ecs_token:
+            r["nextToken"] = self.ecs_token
+        return r
 
     def op_ListTasks(self, p):
         return {"taskArns": self.tasks}
@@ -232,7 +261,7 @@ class DB4(unittest.TestCase):
     def test_sandbox_rules(self):
         self.assertEqual(h.check_source(D_B4), [])
         # The only execution input in the script is the dry-run constant.
-        self.assertEqual(D_B4.count('"input": DRY'), 1)
+        self.assertEqual(D_B4.count('"StartExecution", {"stateMachineArn": SM_ARN, "name": name, "input": DRY}'), 1)
         self.assertIn("DRY = '{\"dryRun\":true}'", D_B4)
         self.assertEqual(D_B4.count('"StartExecution"'), 1)
         self.assertNotIn('"StopExecution"', D_B4)
@@ -261,17 +290,47 @@ class DB4(unittest.TestCase):
             self.assertEqual(f.ops("StartExecution"), [], change)
 
     def test_never_near_the_backstop_or_r(self):
-        for hm in ((20, 40), (21, 0), (21, 5), (21, 30)):
+        # Allowed 00:00-20:39 UTC only: never close to the 21:00 backstop or schedule R at 21:05, and never
+        # after R on the same day (a dry run after R would hide whether R itself succeeded).
+        for hm in ((20, 40), (21, 0), (21, 5), (21, 30), (21, 31), (22, 0), (23, 59)):
             f = FakeSfn()
             self.assertEqual(b4(f, at=(2026, 11, 19) + hm, MODE="start")["code"], "PRECHECK_FAILED", hm)
             self.assertEqual(f.ops("StartExecution"), [])
+        for hm in ((0, 0), (20, 39)):
+            f = FakeSfn()
+            self.assertEqual(b4(f, at=(2026, 11, 19) + hm, MODE="start")["result"], "STARTED", hm)
 
-    def test_start_is_one_dry_run_execution_and_passes(self):
+    def test_start_is_one_dry_run_execution_and_status_passes(self):
         f = FakeSfn()
         r = b4(f, MODE="start")
-        self.assertEqual(r["result"], "PASS", r)
+        self.assertEqual(r["result"], "STARTED", r)
         self.assertEqual(f.ops("StartExecution"), [{"stateMachineArn": SM, "name": "dry-run-idle-20261119T1000", "input": '{"dryRun":true}'}])
+        # start returns at once with the execution ARN (no polling inside the connector's time limit).
+        self.assertEqual(f.ops("DescribeExecution"), [])
+        s = b4(f, MODE="status", EXECUTION_ARN=r["execution"])
+        self.assertEqual(s["result"], "PASS", s)
         self.assertEqual(f.writes(), ["StartExecution"])
+
+    def test_status_fails_on_a_non_dry_run_input_or_a_running_execution(self):
+        f = FakeSfn()
+        arn = b4(f, MODE="start")["execution"]
+        f.executions[arn]["input"] = '{"dryRun":false}'
+        self.assertEqual(b4(f, MODE="status", EXECUTION_ARN=arn)["result"], "FAIL")
+        f.executions[arn]["input"] = '{"dryRun":true}'
+        f.executions[arn]["status"] = "RUNNING"
+        self.assertEqual(b4(f, MODE="status", EXECUTION_ARN=arn)["result"], "RUNNING")
+        f.executions[arn]["status"] = "FAILED"
+        self.assertEqual(b4(f, MODE="status", EXECUTION_ARN=arn)["result"], "FAIL")
+
+    def test_precheck_fails_on_a_second_page_or_another_elb_error(self):
+        f = FakeSfn()
+        f.ecs_token = "more"
+        self.assertEqual(b4(f, MODE="precheck")["result"], "FAIL")
+        f = FakeSfn()
+        f.faults["DescribeLoadBalancers"] = ["AccessDenied"]
+        r = b4(f, MODE="precheck")
+        self.assertEqual(r["result"], "FAIL")
+        self.assertEqual(r["checks"]["alb_error"], "AWS_AccessDenied")
 
     def test_status_fails_on_a_write_or_another_branch_status(self):
         f = FakeSfn()

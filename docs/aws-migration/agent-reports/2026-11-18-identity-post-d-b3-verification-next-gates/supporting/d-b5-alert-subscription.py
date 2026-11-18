@@ -12,9 +12,14 @@
 #                     ReturnSubscriptionArn true). Refuses if any subscription for ADDRESS already
 #                     exists (confirmed or pending), so running it twice never makes a second one.
 #                     AWS then emails ADDRESS a confirmation link; the owner must click it.
-#   MODE "verify"     read-only. CONFIRMED only when exactly one email subscription for ADDRESS exists
-#                     and AWS reports it confirmed (PendingConfirmation "false"); otherwise PENDING or
-#                     ABSENT. Never claims a subscription that AWS has not confirmed.
+#   MODE "verify"     read-only. CONFIRMED only when exactly one subscription for ADDRESS exists, it
+#                     is an email subscription, and AWS reports it confirmed (PendingConfirmation
+#                     "false"); otherwise PENDING, ABSENT or FAIL. Never claims a subscription that AWS
+#                     has not confirmed.
+#
+# The subscription ARN is never returned in full (review M-1): a confirmed email subscription whose
+# confirmation was not authenticated can be removed by an unsigned Unsubscribe that knows the ARN,
+# and reports are public. Only its last 4 characters are returned, to tell two subscriptions apart.
 #
 # Never: sns:Publish (no test message), Unsubscribe, SetTopicAttributes, SetSubscriptionAttributes,
 # ConfirmSubscription, any other topic or account. No secret, token or credential is read or
@@ -114,23 +119,27 @@ async def precheck():
         return False, checks
     checks["subscriptions"] = [{"protocol": s["protocol"], "endpoint": s["endpoint"], "pending": s["pending"]} for s in subs]
     checks["address_not_yet_subscribed"] = not [s for s in subs if s["endpoint"].lower() == ADDRESS.lower()]
+    # D-B5 expects a topic nobody subscribed to yet (review L-7): any other subscription is a stop.
+    checks["topic_has_no_subscription"] = not subs and all(str(v) == "0" for v in checks["counts"].values())
     ok = checks["topic_arn"] and checks["topic_owner"] and checks["tls_only_deny"]
     return ok, checks
 
 
 async def verify():
     subs = await subscriptions()
-    mine = [s for s in subs if s["protocol"] == "email" and s["endpoint"].lower() == ADDRESS.lower()]
+    mine = [s for s in subs if s["endpoint"].lower() == ADDRESS.lower()]
     if not mine:
         return {"result": "ABSENT", "subscriptions": len(subs)}
     if len(mine) > 1:
         return {"result": "FAIL", "code": "MORE_THAN_ONE_SUBSCRIPTION", "count": len(mine)}
+    if mine[0]["protocol"] != "email":
+        return {"result": "FAIL", "code": "NOT_AN_EMAIL_SUBSCRIPTION", "protocol": mine[0]["protocol"]}
     if mine[0]["pending"]:
         return {"result": "PENDING", "note": "AWS still waits for the owner to click Confirm subscription in the email"}
     a = (await aws("sns", "GetSubscriptionAttributes", {"SubscriptionArn": mine[0]["arn"]})).get("Attributes") or {}
     if a.get("PendingConfirmation") != "false" or a.get("TopicArn") != TOPIC or a.get("Protocol") != "email":
         return {"result": "PENDING", "code": "NOT_CONFIRMED_BY_AWS"}
-    return {"result": "CONFIRMED", "subscription_arn": mine[0]["arn"], "confirmation_was_authenticated": a.get("ConfirmationWasAuthenticated")}
+    return {"result": "CONFIRMED", "subscription_arn_suffix": mine[0]["arn"][-4:], "confirmation_was_authenticated": a.get("ConfirmationWasAuthenticated")}
 
 
 async def d_b5():
@@ -145,16 +154,18 @@ async def d_b5():
         return await verify()
     ok, checks = await precheck()
     if MODE == "precheck":
-        return {"result": "PASS" if ok and checks.get("address_not_yet_subscribed") else "FAIL", "checks": checks}
+        return {"result": "PASS" if ok and checks.get("address_not_yet_subscribed") and checks.get("topic_has_no_subscription") else "FAIL", "checks": checks}
     if not ok:
         return {"result": "ABORT", "code": "PRECHECK_FAILED", "checks": checks}
     if not checks.get("address_not_yet_subscribed"):
         return {"result": "ABORT", "code": "ALREADY_SUBSCRIBED_OR_PENDING", "next": "run verify; never subscribe twice", "checks": checks}
+    if not checks.get("topic_has_no_subscription"):
+        return {"result": "ABORT", "code": "TOPIC_HAS_ANOTHER_SUBSCRIPTION", "checks": checks}
     try:
         r = await aws("sns", "Subscribe", {"TopicArn": TOPIC, "Protocol": "email", "Endpoint": ADDRESS, "ReturnSubscriptionArn": True})
     except Exception as e:
         return {"result": "FAIL", "code": "SUBSCRIBE_" + code_of(e), "next": "run precheck before any retry"}
-    return {"result": "SUBSCRIBED_PENDING_CONFIRMATION", "subscription_arn": str(r.get("SubscriptionArn", "")),
+    return {"result": "SUBSCRIBED_PENDING_CONFIRMATION", "subscription_arn_suffix": str(r.get("SubscriptionArn", ""))[-4:],
             "next": "the owner clicks Confirm subscription in the AWS email to " + ADDRESS + "; then run verify"}
 
 

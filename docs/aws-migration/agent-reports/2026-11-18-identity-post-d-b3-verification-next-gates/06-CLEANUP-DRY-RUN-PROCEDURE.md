@@ -34,7 +34,7 @@ even scheduled.
 
 ## 2. Script
 
-The script is `supporting/d-b4-dry-run-idle.py`, with SHA-256 `49194a63…2dfc` in this commit. It
+The script is `supporting/d-b4-dry-run-idle.py`, with SHA-256 `5cd70078…b9ea` in this commit. It
 follows the sandbox rules and uses the shared helpers verbatim.
 
 ### `precheck` (read-only)
@@ -49,7 +49,7 @@ PASS only if all of these hold:
 | ECS cluster `munaxa-nonprod` | 0 services and 0 tasks, with no further page |
 | Load balancer | `DescribeLoadBalancers(Names=[munaxa-nonprod])` returns `LoadBalancerNotFound` |
 | RDS `munaxa-nonprod-pg` | `stopped` |
-| Time | outside 20:40–21:30 UTC, so the run never overlaps the 21:00 backstop or R at 21:05 |
+| Time | 00:00–20:39 UTC only, so the run never overlaps the 21:00 backstop or R at 21:05, and never runs after R on the same day |
 
 It also returns the definition's `revisionId` and length. Before asking for the start, Claude
 compares the live definition with the template rendered from `main`. That comparison is a
@@ -61,7 +61,7 @@ read-only step outside the sandbox.
 - It makes exactly one `states:StartExecution` call, with name `dry-run-idle-<UTC yyyymmddThhmm>` and input exactly `{"dryRun":true}`.
 - That constant is the only execution input in the script, and a test checks this.
 - The name is unique per minute, so Step Functions refuses or deduplicates a retry.
-- It polls `DescribeExecution` for up to 40 seconds.
+- It returns at once with result `STARTED` and the execution ARN. It does not poll, so the connector's time limit can never cut it off before the ARN is returned.
 
 ### `status` (read-only, for the returned ARN)
 
@@ -79,12 +79,14 @@ PASS only if all of these hold:
 **The script never** runs `{"dryRun": false}`, `StopExecution`, any schedule or alarm change, or
 any secret read.
 
-**Offline tests:** 7 D-B4 tests against a fake AWS that holds the real rendered definition. All
+**Offline tests:** 9 D-B4 tests against a fake AWS that holds the real rendered definition. All
 pass (file 09). They cover:
 
 - every unsafe precheck state refuses the start (running execution, service, task, ALB, available database, altered definition);
-- the backstop window is refused;
-- the start is one dry-run execution;
+- every start time from 20:40 to 23:59 UTC is refused, and 00:00 and 20:39 are allowed;
+- the start is one dry-run execution, and `status` on it then passes;
+- `status` fails on a non-dry-run input or a FAILED execution, and reports RUNNING while it runs;
+- a second ECS page or an ELB error other than `LoadBalancerNotFound` fails the precheck;
 - a scheduled write or an unexpected branch status fails;
 - a foreign execution ARN is refused.
 
@@ -92,8 +94,8 @@ pass (file 09). They cover:
 
 1. **Owner yes/no (D-B4 idle dry run).** It is best done after the D-B2R apply, so that a working scheduled `down` is in place, but it does not depend on it.
 2. **Claude runs `precheck`** and compares the live definition with the rendered template. Any FAIL or difference: stop and report.
-3. **Claude runs `start`.** It records the execution ARN, the start and stop times and the result.
-4. **Claude runs `status`.** This is the read-only post-execution check.
+3. **Claude runs `start`.** Expected: `STARTED` with the execution ARN. Claude records it.
+4. **Claude runs `status`** with that ARN until it is no longer `RUNNING`. This is the read-only post-execution check, and it records the start and stop times and the result.
 5. **Claude runs a read-only after-check:** the same ECS, ALB and RDS reads as the precheck. Nothing may differ.
 
 ## 4. What the dry run does and does not prove
@@ -111,5 +113,5 @@ pass (file 09). They cover:
 - **Timing interaction with H-20.** The H-20 gate reads only the **latest** SUCCEEDED execution
   and requires it to be a real run. A dry run started after R makes the gate fail until the next R
   has succeeded, which is fail-closed. So the dry run should run before R on the day it is
-  done: before 20:40 UTC, which the script enforces from the other side. Then R at 21:05 becomes
+  done: between 00:00 and 20:39 UTC, which the script enforces. Then R at 21:05 becomes
   the latest success.

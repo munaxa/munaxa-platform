@@ -49,21 +49,24 @@ This uses the same reviewed pattern as D-B2 (2026-11-15 report, file 02), adapte
 **The plan script** (`supporting/d-b2r-plan-owner-cloudshell.sh`) does the following, and every
 failed check stops it:
 
-- checks the account is 229251310592, the caller is root, the region is eu-central-1, and no state lock exists;
-- downloads Terraform 1.16.5 and checks HashiCorp's SHA-256, working in a temporary directory because the CloudShell home is only 1 GB;
+- checks the account is 229251310592, the caller is root, the region is eu-central-1, and no state lock exists (only a 404 counts as no lock; any other error stops);
+- downloads Terraform 1.16.5, checks HashiCorp's SHA-256 and the reported version, working in a temporary directory because the CloudShell home is only 1 GB;
 - requires the commit to be on `main`, and requires the bootstrap diff since the D-B2 apply (`9752146`) to be exactly the two reviewed files with the reviewed git blob ids (`a38ceb2b…`, `de8b6365…`);
 - checks the provider lock;
 - runs `init -lockfile=readonly` and `terraform test`, and requires 70 resources in state;
 - reads the live boundary, session-read and cleanup policies, which must equal the D-B2 code (no drift);
 - saves a plan, which must be exactly the one update above, with the exact statement delta and a size of at most 6,144 characters.
 
-It has no apply and no AWS write.
+It has no apply and changes no AWS resource. The only object it writes is Terraform's own short-lived state lock (`.tflock`) in the state bucket during `plan`, which Terraform removes at the end. It deletes the plan JSON and the live-policy copies after the checks, because they contain state values.
 
 **The apply script** (`supporting/d-b2r-apply-owner-cloudshell.sh`) does the following:
 
-- refuses unless the plan log ended "PLAN VERIFIED" for the same commit, the saved plan's SHA-256 equals the one given, and `expected.json` and `norm.jq` are byte-identical to the plan script's;
+- reads only the last run in the plan log, which must contain no `STOP:` line and end "PLAN VERIFIED" for the same commit;
+- repeats the commit, bootstrap-diff and blob checks on its own fresh clone;
+- refuses unless the saved plan's SHA-256 equals the one given, and `expected.json` and `norm.jq` are byte-identical to the plan script's;
 - applies that saved plan only, which must report `0 added, 1 changed, 0 destroyed`;
-- then requires a `-detailed-exitcode` plan with no changes, 70 resources, and live policies equal to the reviewed code.
+- then requires a `-detailed-exitcode` plan with no changes, 70 resources, and live policies equal to the reviewed code;
+- deletes the saved plan and the live-policy copies at the end.
 
 It uses no `-auto-approve` and no `-target`.
 
@@ -80,6 +83,8 @@ the script as expected:
 - a wrong plan SHA;
 - the live policy not updated after the apply;
 - a wrong apply summary.
+- a state-lock read that fails with anything other than 404 (for example 403);
+- an apply after a later plan run that stopped (the apply reads only the last run).
 
 The scripts cannot be run against AWS by Claude. The real check is the owner's run.
 

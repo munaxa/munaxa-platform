@@ -9,11 +9,14 @@
 #                    live definition still starts with the CheckInput choice that refuses any input but
 #                    a boolean dryRun; no execution is RUNNING; no ECS service and no task in cluster
 #                    munaxa-nonprod; no load balancer named munaxa-nonprod; the database is stopped; the
-#                    time is outside 20:40-21:30 UTC (backstop 21:00, R 21:05). Returns the definition's
+#                    time is 00:00-20:39 UTC, i.e. before the 21:00 backstop and R at 21:05 (a dry run
+#                    after R would become the latest success and fail H-20 until the next R; R's retry
+#                    window can also start R as late as 22:05). Returns the definition's
 #                    revision and length; Claude separately compares the definition text with the
 #                    reviewed template before asking for the start.
 #   MODE "start"     the precheck, then ONE states:StartExecution named dry-run-idle-<UTC yyyymmddThhmm>
-#                    with input exactly {"dryRun": true}; polls DescribeExecution for up to 40 s.
+#                    with input exactly {"dryRun": true}, and returns its ARN at once (no polling, so
+#                    the connector's ~60 s limit can never lose the ARN; review L-9). Then run status.
 #                    The name is fixed per minute, so a retry inside that minute cannot start a second
 #                    execution (Step Functions refuses a reused name with other input, and returns the
 #                    same execution for the same input).
@@ -137,9 +140,9 @@ async def precheck(now):
         checks["database_stopped"] = False
         checks["database_error"] = code_of(e)
     minutes = now.hour * 60 + now.minute
-    checks["outside_backstop_window"] = not (20 * 60 + 40 <= minutes <= 21 * 60 + 30)
+    checks["before_backstop_and_r"] = minutes <= 20 * 60 + 39
     names = ["state_machine_active", "definition_refuses_bad_input", "none_running", "ecs_idle", "no_session_alb",
-             "database_stopped", "outside_backstop_window"]
+             "database_stopped", "before_backstop_and_r"]
     return all(checks.get(n) is True for n in names), checks
 
 
@@ -206,16 +209,8 @@ async def d_b4():
         r = await aws("stepfunctions", "StartExecution", {"stateMachineArn": SM_ARN, "name": name, "input": DRY})
     except Exception as e:
         return {"result": "FAIL", "code": "START_" + code_of(e), "next": "run precheck, then status for any execution it lists"}
-    arn = str(r.get("executionArn", ""))
-    for _ in range(8):
-        await asyncio.sleep(5)
-        x = await aws("stepfunctions", "DescribeExecution", {"executionArn": arn})
-        if x.get("status") != "RUNNING":
-            break
-    done = await status(arn)
-    done["started"] = str(r.get("startDate"))
-    done["checks"] = checks
-    return done
+    return {"result": "STARTED", "execution": str(r.get("executionArn", "")), "started": str(r.get("startDate")),
+            "input": DRY, "checks": checks, "next": "run status with EXECUTION_ARN set to execution (it is read-only)"}
 
 
 try:
