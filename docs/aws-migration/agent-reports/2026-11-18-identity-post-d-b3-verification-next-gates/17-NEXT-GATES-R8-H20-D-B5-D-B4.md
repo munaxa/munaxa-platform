@@ -31,9 +31,22 @@ No AWS write was made for this file.
 - The alarm should then go to OK.
 - "The successful R execution automatically cleared the alarm" is therefore **not** claimed. §1.1 records what was actually read.
 
-### 1.1 Later re-check
+### 1.1 Later re-check (22:09 UTC)
 
-Recorded in the final message of this round and in file 14. Until a live read shows `OK`, H-20 stays BLOCKED.
+| Item | Result | Evidence |
+| --- | --- | --- |
+| Alarm `-not-run` | **OK since 22:06:11 UTC**. Reason: "1 out of the last 26 datapoints [1.0 (18/11/26 21:00:00)] was not less than the threshold". History: ALARM → OK at 22:06:11. No OK action, so no mail | VERIFIED LIVE 22:09 UTC |
+| Alarm `-failed` | OK (unchanged since 08:35:08) | VERIFIED LIVE 22:09 UTC |
+| H-20 conditions (the connector gate's eight) | **All satisfied.** State machine ACTIVE and STANDARD; latest success R stopped 21:05:23 with a real input; 0 RUNNING; R ENABLED with the correct target, role and input; both alarms present and OK; the only schedule with the prefix is `-daily` (no P/S) | VERIFIED LIVE 22:09 UTC, individual read-only calls |
+| Idle | 0 ECS services, 0 tasks, 0 ALBs, RDS stopped | VERIFIED LIVE 22:09 UTC |
+| Scheduled `down` after D-B2R | **Still not started.** Latest `aws-session.yml` run is 44274042137 (09:14 UTC) | GitHub records 22:09 UTC. WAITING FOR SCHEDULE, nothing dispatched |
+
+What this means:
+
+- H-20 is **satisfiable** now. The success window holds until R's success is 26 h old, at 19 Nov 23:05 UTC, and R refreshes it each evening.
+- It is still **procedural**: enforcement is PR #140, which is not merged or live.
+- It does **not** authorize Stage E.
+- A D-B4 dry run on 19 Nov would make condition 3 fail until that evening's R (§5).
 
 ## 2. R-8: keep the applied cleanup IAM without `-var` (PR #139)
 
@@ -50,7 +63,7 @@ Recorded in the final message of this round and in file 14. Until a live read sh
 
   `fmt` and `validate` pass. Mutation: putting the default back to `false` makes the new run fail.
 - **Expected effect.** The live state was applied with `true`, so a real bootstrap plan after the merge should show **No changes**, with or without the var. This is an expectation, not a result: it must be proven by a real owner plan (§6).
-- **Status: PREPARED.** Independent review found nothing (§3). CI pending. Not merged. No apply.
+- **Status: PREPARED.** Independent review found nothing (§3). CI green at `c757546`. Not merged. No apply.
 
 ## 3. H-20 enforcement (PR #140)
 
@@ -141,7 +154,7 @@ Input handling and output:
   - no reach into prod.
 - No finding on R-8.
 
-**Status: PREPARED.** Review is done; CI pending. Not merged. No apply.
+**Status: PREPARED.** Review is done; CI green at `f121216`. Not merged. No apply.
 
 **Before the IAM is applied,** every `up` is refused at conditions 2–4 (AccessDenied). That is the safe direction, and `down` is unaffected.
 

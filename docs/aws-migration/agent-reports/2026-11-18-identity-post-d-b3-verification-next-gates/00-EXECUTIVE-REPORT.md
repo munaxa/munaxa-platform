@@ -1,13 +1,13 @@
 # Post D-B3 verification and next Identity gates: executive report (18 Nov 2026)
 
-**Current status (18 Nov 2026, 21:55 UTC; this list supersedes every older status line in this folder):**
+**Current status (18 Nov 2026, 22:10 UTC; this list supersedes every older status line in this folder):**
 
 - **D-B2, D-B3/D-PIN, D-B2R: APPLIED AND VERIFIED.** D-B2R was applied at 13:37 UTC by the owner (file 13).
 - **First real cleanup run R: SUCCEEDED**, 21:05:22–21:05:23 UTC, input `{"dryRun":false}`, no write needed. VERIFIED LIVE (files 14, 17).
-- **H-20: BLOCKED on one condition.** The `not-run` alarm was still ALARM at 21:50 UTC. CloudWatch evaluates the 21:00 hour, which has one success, only after 22:00 UTC. The other seven conditions pass live. VERIFIED LIVE (file 17 §1).
-- **Scheduled `down` after the fix: WAITING FOR SCHEDULE.** GitHub had not started the 19:17 UTC slot by 21:36 UTC, and no replacement was dispatched.
-- **H-20 enforcement: PREPARED in PR #140.** It adds a gate before every `up` and two read actions in bootstrap. Independent review is done and CI is pending. Not merged and not live: it needs a merge yes, then an owner bootstrap plan and a separate apply yes.
-- **R-8: PREPARED in PR #139.** The cleanup flag defaults to true. Not merged. Merge it before #140.
+- **H-20 conditions: SATISFIED (VERIFIED LIVE 22:09 UTC).** The `not-run` alarm went from ALARM to OK at 22:06:11 UTC, after CloudWatch evaluated the 21:00 hour. All eight connector-gate conditions now hold (file 17 §1.1). H-20 is still procedural, not enforced (see #140), and this does not authorize Stage E.
+- **Scheduled `down` after the fix: WAITING FOR SCHEDULE.** GitHub had not started the 19:17 UTC slot by 22:09 UTC, and no replacement was dispatched.
+- **H-20 enforcement: PREPARED in PR #140.** It adds a gate before every `up` and two read actions in bootstrap. Independent review is done and CI is green. Not merged and not live: it needs a merge yes, then an owner bootstrap plan and a separate apply yes.
+- **R-8: PREPARED in PR #139.** The cleanup flag defaults to true. CI is green. Not merged. Merge it before #140.
 - **Connector fix: PREPARED.** The live sandbox has no `ClientError`. Fixed in PR #140 and in the D-B4/D-B5 scripts here (file 17 §3).
 - **D-B5 (subscribe `alert@munaxa.com`): WAITING FOR OWNER AUTHORIZATION.** File 17 §4.
 - **D-B4 (one idle dry run): WAITING FOR OWNER AUTHORIZATION.** Window 19 Nov 00:00–20:39 UTC, which is 03:00–23:39 Jordan time. File 17 §5.

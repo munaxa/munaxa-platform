@@ -114,4 +114,4 @@ conclusions. It found nothing Critical or High. Every finding was fixed before t
   - Mutations all fail as expected: forced PASS, skipped condition 10, gate dropped from DB start, `states:StartExecution` added, a duplicate read added.
 - **Supporting scripts here** (D-B4 and D-B5, now shared helpers v2): 20/20 pass, against both the harness on `main` and the stricter harness of PR #140.
 - **Independent review of #139 and #140** (a separate reviewer, read-only, without my conclusions): no Critical or High. M-1, M-2, L-1, L-3 and L-4 are fixed. L-2, L-5, L-6 and L-7 are noted (file 17 §3). There is no finding on R-8.
-- **CI:** reported in the final message once available.
+- **CI:** #139 at `c757546` and #140 at `f121216`: every check success (plan and apply jobs skipped as designed for a PR). #138 at `3eeeca0`: success except Accessibility still running at 22:09 UTC.

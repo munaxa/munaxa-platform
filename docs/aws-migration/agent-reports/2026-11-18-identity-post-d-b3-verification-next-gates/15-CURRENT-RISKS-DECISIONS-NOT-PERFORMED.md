@@ -2,7 +2,7 @@
 
 > **Updated 18 Nov 21:55 UTC** (owner brief 21:33 UTC, file 17):
 >
-> - R SUCCEEDED; the H-20 connector gate passes 7 of 8 checks live, all except the `not-run` alarm.
+> - R SUCCEEDED. The `not-run` alarm went OK at 22:06 UTC, so all H-20 conditions are satisfied live (22:09 UTC update).
 > - R-8 and H-20 enforcement are now code PRs: #139 and #140, PREPARED, unmerged.
 > - A live-sandbox error-handling defect was found in every connector script and fixed (file 17 §3).
 > - The risk rows below were re-read live at 21:5x UTC.
@@ -30,7 +30,7 @@ These were read today, at 14:20 UTC, using read-only calls. Status: VERIFIED LIV
 | R-1 | The scheduled `down` failed at the switch plan | Cause fixed (file 13). Not yet proven by a run. 21:55: the 19:17 UTC slot had still not been started by GitHub (latest run is 44274042137) | WAITING FOR SCHEDULE. No replacement dispatched |
 | R-3 | The cleanup alarms notify nobody | The topic has 0 confirmed, 0 pending and 0 deleted subscriptions | Open until D-B5. R's first run tonight has no alert delivery |
 | R-4 | H-20 is not enforced by `aws-session.yml` | The `up` path on `main` has no gate step (code read) | 21:55: enforcement implemented in **PR #140** (PREPARED, unmerged). Live only after merge, the owner bootstrap plan/apply for 2 read actions, and the first armed `up` (Stage E, NOT AUTHORIZED) |
-| R-5 | The `not-run` alarm is in ALARM | State `ALARM` since 09:19:06 UTC; still ALARM at 21:50 UTC although the 21:00 hour has `ExecutionsSucceeded` Sum 1 | 21:55: expected to clear when CloudWatch evaluates the 21:00–22:00 period (after 22:00 UTC). Blocks H-20 until a live read shows OK |
+| R-5 | The `not-run` alarm was in ALARM | State `ALARM` from 09:19:06 UTC | **Closed 22:06:11 UTC** (VERIFIED LIVE 22:09): ALARM → OK after the 21:00 hour (Sum 1) was evaluated. The H-20 conditions are all satisfied (file 17 §1.1) |
 | S-2 | The RDS-managed master secret carries an `AWSPENDING` label | 21:55, metadata only (`DescribeSecret`, `ListSecretVersionIds`; no value): 2 versions. `AWSPENDING` sits on the **same** version as `AWSCURRENT` (…fd59d5, created 13 Nov 17:25), and `AWSPREVIOUS` is …c17fde (6 Nov). Rotation is on; last rotated 13 Nov 17:26; next 20 Nov 23:59 | Open, Low. This is not a half-finished rotation, because the pending and current versions are the same. The next rotation falls while the database is stopped and may fail or be deferred. Recheck after 21 Nov |
 | S-3 | The `*.test.munaxa.com` certificate is not auto-renewable while unused | 21:55: `ISSUED`, not after 2027-05-22, renewal `INELIGIBLE`, in use by 0 | Open, Low. ACM renews only certificates that are in use. Use it in a session or re-request before about April 2027 |
 | B-1 | The US$10 account budget is exceeded | 21:55: `munaxa-account-monthly` US$11.76 of 10. The US$50 budgets: shared account US$11.76, Testing US$3.41. Docs eu-prod: US$5.90 of 10 | Open, non-blocking (alert-only budget, decision D-N1 still pending). Binding budgets are well under limit. Nothing runs between sessions |
