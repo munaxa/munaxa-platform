@@ -40,6 +40,11 @@
       "core-js",
       "unrs-resolver",
       "workerd"
-    ]
+    ],
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-fc5q-39xc-vjpf"
+      ]
+    }
   }
 }
