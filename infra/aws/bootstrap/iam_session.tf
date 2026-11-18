@@ -284,14 +284,18 @@ data "aws_iam_policy_document" "deployer_session_read" {
 
   # Testing's session cleanup (stack/session-cleanup.tf): without these reads every session plan,
   # including the scheduled `down`, would fail at refresh once the cleanup is applied (the S-1 class
-  # of failure). Reads only.
+  # of failure). Reads only. The AWS provider's aws_sfn_state_machine read calls DescribeStateMachine,
+  # then ListStateMachineVersions (for state_machine_version_arn) on every refresh; without the second,
+  # scheduled down run 44274042137 (18 Nov 2026) failed at "Plan the switches". Definition validation
+  # (states:ValidateStateMachineDefinition) runs only when the definition changes, which a session
+  # plan never does, so it stays with the full deployer only.
   dynamic "statement" {
     for_each = var.testing_session_cleanup && each.key == "nonprod" ? [1] : []
     content {
       sid = "RefreshSessionCleanup"
       actions = [
-        "states:DescribeStateMachine", "states:ListTagsForResource", "sns:GetTopicAttributes",
-        "sns:ListTagsForResource", "cloudwatch:ListTagsForResource",
+        "states:DescribeStateMachine", "states:ListStateMachineVersions", "states:ListTagsForResource",
+        "sns:GetTopicAttributes", "sns:ListTagsForResource", "cloudwatch:ListTagsForResource",
       ]
       resources = [
         "arn:aws:states:${var.region}:${var.account_id}:stateMachine:munaxa-${each.key}-*",
