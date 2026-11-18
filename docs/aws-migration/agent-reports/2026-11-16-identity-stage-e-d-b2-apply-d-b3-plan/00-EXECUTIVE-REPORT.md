@@ -2,6 +2,14 @@
 
 **Status: D-B2 APPLIED AND VERIFIED — D-B3/D-PIN PLAN READY FOR OWNER REVIEW.**
 
+**Update, 18 Nov 08:36 UTC.** With the owner's approval, D-B3/D-PIN was applied:
+
+- Run 44267788619: the enforced plan matched the 12 declared changes exactly, and the saved plan was applied.
+- The follow-up plan, run 44268194074, shows `No changes`.
+- PR #136 temporarily ignores the `picomatch` advisory GHSA-fc5q-39xc-vjpf, which has no fix.
+
+See file 04.
+
 **Owner instruction.** 16 Nov 2026, 12:38 UTC: "Merge D-B2 Report, Apply Approved Saved Plan, Prepare D-B3/D-PIN". It carried a limited approval to apply the exact D-B2 saved plan, `c02a40ae…8163`.
 
 | # | Item | Result | Evidence |
@@ -19,7 +27,7 @@
 ## Required statements
 
 - The only AWS infrastructure write in this task was the owner-approved D-B2 apply of the saved plan `c02a40ae…8163`.
-- No D-B3/D-PIN apply was performed.
+- D-B3/D-PIN was applied only on 18 Nov, after the owner's approval, through the workflow's enforced saved-plan path (file 04). Before that approval, no D-B3/D-PIN apply was performed.
 - No secrets were created, read, updated or deleted.
 - No Stage E activity occurred.
 - No RDS start, ECS service or task, migration, bootstrap, DB-admin task, CloudFormation stack, C-8G run, alert subscription or cleanup execution took place.
