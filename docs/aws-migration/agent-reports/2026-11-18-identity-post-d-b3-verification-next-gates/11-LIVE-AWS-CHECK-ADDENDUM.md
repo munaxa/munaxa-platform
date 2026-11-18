@@ -1,6 +1,6 @@
 # Addendum: live read-only AWS check (18 Nov 2026, about 12:43 UTC)
 
-> **Status note, 18 Nov 2026 about 14:30 UTC.** This file was written before D-B2R (10:00–10:35 UTC) and is kept as that record.
+> **Status note, 18 Nov 2026 about 14:30 UTC.** This file was written at about 12:43 UTC, before the D-B2R merge and apply, and is kept as that record.
 > Since then:
 > - PR #137 was squash-merged with the owner's approval as `a976b1af9e7fbfb003e0ed9d0dea8235e015f1cd`, at 13:24 UTC.
 > - The owner plan passed at 13:33 UTC (file 12).

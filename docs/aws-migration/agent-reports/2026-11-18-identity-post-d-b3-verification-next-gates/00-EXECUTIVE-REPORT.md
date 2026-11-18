@@ -18,13 +18,13 @@ Next-Gate Preparation". The owner asked that nothing be merged automatically.
 | # | Item | Result | Status | File |
 | --- | --- | --- | --- | --- |
 | 1 | Baseline and history | PRs #129, #131–#136 confirmed on `main` with their squash commits. Since the D-B2 apply (`9752146`), `main` has not changed the bootstrap | VERIFIED | 01 |
-| 2 | Applied state | D-B2 (owner CloudShell log). D-B3/D-PIN: run 44267788619 success (enforced plan, saved-plan apply, plan SHA `b43440ef…`). Follow-up run 44268194074 success, no changes. No production change. No Stage E | VERIFIED from records. **Live NOT VERIFIED** | 02 |
+| 2 | Applied state | D-B2 (owner CloudShell log). D-B3/D-PIN: run 44267788619 success (enforced plan, saved-plan apply, plan SHA `b43440ef…`). Follow-up run 44268194074 success, no changes. No production change. No Stage E | VERIFIED from records. At 10:35 UTC live was NOT VERIFIED; live state then read at 12:43 and 14:20 UTC (files 11, 14) | 02 |
 | 3 | Report correction | PR #135's executive status, row 8 and README index row now say D-B3/D-PIN is applied. Dated status notes were added to files 02 and 03, and their history is kept. Infrastructure is kept distinct from operations | Done in this PR | 2026-11-16 folder |
 | 4 | Scheduled `down` | Run 44274042137 (09:14 UTC, the first after the apply): **failure** at "Plan the switches", now on `states:ListStateMachineVersions`. Database stop **success**. No later scheduled run yet. No cleanup execution expected before R at 21:05 UTC. No ECS task or service started (records) | VERIFIED (GitHub) | 03 |
 | 5 | Fix | PR #137 (code; at 10:35 UTC unmerged, **merged 13:24 UTC as `a976b1a`, applied 13:37 UTC**, files 12–13): one read action for the session role. Bootstrap tests 14/14. The expected bootstrap plan is `0 to add, 1 to change, 0 to destroy`. Owner plan and apply scripts are in `supporting/`, tested offline | **APPLIED AND VERIFIED** (owner log + live read) | 04, 12, 13 |
 | 6 | D-B5 subscription | Script with `precheck`, `subscribe` and `verify` modes (one `sns:Subscribe` for `alert@munaxa.com`, never Publish). The owner must click the confirmation e-mail. It is called subscribed only when AWS confirms | PREPARED — OWNER ACTION REQUIRED | 05 |
 | 7 | Idle dry run | Script with `precheck`, `start` and `status` modes (`{"dryRun":true}` only, idle checks, a start window of 00:00–20:39 UTC, enforced, and a history check that no write was scheduled). Graph-checked: every write task sits behind its dry-run guard | PREPARED — OWNER ACTION REQUIRED | 06 |
-| 8 | H-20 | Not yet satisfiable: no real success exists before R at 21:05 UTC. `not-run` is probably in ALARM. Live conditions not read. **The gate is procedural, not enforced by `aws-session.yml`** | BLOCKED | 07 |
+| 8 | H-20 | Not yet satisfiable: no real success exists before R at 21:05 UTC. `not-run` in ALARM since 09:19 UTC (live, files 11 and 14). **The gate is procedural, not enforced by `aws-session.yml`** | BLOCKED | 07 |
 | 9 | Audit exception | Limited to GHSA-fc5q-39xc-vjpf. No other high advisory is hidden, and CI still fails on any other. No fix has been released (latest 4.0.7). Dev and lint tooling only. The reach text in `AUDIT-EXCEPTIONS.md` was corrected, with the scope unchanged | VERIFIED | 08 |
 | 10 | Tests and review | All relevant offline suites pass; supporting scripts 20/20; PR #137 CI all success. Independent review: no Critical or High; 1 Medium and 9 Low, all fixed. `shellcheck` not run (not installed) | VERIFIED (offline) | 09 |
 | 11 | Risks, next decisions, not performed | At 10:35 UTC the next decision was D-B2R (since done). Current risks and decisions: file 15 | — | 10, 15 |
@@ -32,7 +32,7 @@ Next-Gate Preparation". The owner asked that nothing be merged automatically.
 ## Required statements
 
 - Until 12:41 UTC no AWS call was made (connector sign-in). After the owner reconnected it, Claude made read-only calls only (files 11, 13, 14, 15); no write.
-- Claude ran no Terraform plan or apply against AWS and dispatched no workflow. The only apply was the owner's reviewed D-B2R apply in CloudShell (file 13).
+- Claude ran no Terraform plan or apply against AWS and dispatched no workflow. The only apply was the owner's reviewed D-B2R apply in CloudShell (file 13). The only workflow action by Claude was one re-run of a failed CI job on this PR (file 09 §6).
 - No SNS subscription, dry run, real cleanup, RDS start, ECS service or task, migration, bootstrap, DB-admin task, operator secret, C-8G or Stage E.
 - No secret value was read.
 - No production change.

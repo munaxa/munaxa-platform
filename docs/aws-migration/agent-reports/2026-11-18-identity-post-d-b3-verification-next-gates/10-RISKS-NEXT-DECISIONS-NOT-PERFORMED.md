@@ -7,6 +7,7 @@
 > - The owner applied that reviewed plan at 13:35–13:37 UTC: 0 added, 1 changed, 0 destroyed; post-apply plan no changes; 70 resources (VERIFIED FROM OWNER LOG, file 13).
 > - Claude re-read the live policy: version `v3` contains `states:ListStateMachineVersions` (VERIFIED LIVE — READ ONLY, file 13).
 > - Still NOT VERIFIED: a scheduled `down` passing "Plan the switches" (file 14).
+> - Since then Claude merged PR #137 on the owner's explicit yes, and read-only AWS calls were made from 12:41 UTC (files 11, 13–15). Sections 1–3 below are the 10:35 UTC record; the current version is file 15.
 
 
 ## 1. Risks and blockers

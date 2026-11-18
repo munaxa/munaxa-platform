@@ -17,7 +17,7 @@
 | 7 | `Plan: 0 to add, 1 to change, 0 to destroy.` | exactly the expected summary |
 | 8 | one in-place update, nonprod session-read policy, `policy` attribute only | exactly the expected address and attribute |
 | 9 | only difference `RefreshSessionCleanup + states:ListStateMachineVersions`; 1,504 characters | exactly the reviewed delta and size |
-| 10 | `expected.json` `0f0dbb24…eafed2`, `norm.jq` `c8d3aacd…a9f3` | equal to the values in file 04 |
+| 10 | `expected.json` `0f0dbb24…eafed2`, `norm.jq` `c8d3aacd…a9f3` | equal to the values pinned in `supporting/d-b2r-apply-owner-cloudshell.sh` |
 | 10 | saved plan `2b90ec35170d03bb08304c761b384f5b564f70d265049b3e188dd84cdc82d34e` | this is the reviewed plan SHA-256 for the apply |
 | 10 | plan JSON deleted, no lock left, `D-B2R PLAN VERIFIED, NOT APPLIED 2026-11-18T13:33:53Z` | clean finish, no `STOP:` |
 

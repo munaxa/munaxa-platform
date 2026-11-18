@@ -51,7 +51,7 @@ This uses the same reviewed pattern as D-B2 (2026-11-15 report, file 02), adapte
 | Step | Who | What | Approval needed |
 | --- | --- | --- | --- |
 | 1 | Owner | Merge PR #137, or tell Claude to | **yes/no 1** |
-| 2 | Owner | In CloudShell, download `supporting/d-b2r-plan-owner-cloudshell.sh` from `main` and run it with the merge commit. Plan only | part of yes/no 1 |
+| 2 | Owner | In CloudShell, download `supporting/d-b2r-plan-owner-cloudshell.sh` from `main` and run it with the merge commit. Plan only (in the event it was downloaded from this PR's commit `9458081` with its SHA-256 checked, because this PR is unmerged; file 12) | part of yes/no 1 |
 | 3 | Claude | Reviews the pasted log and gives the saved plan's SHA-256 | none |
 | 4 | Owner | `supporting/d-b2r-apply-owner-cloudshell.sh <commit> <plan sha256>` | **yes/no 2**, separate, after step 3 |
 | 5 | Claude | Checks the next scheduled `down` ("Plan the switches" must pass) | none |

@@ -7,6 +7,7 @@
 > - The owner applied that reviewed plan at 13:35–13:37 UTC: 0 added, 1 changed, 0 destroyed; post-apply plan no changes; 70 resources (VERIFIED FROM OWNER LOG, file 13).
 > - Claude re-read the live policy: version `v3` contains `states:ListStateMachineVersions` (VERIFIED LIVE — READ ONLY, file 13).
 > - Still NOT VERIFIED: a scheduled `down` passing "Plan the switches" (file 14).
+> - Live values were read later, read-only, at 12:43 UTC and 14:20 UTC (files 11 and 14): state machine ACTIVE, 0 executions, R ENABLED, `-failed` OK, `-not-run` ALARM since 09:19 UTC, no P/S schedule, ECS 0/0, no ALB, RDS stopped, topic 0 subscriptions.
 
 
 ## 1. Runs of `aws-session.yml` since the 15 Nov merges

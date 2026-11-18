@@ -42,7 +42,7 @@ instead exercised with stubs (section 3).
 | `d-b2r-apply-owner-cloudshell.sh` (`948053a7…f83a`) | same stubs | good path verified; wrong plan SHA, live policy not updated, wrong apply summary, and an apply after a later stopped plan run all STOP |
 
 The D-B5 and D-B4 scripts were **not run** against AWS: both need a separate owner yes, and the
-connector was signed out throughout (file 02).
+connector was signed out when this file was first written (file 03 §5; reconnected 12:41 UTC).
 
 ## 4. Independent review
 
@@ -69,3 +69,33 @@ conclusions. It found nothing Critical or High. Every finding was fixed before t
 - The scripts call no forbidden operation (`check_source` forbids every Secrets Manager value or write call), and `Publish`, `Unsubscribe`, `StopExecution` and `{"dryRun": false}` do not appear as calls.
 - The audit exception's scope is unchanged; only its reach text was corrected.
 - H-20 is not modified or bypassed.
+
+## 6. Second round (18 Nov, about 14:30–15:00 UTC, after D-B2R)
+
+**CI on PR #138:**
+
+- Head `9458081`: "Lint · Typecheck · Test · Build" failed once, in `@munaxa/security` `test/performance.test.ts` › "renders the header set in microseconds" (`expected 0.11354569305 to be less than 0.1`, a timing threshold).
+  - The PR changes only documentation, and the same suite passed on the previous head `3318d8c`.
+  - The one failed job was re-run once (run 44306602463), and the suite then completed with no failed check.
+- Later heads: see the final message. CI results are reported only once available.
+
+**Offline:**
+
+- supporting scripts: 20/20 pass;
+- `prettier --check`: pass;
+- diff against `main` after merging `main` into the branch: documentation only (`docs/`), with no infrastructure, workflow, script or package change.
+
+**Independent review of the corrected report (a separate reviewer, read-only):** 15 findings, 1 High, 2 Medium and 12 Low. All were fixed in this PR:
+
+- **High.** The H-20 enforcement design (file 16) would have refused every properly armed `up`, because it did not allow a session's own P/S. It now takes a required `hard_stop_utc` input and requires exactly this session's P and S, with `arm` before `up`.
+- **Medium.**
+  - The design listed seven conditions instead of `gate`'s eight, and left out R's `RoleArn` check. Now all eight are listed.
+  - The executive rows 2 and 8 read as current while stale. Now dated.
+- **Low.**
+  - Status notes were added to files 02 and 05, and extended in 03, 07, 10 and 11 (live reads, the #137 merge, file 11's write time).
+  - Wrong cross-references were fixed (R-4 is in file 10 or 15; the hash pins are in the apply script).
+  - The download source in file 04 was clarified.
+  - The D-B5 benefit was corrected: the alarms have no OK actions, so only a failure mails.
+  - The CI re-run is now recorded.
+  - In the design: the deployer credential export, the database-stop side effect, and the existing bootstrap assertion that needs an update.
+- **Checked with no finding:** no secret, credential, full subscription ARN or personal e-mail; all SHA-256 values, blob ids and test counts are consistent; the R-7 statement about `--enforce` refusing an empty declaration is correct.

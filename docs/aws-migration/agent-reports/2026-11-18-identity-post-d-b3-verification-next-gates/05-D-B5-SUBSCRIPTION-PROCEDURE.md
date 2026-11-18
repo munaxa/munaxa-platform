@@ -1,5 +1,10 @@
 # 05. D-B5: alert e-mail subscription to the cleanup topic
 
+> **Status note, 18 Nov 2026 about 14:45 UTC.** This file is kept as written at about 10:35 UTC, when the AWS connector was signed out.
+> - The owner reconnected it at 12:41 UTC.
+> - Live values were read later, read-only, at 12:43 UTC and 14:20 UTC (files 11 and 14): state machine ACTIVE, 0 executions, R ENABLED, `-failed` OK, `-not-run` ALARM since 09:19 UTC, no P/S schedule, ECS 0/0, no ALB, RDS stopped, topic 0 subscriptions.
+> - D-B2R was applied at 13:37 UTC (file 13).
+
 **Status: PREPARED, OWNER ACTION REQUIRED, NOT RUN.** No subscription exists that this task knows
 of. The live state was not read (file 03 §5). It must not be described as subscribed until AWS
 reports it confirmed.

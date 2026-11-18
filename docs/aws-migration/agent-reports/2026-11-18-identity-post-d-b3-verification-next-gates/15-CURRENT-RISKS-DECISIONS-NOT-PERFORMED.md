@@ -41,7 +41,7 @@ These were read today, at 14:20 UTC, using read-only calls. Status: VERIFIED LIV
 
 | # | Decision | Recommended | Notes |
 | --- | --- | --- | --- |
-| 1 | **D-B5 yes/no**: Claude runs `d-b5-alert-subscription.py` (one `sns:Subscribe` for `alert@munaxa.com`), then the owner clicks "Confirm subscription" in the e-mail | **Yes, first.** It lets tonight's R result, and every later failure, actually reach someone | The precheck conditions hold now (empty topic). File 05 |
+| 1 | **D-B5 yes/no**: Claude runs `d-b5-alert-subscription.py` (one `sns:Subscribe` for `alert@munaxa.com`), then the owner clicks "Confirm subscription" in the e-mail | **Yes, first.** It lets a failure of tonight's R, and every later failure, reach someone. The alarms have no OK actions, so a success sends no mail, and a `not-run` alarm already in ALARM sends none either | The precheck conditions hold now (empty topic). File 05 |
 | 2 | **D-B4 yes/no**: Claude runs the idle dry run (`{"dryRun":true}`, 00:00–20:39 UTC only) | Yes, on 19 Nov **before** 20:39 UTC, after R's first success has been checked | A dry run on 18 Nov before R would be harmless, but running it on 19 Nov keeps tonight's R as the clean first evidence. File 06 |
 | 3 | **R-8 code PR yes/no**: make `testing_session_cleanup` default to true, with a test | Yes | Code only. Its bootstrap plan must show no changes |
 | 4 | **H-20 enforcement PR yes/no** (file 16) | Yes, before any Stage E | Code plus a small bootstrap change, each with its own approval |

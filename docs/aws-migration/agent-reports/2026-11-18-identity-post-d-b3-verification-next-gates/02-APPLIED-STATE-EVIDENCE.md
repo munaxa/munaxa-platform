@@ -1,5 +1,10 @@
 # 02. D-B2 and D-B3/D-PIN applied-state evidence
 
+> **Status note, 18 Nov 2026 about 14:45 UTC.** This file is kept as written at about 10:35 UTC, when the AWS connector was signed out.
+> - The owner reconnected it at 12:41 UTC.
+> - Live values were read later, read-only, at 12:43 UTC and 14:20 UTC (files 11 and 14): state machine ACTIVE, 0 executions, R ENABLED, `-failed` OK, `-not-run` ALARM since 09:19 UTC, no P/S schedule, ECS 0/0, no ALB, RDS stopped, topic 0 subscriptions.
+> - D-B2R was applied at 13:37 UTC (file 13).
+
 **What this file proves.** These are historical facts, checked against the merged reports and the
 GitHub Actions records. They do not prove the live AWS state today. A read-only AWS check was
 planned, but it could not run: the AWS connector needed a new sign-in from about 10:03 UTC on 18 Nov
