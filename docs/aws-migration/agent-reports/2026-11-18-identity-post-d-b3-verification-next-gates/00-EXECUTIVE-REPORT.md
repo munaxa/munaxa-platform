@@ -1,16 +1,23 @@
 # Post D-B3 verification and next Identity gates: executive report (18 Nov 2026)
 
-**Current status (18 Nov 2026, 22:10 UTC; this list supersedes every older status line in this folder):**
+**Current status (19 Nov 2026, 03:35 UTC; this list supersedes every older status line in this folder):**
 
-- **D-B2, D-B3/D-PIN, D-B2R: APPLIED AND VERIFIED.** D-B2R was applied at 13:37 UTC by the owner (file 13).
-- **First real cleanup run R: SUCCEEDED**, 21:05:22–21:05:23 UTC, input `{"dryRun":false}`, no write needed. VERIFIED LIVE (files 14, 17).
-- **H-20 conditions: SATISFIED (VERIFIED LIVE 22:09 UTC).** The `not-run` alarm went from ALARM to OK at 22:06:11 UTC, after CloudWatch evaluated the 21:00 hour. All eight connector-gate conditions now hold (file 17 §1.1). H-20 is still procedural, not enforced (see #140), and this does not authorize Stage E.
-- **Scheduled `down` after the fix: WAITING FOR SCHEDULE.** GitHub had not started the 19:17 UTC slot by 22:09 UTC, and no replacement was dispatched.
-- **H-20 enforcement: PREPARED in PR #140.** It adds a gate before every `up` and two read actions in bootstrap. Independent review is done and CI is green. Not merged and not live: it needs a merge yes, then an owner bootstrap plan and a separate apply yes.
-- **R-8: PREPARED in PR #139.** The cleanup flag defaults to true. CI is green. Not merged. Merge it before #140.
-- **Connector fix: PREPARED.** The live sandbox has no `ClientError`. Fixed in PR #140 and in the D-B4/D-B5 scripts here (file 17 §3).
-- **D-B5 (subscribe `alert@munaxa.com`): WAITING FOR OWNER AUTHORIZATION.** File 17 §4.
-- **D-B4 (one idle dry run): WAITING FOR OWNER AUTHORIZATION.** Window 19 Nov 00:00–20:39 UTC, which is 03:00–23:39 Jordan time. File 17 §5.
+- **Owner decisions, 19 Nov 03:16 UTC ("Subscribe run merge"):**
+  - yes to D-B5;
+  - yes to D-B4;
+  - yes to merging #139, then #140, then this PR.
+  - Applying #140's IAM still needs its own plan and a separate yes.
+- **D-B2, D-B3/D-PIN, D-B2R: APPLIED AND VERIFIED.**
+- **First real cleanup run R: SUCCEEDED** at 21:05 UTC on 18 Nov. **The `not-run` alarm has been OK since 22:06:11 UTC**, and all H-20 conditions were satisfied live at 22:09 UTC (file 17 §1.1).
+- **PR #139 (R-8): MERGED** at 03:17 UTC as `ff8733c`.
+- **PR #140 (H-20 enforcement): MERGED** at about 03:32 UTC as `4591bda`. CI was green on the updated head `0926bdb`, and bootstrap tests passed 20/20 locally.
+- **What #140 means on `main` now:**
+  - every Testing `up` passes through the gate;
+  - the gate fails, safely, until the owner bootstrap plan and apply for the two read actions;
+  - `down` is unaffected.
+- **Bootstrap code on `main` now differs from the live IAM.** The expected bootstrap plan is **0 to add, 1 to change, 0 to destroy** on `aws_iam_policy.deployer_session_read["nonprod"]`, with or without the flag. It is **not planned and not applied**, and needs owner action (file 17 §6).
+- **D-B5 and D-B4: AUTHORIZED, NOT YET RUN.** The AWS connector needs a new owner sign-in, as of 03:17 UTC. The results will be recorded in a follow-up report. The D-B4 window is open until 20:39 UTC today.
+- **Scheduled `down` after the D-B2R fix: WAITING FOR SCHEDULE.** No run had started by 22:25 UTC, and nothing was dispatched.
 - **Stage E: NOT AUTHORIZED.** Production is out of scope.
 
 **Owner instruction.** 18 Nov 2026, 09:59 UTC, "Post D-B3 Verification, Report Correction and
