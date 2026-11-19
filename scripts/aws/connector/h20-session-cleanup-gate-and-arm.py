@@ -27,7 +27,7 @@
 MODE = "gate"  # INPUT: gate | arm | disarm
 HARD_STOP_UTC = ""  # INPUT: arm (and gate after arming), the session's hard stop H, e.g. 2026-11-20T15:00:00Z
 
-# --- shared helpers v1 (identical in every connector script) ---
+# --- shared helpers v2 (identical in every connector script) ---
 # Sandbox rules (sandbox_harness.py check_source): no import, no dunder name, no getattr/hasattr/type,
 # no print; only the pre-imported names; the last statement is the bare expression `result`.
 REGION = "eu-central-1"
@@ -35,14 +35,17 @@ ACCOUNT = "229251310592"
 
 
 def code_of(e):
-    """An error CODE only. Never str(e) or a message: AWS and botocore messages can echo values."""
-    if isinstance(e, ClientError):
-        try:
-            return "AWS_" + str(e.response["Error"]["Code"])[:64]
-        except Exception:
-            return "AWS_UNKNOWN"
+    """An error CODE only. Never str(e) or a message: AWS and botocore messages can echo values.
+    The live sandbox has no `ClientError` name (observed 18 Nov 2026: NameError), so an AWS error is
+    recognised by its botocore `.response`, never by isinstance(e, ClientError)."""
     if isinstance(e, asyncio.TimeoutError):
         return "PY_TIMEOUT"
+    try:
+        aws_code = e.response["Error"]["Code"]
+    except Exception:
+        aws_code = None
+    if aws_code is not None:
+        return "AWS_" + re.sub(r"[^A-Za-z0-9.]", "", str(aws_code))[:64]
     if isinstance(e, KeyError):
         return "PY_KEY"
     if isinstance(e, (TypeError, ValueError)):

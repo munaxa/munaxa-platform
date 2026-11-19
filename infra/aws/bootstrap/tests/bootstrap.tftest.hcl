@@ -587,11 +587,71 @@ run "r7_boundary_refuses_chained_deployer_sessions" {
   }
 }
 
-# Stage E blocker BE-2: Testing's independent session cleanup (stack/session-cleanup.tf). Off by
-# default, so merging changes no IAM; on, it widens only the nonprod boundary and adds one nonprod
-# deployer policy with nonprod names, and the session deployer only reads.
-run "be2_session_cleanup_is_off_by_default" {
+# Stage E blocker BE-2: Testing's independent session cleanup (stack/session-cleanup.tf). It widens
+# only the nonprod boundary and adds one nonprod deployer policy with nonprod names, and the session
+# deployer only reads. R-8 (18 Nov 2026): on by default, because D-B2 and D-B2R applied it with
+# -var testing_session_cleanup=true; a root plan that omits the flag must keep every statement.
+run "r8_session_cleanup_is_on_without_the_var" {
   command = plan
+
+  assert {
+    condition     = var.testing_session_cleanup == true
+    error_message = "R-8: the flag defaults to true, so a plan without -var keeps the applied cleanup IAM."
+  }
+  assert {
+    condition = toset([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s.Sid if startswith(s.Sid, "TestingSessionCleanup")]) == toset([
+      "TestingSessionCleanup", "TestingSessionCleanupLookups",
+    ])
+    error_message = "R-8: without -var, the nonprod boundary keeps the D-B2 TestingSessionCleanup statements."
+  }
+  assert {
+    condition     = length(aws_iam_policy.deployer_session_cleanup) == 1 && length(aws_iam_role_policy_attachment.deployer_session_cleanup) == 1 && aws_iam_role_policy_attachment.deployer_session_cleanup[0].role == "munaxa-shared-deployer-nonprod"
+    error_message = "R-8: without -var, deployer_session_cleanup exists and is attached to the nonprod deployer only."
+  }
+  assert {
+    condition = length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup" && toset(s.actions) == toset([
+      "states:DescribeStateMachine", "states:ListStateMachineVersions", "states:ListTagsForResource",
+      "sns:GetTopicAttributes", "sns:ListTagsForResource", "cloudwatch:ListTagsForResource",
+    ])]) == 1
+    error_message = "R-8: without -var, the session deployer keeps RefreshSessionCleanup with the D-B2R read set."
+  }
+  assert {
+    condition = (
+      length([for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s if startswith(s.Sid, "TestingSessionCleanup")]) == 0 &&
+      !contains(keys(data.aws_iam_policy_document.deployer_session_read), "prod") &&
+      alltrue(flatten([for s in data.aws_iam_policy_document.deployer_session_cleanup[0].statement : [for r in s.resources : r == "*" || strcontains(r, "munaxa-nonprod")]])) &&
+      alltrue([for a in aws_iam_role_policy_attachment.deployer_session_cleanup : a.role != "munaxa-shared-deployer-prod"])
+    )
+    error_message = "R-8: the default changes nothing for prod."
+  }
+}
+
+# Equality with an explicit true: the owner scripts pass -var testing_session_cleanup=true, and that
+# plan must be identical to the plan without the var (no change either way).
+run "r8_explicit_true_matches_the_default" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = true
+  }
+
+  assert {
+    condition = (
+      toset([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s.Sid if startswith(s.Sid, "TestingSessionCleanup")]) == toset(["TestingSessionCleanup", "TestingSessionCleanupLookups"]) &&
+      length(aws_iam_policy.deployer_session_cleanup) == 1 &&
+      length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup"]) == 1
+    )
+    error_message = "R-8: -var testing_session_cleanup=true gives the same IAM as the default."
+  }
+}
+
+# Retiring the cleanup stays possible, only by an explicit false in a reviewed plan.
+run "be2_session_cleanup_is_off_only_when_false" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = false
+  }
 
   assert {
     condition = (
@@ -599,7 +659,7 @@ run "be2_session_cleanup_is_off_by_default" {
       length(aws_iam_policy.deployer_session_cleanup) == 0 && length(aws_iam_role_policy_attachment.deployer_session_cleanup) == 0 &&
       length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup"]) == 0
     )
-    error_message = "With testing_session_cleanup unset, no IAM changes."
+    error_message = "With testing_session_cleanup = false, none of the cleanup IAM exists."
   }
 }
 
@@ -673,5 +733,95 @@ run "be2_session_cleanup_widens_only_nonprod" {
       alltrue([for r in s.resources : strcontains(r, ":munaxa-nonprod-")])
     if s.sid == "RefreshSessionCleanup"])
     error_message = "The session deployer refreshes the cleanup state machine (incl. its versions), topic and alarms, on nonprod names only, and never validates a definition."
+  }
+}
+
+# H-20 enforced (scripts/aws/session-cleanup-gate.sh, before every `up` in aws-session.yml): the
+# session deployer gains two reads on the cleanup state machine's executions, nonprod only, and no
+# write. Its other reads come from deployer_read, which is attached to the session role.
+run "h20_gate_reads_only_the_cleanup_executions" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = true
+  }
+
+  assert {
+    condition = length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "GateSessionCleanup"
+      && toset(s.actions) == toset(["states:ListExecutions", "states:DescribeExecution"])
+      && toset(s.resources) == toset([
+        "arn:aws:states:eu-central-1:229251310592:stateMachine:munaxa-nonprod-session-cleanup",
+        "arn:aws:states:eu-central-1:229251310592:execution:munaxa-nonprod-session-cleanup:*",
+      ])
+    ]) == 1
+    error_message = "H-20: one GateSessionCleanup statement, ListExecutions and DescribeExecution on the cleanup state machine and its executions only."
+  }
+  assert {
+    condition = alltrue([for a in ["scheduler:GetSchedule", "scheduler:ListSchedules", "cloudwatch:DescribeAlarms"] :
+      anytrue([for s in data.aws_iam_policy_document.deployer_read.statement : contains(s.actions, a) && contains(s.resources, "*")])
+    ]) && aws_iam_role_policy_attachment.deployer_session_read["nonprod"].role == aws_iam_role.deployer_session["nonprod"].name
+    error_message = "H-20: the gate's schedule and alarm reads come from deployer_read, attached to the session role."
+  }
+  assert {
+    condition = alltrue(flatten([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : [
+      for a in s.actions : !contains(["scheduler:GetSchedule", "scheduler:ListSchedules", "cloudwatch:DescribeAlarms"], a)
+    ]]))
+    error_message = "H-20: no duplicate of a deployer_read action in the session read policy."
+  }
+  assert {
+    condition = alltrue(flatten([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : [
+      for a in s.actions : can(regex("^[a-z0-9-]+:(Describe|List|Get)[A-Za-z*]*$", a))
+    ]]))
+    error_message = "H-20: the session read policy holds Describe/List/Get actions only (no Start, Stop or other write)."
+  }
+  assert {
+    condition = alltrue(flatten([for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : [
+      for a in s.actions : !can(regex("^(states:|\\*$)", a))
+    ] if s.effect != "Deny"]))
+    error_message = "H-20: the session deployer's own policy allows no Step Functions action (no StartExecution, StopExecution or any write)."
+  }
+}
+
+# The policy cannot widen to prod: a prod session deployer is refused by the variable's own validation,
+# and the nonprod session read policy names no prod resource.
+run "h20_gate_reads_never_reach_prod" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = true
+    session_environments = {
+      nonprod = ["aws-nonprod-session"]
+      prod    = ["aws-prod-session"]
+    }
+  }
+
+  expect_failures = [var.session_environments]
+}
+
+run "h20_nonprod_session_reads_name_no_prod_resource" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = true
+  }
+
+  assert {
+    condition = alltrue(flatten([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : [
+      for r in s.resources : !strcontains(r, "munaxa-prod")
+    ]])) && !contains(keys(data.aws_iam_policy_document.deployer_session_read), "prod")
+    error_message = "H-20: the session read policy exists for nonprod only and names no prod resource."
+  }
+}
+
+run "h20_gate_reads_are_off_with_the_cleanup" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = false
+  }
+
+  assert {
+    condition     = length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "GateSessionCleanup"]) == 0
+    error_message = "H-20: without the cleanup there is nothing to gate on, so no execution reads."
   }
 }
