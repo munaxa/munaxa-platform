@@ -23,7 +23,7 @@ Today:
 - Control and Docs are code complete but not deployed. Each is blocked on owner-controlled steps.
 - No current Docs image exists in ECR. Its `migrate` repository was never created, and its three secret bundles are empty.
 
-This task closed the Docs secret-custody gap with a reviewed owner script (platform PR, file 04 §6). It also fixed a Docs runbook statement that contradicted the code (docs#178).
+This task closed the Docs secret-custody gap with a reviewed owner script (platform#143, file 04 §4). It also fixed a Docs runbook statement that contradicted the code (docs#178).
 
 ## 2. Status by product
 
@@ -44,7 +44,7 @@ This task closed the Docs secret-custody gap with a reviewed owner script (platf
 | --- | --- | --- |
 | Live read-only inventory of Testing (ECR, ECS, RDS, ALB, secrets metadata, schedules, alarms, budgets, Cost Explorer, KMS, snapshots) | file 06 | done, 19 Nov 21:51-22:30 |
 | Offline Terraform: stack tests **75/75 pass**; a mocked plan of enabling Docs in Testing gives **42 creates, 0 changes, 0 destroys** with services off, and 62 creates as a session | file 06 §5, `supporting/` | done |
-| **Docs secret custody script** `scripts/aws/owner/docs-testing-secrets.sh`: fills the three empty Docs bundles inside AWS, replaces the Control token or the Resend key later, and creates and deletes the one-run provision secret. **18 offline tests**, plus 1 new SQL test (23/23), CI and shellcheck. An independent review is recorded in file 07 §4 | munaxa-platform PR (branch `claude/project-thread-r335u7-docs-secrets`) | open, unmerged |
+| **Docs secret custody script** `scripts/aws/owner/docs-testing-secrets.sh`: fills the three empty Docs bundles inside AWS, replaces the Control token or the Resend key later, and creates and deletes the one-run provision secret. **18 offline tests**, plus 1 new SQL test (23/23), CI and shellcheck. An independent review is recorded in file 07 §4 | [munaxa-platform#143](https://github.com/munaxa/munaxa-platform/pull/143) | open, unmerged |
 | Docs runbook correction: the S3 adapter **does** sign with the ECS task role (the runbook said it could not) | [munaxa-docs#178](https://github.com/munaxa/munaxa-docs/pull/178) | open, unmerged |
 | Stage E authorization package (consolidated from the 14 to 19 Nov reports, with the prerequisites re-verified) | file 02 §5, file 10 | ready |
 | Dependency map, Docs Testing deployment design, acceptance checklist, cost model, production path | files 04, 08, 09 | done |

@@ -41,7 +41,7 @@ Docs preparation (left column) does not wait for Identity. Only the licence does
 
 ## 4. Secrets design (closed by this task)
 
-The owner script `scripts/aws/owner/docs-testing-secrets.sh` (platform PR from branch `claude/project-thread-r335u7-docs-secrets`) follows the L-A0 custody pattern used for Identity stage C:
+The owner script `scripts/aws/owner/docs-testing-secrets.sh` (platform#143) follows the L-A0 custody pattern used for Identity stage C:
 
 - Values are generated inside CloudShell (bash plus `python3 -I`) and go to the AWS CLI only through stdin. They never appear in argv, environment, files or output; only version ids, the tenant id and a mail/token state are printed.
 - `bundles`: fills docs-operator, then docs-migrate, then docs-api. It is resumable and never splits the app password. `DATABASE_URL` and the catalogue URL carry the same `edms_app` password; `DATABASE_MIGRATION_URL` carries the `edms_owner` password. `CONTROL_PLANE_TOKEN` starts as a marked placeholder; the Resend key is typed hidden or left as a marked placeholder.

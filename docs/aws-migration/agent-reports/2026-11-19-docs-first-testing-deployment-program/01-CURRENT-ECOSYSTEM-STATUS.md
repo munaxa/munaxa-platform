@@ -21,8 +21,8 @@
 | --- | --- | --- |
 | platform #141 | H-20 IAM bootstrap report (applied 19 Nov 11:28) | docs only |
 | platform #142 | 20 Nov 00:05 Amman scheduled cleanup verification | docs only |
-| platform (this task, script) | `scripts/aws/owner/docs-testing-secrets.sh`, tests, CI step, README | code only, nothing runs on merge |
-| platform (this task, report) | this folder | docs only |
+| platform #143 (this task, script) | `scripts/aws/owner/docs-testing-secrets.sh`, tests, CI step, README | code only, nothing runs on merge |
+| platform #144 (this task, report) | this folder | docs only |
 | docs #178 (this task) | go-live runbook: S3 adapter signs with the ECS task role | docs only |
 
 Review order requested by the owner: #141, then #142, then the PRs of this task. None of them deploys anything when merged [V: no workflow in any of the four repositories runs on `push` to main with AWS credentials, except the image publication workflows that need a tag or dispatch].
