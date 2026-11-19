@@ -1,6 +1,6 @@
 # H-20 IAM bootstrap plan and verification: executive report (19 Nov 2026)
 
-**Status, 19 Nov 2026 at 10:20 UTC: PLAN VERIFIED, WAITING FOR SEPARATE OWNER APPLY AUTHORIZATION.** The owner ran the plan at 10:10 UTC. It is exactly 0/1/0 on the one nonprod policy, and the saved plan SHA-256 is `11173079…6f09` (file 05). **No apply was performed.**
+**Status, 19 Nov 2026 at 11:35 UTC: APPLIED AND VERIFIED.** The owner approved the reviewed saved plan `11173079…6f09` (11:08 UTC) and applied it in CloudShell: 0/1/0, post-apply plan no changes, live IAM equals the code, and no production policy changed (file 06). The H-20 gate is to be re-checked read-only after R at 21:05 UTC tonight. Stage E is NOT AUTHORIZED.
 
 **Owner instruction.** 19 Nov 2026 at 08:53 UTC, "Execute the Next Approved Gate: H-20 IAM Bootstrap Plan and Verification".
 - Plan only.
@@ -57,4 +57,5 @@ Until step 3 is done, every Testing `up` is refused at the gate, which is safe. 
 | 03 | Owner CloudShell plan procedure, expected plan, rejection conditions, review checklist |
 | 04 | Apply boundary, post-apply verification, next owner authorization request |
 | 05 | Review of the owner plan run: PLAN VERIFIED, saved plan SHA-256 |
+| 06 | Apply result: APPLIED AND VERIFIED (owner log + independent live read) |
 | `supporting/` | Plan script, apply script (not authorized), offline tests and fixture |
