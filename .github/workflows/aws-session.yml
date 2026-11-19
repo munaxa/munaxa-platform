@@ -1,7 +1,8 @@
 # On-demand Testing sessions for the shared stack's nonprod environment (owner decision, 29 Oct
 # 2026: Testing at US$50 a month or less, so nothing runs between sessions).
 #
-#   up:    plan edge_enabled=true and services_enabled=true, check it, start the database, apply
+#   up:    the H-20 gate (scripts/aws/session-cleanup-gate.sh, input hard_stop_utc), then plan
+#          edge_enabled=true and services_enabled=true, check it, start the database, apply
 #   down:  apply both false (the ALB and every service are deleted), then stop the database; the
 #          database is stopped even when that plan or apply fails, so drift never leaves it running
 #
@@ -36,6 +37,10 @@ on:
         required: true
         type: choice
         options: [up, down]
+      hard_stop_utc:
+        description: 'up only: the session hard stop H (YYYY-MM-DDTHH:MM:00Z) that its P and S were armed for'
+        required: false
+        type: string
   schedule:
     # The backstop: every evening, down. Off the hour (GitHub's busiest minute), and twice.
     - cron: '17 19 * * *'
@@ -184,8 +189,29 @@ jobs:
             exit 1
           fi
 
+      # H-20 enforced (report 2026-11-18-identity-post-d-b3-verification-next-gates, file 16): before
+      # any `up` plan, database start or apply, the independent session cleanup must be proven
+      # working (R succeeded within 26 h as a real run, nothing running, R enabled with the right
+      # target, role and input, both alarms present and not in ALARM) and this session's own P and S
+      # must be armed, with no other session's P or S left. Read-only, fails closed on any error.
+      # On a failure GitHub skips init, plan, database start and apply, and those steps also name this
+      # one, so they can never run after a failed or skipped gate. The final "Stop the database" step
+      # does not run after a failed gate either (review M-1): a refused `up` started nothing, and
+      # stopping the database could break a session that is already live. `down` never runs the gate:
+      # a broken cleanup must never block a shutdown. No continue-on-error, here or anywhere here.
+      - name: H-20 gate
+        id: h20
+        if: env.SESSION == 'up'
+        working-directory: .
+        env:
+          HARD_STOP_UTC: ${{ inputs.hard_stop_utc }}
+        run: |
+          set -euo pipefail
+          export AWS_ACCESS_KEY_ID="$DEPLOYER_AWS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$DEPLOYER_AWS_SECRET_ACCESS_KEY" AWS_SESSION_TOKEN="$DEPLOYER_AWS_SESSION_TOKEN"
+          scripts/aws/session-cleanup-gate.sh
+
       - name: terraform init
-        if: steps.stack.outputs.exists == 'true'
+        if: steps.stack.outputs.exists == 'true' && (env.SESSION != 'up' || steps.h20.outcome == 'success')
         env:
           DEPLOYER_ROLE_ARN: ${{ vars.AWS_DEPLOYER_ROLE_ARN }}
         run: |
@@ -194,7 +220,7 @@ jobs:
             -backend-config="assume_role={role_arn=\"$DEPLOYER_ROLE_ARN\",session_name=\"gha-run-$GITHUB_RUN_ID\",source_identity=\"github-actions\"}"
 
       - name: Plan the switches
-        if: steps.stack.outputs.exists == 'true'
+        if: steps.stack.outputs.exists == 'true' && (env.SESSION != 'up' || steps.h20.outcome == 'success')
         run: |
           set -euo pipefail
           on=$([ "$SESSION" = up ] && echo true || echo false)
@@ -224,7 +250,7 @@ jobs:
 
       # After the plan check, so a refused `up` never starts the database.
       - name: Start the database
-        if: env.SESSION == 'up' && steps.stack.outputs.exists == 'true'
+        if: env.SESSION == 'up' && steps.stack.outputs.exists == 'true' && steps.h20.outcome == 'success'
         run: |
           set -euo pipefail
           export AWS_ACCESS_KEY_ID="$DEPLOYER_AWS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$DEPLOYER_AWS_SECRET_ACCESS_KEY" AWS_SESSION_TOKEN="$DEPLOYER_AWS_SESSION_TOKEN"
@@ -234,7 +260,7 @@ jobs:
 
       # stdout (resource ids, then every output) stays out of the public log; errors go to stderr.
       - name: Apply the switches
-        if: steps.stack.outputs.exists == 'true'
+        if: steps.stack.outputs.exists == 'true' && (env.SESSION != 'up' || steps.h20.outcome == 'success')
         run: |
           set -euo pipefail
           terraform apply -input=false -no-color -lock-timeout=5m tfplan > apply.stdout
@@ -242,6 +268,7 @@ jobs:
           rm -f apply.stdout
           echo "Session $SESSION applied." | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # Not after a failed H-20 gate (that `up` started nothing; review M-1).
       # Runs on `down` even when the plan or apply above failed (the database job has normally
       # stopped it already; this catches one the switches started), and on an `up` that failed or
       # was cancelled (timeout-minutes cancels the job, and failure() is false then), so a session
@@ -249,7 +276,7 @@ jobs:
       - name: Stop the database
         if: >-
           always() && steps.deployer.outcome == 'success' && steps.stack.outputs.exists == 'true'
-          && (env.SESSION == 'down' || (env.SESSION == 'up' && !success()))
+          && (env.SESSION == 'down' || (env.SESSION == 'up' && !success() && steps.h20.outcome != 'failure'))
         working-directory: .
         run: |
           set -euo pipefail

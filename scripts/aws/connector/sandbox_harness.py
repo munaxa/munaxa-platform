@@ -6,7 +6,8 @@ nothing more is assumed here:
   - its own tool description: `call_boto3(*, service_name, operation_name, region_name, params)` is
     awaited; these names are pre-imported: asyncio, collections, csv, dataclasses, datetime, decimal,
     enum, fractions, functools, itertools, json, math, re, statistics, string, time, typing, uuid,
-    ClientError, StringIO, BytesIO; the script sets `result = ...` and ends with the bare expression
+    ClientError, StringIO, BytesIO (but `ClientError` is NOT defined in the live sandbox: observed
+    18 Nov 2026, NameError, so scripts may not name it and run_script() does not provide it); the script sets `result = ...` and ends with the bare expression
     `result`, which is what the tool returns;
   - observed 13 Nov 2026 (reports 2026-11-13-identity-stage-c-execution, 2026-11-14 stage D
     readiness): the validator refused imports of secrets, os, base64, binascii, hashlib, codecs and
@@ -58,6 +59,9 @@ FORBIDDEN_NAMES = {
     "compile", "open", "__import__", "print", "input", "breakpoint", "memoryview", "help", "dir",
     "os", "sys", "secrets", "base64", "binascii", "hashlib", "codecs", "contextlib", "subprocess",
     "socket", "importlib", "builtins",
+    # Listed as pre-imported by the tool description, but missing in the live sandbox (18 Nov 2026,
+    # NameError): a script must recognise an AWS error by its `.response` instead.
+    "ClientError",
 }
 FORBIDDEN_TEXT = (":2773", "AWS_SESSION_TOKEN", "AWS_SECRET_ACCESS_KEY")
 # Operations no connector script may ever call. Value reads always; and since the L-A0 redesign (owner
@@ -164,7 +168,6 @@ def run_script(text, call_boto3, *, now=None, max_seconds=55, overrides=None):
 
     namespace = dict(PRE_IMPORTED)
     namespace["asyncio"] = fake_asyncio
-    namespace["ClientError"] = ClientError
     namespace["call_boto3"] = call_boto3
     if now is not None:
         namespace["_harness_now"] = now
@@ -194,7 +197,7 @@ def set_inputs(text, **values):
     return text
 
 
-SHARED_BEGIN = "# --- shared helpers v1 (identical in every connector script) ---"
+SHARED_BEGIN = "# --- shared helpers v2 (identical in every connector script) ---"
 SHARED_END = "# --- end shared helpers ---"
 
 

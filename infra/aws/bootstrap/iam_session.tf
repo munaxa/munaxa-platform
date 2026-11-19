@@ -304,6 +304,23 @@ data "aws_iam_policy_document" "deployer_session_read" {
       ]
     }
   }
+
+  # H-20 enforced (scripts/aws/session-cleanup-gate.sh, the first step of every `up`): the gate reads
+  # the cleanup state machine's executions, to prove that R succeeded within 26 hours as a real run
+  # and that nothing is running. Reads only, on that one state machine and its executions. Its other
+  # reads are already allowed: states:DescribeStateMachine (above), scheduler:GetSchedule,
+  # scheduler:ListSchedules and cloudwatch:DescribeAlarms (deployer_read, attached to this role).
+  dynamic "statement" {
+    for_each = var.testing_session_cleanup && each.key == "nonprod" ? [1] : []
+    content {
+      sid     = "GateSessionCleanup"
+      actions = ["states:ListExecutions", "states:DescribeExecution"]
+      resources = [
+        "arn:aws:states:${var.region}:${var.account_id}:stateMachine:munaxa-${each.key}-session-cleanup",
+        "arn:aws:states:${var.region}:${var.account_id}:execution:munaxa-${each.key}-session-cleanup:*",
+      ]
+    }
+  }
 }
 
 resource "aws_iam_policy" "deployer_session_read" {
