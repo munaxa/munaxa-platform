@@ -158,7 +158,7 @@ Input handling and output:
 
 **Before the IAM is applied,** every `up` is refused at conditions 2–4 (AccessDenied). That is the safe direction, and `down` is unaffected.
 
-## 4. D-B5: subscribe `alert@munaxa.com` (WAITING FOR OWNER AUTHORIZATION)
+## 4. D-B5: subscribe `alert@munaxa.com` (COMPLETED AND VERIFIED, 19 Nov)
 
 **Script.** `supporting/d-b5-alert-subscription.py`, SHA-256 `7ec3c1f8e2c8ff29cc34e254c59e9a022fb63139f034b23e92ecd61d02c1855d` (shared helpers v2).
 
@@ -183,7 +183,20 @@ Input handling and output:
 
 The benefit is small but real: the alarms have no OK actions, so only a cleanup failure or a missed run sends mail.
 
-## 5. D-B4: one idle dry run (WAITING FOR OWNER AUTHORIZATION)
+### 4.1 Result (19 Nov 2026)
+
+- **Authorization.** Owner, 03:16 UTC: "Subscribe run merge". Run after the AWS connector was signed in again at 03:42 UTC.
+- **Precheck and subscribe** at 03:43:06 UTC, script with shared helpers v2 and `ADDRESS = "alert@munaxa.com"`:
+  - topic ARN, owner account and TLS-only deny all true;
+  - counts 0/0/0, with no existing subscription.
+- **API calls:** `GetCallerIdentity`, `GetTopicAttributes`, `ListSubscriptionsByTopic` and **one** `Subscribe`, all successful. No `Publish`.
+- **Subscribe result:** `SUBSCRIBED_PENDING_CONFIRMATION`, with a subscription ARN ending `9777`.
+- **Verify** at 03:46:01 UTC, read-only (`GetTopicAttributes`, `ListSubscriptionsByTopic`):
+  - `SubscriptionsConfirmed` 1, `SubscriptionsPending` 0;
+  - one subscription: protocol email, endpoint `alert@munaxa.com`, a confirmed ARN ending `9777`.
+- **Status: COMPLETED AND VERIFIED.** The cleanup failure and not-run alarms now reach `alert@munaxa.com`. There are still no OK actions.
+
+## 5. D-B4: one idle dry run (COMPLETED AND VERIFIED, 19 Nov)
 
 **Script.** `supporting/d-b4-dry-run-idle.py`, SHA-256 `7b57f5c78be98755e6214eb189aff53644b26b5a645a04ec663cbe388f165a29` (shared helpers v2).
 
@@ -222,6 +235,33 @@ The benefit is small but real: the alarms have no OK actions, so only a cleanup 
 2. Claude runs `precheck` inside the window. It must PASS (idle, window, definition). Claude also compares the live definition with the reviewed template.
 3. Claude runs `start` once and records the ARN.
 4. Claude runs `status` until it is SUCCEEDED and every check passes, and reports it.
+
+### 5.1 Result (19 Nov 2026)
+
+- **Authorization.** Owner, 03:16 UTC: "Subscribe run merge".
+- **Precheck** at 03:44:59 UTC, **PASS**:
+  - state machine ACTIVE and STANDARD, and the definition refuses bad input;
+  - no execution RUNNING;
+  - 0 ECS services and 0 tasks;
+  - no load balancer `munaxa-nonprod`, with the expected `LoadBalancerNotFound`;
+  - database `stopped`;
+  - inside the window.
+- **Definition against the template.**
+  - The live definition (48,457 characters) was compared with `infra/aws/stack/session-cleanup/definition.asl.json`, rendered with the `session-cleanup.tf` values and the live VPC `vpc-0824ebbff902d2980`.
+  - The two are **byte-identical**.
+  - SHA-256 of the live definition: `4f6397ee6c222296512145960c29e0ebd7a58a25251ce5fae41e78f7aa0fb0ed`.
+- **Start.** The start script ran the precheck again (PASS), then made **one** `StartExecution`:
+  - ARN `arn:aws:states:eu-central-1:229251310592:execution:munaxa-nonprod-session-cleanup:dry-run-idle-20261119T0345`;
+  - started 03:45:34.877 UTC;
+  - input `{"dryRun":true}`.
+- **Status**, read-only (`DescribeExecution`, `GetExecutionHistory`, 194 events): **PASS**.
+  - **SUCCEEDED** at 03:45:36.039 UTC.
+  - Input and output both say `dryRun` true.
+  - Branches: secret `absent`, alb `absent`, ecs `done`, database `stopped`.
+  - Scheduled operations: `ecs:describeServices`, `ecs:listTasks`, `elasticloadbalancingv2:describeLoadBalancers`, `rds:describeDBInstances`, `secretsmanager:listSecrets`. **No write operation.**
+- **Not done.** No StopExecution, no schedule or input change, no resource change.
+- **Status: COMPLETED AND VERIFIED.**
+- **Effect on H-20.** Until tonight's R at 21:05 UTC, the dry run is the latest success, so condition 3 (`last_success_was_real`) fails. That is expected, and no session is planned today.
 
 ## 6. Bootstrap plan requirements and apply gates (for #139 and #140)
 

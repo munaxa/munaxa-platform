@@ -1,6 +1,6 @@
 # Post D-B3 verification and next Identity gates: executive report (18 Nov 2026)
 
-**Current status (19 Nov 2026, 03:35 UTC; this list supersedes every older status line in this folder):**
+**Current status (19 Nov 2026, 03:50 UTC; this list supersedes every older status line in this folder):**
 
 - **Owner decisions, 19 Nov 03:16 UTC ("Subscribe run merge"):**
   - yes to D-B5;
@@ -16,7 +16,8 @@
   - the gate fails, safely, until the owner bootstrap plan and apply for the two read actions;
   - `down` is unaffected.
 - **Bootstrap code on `main` now differs from the live IAM.** The expected bootstrap plan is **0 to add, 1 to change, 0 to destroy** on `aws_iam_policy.deployer_session_read["nonprod"]`, with or without the flag. It is **not planned and not applied**, and needs owner action (file 17 §6).
-- **D-B5 and D-B4: AUTHORIZED, NOT YET RUN.** The AWS connector needs a new owner sign-in, as of 03:17 UTC. The results will be recorded in a follow-up report. The D-B4 window is open until 20:39 UTC today.
+- **D-B5: COMPLETED AND VERIFIED.** Precheck PASS, then one `sns:Subscribe` at 03:43:06 UTC (subscription ARN ends `9777`). The owner confirmed the e-mail. At 03:46:01 UTC AWS shows 1 confirmed, 0 pending, protocol email, endpoint `alert@munaxa.com`, and no other subscription (file 17 §4.1).
+- **D-B4: COMPLETED AND VERIFIED.** Precheck PASS at 03:44:59 UTC, and the live definition is byte-identical to the template (SHA-256 `4f6397ee…0ed`). One execution, `dry-run-idle-20261119T0345`, started at 03:45:34 UTC with `{"dryRun":true}`. It SUCCEEDED at 03:45:36 UTC: secret absent, alb absent, ecs done, database stopped. Only read operations were scheduled (file 17 §5.1). **Until R at 21:05 UTC tonight, H-20 condition 3 fails, as expected.**
 - **Scheduled `down` after the D-B2R fix: WAITING FOR SCHEDULE.** No run had started by 22:25 UTC, and nothing was dispatched.
 - **Stage E: NOT AUTHORIZED.** Production is out of scope.
 
@@ -43,10 +44,10 @@ Next-Gate Preparation". The owner asked that nothing be merged automatically.
 
 - Until 12:41 UTC no AWS call was made (connector sign-in). After the owner reconnected it, Claude made read-only calls only (files 11, 13, 14, 15); no write.
 - Claude ran no Terraform plan or apply against AWS and dispatched no workflow. The only apply was the owner's reviewed D-B2R apply in CloudShell (file 13). The only workflow action by Claude was one re-run of a failed CI job on this PR (file 09 §6).
-- No SNS subscription, dry run, real cleanup, RDS start, ECS service or task, migration, bootstrap, DB-admin task, operator secret, C-8G or Stage E.
+- Writes on 19 Nov, each on the owner's yes: one `sns:Subscribe` (D-B5) and one dry-run `StartExecution` (D-B4). No other write: no real cleanup, RDS start, ECS service or task, migration, bootstrap, DB-admin task, operator secret, C-8G or Stage E.
 - No secret value was read.
 - No production change.
-- Claude merged only PR #137, on the owner's explicit yes (13:24 UTC). This PR, #139 and #140 are not merged and not approved by Claude.
+- Claude merged PR #137 (18 Nov 13:24 UTC), #139 and #140 (19 Nov 03:17 and 03:32 UTC), each on the owner's explicit yes. This PR is merged after them on the same yes. Claude approved none of its own PRs.
 
 ## Recommendation
 
