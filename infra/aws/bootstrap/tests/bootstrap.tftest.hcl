@@ -587,11 +587,71 @@ run "r7_boundary_refuses_chained_deployer_sessions" {
   }
 }
 
-# Stage E blocker BE-2: Testing's independent session cleanup (stack/session-cleanup.tf). Off by
-# default, so merging changes no IAM; on, it widens only the nonprod boundary and adds one nonprod
-# deployer policy with nonprod names, and the session deployer only reads.
-run "be2_session_cleanup_is_off_by_default" {
+# Stage E blocker BE-2: Testing's independent session cleanup (stack/session-cleanup.tf). It widens
+# only the nonprod boundary and adds one nonprod deployer policy with nonprod names, and the session
+# deployer only reads. R-8 (18 Nov 2026): on by default, because D-B2 and D-B2R applied it with
+# -var testing_session_cleanup=true; a root plan that omits the flag must keep every statement.
+run "r8_session_cleanup_is_on_without_the_var" {
   command = plan
+
+  assert {
+    condition     = var.testing_session_cleanup == true
+    error_message = "R-8: the flag defaults to true, so a plan without -var keeps the applied cleanup IAM."
+  }
+  assert {
+    condition = toset([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s.Sid if startswith(s.Sid, "TestingSessionCleanup")]) == toset([
+      "TestingSessionCleanup", "TestingSessionCleanupLookups",
+    ])
+    error_message = "R-8: without -var, the nonprod boundary keeps the D-B2 TestingSessionCleanup statements."
+  }
+  assert {
+    condition     = length(aws_iam_policy.deployer_session_cleanup) == 1 && length(aws_iam_role_policy_attachment.deployer_session_cleanup) == 1 && aws_iam_role_policy_attachment.deployer_session_cleanup[0].role == "munaxa-shared-deployer-nonprod"
+    error_message = "R-8: without -var, deployer_session_cleanup exists and is attached to the nonprod deployer only."
+  }
+  assert {
+    condition = length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup" && toset(s.actions) == toset([
+      "states:DescribeStateMachine", "states:ListStateMachineVersions", "states:ListTagsForResource",
+      "sns:GetTopicAttributes", "sns:ListTagsForResource", "cloudwatch:ListTagsForResource",
+    ])]) == 1
+    error_message = "R-8: without -var, the session deployer keeps RefreshSessionCleanup with the D-B2R read set."
+  }
+  assert {
+    condition = (
+      length([for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s if startswith(s.Sid, "TestingSessionCleanup")]) == 0 &&
+      !contains(keys(data.aws_iam_policy_document.deployer_session_read), "prod") &&
+      alltrue(flatten([for s in data.aws_iam_policy_document.deployer_session_cleanup[0].statement : [for r in s.resources : r == "*" || strcontains(r, "munaxa-nonprod")]])) &&
+      alltrue([for a in aws_iam_role_policy_attachment.deployer_session_cleanup : a.role != "munaxa-shared-deployer-prod"])
+    )
+    error_message = "R-8: the default changes nothing for prod."
+  }
+}
+
+# Equality with an explicit true: the owner scripts pass -var testing_session_cleanup=true, and that
+# plan must be identical to the plan without the var (no change either way).
+run "r8_explicit_true_matches_the_default" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = true
+  }
+
+  assert {
+    condition = (
+      toset([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s.Sid if startswith(s.Sid, "TestingSessionCleanup")]) == toset(["TestingSessionCleanup", "TestingSessionCleanupLookups"]) &&
+      length(aws_iam_policy.deployer_session_cleanup) == 1 &&
+      length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup"]) == 1
+    )
+    error_message = "R-8: -var testing_session_cleanup=true gives the same IAM as the default."
+  }
+}
+
+# Retiring the cleanup stays possible, only by an explicit false in a reviewed plan.
+run "be2_session_cleanup_is_off_only_when_false" {
+  command = plan
+
+  variables {
+    testing_session_cleanup = false
+  }
 
   assert {
     condition = (
@@ -599,7 +659,7 @@ run "be2_session_cleanup_is_off_by_default" {
       length(aws_iam_policy.deployer_session_cleanup) == 0 && length(aws_iam_role_policy_attachment.deployer_session_cleanup) == 0 &&
       length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshSessionCleanup"]) == 0
     )
-    error_message = "With testing_session_cleanup unset, no IAM changes."
+    error_message = "With testing_session_cleanup = false, none of the cleanup IAM exists."
   }
 }
 

@@ -1,7 +1,7 @@
 # Testing's independent session cleanup (stack/session-cleanup.tf, Stage E blocker BE-2): what the
 # nonprod deployer needs to create and keep the cleanup state machine and its alarm topic. A separate
-# managed policy, so the existing allow-lists keep their size, and only for nonprod. Off until
-# testing_session_cleanup is true (the Stage B-2 root apply, before the stack apply that enables it).
+# managed policy, so the existing allow-lists keep their size, and only for nonprod. On while
+# testing_session_cleanup is true, its default since R-8 (applied by root in D-B2, 16 Nov 2026).
 # The session deployer only refreshes them (iam_session.tf RefreshSessionCleanup); it never writes.
 
 locals {
