@@ -1,6 +1,15 @@
 # D-B2 apply and D-B3/D-PIN plan: executive report (16 to 18 Nov 2026)
 
-**Status: D-B2 APPLIED AND VERIFIED — D-B3/D-PIN PLAN READY FOR OWNER REVIEW.**
+**Status (corrected 18 Nov 2026): D-B2 APPLIED AND VERIFIED — D-B3/D-PIN APPLIED AND VERIFIED (run 44267788619, follow-up plan run 44268194074: no changes).**
+
+> **Correction note, 18 Nov 2026.** The first version of this report (16 Nov) ended at
+> "D-B3/D-PIN PLAN READY FOR OWNER REVIEW", and the update at 08:36 UTC on 18 Nov added the apply
+> without changing that status line, row 8 or the index row. This note and the edits marked
+> "corrected" bring them in line with file 04. What was known on 16 Nov is kept in files 02 and 03,
+> each with a dated status note. Applied means the infrastructure exists. It does not mean any
+> operation has run: no alert subscription, no cleanup execution and no Stage E (see
+> "What is live now" in file 04 §4). Follow-up report:
+> `2026-11-18-identity-post-d-b3-verification-next-gates/`.
 
 **Update, 18 Nov 08:36 UTC.** With the owner's approval, D-B3/D-PIN was applied:
 
@@ -21,7 +30,7 @@ See file 04.
 | 5 | IAM verification | The live nonprod boundary, session-read policy and new cleanup policy equal the reviewed code. The cleanup policy is attached to `munaxa-shared-deployer-nonprod`, which now has 4 managed policies | File 01 §4 |
 | 6 | D-B3/D-PIN plan | Plan-only dispatch of `aws-terraform.yml`, run 43868859420 at `19fa5bc`. Started 16 Nov 12:41 UTC; the owner approved the plan job 18 Nov ~08:14 UTC. Result: `Plan: 9 to add, 2 to change, 1 to replace, 0 to destroy.` The intent checker reported "The plan matches the declared changes exactly (12 resource action(s))." Nothing was applied, and in plan mode the workflow has no apply job | File 02 |
 | 7 | Workflow and scheduled shutdown | The scheduled Testing `down` keeps failing at "Plan the switches", most recently in run 44217528747 (the "Deployment failed" the owner saw on 18 Nov 08:16 UTC). Its database stop succeeded each time: `database munaxa-nonprod-pg: stopped`. The cause is in file 03 §1 | File 03 §1 |
-| 8 | Risks and next decision | The next owner decision is the D-B3/D-PIN apply | File 03 §2 to §3 |
+| 8 | Risks and next decision | On 16 Nov the next owner decision was the D-B3/D-PIN apply. The owner approved it on 18 Nov 08:31 UTC, and it was applied in run 44267788619 (file 04). Corrected 18 Nov: the next decisions are in `2026-11-18-identity-post-d-b3-verification-next-gates/` | File 03 §2 to §3, file 04 |
 | 9 | Not performed | See the list below | File 03 §4 |
 
 ## Required statements
