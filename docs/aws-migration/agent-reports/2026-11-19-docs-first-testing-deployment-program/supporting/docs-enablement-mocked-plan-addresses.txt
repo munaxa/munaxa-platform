@@ -1,0 +1,114 @@
+# Docs Testing enablement: mocked plan addresses (terraform test -verbose, mocked AWS provider, NO AWS call)
+# munaxa-platform main 0f06836, Terraform 1.16.5, hashicorp/aws 6.67.0 (checksums verified), -var-file=envs/nonprod.tfvars
+# Baseline = main's nonprod.tfvars APPLIED into mocked state; image digests are placeholders (aaaa..., bbbb..., cccc..., dddd...).
+# Not proof of permissions or of the real plan: the owner's real plan must be compared with this list.
+
+## baseline_main (pass): baseline applied
+
+## docs_d1_images_services_off (pass): Plan: 42 to add, 0 to change, 0 to destroy.
+created aws_ecs_task_definition.docs_db_admin[0]
+created aws_ecs_task_definition.docs_provision[0]
+created aws_iam_role.docs_provision_execution[0]
+created aws_iam_role_policy.docs_provision_execution[0]
+created aws_vpc_security_group_egress_rule.alb_to_service["docs-api"]
+created aws_vpc_security_group_egress_rule.alb_to_service["docs-web"]
+created module.docs_api[0].aws_cloudwatch_log_group.this
+created module.docs_api[0].aws_ecs_task_definition.this
+created module.docs_api[0].aws_iam_role.execution
+created module.docs_api[0].aws_iam_role.task[0]
+created module.docs_api[0].aws_iam_role_policy.execution
+created module.docs_api[0].aws_iam_role_policy.task[0]
+created module.docs_api[0].aws_security_group.this
+created module.docs_api[0].aws_vpc_security_group_egress_rule.database[0]
+created module.docs_api[0].aws_vpc_security_group_egress_rule.https
+created module.docs_api[0].aws_vpc_security_group_egress_rule.to_services["docs-scanner"]
+created module.docs_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+created module.docs_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+created module.docs_api[0].aws_vpc_security_group_ingress_rule.from_callers["docs-web"]
+created module.docs_migrate[0].aws_cloudwatch_log_group.this
+created module.docs_migrate[0].aws_ecs_task_definition.this
+created module.docs_migrate[0].aws_iam_role.execution
+created module.docs_migrate[0].aws_iam_role_policy.execution
+created module.docs_migrate[0].aws_security_group.this
+created module.docs_migrate[0].aws_vpc_security_group_egress_rule.database[0]
+created module.docs_migrate[0].aws_vpc_security_group_egress_rule.https
+created module.docs_migrate[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+created module.docs_scanner[0].aws_cloudwatch_log_group.this
+created module.docs_scanner[0].aws_ecs_task_definition.this
+created module.docs_scanner[0].aws_iam_role.execution
+created module.docs_scanner[0].aws_iam_role_policy.execution
+created module.docs_scanner[0].aws_security_group.this
+created module.docs_scanner[0].aws_vpc_security_group_egress_rule.https
+created module.docs_scanner[0].aws_vpc_security_group_ingress_rule.from_callers["docs-api"]
+created module.docs_web[0].aws_cloudwatch_log_group.this
+created module.docs_web[0].aws_ecs_task_definition.this
+created module.docs_web[0].aws_iam_role.execution
+created module.docs_web[0].aws_iam_role_policy.execution
+created module.docs_web[0].aws_security_group.this
+created module.docs_web[0].aws_vpc_security_group_egress_rule.https
+created module.docs_web[0].aws_vpc_security_group_egress_rule.to_services["docs-api"]
+created module.docs_web[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+
+## docs_d2_session_up (pass): Plan: 62 to add, 0 to change, 0 to destroy.
+created aws_acm_certificate_validation.main[0]
+created aws_ecs_task_definition.docs_db_admin[0]
+created aws_ecs_task_definition.docs_provision[0]
+created aws_iam_role.docs_provision_execution[0]
+created aws_iam_role_policy.docs_provision_execution[0]
+created aws_lb.main[0]
+created aws_lb_listener.http[0]
+created aws_lb_listener.https[0]
+created aws_lb_listener_rule.control_admin_refused[0]
+created aws_lb_listener_rule.control_api_refused[0]
+created aws_lb_listener_rule.operator_refused[0]
+created aws_vpc_security_group_egress_rule.alb_to_service["docs-api"]
+created aws_vpc_security_group_egress_rule.alb_to_service["docs-web"]
+created module.docs_api[0].aws_cloudwatch_log_group.this
+created module.docs_api[0].aws_ecs_service.this[0]
+created module.docs_api[0].aws_ecs_task_definition.this
+created module.docs_api[0].aws_iam_role.execution
+created module.docs_api[0].aws_iam_role.task[0]
+created module.docs_api[0].aws_iam_role_policy.execution
+created module.docs_api[0].aws_iam_role_policy.task[0]
+created module.docs_api[0].aws_lb_listener_rule.this["70"]
+created module.docs_api[0].aws_lb_target_group.this[0]
+created module.docs_api[0].aws_security_group.this
+created module.docs_api[0].aws_service_discovery_service.this[0]
+created module.docs_api[0].aws_vpc_security_group_egress_rule.database[0]
+created module.docs_api[0].aws_vpc_security_group_egress_rule.https
+created module.docs_api[0].aws_vpc_security_group_egress_rule.to_services["docs-scanner"]
+created module.docs_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+created module.docs_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+created module.docs_api[0].aws_vpc_security_group_ingress_rule.from_callers["docs-web"]
+created module.docs_migrate[0].aws_cloudwatch_log_group.this
+created module.docs_migrate[0].aws_ecs_task_definition.this
+created module.docs_migrate[0].aws_iam_role.execution
+created module.docs_migrate[0].aws_iam_role_policy.execution
+created module.docs_migrate[0].aws_security_group.this
+created module.docs_migrate[0].aws_vpc_security_group_egress_rule.database[0]
+created module.docs_migrate[0].aws_vpc_security_group_egress_rule.https
+created module.docs_migrate[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+created module.docs_scanner[0].aws_cloudwatch_log_group.this
+created module.docs_scanner[0].aws_ecs_service.this[0]
+created module.docs_scanner[0].aws_ecs_task_definition.this
+created module.docs_scanner[0].aws_iam_role.execution
+created module.docs_scanner[0].aws_iam_role_policy.execution
+created module.docs_scanner[0].aws_security_group.this
+created module.docs_scanner[0].aws_service_discovery_service.this[0]
+created module.docs_scanner[0].aws_vpc_security_group_egress_rule.https
+created module.docs_scanner[0].aws_vpc_security_group_ingress_rule.from_callers["docs-api"]
+created module.docs_web[0].aws_cloudwatch_log_group.this
+created module.docs_web[0].aws_ecs_service.this[0]
+created module.docs_web[0].aws_ecs_task_definition.this
+created module.docs_web[0].aws_iam_role.execution
+created module.docs_web[0].aws_iam_role_policy.execution
+created module.docs_web[0].aws_lb_listener_rule.this["71"]
+created module.docs_web[0].aws_lb_target_group.this[0]
+created module.docs_web[0].aws_security_group.this
+created module.docs_web[0].aws_vpc_security_group_egress_rule.https
+created module.docs_web[0].aws_vpc_security_group_egress_rule.to_services["docs-api"]
+created module.docs_web[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+created module.identity[0].aws_ecs_service.this[0]
+created module.identity[0].aws_lb_listener_rule.this["40"]
+created module.identity[0].aws_lb_listener_rule.this["50"]
+created module.identity[0].aws_lb_target_group.this[0]
