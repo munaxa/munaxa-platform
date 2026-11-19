@@ -111,6 +111,7 @@ ENDPOINTS = {"sts": f"https://sts.{REGION}.amazonaws.com",
              "rds": f"https://rds.{REGION}.amazonaws.com"}
 PHASE = "preflight"
 CLI_HOME = None
+WRITTEN = []  # secrets this run has written (named in an ABORT after a successful earlier write)
 
 
 def say(line):
@@ -124,7 +125,9 @@ def cleanup():
 
 def stop(reason):
     say(f"ABORT {reason}")
-    if PHASE == "write-sent":
+    if WRITTEN:
+        say("ABORT WRITTEN_EARLIER_IN_THIS_RUN " + " ".join(n.split("/")[-1] for n in WRITTEN))
+    if PHASE == "write-sent" or WRITTEN:
         say("ABORT AFTER_WRITE_ATTEMPT: send these ABORT lines to Claude before doing anything else")
     else:
         say("NOTHING WRITTEN BY THIS STEP")
@@ -247,12 +250,12 @@ def pg_url_ok(url, role, host):
     """The shape docs-owner-password.sql and Prisma accept: one host, the tenant database, no override."""
     try:
         u = urlsplit(url)
+        return (u.scheme == "postgresql" and u.username == role and u.password is not None
+                and HEX64.fullmatch(u.password) is not None and u.hostname == host and u.port == 5432
+                and u.path == f"/{TENANT_DB}" and u.query == "sslmode=require" and u.fragment == ""
+                and url.count("@") == 1)
     except ValueError:
         return False
-    return (u.scheme == "postgresql" and u.username == role and u.password is not None
-            and HEX64.fullmatch(u.password) is not None and u.hostname == host and u.port == 5432
-            and u.path == f"/{TENANT_DB}" and u.query == "sslmode=require" and u.fragment == ""
-            and url.count("@") == 1)
 
 
 def catalogue(tenant_id, database_url):
@@ -391,6 +394,7 @@ def write(name, value, expected_previous):
         want[expected_previous] = ["AWSPREVIOUS"]
     if {v: s for v, s in vs.items() if s} != want:
         stop(f"LABELS_UNEXPECTED_AFTER_WRITE {name}")
+    WRITTEN.append(name)
     PHASE = "verified"
     return token
 
@@ -550,6 +554,7 @@ if MODE == "bundles":
             vids[name] = write(name, value, None)
     tid = tenant_of(api["TENANT_CATALOGUE"])
     mail = "resend" if resend_ok(api["MAIL_RESEND_API_KEY"]) else "placeholder"
+    ctl = "mxc" if control_ok(api["CONTROL_PLANE_TOKEN"]) else "placeholder"
     del op, mig, api
     cleanup()
     say("BUNDLES VERIFIED")
@@ -557,7 +562,7 @@ if MODE == "bundles":
         say(f"version_id      {name.split('/')[-1]} {vids[name]}")
     say(f"tenant_id       {tid}   (not a secret: Control needs it for the Docs subscription)")
     say(f"mail_key        {mail}")
-    say("control_token   placeholder (replace-key CONTROL_PLANE_TOKEN after Control issues the credential)")
+    say(f"control_token   {ctl}" + ("   (replace-key CONTROL_PLANE_TOKEN after Control issues the credential)" if ctl == "placeholder" else ""))
     say("SEND CLAUDE     the version_id, tenant_id and mail_key lines above, nothing else")
     sys.exit(0)
 
@@ -618,8 +623,12 @@ if MODE == "provision-create":
     pw = hidden("Their password, 16 to 256 characters (hidden): ")
     if hidden("The same password again (hidden): ") != pw:
         stop("PASSWORDS_DIFFER")
-    if not (16 <= len(pw) <= 256) or pw.strip() != pw:
+    # Docs' password policy (password-policy.ts): length in UTF-16 units, and no identifier of 4 or
+    # more characters (email, display name) inside the password, case-insensitive.
+    if not (16 <= len(pw.encode("utf-16-le")) // 2 <= 256) or pw.strip() != pw:
         stop("PASSWORD_LENGTH_OR_SPACES")
+    if any(len(i.strip()) >= 4 and i.strip().lower() in pw.lower() for i in (email, name)):
+        stop("PASSWORD_CONTAINS_EMAIL_OR_NAME")
     confirm("CREATE", f"create {PROVISION}")
     value = json.dumps({"TENANT_ID": tid, "ADMIN_EMAIL": email, "ADMIN_NAME": name, "ADMIN_PASSWORD": pw},
                        separators=(",", ":"), ensure_ascii=True)

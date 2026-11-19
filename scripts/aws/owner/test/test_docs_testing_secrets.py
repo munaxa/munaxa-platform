@@ -226,6 +226,8 @@ class DocsTestingSecretsTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("ABORT AWS_ERROR put-secret-value InternalServiceError", out)
         self.assertIn("AFTER_WRITE_ATTEMPT", out)
+        self.assertIn("ABORT WRITTEN_EARLIER_IN_THIS_RUN docs-operator", out)
+        self.assertNotIn("NOTHING WRITTEN", out)
         app_pw = self.h.current(OP)["EDMS_APP_PASSWORD"]
         self.assertIsNone(self.h.current(MIG))
         rc, out = self.h.run("bundles", answers=["FILL", RESEND])
@@ -310,7 +312,11 @@ class DocsTestingSecretsTest(unittest.TestCase):
         self.assertIn("PASSWORDS_DIFFER", out)
         rc, out = self.h.run("provision-create", answers=["admin@example.test", "Test Admin", "short", "short", "CREATE"])
         self.assertIn("PASSWORD_LENGTH_OR_SPACES", out)
+        pw = "my TEST ADMIN password 9"
+        rc, out = self.h.run("provision-create", answers=["admin@example.test", "Test Admin", pw, pw, "CREATE"])
+        self.assertIn("PASSWORD_CONTAINS_EMAIL_OR_NAME", out)
         self.assertEqual(len(self.puts()), n)
+        self.assertNotIn(PROV, self.h.secrets())
 
     def test_status_prints_no_value(self):
         self.fill(resend="")
