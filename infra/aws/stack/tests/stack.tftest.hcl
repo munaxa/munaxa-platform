@@ -237,6 +237,27 @@ run "a_malformed_access_setting_is_refused" {
   expect_failures = [var.operator_access]
 }
 
+# Withdrawn digests (variables.tf): the vulnerable Control a24c568 images can never be pinned.
+run "a_withdrawn_control_image_is_refused" {
+  command = plan
+  variables {
+    images = {
+      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:d6bf8c3c9bdd9b2d6bf67e16412f9a1bfdda19fdf67ff47cee627c63c41b7ce1"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "a_withdrawn_identity_image_is_refused" {
+  command = plan
+  variables {
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:848d33c086ae72f6b478bc605b97e64628dcae00477e751a170847b7ea565c97"
+    }
+  }
+  expect_failures = [var.images]
+}
+
 run "an_image_tag_is_refused" {
   command = plan
   variables {
