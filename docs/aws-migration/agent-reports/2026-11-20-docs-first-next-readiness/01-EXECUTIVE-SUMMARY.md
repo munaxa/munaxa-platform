@@ -59,3 +59,6 @@ Evidence tags: **[V]** verified live today (read-only AWS or GitHub), **[T]** te
 ## Next owner action
 
 **A-1:** approve Identity Stage E for a window of your choice **after** the rotation check at about 00:30 UTC on 21 Nov (03:30 Amman) reports success. A-2 (merges) can be done in parallel.
+
+
+> **Update 20 Nov 23:20 UTC:** control#10 was closed without merging. It was replaced by [control#11](https://github.com/munaxa/munaxa-control/pull/11) (Alpine base; fixes the 7 HIGH CVEs and the `effect` advisory), which belongs to the thread "Fix image vulnerabilities across all apps". control#11 is the source for A-5C.

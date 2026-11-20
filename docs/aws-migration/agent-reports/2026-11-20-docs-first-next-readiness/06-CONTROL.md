@@ -117,3 +117,6 @@ From the C-2 state, a session with control-api and portal at 1 (and identity 1) 
 - CT-02: the subject allow-list changes need an apply.
 
 Neither blocks Testing.
+
+
+> **Update 20 Nov 23:20 UTC:** control#10 was closed without merging. It was replaced by [control#11](https://github.com/munaxa/munaxa-control/pull/11) (Alpine base; fixes the 7 HIGH CVEs and the `effect` advisory), which belongs to the thread "Fix image vulnerabilities across all apps". control#11 is the source for A-5C.

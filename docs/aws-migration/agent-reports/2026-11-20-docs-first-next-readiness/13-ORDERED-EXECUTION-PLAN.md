@@ -18,7 +18,7 @@ Each step after step 1 needs the owner's yes for that step (file 12). Claude pre
 
 1. **Stage E before C-2.** C-2 changes the db-admin task definition, and the E-1 guard checks db-admin against the Stage E manifest (file 05 §1). If C-2 must go first, its PR also updates `envs/nonprod.stage-e-tasks.json`.
 2. **A-3 before A-5.** The Docs release pushes `migrate`, which needs the repository (blocker 1).
-3. **docs#179 and control#10 before their releases.** This gives a reproducible Docs base and clean Control images.
+3. **docs#179 and control#11 (which replaced control#10) before their releases.** This gives a reproducible Docs base and clean Control images.
 4. **A-5C before C-1.** Pin the new Control digests once, instead of pinning the vulnerable `a24c568` and replacing it.
 5. **A-4C before C-2.** C-2 pins the Control bundle version ids, and db-admin reads the Control URLs.
 6. **Each config change is its own plan, declaration (`expected-changes.json`) and apply with services off.** The session workflow refuses task-definition changes.

@@ -42,3 +42,6 @@ GHSA-7589-6fvf-x4pw (high, `effect` <= 3.22.0, reached through `prisma > @prisma
 | platform | no | n/a |
 
 Assessment [E]: `@prisma/config` loads the Prisma configuration in the CLI (build and the migrate image), not request input, so exposure to the ReDoS is low; the override removes it anyway. The next PR in identity, work or school will fail CI until the same override is added.
+
+
+> **Update 20 Nov 23:20 UTC:** control#10 was closed without merging. It was replaced by [control#11](https://github.com/munaxa/munaxa-control/pull/11) (Alpine base; fixes the 7 HIGH CVEs and the `effect` advisory), which belongs to the thread "Fix image vulnerabilities across all apps". control#11 is the source for A-5C.
