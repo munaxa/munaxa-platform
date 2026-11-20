@@ -34,7 +34,7 @@ Projection against the US$50 Testing target [E]: idle about US$12 to 13 a month 
 | K-1 | Rotation still fails after the DB is available | low / blocks Stage E | file 03 §6; AWSCURRENT stays valid | NEEDS VERIFICATION |
 | K-2 | A late scheduled `down` lands inside a session | high if the window starts early / session torn down mid-migrate | P-9: start after that morning's run, 13:00 to 18:30 Amman | mitigated by procedure |
 | K-3 | Control release on Debian keeps 6 of 7 HIGH | certain with control#10 | control#11 (Alpine); scan gate | NEEDS VERIFICATION (release) |
-| K-4 | control#11 image job 401 from GitHub Packages | certain until fixed / blocks A-5C | A-2G | **BLOCKED (owner)** |
+| K-4 | control#11 image job red | was certain / blocks A-5C | the first 401 was my CI wiring bug (token env on the wrong step), fixed in `ee9caa7` by another project session; the job is still red on `98d7583`, and that session is working on it | NEEDS VERIFICATION |
 | K-5 | Docs release shows 1 HIGH (glibc) | likely / policy | D-G1 | owner decision |
 | K-6 | Alpine `apk add` takes current r-releases (libssl3/libcrypto3 3.5.9-r1 in CI) | medium / reproducibility | zlib pinned exactly; verify-image.sh checks the package set; digests recorded at publish | accepted |
 | K-7 | Hand-edited lockfiles (identity#21, work#33, school#26) | low / CI catches | `pnpm install --frozen-lockfile` in CI | see file 02 |
