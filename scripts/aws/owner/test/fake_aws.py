@@ -67,6 +67,13 @@ def main():
         if pf["seen"] == pf["nth"]:
             fail(pf["code"], op)
 
+    sf = s.get("put_store_then_fail_at")
+    store_then_fail = False
+    if sf and service == "secretsmanager" and op == "put-secret-value":
+        sf["seen"] = sf.get("seen", 0) + 1
+        save(s)
+        store_then_fail = sf["seen"] == sf["nth"]
+
     if service == "sts" and op == "get-caller-identity":
         print(json.dumps({"Account": s.get("account", ACCOUNT), "Arn": f"arn:aws:iam::{s.get('account', ACCOUNT)}:root", "UserId": ACCOUNT}))
         return
@@ -88,8 +95,11 @@ def main():
 
     if op == "describe-secret":
         name, sec = find(req["SecretId"])
-        print(json.dumps({"ARN": sec["arn"], "Name": name, "KmsKeyId": sec["kms"],
-                          "VersionIdsToStages": {k: v for k, v in stages(sec).items() if v}}))
+        meta = {"ARN": sec["arn"], "Name": name, "KmsKeyId": sec["kms"],
+                "VersionIdsToStages": {k: v for k, v in stages(sec).items() if v}}
+        if sec.get("tags"):
+            meta["Tags"] = sec["tags"]
+        print(json.dumps(meta))
     elif op == "list-secret-version-ids":
         name, sec = find(req["SecretId"])
         print(json.dumps({"ARN": sec["arn"], "Name": name,
@@ -116,13 +126,15 @@ def main():
                 v["stages"].append("AWSPREVIOUS")
         sec["versions"].append({"id": req["ClientRequestToken"], "string": req["SecretString"], "stages": ["AWSCURRENT"]})
         save(s)
+        if store_then_fail:
+            fail("RequestTimeout", op)  # stored, but the CLI reports an error (a lost response)
         print(json.dumps({"ARN": sec["arn"], "Name": name, "VersionId": req["ClientRequestToken"], "VersionStages": ["AWSCURRENT"]}))
     elif op == "create-secret":
         if req["Name"] in s["secrets"]:
             fail("ResourceExistsException", op)
         uuid.UUID(req["ClientRequestToken"], version=4)
         arn = f"arn:aws:secretsmanager:{REGION}:{ACCOUNT}:secret:{req['Name']}-AbCdEf"
-        s["secrets"][req["Name"]] = {"arn": arn, "kms": req["KmsKeyId"],
+        s["secrets"][req["Name"]] = {"arn": arn, "kms": req["KmsKeyId"], "tags": req.get("Tags", []),
                                      "versions": [{"id": req["ClientRequestToken"], "string": req["SecretString"], "stages": ["AWSCURRENT"]}]}
         save(s)
         print(json.dumps({"ARN": arn, "Name": req["Name"], "VersionId": req["ClientRequestToken"]}))

@@ -338,6 +338,77 @@ class DocsTestingSecretsTest(unittest.TestCase):
                    "PWD", "SHLVL", "_"}
         self.assertLessEqual(names, allowed, names - allowed)
 
+    # ---- added 20 Nov: review findings 4 and 6 ---------------------------------------------
+    def test_write_stored_but_cli_error_resumes_without_a_second_version(self):
+        # The docs-migrate PutSecretValue is stored, but the CLI reports an error (a lost response).
+        _set_nth_store_then_fail(self.h, nth=2)
+        rc, out = self.h.run("bundles", answers=["FILL", RESEND])
+        self.assertEqual(rc, 1)
+        self.assertIn("ABORT AWS_ERROR put-secret-value RequestTimeout", out)
+        self.assertIn("ABORT AFTER_WRITE_ATTEMPT", out)
+        self.assertIsNotNone(self.h.current(MIG))
+        rc, out = self.h.run("bundles", answers=["FILL", RESEND])
+        self.assertEqual(rc, 0, out)
+        for name in (OP, MIG, API):
+            self.assertEqual(len(self.h.secrets()[name]["versions"]), 1, name)
+        self.assertEqual(urlsplit(self.h.current(API)["DATABASE_URL"]).password, self.h.current(OP)["EDMS_APP_PASSWORD"])
+        self.assertClean(out)
+
+    def test_second_replace_moves_awsprevious(self):
+        self.fill(resend="")
+        rc, out = self.h.run("replace-key", "MAIL_RESEND_API_KEY", answers=["REPLACE", RESEND])
+        self.assertEqual(rc, 0, out)
+        rc, out = self.h.run("replace-key", "CONTROL_PLANE_TOKEN", answers=["REPLACE", CONTROL])
+        self.assertEqual(rc, 0, out)
+        stages = [v["stages"] for v in self.h.secrets()[API]["versions"]]
+        self.assertEqual(stages, [[], ["AWSPREVIOUS"], ["AWSCURRENT"]])
+        cur = self.h.current(API)
+        self.assertEqual((cur["MAIL_RESEND_API_KEY"], cur["CONTROL_PLANE_TOKEN"]), (RESEND, CONTROL))
+        self.assertClean(out)
+
+    def test_second_run_while_one_holds_the_lock_stops_before_any_aws_call(self):
+        import fcntl
+        fd = os.open("/tmp/docs-testing-secrets.lock", os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            rc, out = self.h.run("status")
+        finally:
+            os.close(fd)
+        self.assertEqual(rc, 1)
+        self.assertIn("ABORT ANOTHER_RUN_IN_PROGRESS", out)
+        self.assertEqual(self.h.ops(), [])
+
+    def test_shell_tracing_does_not_print_the_container_token(self):
+        with open(self.h.answers, "w") as f:
+            f.write("")
+        env = {"PATH": "/usr/bin:/bin", "AWS_CONTAINER_CREDENTIALS_FULL_URI": "http://127.0.0.1:1338/fake",
+               "AWS_CONTAINER_AUTHORIZATION_TOKEN": "FAKEVALUE-container-token-0123456789"}
+        p = subprocess.run(["/bin/bash", "-x", self.h.script, "status"], env=env, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, timeout=120)
+        out = p.stdout.decode()
+        self.assertEqual(p.returncode, 0, out)
+        self.assertNotIn("FAKEVALUE", out)
+
+    def test_provision_delete_refuses_a_secret_without_the_purpose_tag(self):
+        self.fill()
+        s = json.load(open(self.h.state))
+        s["secrets"][PROV] = {"arn": f"arn:aws:secretsmanager:eu-central-1:229251310592:secret:{PROV}-ZzZzZz",
+                              "kms": KMS, "versions": [{"id": "11111111-1111-4111-8111-111111111111",
+                                                        "string": "{}", "stages": ["AWSCURRENT"]}]}
+        json.dump(s, open(self.h.state, "w"))
+        rc, out = self.h.run("provision-delete", answers=["DELETE"])
+        self.assertEqual(rc, 1)
+        self.assertIn("PROVISION_SECRET_NOT_MADE_BY_THIS_SCRIPT", out)
+        self.assertIn(PROV, self.h.secrets())
+
+
+def _set_nth_store_then_fail(h, nth):
+    """Store the nth PutSecretValue, then make the CLI report an error for it (counted by fake_aws.py)."""
+    s = json.load(open(h.state))
+    s["faults"] = {}
+    s["put_store_then_fail_at"] = {"nth": nth}
+    json.dump(s, open(h.state, "w"))
+
 
 def _set_nth_put_fault(h, nth, code):
     """Let nth-1 PutSecretValue calls through, fail the nth once (counted by fake_aws.py)."""

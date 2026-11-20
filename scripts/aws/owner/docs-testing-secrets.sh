@@ -38,7 +38,13 @@
 #     An error prints `ABORT <reason>` with at most an AWS error code, never a message or traceback.
 #   - Every write is one PutSecretValue (or CreateSecret) with a ClientRequestToken made once per run,
 #     followed by a read-back check of the exact value and the labels.
-#   - Nothing is ever deleted except the one-run provision secret, and only in provision-delete.
+#   - Nothing is ever deleted except the one-run provision secret, and only in provision-delete, and
+#     only when it carries this script's Purpose tag.
+#   - One run at a time: a run holds an exclusive lock (/tmp/docs-testing-secrets.lock) for its whole
+#     life, so a second run in another CloudShell tab of the same environment stops before any AWS
+#     call (ANOTHER_RUN_IN_PROGRESS). Runs from two different CloudShell environments are not locked
+#     against each other; every write re-reads the labels first and checks them again afterwards, so
+#     such a race stops with AFTER_WRITE and needs Claude's help to repair, but never splits a password.
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
   echo "ABORT SOURCED (run it as: /bin/bash -p ./docs-testing-secrets.sh <mode>)"
   return 1
@@ -69,7 +75,7 @@ exec /usr/bin/env -i PATH=/usr/bin:/bin LANG=C.UTF-8 LC_ALL=C.UTF-8 MODE="$MODE"
   ${AWS_CONTAINER_AUTHORIZATION_TOKEN:+AWS_CONTAINER_AUTHORIZATION_TOKEN="$AWS_CONTAINER_AUTHORIZATION_TOKEN"} \
   ${AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE:+AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE="$AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE"} \
   /usr/bin/python3 -I -W ignore - <<'PY'
-import ctypes, getpass, json, logging, os, re, secrets, shutil, stat, subprocess, sys, tempfile, uuid, warnings
+import ctypes, fcntl, getpass, json, logging, os, re, secrets, shutil, stat, subprocess, sys, tempfile, uuid, warnings
 from urllib.parse import urlsplit
 
 warnings.simplefilter("ignore")
@@ -92,6 +98,7 @@ BUCKET = "munaxa-nonprod-docs-files-229251310592"
 SLUG, TENANT_NAME, TENANT_DB = "munaxa-internal", "Munaxa Internal", "edms_munaxa_internal"
 API, OPERATOR, MIGRATE = f"{PREFIX}/docs-api", f"{PREFIX}/docs-operator", f"{PREFIX}/docs-migrate"
 PROVISION = f"{PREFIX}/docs-provision/{SLUG}"
+PROVISION_PURPOSE = "docs-provision-one-run"
 # The exact keys infra/aws/stack/docs.tf injects (docs_app_keys, docs_operator_keys, docs_migrate_keys,
 # docs_provision_keys). ECS refuses to start a task whose bundle lacks one.
 API_KEYS = ["DATABASE_URL", "TENANT_CATALOGUE", "REDIS_URL", "REDIS_PASSWORD", "JWT_ACCESS_SECRET",
@@ -437,6 +444,14 @@ def db_host():
 
 
 # ---- tooling: no AWS call yet -------------------------------------------------------------------
+LOCK_PATH = "/tmp/docs-testing-secrets.lock"
+try:
+    _lock = os.open(LOCK_PATH, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    fcntl.flock(_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    stop("ANOTHER_RUN_IN_PROGRESS (one run at a time; wait for the other tab to finish)")
+except OSError:
+    stop("LOCK_UNAVAILABLE")
 os.close(memfd())
 AWS = find_cli()
 if not (os.environ.get("AWS_CONTAINER_CREDENTIALS_FULL_URI") or os.environ.get("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI")):
@@ -639,7 +654,7 @@ if MODE == "provision-create":
         "Name": PROVISION, "KmsKeyId": KMS_KEY, "SecretString": value, "ClientRequestToken": token,
         "Description": "One-run docs-provision input (owner, docs-testing-secrets.sh); delete after the run",
         "Tags": [{"Key": "Project", "Value": "munaxa"}, {"Key": "Environment", "Value": "nonprod"},
-                 {"Key": "Purpose", "Value": "docs-provision-one-run"}]})
+                 {"Key": "Purpose", "Value": PROVISION_PURPOSE}]})
     if out.get("Name") != PROVISION or out.get("VersionId") != token:
         stop("CREATE_RESPONSE_UNEXPECTED")
     meta = describe(PROVISION)
@@ -661,6 +676,9 @@ if MODE == "provision-delete":
         say("PROVISION SECRET ABSENT   nothing to delete")
         cleanup()
         sys.exit(0)
+    tags = {t.get("Key"): t.get("Value") for t in meta.get("Tags", []) if isinstance(t, dict)}
+    if tags.get("Purpose") != PROVISION_PURPOSE:
+        stop("PROVISION_SECRET_NOT_MADE_BY_THIS_SCRIPT (no Purpose tag; nothing deleted)")
     confirm("DELETE", f"delete {PROVISION} now, without a recovery window")
     PHASE = "write-sent"
     out = call("secretsmanager", "delete-secret", {"SecretId": meta["ARN"], "ForceDeleteWithoutRecovery": True})
