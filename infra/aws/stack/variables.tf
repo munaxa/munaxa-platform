@@ -189,22 +189,13 @@ variable "images" {
     error_message = "images.docs_migrate is the munaxa-docs/migrate repository, by digest."
   }
 
-  # Withdrawn images: published, still in ECR (tags are immutable), and never to be pinned again.
-  # Each is withdrawn on its own ECR scan or an owner decision (report
-  # 2026-11-20-rds-rotation-and-docs-first-approvals, file 04):
-  #   munaxa-control/{api,migrate,portal} a24c568  7 HIGH each (apt, util-linux, zlib, glibc)
-  #   munaxa-work/api b490b25                      CRITICAL CVE-2026-4738 (zlib)
-  #   munaxa-identity/{api,migrate} 5a5994f        CRITICAL CVE-2026-4738 (zlib)
-  #   munaxa-identity/{api,migrate} 5277d71        before the security hardening (identity#7 to #17)
-  # Matched by digest only, so a repository change cannot dodge it.
+  # Withdrawn images (withdrawn-images.tf): published, still in ECR (tags are immutable), and never
+  # to be pinned again. Matched by digest only, so naming another repository cannot dodge it.
   validation {
     condition = alltrue([
-      for v in values(var.images) : length(regexall(
-        "@sha256:(d6bf8c3c9bdd9b2d6bf67e16412f9a1bfdda19fdf67ff47cee627c63c41b7ce1|203079c9ecda08a16803a9fc9785f51aa5930706dd1c119a7edc3aceb2822c18|5a76933c875444c7f6a4067c6219eef4c25698b4e6e924a9b2a5fd69e89c63b1|39a89a6fa02c556a7c135c6b5fd801ba563c0bc62883ab2f8cd863db929e3d2e|848d33c086ae72f6b478bc605b97e64628dcae00477e751a170847b7ea565c97|df44505d9ec562020c659b47c58289ef88d7533aa7e9ed23d74f237a0d6c3ada|71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156|d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820)$",
-        v
-      )) == 0
+      for v in values(var.images) : !contains(keys(local.withdrawn_image_digests), try(regex("sha256:[0-9a-f]{64}$", v), ""))
     ])
-    error_message = "An image is a withdrawn digest (Control a24c568, Work api b490b25, Identity 5a5994f or 5277d71). Release a new image and pin its digest."
+    error_message = "An image is a withdrawn digest (withdrawn-images.tf: Control a24c568, Work b490b25, Identity 5a5994f or 5277d71). Release a new image, verified and scanned, and pin its digest."
   }
 }
 
