@@ -253,6 +253,11 @@ write one JSON secret version with the keys listed in `stack/data.tf`.
   answer stores a marked placeholder too (Docs then starts, but mail fails until `replace-key
   MAIL_RESEND_API_KEY`). The one-run `docs-provision/<slug>` secret: `provision-create`, then
   `provision-delete` after the run. Offline tests: `scripts/aws/owner/test/`.
+- **Control (Testing):** `control-migrate` (`DATABASE_MIGRATION_URL`, `control_owner`) and
+  `control-api` (`DATABASE_URL`, `control_app`) are filled by the owner in CloudShell with
+  `scripts/aws/owner/control-testing-secrets.sh bundles`, which generates both hex passwords inside
+  the script and prints only the two version ids. Then add `control` to `db_bootstrap_products` and
+  pin both bundles in the same PR, so db-admin creates the `control` database and roles.
 - Then pin each bundle with `secret_version_ids` in a PR.
 
 ### G5. Images
