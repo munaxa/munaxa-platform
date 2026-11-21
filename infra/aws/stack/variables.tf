@@ -188,6 +188,15 @@ variable "images" {
     condition     = var.images.docs_migrate == "" || can(regex("/munaxa-docs/migrate@sha256:", var.images.docs_migrate))
     error_message = "images.docs_migrate is the munaxa-docs/migrate repository, by digest."
   }
+
+  # Withdrawn images (withdrawn-images.tf): published, still in ECR (tags are immutable), and never
+  # to be pinned again. Matched by digest only, so naming another repository cannot dodge it.
+  validation {
+    condition = alltrue([
+      for v in values(var.images) : !contains(keys(local.withdrawn_image_digests), try(regex("sha256:[0-9a-f]{64}$", v), ""))
+    ])
+    error_message = "An image is a withdrawn digest (withdrawn-images.tf: Control a24c568, Work b490b25, Identity 5a5994f or 5277d71). Release a new image, verified and scanned, and pin its digest."
+  }
 }
 
 variable "valkey_image" {
