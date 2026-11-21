@@ -219,7 +219,7 @@ run "operator_ranges_alone_open_the_host" {
   }
 }
 
-run "control_without_cloudflare_access_is_refused" {
+run "control_without_access_or_identity_mfa_is_refused" {
   command = plan
   variables {
     images = {
@@ -227,6 +227,41 @@ run "control_without_cloudflare_access_is_refused" {
     }
   }
   expect_failures = [var.operator_access]
+}
+
+run "control_with_identity_mfa_off_and_no_access_is_refused" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "mfa-nonprod-2026-11", mfa_policy = "off" }
+    images = {
+      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  }
+  expect_failures = [var.operator_access]
+}
+
+# The AWS-native default (../../OPERATOR-ACCESS.md): no Cloudflare Access, the operator host open
+# only from operator_cidrs at the ALB, and Control requiring Identity's mfa claim.
+run "control_runs_aws_native_without_cloudflare_access" {
+  command = plan
+  variables {
+    edge_enabled             = true
+    operator_cidrs           = ["203.0.113.7/32"]
+    identity_security_config = { mfa_primary_kid = "mfa-nonprod-2026-11", mfa_policy = "privileged", mfa_privileged_roles = ["control-operator-admin"] }
+    images = {
+      identity_api   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      control_api    = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      control_portal = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  }
+  assert {
+    condition     = local.operator_open && length(local.operator_access_environment) == 0 && local.control_require_mfa
+    error_message = "Without Access, operator ranges open the host, Control gets no OPERATOR_ACCESS_* setting and requires Identity MFA."
+  }
+  assert {
+    condition     = aws_lb_listener_rule.operator_refused[0].priority == 39
+    error_message = "Every other source on the operator host is refused by rule 39."
+  }
 }
 
 run "a_malformed_access_setting_is_refused" {

@@ -17,9 +17,13 @@ locals {
   routed   = var.edge_enabled
   listener = var.edge_enabled ? aws_lb_listener.https[0].arn : null
 
-  # The operator host is open only when something stands in front of it: Cloudflare Access, whose
-  # token Control verifies, or operator source ranges. Otherwise rule 39 refuses every request.
+  # The operator host is open only when something stands in front of it: operator source ranges
+  # at the ALB (the AWS-native default, ../OPERATOR-ACCESS.md) or the optional Cloudflare Access,
+  # whose token Control verifies. Otherwise rule 39 refuses every request.
   operator_open = var.operator_access != null || length(var.operator_cidrs) > 0
+  # Control refuses operator tokens without mfa: true whenever Identity enforces MFA. The
+  # operator_access validation makes this true whenever Control runs without Access.
+  control_require_mfa = var.identity_security_config != null && try(var.identity_security_config.mfa_policy, "off") != "off"
   operator_access_environment = var.operator_access == null ? {} : {
     OPERATOR_ACCESS_TEAM_DOMAIN = var.operator_access.team_domain
     OPERATOR_ACCESS_AUDIENCE    = var.operator_access.audience
@@ -360,7 +364,7 @@ module "control_api" {
     OPERATOR_AUTH_AUDIENCE     = "munaxa-control"
     OPERATOR_AUTH_PUBLIC_KEYS  = var.identity_public_keys
     OPERATOR_ORGANISATION_ID   = var.control_operator_organisation_id
-    OPERATOR_REQUIRE_MFA       = "false" # Identity issues no mfa claim yet (Identity ADR-0003)
+    OPERATOR_REQUIRE_MFA       = local.control_require_mfa ? "true" : "false"
     OPERATOR_SUBJECT_ALLOWLIST = join(",", var.control_operator_subjects)
     LICENCE_SIGNING_BACKEND    = "KMS"
     LICENCE_SIGNING_KMS_KEY_ID = aws_kms_key.licence[0].arn
@@ -467,7 +471,7 @@ module "control_portal" {
   desired_count     = var.desired_counts["control-portal"]
   routed            = local.routed
   listener_arn      = local.listener
-  health_check_path = "/healthz" # every other path answers 401 without an Access token
+  health_check_path = "/healthz" # answers without a session (and without an Access token when Access is used)
   routes = local.operator_open ? [
     { priority = 31, hosts = [var.hosts.operator], source_ips = var.operator_cidrs },
   ] : []

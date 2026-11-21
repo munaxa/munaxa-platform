@@ -11,6 +11,16 @@
 This is an intentional development-stage decision. It is **not** a claim that root is a recommended
 permanent or production operating model.
 
+> **21 Nov 2026 update (owner decision, thread "Replace Cloudflare Access with AWS-native operator
+> access"):** AWS IAM Identity Center is now the documented operator identity layer for AWS
+> (named users, MFA at every sign-in, `MunaxaAdministrator` / `MunaxaEngineering` /
+> `MunaxaReadOnly`, the Claude connector on `MunaxaReadOnly`), and root becomes break-glass only.
+> Items F-1, F-2, F-3 (assignment), F-5 and F-7 below are brought forward into
+> [OPERATOR-ACCESS.md](OPERATOR-ACCESS.md) as owner steps O-IAM-1 to O-IAM-6. **Nothing has been
+> created in AWS.** Until those owner steps are done, §1 remains the only working access method;
+> D-4 no longer forbids creating Identity Center for that purpose once the owner approves it.
+> F-4 and F-6 (deployment roles, production separation) are unchanged.
+
 ## 1. Development stage (now)
 
 ### 1.1 Access method

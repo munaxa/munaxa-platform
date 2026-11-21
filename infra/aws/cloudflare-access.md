@@ -1,4 +1,13 @@
-# Cloudflare Access for the Testing operator host
+# Cloudflare Access for the Testing operator host (OPTIONAL)
+
+> **21 Nov 2026: optional, not part of the deployment.** The owner decided that AWS is the hosting
+> and infrastructure security platform and that Cloudflare Access must not be required to deploy,
+> operate or reach any Munaxa environment. The default is AWS-native operator access:
+> [OPERATOR-ACCESS.md](OPERATOR-ACCESS.md) (IAM Identity Center for AWS; ALB source ranges plus
+> Munaxa Identity MFA for the Control operator console). Control and Terraform no longer require
+> `operator_access`; it stays supported as an extra layer. The rest of this file is the
+> 29 Oct design, kept for that optional use and as history. Where it says "required" or describes
+> MFA as missing in Identity, the 21 Nov decision and identity#7 (TOTP MFA) supersede it.
 
 **Status: design. Nothing here has been configured in Cloudflare or AWS.** Every step below is an
 owner action, behind the gates in [README.md](README.md). Production hostnames are not covered.
