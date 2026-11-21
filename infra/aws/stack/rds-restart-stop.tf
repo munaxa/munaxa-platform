@@ -9,8 +9,8 @@
 # database is stopped) has run. This stops it a fixed time AFTER the auto-start instead:
 #
 #   EventBridge rule (RDS-EVENT-0154 on this one instance) -> Step Functions state machine:
-#   wait var.rds_restart_stop_wait_seconds (default 2 h: two hourly rotation attempts; on 20 Nov the
-#   rotation succeeded 15 minutes after the auto-start) -> read the database -> stop it ONLY if no
+#   wait 2 h (definition.asl.json: two hourly rotation attempts; on 20 Nov the rotation succeeded
+#   15 minutes after the auto-start) -> read the database -> stop it ONLY if no
 #   nonprod ECS task runs AND no H-20 P/S schedule exists (a session owns the database then) ->
 #   record the secret's rotation metadata (DescribeSecret, never a value) -> StopDBInstance.
 #
@@ -109,7 +109,6 @@ resource "aws_sfn_state_machine" "rds_restart_stop" {
   type     = "STANDARD"
   role_arn = aws_iam_role.rds_restart_stop[0].arn
   definition = templatefile("${path.module}/rds-restart-stop/definition.asl.json", {
-    wait_seconds      = var.rds_restart_stop_wait_seconds
     db_identifier     = aws_db_instance.main.identifier
     cluster           = aws_ecs_cluster.main.name
     cleanup_name      = local.session_cleanup_name

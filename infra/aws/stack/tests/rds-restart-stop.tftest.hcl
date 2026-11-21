@@ -120,16 +120,6 @@ run "the_restart_stop_never_exists_in_prod" {
   expect_failures = [var.rds_restart_stop_enabled]
 }
 
-run "the_wait_is_bounded" {
-  command = plan
-
-  variables {
-    rds_restart_stop_wait_seconds = 600
-  }
-
-  expect_failures = [var.rds_restart_stop_wait_seconds]
-}
-
 run "enabled_restart_stop_is_scoped" {
   command = plan
 

@@ -23,7 +23,7 @@ CLUSTER = "munaxa-nonprod"
 CLEANUP = "munaxa-nonprod-session-cleanup"
 MASTER = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!db-c3ef5041-mock"
 WAIT = 7200
-VALUES = {"wait_seconds": str(WAIT), "db_identifier": DB, "cluster": CLUSTER, "cleanup_name": CLEANUP,
+VALUES = {"db_identifier": DB, "cluster": CLUSTER, "cleanup_name": CLEANUP,
           "master_secret_arn": MASTER}
 
 # Exactly what rds-restart-stop.tf allows (tests/rds-restart-stop.tftest.hcl checks the policy).

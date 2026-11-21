@@ -6,7 +6,7 @@
   "States": {
     "WaitForRotation": {
       "Type": "Wait",
-      "Seconds": ${wait_seconds},
+      "Seconds": 7200,
       "Next": "ReadDatabase"
     },
     "ReadDatabase": {
@@ -19,15 +19,11 @@
       "TimeoutSeconds": 30,
       "Retry": [
         {
-          "ErrorEquals": [
-            "Rds.DbInstanceNotFoundException"
-          ],
+          "ErrorEquals": ["Rds.DbInstanceNotFoundException"],
           "MaxAttempts": 0
         },
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "IntervalSeconds": 5,
           "MaxAttempts": 2,
           "BackoffRate": 2.0
@@ -35,9 +31,7 @@
       ],
       "Catch": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.error",
           "Next": "GuardFailed"
         }
@@ -119,9 +113,7 @@
       "TimeoutSeconds": 30,
       "Retry": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "IntervalSeconds": 5,
           "MaxAttempts": 2,
           "BackoffRate": 2.0
@@ -129,9 +121,7 @@
       ],
       "Catch": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.error",
           "Next": "GuardFailed"
         }
@@ -165,9 +155,7 @@
       "TimeoutSeconds": 30,
       "Retry": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "IntervalSeconds": 5,
           "MaxAttempts": 2,
           "BackoffRate": 2.0
@@ -175,9 +163,7 @@
       ],
       "Catch": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.error",
           "Next": "GuardFailed"
         }
@@ -195,9 +181,7 @@
       "TimeoutSeconds": 30,
       "Retry": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "IntervalSeconds": 5,
           "MaxAttempts": 2,
           "BackoffRate": 2.0
@@ -205,9 +189,7 @@
       ],
       "Catch": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.error",
           "Next": "GuardFailed"
         }
@@ -257,9 +239,7 @@
       "TimeoutSeconds": 30,
       "Retry": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "IntervalSeconds": 5,
           "MaxAttempts": 2,
           "BackoffRate": 2.0
@@ -267,9 +247,7 @@
       ],
       "Catch": [
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.rotationError",
           "Next": "StopDatabase"
         }
@@ -286,15 +264,11 @@
       "TimeoutSeconds": 30,
       "Retry": [
         {
-          "ErrorEquals": [
-            "Rds.InvalidDbInstanceStateException"
-          ],
+          "ErrorEquals": ["Rds.InvalidDbInstanceStateException"],
           "MaxAttempts": 0
         },
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "IntervalSeconds": 5,
           "MaxAttempts": 2,
           "BackoffRate": 2.0
@@ -302,16 +276,12 @@
       ],
       "Catch": [
         {
-          "ErrorEquals": [
-            "Rds.InvalidDbInstanceStateException"
-          ],
+          "ErrorEquals": ["Rds.InvalidDbInstanceStateException"],
           "ResultPath": "$.error",
           "Next": "AlreadyStopped"
         },
         {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
+          "ErrorEquals": ["States.ALL"],
           "ResultPath": "$.error",
           "Next": "GuardFailed"
         }

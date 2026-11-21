@@ -1,0 +1,452 @@
+# D-SSL probe evidence, 21 Nov 2026 (GitHub-hosted runner, munaxa-identity PR #22, closed unmerged).
+# Runs: 44899818400 (round 1), 44900002078 (round 2), 44900698548 (round 3; its last grep matched nothing, so the job ended 'failure' after printing the ldd output).
+# Excerpts copied from the job logs; timestamps and ANSI codes removed. No credential or secret is involved.
+
+## Round 1: Alpine package index (apk policy) and image contents
+3.24.4
+libcrypto3-3.5.9-r0
+libssl3-3.5.9-r0
+musl-1.2.6-r3
+musl-utils-1.2.6-r3
+zlib-1.3.2-r1
+libcrypto3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+  3.5.9-r1:
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+libssl3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+  3.5.9-r1:
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+openssl policy:
+  3.5.9-r1:
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+++ docker inspect --format '{{index .RepoDigests 0}}' node:22-alpine
+== node:22-alpine node@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+3.24.4
+libcrypto3-3.5.9-r0
+libssl3-3.5.9-r0
+zlib-1.3.2-r1
+libcrypto3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+  3.5.9-r1:
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+libssl3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+  3.5.9-r1:
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+++ docker inspect --format '{{index .RepoDigests 0}}' node:22-alpine3.23
+== node:22-alpine3.23 node@sha256:6868d4695b947ee120bffaa463fecd68cde370d7bfec92955e7c8ac576b4f475
+3.23.8
+libcrypto3-3.5.9-r0
+libssl3-3.5.9-r0
+zlib-1.3.2-r1
+libcrypto3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.23/main
+libssl3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.23/main
+++ docker inspect --format '{{index .RepoDigests 0}}' node:24-alpine
+== node:24-alpine node@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5
+3.24.4
+libcrypto3-3.5.9-r0
+libssl3-3.5.9-r0
+zlib-1.3.2-r1
+libcrypto3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+  3.5.9-r1:
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+libssl3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+  3.5.9-r1:
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+++ docker inspect --format '{{index .RepoDigests 0}}' alpine:3.23
+== alpine:3.23 alpine@sha256:469c9ea410b9215eaee7976ba6c0639039b444be8e5d638f7abbada189971eb2
+3.23.8
+libcrypto3-3.5.9-r0
+libssl3-3.5.9-r0
+zlib-1.3.2-r1
+libcrypto3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.23/main
+libssl3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.23/main
+++ docker inspect --format '{{index .RepoDigests 0}}' alpine:3.22
+== alpine:3.22 alpine@sha256:49340b346798875b5592e5d420241f2f9cfba5f47e62ebb1446a1b34734e898f
+3.22.8
+libcrypto3-3.5.9-r0
+libssl3-3.5.9-r0
+zlib-1.3.2-r1
+libcrypto3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.22/main
+libssl3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.22/main
+++ docker inspect --format '{{index .RepoDigests 0}}' alpine:edge
+== alpine:edge alpine@sha256:020dfcbaaf4cc1078bf2d9c7ba31a8466e334061dcd2f248001d68f79e52c000
+3.25.0_alpha20260805
+libcrypto3-3.5.7-r0
+libssl3-3.5.7-r0
+zlib-1.3.2-r0
+libcrypto3 policy:
+  3.5.7-r0:
+    lib/apk/db/installed
+  3.5.9-r1:
+    https://cdn.alpinelinux.org/edge/main
+libssl3 policy:
+  3.5.7-r0:
+    lib/apk/db/installed
+  3.5.9-r1:
+    https://cdn.alpinelinux.org/edge/main
+libcrypto3-3.5.9-r1 - Crypto library from openssl
+libssl3-3.5.9-r1 - SSL shared libraries
+openssl-3.5.9-r1 - Toolkit for Transport Layer Security (TLS)
+libssl3 policy:
+  3.5.9-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.23/main
+  3.5.9-r1:
+    https://dl-cdn.alpinelinux.org/alpine/edge/main
+[36;1mG=anchore/grype:v0.121.2@sha256:6a36234da13f9faa327306ac0b3dab3405cfa2b4eb20c8f904125a8707863913[0m
+[36;1mmkdir -p /tmp/db[0m
+[36;1mdocker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db "$G" db status || true[0m
+[36;1mfor img in node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a alpine:3.23 alpine:edge; do[0m
+[36;1m  echo "== grype $img"[0m
+[36;1m  docker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db -v /var/run/docker.sock:/var/run/docker.sock "$G" "$img" --only-fixed=false -o table 2>/dev/null | grep -Ei 'NAME|ssl|crypto' || true[0m
+[36;1mdone[0m
+[36;1mprintf 'FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a\nRUN apk add --no-cache zlib=1.4-r0 libssl3=3.5.9-r1 libcrypto3=3.5.9-r1\n' > /tmp/Dockerfile.cur[0m
+[36;1mdocker build -q -t probe:cur -f /tmp/Dockerfile.cur /tmp[0m
+[36;1mecho "== grype current pin (3.5.9-r1)"[0m
+[36;1mdocker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db -v /var/run/docker.sock:/var/run/docker.sock "$G" probe:cur -o json > /tmp/cur.json || true[0m
+[36;1mjq -r '.matches[] | select(.artifact.name|test("ssl|crypto")) | [.vulnerability.id,.vulnerability.severity,.artifact.name,.artifact.version,(.vulnerability.fix.state),(.vulnerability.fix.versions|join(","))] | @tsv' /tmp/cur.json | sort -u[0m
+[36;1mjq -r '.matches[] | select(.artifact.name|test("ssl|crypto")) | .vulnerability | [.id, (.urls // [] | join(" ")), (.description // "" | .[0:300])] | @tsv' /tmp/cur.json | sort -u[0m
+[36;1mprintf 'FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a\nRUN apk upgrade --no-cache libssl3 libcrypto3 zlib && apk info -v | grep -E "^(libssl3|libcrypto3|zlib)-"\n' > /tmp/Dockerfile.up[0m
+[36;1mdocker build --progress=plain -t probe:up -f /tmp/Dockerfile.up /tmp 2>&1 | tail -8[0m
+[36;1mecho "== grype after apk upgrade within the pinned base's branch"[0m
+[36;1mdocker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db -v /var/run/docker.sock:/var/run/docker.sock "$G" probe:up -o json > /tmp/up.json || true[0m
+[36;1mjq -r '.matches[] | [.vulnerability.id,.vulnerability.severity,.artifact.name,.artifact.version,(.vulnerability.fix.state),(.vulnerability.fix.versions|join(","))] | @tsv' /tmp/up.json | sort -u[0m
+Path:      /db/6/vulnerability.db
+Schema:    
+Built:     0001-01-01T00:00:00Z
+Status:    invalid
+[0000] ERROR database does not exist
+== grype node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+NAME                     INSTALLED   FIXED IN  TYPE  VULNERABILITY        SEVERITY  EPSS         RISK  
+libcrypto3               3.5.9-r0              apk   CVE-2026-124709      High      0.6% (48th)  0.4   
+libssl3                  3.5.9-r0              apk   CVE-2026-124709      High      0.6% (48th)  0.4   
+libcrypto3               3.5.9-r0    3.5.9-r1  apk   CVE-2026-95692       High      0.4% (39th)  0.3   
+libssl3                  3.5.9-r0    3.5.9-r1  apk   CVE-2026-95692       High      0.4% (39th)  0.3   
+libcrypto3               3.5.9-r0    3.5.9-r1  apk   CVE-2026-107496      High      0.3% (27th)  0.3   
+libssl3                  3.5.9-r0    3.5.9-r1  apk   CVE-2026-107496      High      0.3% (27th)  0.3   
+libcrypto3               3.5.9-r0    3.5.9-r1  apk   CVE-2026-95691       High      0.3% (21st)  0.2   
+libssl3                  3.5.9-r0    3.5.9-r1  apk   CVE-2026-95691       High      0.3% (21st)  0.2   
+libcrypto3               3.5.9-r0              apk   CVE-2026-107494      High      0.3% (22nd)  0.2   
+libssl3                  3.5.9-r0              apk   CVE-2026-107494      High      0.3% (22nd)  0.2   
+libcrypto3               3.5.9-r0    3.5.9-r1  apk   CVE-2026-88823       High      0.3% (19th)  0.2   
+libssl3                  3.5.9-r0    3.5.9-r1  apk   CVE-2026-88823       High      0.3% (19th)  0.2   
+libcrypto3               3.5.9-r0              apk   CVE-2026-121482      High      0.3% (18th)  0.2   
+libssl3                  3.5.9-r0              apk   CVE-2026-121482      High      0.3% (18th)  0.2   
+libcrypto3               3.5.9-r0              apk   CVE-2026-95690       Medium    0.4% (29th)  0.2   
+libssl3                  3.5.9-r0              apk   CVE-2026-95690       Medium    0.4% (29th)  0.2   
+ssl_client               1.37.0-r31            apk   CVE-2025-60876       Medium    0.3% (24th)  0.2   
+libcrypto3               3.5.9-r0    3.5.9-r1  apk   CVE-2026-88822       Medium    0.3% (17th)  0.1   
+libssl3                  3.5.9-r0    3.5.9-r1  apk   CVE-2026-88822       Medium    0.3% (17th)  0.1   
+libcrypto3               3.5.9-r0              apk   CVE-2026-84786       High      0.2% (6th)   0.1   
+libssl3                  3.5.9-r0              apk   CVE-2026-84786       High      0.2% (6th)   0.1   
+libcrypto3               3.5.9-r0              apk   CVE-2026-107493      High      0.1% (3rd)   0.1   
+libssl3                  3.5.9-r0              apk   CVE-2026-107493      High      0.1% (3rd)   0.1   
+libcrypto3               3.5.9-r0              apk   CVE-2026-35190       Medium    0.2% (10th)  0.1   
+libssl3                  3.5.9-r0              apk   CVE-2026-35190       Medium    0.2% (10th)  0.1   
+== grype alpine:3.23
+NAME           INSTALLED   FIXED IN  TYPE  VULNERABILITY    SEVERITY  EPSS         RISK  
+libcrypto3     3.5.9-r0              apk   CVE-2026-124709  High      0.6% (48th)  0.4   
+libssl3        3.5.9-r0              apk   CVE-2026-124709  High      0.6% (48th)  0.4   
+libcrypto3     3.5.9-r0              apk   CVE-2026-95692   High      0.4% (39th)  0.3   
+libssl3        3.5.9-r0              apk   CVE-2026-95692   High      0.4% (39th)  0.3   
+libcrypto3     3.5.9-r0              apk   CVE-2026-107496  High      0.3% (27th)  0.3   
+libssl3        3.5.9-r0              apk   CVE-2026-107496  High      0.3% (27th)  0.3   
+libcrypto3     3.5.9-r0              apk   CVE-2026-95691   High      0.3% (21st)  0.2   
+libssl3        3.5.9-r0              apk   CVE-2026-95691   High      0.3% (21st)  0.2   
+libcrypto3     3.5.9-r0              apk   CVE-2026-107494  High      0.3% (22nd)  0.2   
+libssl3        3.5.9-r0              apk   CVE-2026-107494  High      0.3% (22nd)  0.2   
+libcrypto3     3.5.9-r0              apk   CVE-2026-88823   High      0.3% (19th)  0.2   
+libssl3        3.5.9-r0              apk   CVE-2026-88823   High      0.3% (19th)  0.2   
+libcrypto3     3.5.9-r0              apk   CVE-2026-121482  High      0.3% (18th)  0.2   
+libssl3        3.5.9-r0              apk   CVE-2026-121482  High      0.3% (18th)  0.2   
+libcrypto3     3.5.9-r0              apk   CVE-2026-95690   Medium    0.4% (29th)  0.2   
+libssl3        3.5.9-r0              apk   CVE-2026-95690   Medium    0.4% (29th)  0.2   
+ssl_client     1.37.0-r30            apk   CVE-2025-60876   Medium    0.3% (24th)  0.2   
+libcrypto3     3.5.9-r0              apk   CVE-2026-88822   Medium    0.3% (17th)  0.1   
+libssl3        3.5.9-r0              apk   CVE-2026-88822   Medium    0.3% (17th)  0.1   
+libcrypto3     3.5.9-r0              apk   CVE-2026-84786   High      0.2% (6th)   0.1   
+libssl3        3.5.9-r0              apk   CVE-2026-84786   High      0.2% (6th)   0.1   
+libcrypto3     3.5.9-r0              apk   CVE-2026-107493  High      0.1% (3rd)   0.1   
+libssl3        3.5.9-r0              apk   CVE-2026-107493  High      0.1% (3rd)   0.1   
+libcrypto3     3.5.9-r0              apk   CVE-2026-35190   Medium    0.2% (10th)  0.1   
+libssl3        3.5.9-r0              apk   CVE-2026-35190   Medium    0.2% (10th)  0.1
+== grype alpine:edge
+NAME           INSTALLED  FIXED IN  TYPE  VULNERABILITY    SEVERITY  EPSS         RISK   
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-18798   High      1.7% (78th)  1.3    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-18798   High      1.7% (78th)  1.3    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-63076   High      1.6% (76th)  1.2    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-63076   High      1.6% (76th)  1.2    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-63073   Critical  1.1% (66th)  1.0    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-63073   Critical  1.1% (66th)  1.0    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-14457   High      1.2% (68th)  0.9    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-14457   High      1.2% (68th)  0.9    
+libcrypto3     3.5.7-r0             apk   CVE-2026-84782   High      0.9% (60th)  0.7    
+libssl3        3.5.7-r0             apk   CVE-2026-84782   High      0.9% (60th)  0.7    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-63072   High      0.9% (61st)  0.7    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-63072   High      0.9% (61st)  0.7    
+libcrypto3     3.5.7-r0             apk   CVE-2026-75806   Medium    1.2% (69th)  0.6    
+libssl3        3.5.7-r0             apk   CVE-2026-75806   Medium    1.2% (69th)  0.6    
+libcrypto3     3.5.7-r0             apk   CVE-2026-54873   High      0.7% (54th)  0.5    
+libssl3        3.5.7-r0             apk   CVE-2026-54873   High      0.7% (54th)  0.5    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-14456   High      0.7% (54th)  0.5    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-14456   High      0.7% (54th)  0.5    
+libcrypto3     3.5.7-r0             apk   CVE-2026-84784   High      0.6% (51st)  0.5    
+libssl3        3.5.7-r0             apk   CVE-2026-84784   High      0.6% (51st)  0.5    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-54874   High      0.6% (50th)  0.5    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-54874   High      0.6% (50th)  0.5    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-63075   High      0.6% (48th)  0.4    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-63075   High      0.6% (48th)  0.4    
+libcrypto3     3.5.7-r0             apk   CVE-2026-124709  High      0.6% (48th)  0.4    
+libssl3        3.5.7-r0             apk   CVE-2026-124709  High      0.6% (48th)  0.4    
+libcrypto3     3.5.7-r0   3.5.9-r1  apk   CVE-2026-95692   High      0.4% (39th)  0.3    
+libssl3        3.5.7-r0   3.5.9-r1  apk   CVE-2026-95692   High      0.4% (39th)  0.3    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-63074   Medium    0.6% (49th)  0.3    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-63074   Medium    0.6% (49th)  0.3    
+libcrypto3     3.5.7-r0             apk   CVE-2026-72897   High      0.4% (33rd)  0.3    
+libssl3        3.5.7-r0             apk   CVE-2026-72897   High      0.4% (33rd)  0.3    
+libcrypto3     3.5.7-r0             apk   CVE-2026-75804   Medium    0.5% (45th)  0.3    
+libssl3        3.5.7-r0             apk   CVE-2026-75804   Medium    0.5% (45th)  0.3    
+libcrypto3     3.5.7-r0             apk   CVE-2026-42772   Medium    0.5% (43rd)  0.3    
+libssl3        3.5.7-r0             apk   CVE-2026-42772   Medium    0.5% (43rd)  0.3    
+libcrypto3     3.5.7-r0   3.5.9-r1  apk   CVE-2026-107496  High      0.3% (27th)  0.3    
+libssl3        3.5.7-r0   3.5.9-r1  apk   CVE-2026-107496  High      0.3% (27th)  0.3    
+libcrypto3     3.5.7-r0             apk   CVE-2026-35191   Low       0.8% (55th)  0.3    
+libssl3        3.5.7-r0             apk   CVE-2026-35191   Low       0.8% (55th)  0.3    
+libcrypto3     3.5.7-r0   3.5.8-r0  apk   CVE-2026-75803   Critical  0.3% (17th)  0.2    
+libssl3        3.5.7-r0   3.5.8-r0  apk   CVE-2026-75803   Critical  0.3% (17th)  0.2    
+libcrypto3     3.5.7-r0   3.5.9-r1  apk   CVE-2026-95691   High      0.3% (21st)  0.2    
+libssl3        3.5.7-r0   3.5.9-r1  apk   CVE-2026-95691   High      0.3% (21st)  0.2    
+libcrypto3     3.5.7-r0             apk   CVE-2026-107494  High      0.3% (22nd)  0.2    
+libssl3        3.5.7-r0             apk   CVE-2026-107494  High      0.3% (22nd)  0.2    
+libcrypto3     3.5.7-r0   3.5.9-r1  apk   CVE-2026-88823   High      0.3% (19th)  0.2    
+libssl3        3.5.7-r0   3.5.9-r1  apk   CVE-2026-88823   High      0.3% (19th)  0.2    
+libcrypto3     3.5.7-r0             apk   CVE-2026-121482  High      0.3% (18th)  0.2    
+libssl3        3.5.7-r0             apk   CVE-2026-121482  High      0.3% (18th)  0.2    
+libcrypto3     3.5.7-r0             apk   CVE-2026-75805   Medium    0.4% (31st)  0.2    
+libssl3        3.5.7-r0             apk   CVE-2026-75805   Medium    0.4% (31st)  0.2    
+libcrypto3     3.5.7-r0             apk   CVE-2026-35189   Medium    0.4% (29th)  0.2    
+libssl3        3.5.7-r0             apk   CVE-2026-35189   Medium    0.4% (29th)  0.2    
+libcrypto3     3.5.7-r0             apk   CVE-2026-95690   Medium    0.4% (29th)  0.2    
+libssl3        3.5.7-r0             apk   CVE-2026-95690   Medium    0.4% (29th)  0.2    
+libcrypto3     3.5.7-r0             apk   CVE-2026-54875   Low       0.5% (43rd)  0.2    
+libssl3        3.5.7-r0             apk   CVE-2026-54875   Low       0.5% (43rd)  0.2    
+libcrypto3     3.5.7-r0             apk   CVE-2026-54872   Low       0.5% (43rd)  0.2    
+libssl3        3.5.7-r0             apk   CVE-2026-54872   Low       0.5% (43rd)  0.2    
+ssl_client     1.38.0-r4            apk   CVE-2026-38754   High      0.2% (14th)  0.2    
+libcrypto3     3.5.7-r0             apk   CVE-2026-77696   Low       0.5% (40th)  0.2    
+libssl3        3.5.7-r0             apk   CVE-2026-77696   Low       0.5% (40th)  0.2    
+libcrypto3     3.5.7-r0   3.5.9-r1  apk   CVE-2026-88822   Medium    0.3% (17th)  0.1    
+libssl3        3.5.7-r0   3.5.9-r1  apk   CVE-2026-88822   Medium    0.3% (17th)  0.1    
+ssl_client     1.38.0-r4            apk   CVE-2026-38755   High      0.2% (10th)  0.1    
+libcrypto3     3.5.7-r0             apk   CVE-2026-84786   High      0.2% (6th)   0.1    
+libssl3        3.5.7-r0             apk   CVE-2026-84786   High      0.2% (6th)   0.1    
+libcrypto3     3.5.7-r0             apk   CVE-2026-107493  High      0.1% (3rd)   0.1    
+libssl3        3.5.7-r0             apk   CVE-2026-107493  High      0.1% (3rd)   0.1    
+libcrypto3     3.5.7-r0             apk   CVE-2026-35190   Medium    0.2% (10th)  0.1    
+libssl3        3.5.7-r0             apk   CVE-2026-35190   Medium    0.2% (10th)  0.1    
+ssl_client     1.38.0-r4            apk   CVE-2026-38753   High      0.1% (3rd)   < 0.1
+sha256:14c40184c0626457c7bcd400446a00207649f71bdb0df0a417577360b65ac03a
+== grype current pin (3.5.9-r1)
+CVE-2025-60876	Medium	ssl_client	1.37.0-r31		
+CVE-2026-107493	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-107493	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-107494	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-107494	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-121482	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-121482	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-124709	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-124709	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-35190	Medium	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-35190	Medium	libssl3	3.5.9-r1	unknown	
+CVE-2026-84786	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-84786	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-95690	Medium	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-95690	Medium	libssl3	3.5.9-r1	unknown	
+CVE-2025-60876	https://gist.github.com/subyumatest/41554af6a72aedaacaec026adc311092 https://lists.busybox.net/pipermail/busybox/attachments/20250823/ccdc96ef/attachment-0001.htm https://lists.busybox.net/pipermail/busybox/attachments/20250828/e7f90492/attachment.htm https://cert-portal.siemens.com/productcert/html/ssa-253495.html	BusyBox wget thru 1.3.7 accepted raw CR (0x0D)/LF (0x0A) and other C0 control bytes in the HTTP request-target (path/query), allowing the request line to be split and attacker-controlled headers to be injected. To preserve the HTTP/1.1 request-line shape METHOD SP request-target SP HTTP/1.1, a raw s
+CVE-2026-107493	https://github.com/openssl/openssl/commit/0486dfadfec558e1808f59d35a8d79e541c4e7d7 https://github.com/openssl/openssl/commit/c57a5ccf0c060755b5494a6870922b7c6cdd7dd8 https://github.com/openssl/openssl/commit/c8f6d04f8e6d40b1bf83334e4a2ec9daf5943a3d https://openssl-library.org/news/secadv/20261117.txt	Issue summary: When an application passes a stack to\nPEM_X509_INFO_read_bio_ex() to add entries to, and reading fails,\nOpenSSL frees every entry in the stack, both the old ones and any new\nones, but leaves them in the stack.\n\nImpact summary: An application that passes an existing stack to\nPEM_X509_I
+CVE-2026-107494	https://github.com/openssl/openssl/pull/33544	Issue summary: The QUIC stack queues a RETIRE_CONNECTION_ID frame also for\nretransmitted NEW_CONNECTION_ID frames. This allows a remote malicious\nQUIC stack to queue an unlimited number of RETIRE_CONNECTION_ID frames.\n\nImpact summary: A malicious remote QUIC peer can trigger an out-of-memory\nconditi
+CVE-2026-124709	https://github.com/openssl/openssl/commit/22291a6af12f158fbb13bfbd572a33dbdbf290d2 https://github.com/openssl/openssl/commit/ead311df1037e7994a6d86c7e862d71ad59c52c7 https://github.com/openssl/openssl/commit/f3acb0a3328046741479482c51cec815839e1b05 https://openssl-library.org/news/secadv/20261117.txt	Issue summary: A QUIC server that rejects a stream opened by the peer may\nretain that stream's state for the lifetime of the connection if the peer\nresets the stream before the rejection is signalled, even though the peer's\nstream credit is returned.\n\nImpact summary: A remote client that completes a
+CVE-2026-35190	https://github.com/openssl/openssl/commit/9491b0d9cc7950af1f3dc89499bd5433b9cd4f43 https://github.com/openssl/openssl/commit/9a812981b927c5714b7c2e5d138618105cea2152 https://github.com/openssl/openssl/commit/ade64619df04056b3e5fd1c1befe9425a7c80eb6 https://openssl-library.org/news/secadv/20261117.txt	Issue summary: A server configured with the Suite B certificate flag through\nSSL_CTX_set_cert_flags() and with TLS 1.3 enabled may read past the end of a\nfixed group list when it processes a ClientHello whose supported_groups and\nkey_share contain no Suite B group.\n\nImpact summary: A remote client c
+CVE-2026-84786	https://github.com/openssl/openssl/pull/33634	Issue summary: A DANE-enabled TLS client may crash by dereferencing a NULL\npointer when processing an unusual combination of certificate and TLSA\nrecords.\n\nImpact summary: The impact is limited to a client crash (potential Denial\nof Service).\n\nCWE: CWE-476: NULL Pointer Dereference\n\nDescription: A D
+CVE-2026-95690	https://github.com/openssl/openssl/pull/33620 https://github.com/openssl/openssl/pull/33729	Issue summary: Receiving crafted out-of-sequence DTLS handshake fragments may\ncause OpenSSL to allocate a full message-length reassembly buffer for each\nbuffered message, so a small amount of wire data consumes a large amount of\nmemory.\n\nImpact summary: A remote attacker can send a few small crafted
+== grype after apk upgrade within the pinned base's branch
+CVE-2025-60876	Medium	busybox	1.37.0-r31		
+CVE-2025-60876	Medium	busybox-binsh	1.37.0-r31		
+CVE-2025-60876	Medium	ssl_client	1.37.0-r31		
+CVE-2026-107493	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-107493	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-107494	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-107494	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-121482	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-121482	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-124709	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-124709	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-35190	Medium	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-35190	Medium	libssl3	3.5.9-r1	unknown	
+CVE-2026-84786	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-84786	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-95690	Medium	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-95690	Medium	libssl3	3.5.9-r1	unknown	
+GHSA-3g3m-2fjr-6pw4	Medium	glob	10.5.0	fixed	14.0.2
+GHSA-3jxr-9vmj-r5cp	High	brace-expansion	2.0.2	fixed	2.1.2
+GHSA-3v7f-55p6-f55p	Medium	picomatch	4.0.3	fixed	4.0.4
+GHSA-52v5-jr5w-gjxr	High	sigstore	3.1.0	fixed	4.1.1
+GHSA-6j4f-fj2g-mc7p	High	brace-expansion	2.0.2	fixed	2.1.5
+GHSA-c2c7-rcm5-vvqj	High	picomatch	4.0.3	fixed	4.0.4
+GHSA-f886-m6hf-6m8v	Medium	brace-expansion	2.0.2	fixed	2.0.3
+GHSA-g3hv-75wg-m249	Medium	minimatch	9.0.9	fixed	11.0.1
+GHSA-h3mg-xc3c-68pw	Medium	ip-address	10.1.0	fixed	10.7.1
+GHSA-j6r3-76f7-8jcv	Medium	ip-address	10.1.0	fixed	10.7.1
+GHSA-jfc7-64v2-mr8c	Medium	@sigstore/core	2.0.0	fixed	3.2.1
+GHSA-mh99-v99m-4gvg	High	brace-expansion	2.0.2	fixed	2.1.3
+GHSA-mwp4-54f8-5fhr	High	ip-address	10.1.0	fixed	10.3.1
+GHSA-q2hr-2g5m-vwhr	Medium	brace-expansion	2.0.2	fixed	2.1.7
+GHSA-qhr7-859c-m2p7	High	brace-expansion	2.0.2	fixed	2.1.6
+GHSA-rgw5-rvv9-x895	High	brace-expansion	2.0.2	fixed	2.1.4
+GHSA-rj75-hqrm-r3gf	Medium	postcss-selector-parser	7.1.1	fixed	7.1.6
+GHSA-rpw4-54j3-4h4q	Medium	ip-address	10.1.0	fixed	10.5.1
+GHSA-rxp7-6hxx-x8q5	Medium	ip-address	10.1.0	fixed	10.7.4
+GHSA-v2v4-37r5-5v8g	Medium	ip-address	10.1.0	fixed	10.1.1
+GHSA-w4pp-8pjf-rmxw	High	pacote	19.0.2	fixed	21.5.1
+GHSA-w4pp-8pjf-rmxw	High	pacote	20.0.1	fixed	21.5.1
+GHSA-w9m9-85wc-3x92	Low	postcss-selector-parser	7.1.1	fixed	7.1.3
+Cleaning up orphan processes
+
+## Round 1: Grype v0.121.2 (pinned digest), current pin probe image (FROM pinned base + libssl3/libcrypto3 3.5.9-r1)
+== grype current pin (3.5.9-r1)
+CVE-2025-60876	Medium	ssl_client	1.37.0-r31		
+CVE-2026-107493	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-107493	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-107494	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-107494	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-121482	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-121482	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-124709	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-124709	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-35190	Medium	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-35190	Medium	libssl3	3.5.9-r1	unknown	
+CVE-2026-84786	High	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-84786	High	libssl3	3.5.9-r1	unknown	
+CVE-2026-95690	Medium	libcrypto3	3.5.9-r1	unknown	
+CVE-2026-95690	Medium	libssl3	3.5.9-r1	unknown	
+CVE-2025-60876	https://gist.github.com/subyumatest/41554af6a72aedaacaec026adc311092 https://lists.busybox.net/pipermail/busybox/attachments/20250823/ccdc96ef/attachment-0001.htm https://lists.busybox.net/pipermail/busybox/attachments/20250828/e7f90492/attachme
+CVE-2026-107493	https://github.com/openssl/openssl/commit/0486dfadfec558e1808f59d35a8d79e541c4e7d7 https://github.com/openssl/openssl/commit/c57a5ccf0c060755b5494a6870922b7c6cdd7dd8 https://github.com/openssl/openssl/commit/c8f6d04f8e6d40b1bf83334e4a2ec9daf594
+CVE-2026-107494	https://github.com/openssl/openssl/pull/33544	Issue summary: The QUIC stack queues a RETIRE_CONNECTION_ID frame also for\nretransmitted NEW_CONNECTION_ID frames. This allows a remote malicious\nQUIC stack to queue an unlimited number of RETIRE_
+CVE-2026-121482	https://github.com/openssl/openssl/pull/33546	Verifying a maliciously crafted CMS or PKCS#7 SignedData message with CRL checking enabled may consume excessive CPU time, growing with the square of the message size.
+CVE-2026-124709	https://github.com/openssl/openssl/commit/22291a6af12f158fbb13bfbd572a33dbdbf290d2 https://github.com/openssl/openssl/commit/ead311df1037e7994a6d86c7e862d71ad59c52c7 https://github.com/openssl/openssl/commit/f3acb0a3328046741479482c51cec815839e
+CVE-2026-35190	https://github.com/openssl/openssl/commit/9491b0d9cc7950af1f3dc89499bd5433b9cd4f43 https://github.com/openssl/openssl/commit/9a812981b927c5714b7c2e5d138618105cea2152 https://github.com/openssl/openssl/commit/ade64619df04056b3e5fd1c1befe9425a7c80
+CVE-2026-84786	https://github.com/openssl/openssl/pull/33634	Issue summary: A DANE-enabled TLS client may crash by dereferencing a NULL\npointer when processing an unusual combination of certificate and TLSA\nrecords.\n\nImpact summary: The impact is limited t
+CVE-2026-95690	https://github.com/openssl/openssl/pull/33620 https://github.com/openssl/openssl/pull/33729	Issue summary: Receiving crafted out-of-sequence DTLS handshake fragments may\ncause OpenSSL to allocate a full message-length reassembly buffer for each
+
+## Round 2: alternative bases (Grype, HIGH and CRITICAL only)
+== cgr.dev/chainguard/wolfi-base:latest cgr.dev/chainguard/wolfi-base@sha256:be019c1c74fe69204a42c4e10bc4d886a49bf5403ffa74374ef7baa408fc9a26
+Low=1 Medium=1
+== node:22-trixie-slim node@sha256:68c76cfad89921b927eae28ba21407475e29d0ce450afcdbe70c1532db042b64
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-107493 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-107496 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-124709 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-84786 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-88823 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-95691 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-95692 High fix=
+openssl-provider-legacy 3.5.7-1~deb13u3 CVE-2026-107493 High fix=
+openssl-provider-legacy 3.5.7-1~deb13u3 CVE-2026-107496 High fix=
+openssl-provider-legacy 3.5.7-1~deb13u3 CVE-2026-124709 High fix=
+openssl-provider-legacy 3.5.7-1~deb13u3 CVE-2026-84786 High fix=
+openssl-provider-legacy 3.5.7-1~deb13u3 CVE-2026-88823 High fix=
+openssl-provider-legacy 3.5.7-1~deb13u3 CVE-2026-95691 High fix=
+openssl-provider-legacy 3.5.7-1~deb13u3 CVE-2026-95692 High fix=
+High=83 Low=19 Medium=89 Negligible=49
+== node:22-bookworm-slim node@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
+Critical=2 High=62 Low=21 Medium=105 Negligible=64
+== gcr.io/distroless/nodejs22-debian13:nonroot gcr.io/distroless/nodejs22-debian13@sha256:39c66687298417dbf3ff2fb8b6012c20554494e16414ef7afd07b9abbb45b501
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-107493 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-107496 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-124709 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-84786 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-88823 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-95691 High fix=
+libssl3t64 3.5.7-1~deb13u3 CVE-2026-95692 High fix=
+High=18 Low=9 Medium=28 Negligible=11
+== gcr.io/distroless/nodejs22-debian12:nonroot gcr.io/distroless/nodejs22-debian12@sha256:13593b7570658e8477de39e2f4a1dd25db2f836d68a0ba771251572d23bb4f8e
+libssl3 3.0.18-1~deb12u2 CVE-2026-107493 High fix=
+libssl3 3.0.18-1~deb12u2 CVE-2026-107496 High fix=
+libssl3 3.0.18-1~deb12u2 CVE-2026-28387 High fix=3.0.19-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-28388 High fix=3.0.19-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-28389 High fix=3.0.19-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-28390 High fix=3.0.19-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-31789 Critical fix=3.0.19-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-31790 High fix=3.0.19-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-34180 High fix=3.0.20-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-34182 Critical fix=3.0.20-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-45445 High fix=3.0.20-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-45447 High fix=3.0.20-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-54874 High fix=3.0.22-1~deb12u1
+libssl3 3.0.18-1~deb12u2 CVE-2026-63072 High fix=3.0.22-1~deb12u1
+libssl3 3.0.18-1~deb12u2 CVE-2026-63076 High fix=3.0.22-1~deb12u1
+libssl3 3.0.18-1~deb12u2 CVE-2026-7383 High fix=3.0.20-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-75803 Critical fix=3.0.22-1~deb12u1
+libssl3 3.0.18-1~deb12u2 CVE-2026-84782 High fix=3.0.22-1~deb12u2
+libssl3 3.0.18-1~deb12u2 CVE-2026-84786 High fix=
+libssl3 3.0.18-1~deb12u2 CVE-2026-9076 High fix=3.0.20-1~deb12u2
+Critical=5 High=46 Low=21 Medium=50 Negligible=12
+libcrypto3 policy:
+
+## Round 2: OpenSSL advisory 20261117 (head)
+OpenSSL Security Advisory [17th November 2026]
+repository on GitHub. Releases containing these fixes are scheduled
+for 1st December 2026.
+Out-of-Bounds Read in TLS 1.3 Key-Share Processing with Suite B Certificate Flag (CVE-2026-35190)
+Severity: Low
+OpenSSL 3.5 users should upgrade to OpenSSL 3.5.10.
+Use-After-Free in PEM_X509_INFO_read_bio_ex() When Appending to a Caller-Supplied Stack Fails (CVE-2026-107493)
+Severity: Low
+OpenSSL 3.5 users should upgrade to OpenSSL 3.5.10.
+Unbounded Memory Retention in QUIC Server for Rejected Streams (CVE-2026-124709)
+Severity: Low
+
+## Round 3: who links the system OpenSSL in the pinned base
+-- ldd node
+	/lib/ld-musl-x86_64.so.1 (0x7dd113049000)
+	libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x7dd10c0c9000)
+	libgcc_s.so.1 => /usr/lib/libgcc_s.so.1 (0x7dd10c09d000)
+	libc.musl-x86_64.so.1 => /lib/ld-musl-x86_64.so.1 (0x7dd113049000)
+3.5.9
+-- files linking libssl/libcrypto
+/usr/bin/ssl_client
+/usr/lib/libssl.so.3
+/usr/lib/libapk.so.3.0.0
+/usr/lib/engines-3/afalg.so
+/usr/lib/engines-3/loader_attic.so
+/usr/lib/engines-3/padlock.so
+/usr/lib/ossl-modules/legacy.so
+/sbin/apk
+##[error]Process completed with exit code 1.

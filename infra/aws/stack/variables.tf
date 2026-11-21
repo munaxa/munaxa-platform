@@ -653,14 +653,3 @@ variable "rds_restart_stop_enabled" {
     error_message = "The RDS restart stop exists only in nonprod, and needs the session cleanup (session_cleanup_enabled)."
   }
 }
-
-variable "rds_restart_stop_wait_seconds" {
-  description = "How long the RDS restart stop waits after the auto-start before it may stop the database, so the overdue master-secret rotation can run (rotation retries hourly)."
-  type        = number
-  default     = 7200
-
-  validation {
-    condition     = var.rds_restart_stop_wait_seconds >= 3600 && var.rds_restart_stop_wait_seconds <= 14400 && floor(var.rds_restart_stop_wait_seconds) == var.rds_restart_stop_wait_seconds
-    error_message = "Wait between 1 and 4 hours (whole seconds): at least one hourly rotation attempt, and well inside the 6-hour execution timeout."
-  }
-}
