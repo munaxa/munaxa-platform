@@ -1,0 +1,313 @@
+{
+  "Comment": "Testing RDS restart stop (nonprod only, rds-restart-stop.tf). Started by EventBridge on RDS-EVENT-0154 (RDS started the stopped nonprod database because it had been stopped for 7 days). Waits so the overdue master-secret rotation can run, then stops the database ONLY if no nonprod ECS task runs and no H-20 session schedule (P or S) exists. Never reads a secret value. Any read it cannot interpret fails the execution without stopping anything.",
+  "QueryLanguage": "JSONPath",
+  "TimeoutSeconds": 21600,
+  "StartAt": "WaitForRotation",
+  "States": {
+    "WaitForRotation": {
+      "Type": "Wait",
+      "Seconds": 7200,
+      "Next": "ReadDatabase"
+    },
+    "ReadDatabase": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:rds:describeDBInstances",
+      "Parameters": {
+        "DbInstanceIdentifier": "${db_identifier}"
+      },
+      "ResultPath": "$.dbRaw",
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["Rds.DbInstanceNotFoundException"],
+          "MaxAttempts": 0
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "GuardFailed"
+        }
+      ],
+      "Next": "CheckDatabase"
+    },
+    "CheckDatabase": {
+      "Type": "Choice",
+      "Comment": "Rules run in order, so a missing field is caught by an IsPresent rule before any rule reads it.",
+      "Choices": [
+        {
+          "Variable": "$.dbRaw.DbInstances[0].DbInstanceIdentifier",
+          "IsPresent": false,
+          "Next": "GuardFailed"
+        },
+        {
+          "Variable": "$.dbRaw.DbInstances[0].DbInstanceStatus",
+          "IsPresent": false,
+          "Next": "GuardFailed"
+        },
+        {
+          "Variable": "$.dbRaw.DbInstances[1]",
+          "IsPresent": true,
+          "Next": "GuardFailed"
+        },
+        {
+          "Not": {
+            "Variable": "$.dbRaw.DbInstances[0].DbInstanceIdentifier",
+            "StringEquals": "${db_identifier}"
+          },
+          "Next": "GuardFailed"
+        },
+        {
+          "Variable": "$.dbRaw.DbInstances[0].DbInstanceStatus",
+          "IsString": false,
+          "Next": "GuardFailed"
+        }
+      ],
+      "Default": "DatabaseState"
+    },
+    "DatabaseState": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "Variable": "$.dbRaw.DbInstances[0].DbInstanceStatus",
+              "StringEquals": "stopped"
+            },
+            {
+              "Variable": "$.dbRaw.DbInstances[0].DbInstanceStatus",
+              "StringEquals": "stopping"
+            }
+          ],
+          "Next": "AlreadyStopped"
+        },
+        {
+          "Variable": "$.dbRaw.DbInstances[0].DbInstanceStatus",
+          "StringEquals": "available",
+          "Next": "ReadTasks"
+        }
+      ],
+      "Default": "WaitForStableDatabase"
+    },
+    "WaitForStableDatabase": {
+      "Type": "Wait",
+      "Seconds": 900,
+      "Next": "ReadDatabase"
+    },
+    "ReadTasks": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:ecs:listTasks",
+      "Parameters": {
+        "Cluster": "${cluster}",
+        "DesiredStatus": "RUNNING",
+        "MaxResults": 1
+      },
+      "ResultPath": "$.tasks",
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "GuardFailed"
+        }
+      ],
+      "Next": "CheckTasks"
+    },
+    "CheckTasks": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.tasks.TaskArns",
+          "IsPresent": false,
+          "Next": "GuardFailed"
+        },
+        {
+          "Variable": "$.tasks.TaskArns[0]",
+          "IsPresent": true,
+          "Next": "SessionRunning"
+        }
+      ],
+      "Default": "ReadPSchedules"
+    },
+    "ReadPSchedules": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:scheduler:listSchedules",
+      "Parameters": {
+        "NamePrefix": "${cleanup_name}-p-",
+        "MaxResults": 1
+      },
+      "ResultPath": "$.p",
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "GuardFailed"
+        }
+      ],
+      "Next": "ReadSSchedules"
+    },
+    "ReadSSchedules": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:scheduler:listSchedules",
+      "Parameters": {
+        "NamePrefix": "${cleanup_name}-s-",
+        "MaxResults": 1
+      },
+      "ResultPath": "$.s",
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "GuardFailed"
+        }
+      ],
+      "Next": "CheckSchedules"
+    },
+    "CheckSchedules": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Or": [
+            {
+              "Variable": "$.p.Schedules",
+              "IsPresent": false
+            },
+            {
+              "Variable": "$.s.Schedules",
+              "IsPresent": false
+            }
+          ],
+          "Next": "GuardFailed"
+        },
+        {
+          "Or": [
+            {
+              "Variable": "$.p.Schedules[0]",
+              "IsPresent": true
+            },
+            {
+              "Variable": "$.s.Schedules[0]",
+              "IsPresent": true
+            }
+          ],
+          "Next": "SessionArmed"
+        }
+      ],
+      "Default": "ReadRotation"
+    },
+    "ReadRotation": {
+      "Type": "Task",
+      "Comment": "Evidence only (metadata, never a value): the rotation dates land in the execution history. Does not gate the stop.",
+      "Resource": "arn:aws:states:::aws-sdk:secretsmanager:describeSecret",
+      "Parameters": {
+        "SecretId": "${master_secret_arn}"
+      },
+      "ResultPath": "$.rotation",
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.rotationError",
+          "Next": "StopDatabase"
+        }
+      ],
+      "Next": "StopDatabase"
+    },
+    "StopDatabase": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:rds:stopDBInstance",
+      "Parameters": {
+        "DbInstanceIdentifier": "${db_identifier}"
+      },
+      "ResultPath": null,
+      "TimeoutSeconds": 30,
+      "Retry": [
+        {
+          "ErrorEquals": ["Rds.InvalidDbInstanceStateException"],
+          "MaxAttempts": 0
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["Rds.InvalidDbInstanceStateException"],
+          "ResultPath": "$.error",
+          "Next": "AlreadyStopped"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "GuardFailed"
+        }
+      ],
+      "Next": "Stopped"
+    },
+    "Stopped": {
+      "Type": "Succeed",
+      "Comment": "Stopped the auto-started database."
+    },
+    "AlreadyStopped": {
+      "Type": "Succeed",
+      "Comment": "Nothing to do: the database is stopped or stopping."
+    },
+    "SessionRunning": {
+      "Type": "Succeed",
+      "Comment": "A nonprod task runs: a session owns the database; aws-session.yml down, the H-20 schedules and the 21:00 UTC backstop stop it."
+    },
+    "SessionArmed": {
+      "Type": "Succeed",
+      "Comment": "An H-20 P or S schedule exists: a session is planned or running; left alone."
+    },
+    "GuardFailed": {
+      "Type": "Fail",
+      "Error": "RestartStop.GuardFailed",
+      "Cause": "A read failed or answered in an unexpected shape. Nothing was stopped (fail closed); the alarm reports it and the 21:00 UTC backstop still runs."
+    }
+  }
+}

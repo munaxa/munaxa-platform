@@ -536,7 +536,12 @@ async def status():
     if not (kms.endswith("key/" + DATA_KEY_ID) or kms in ("alias/munaxa-nonprod-data",
             "arn:aws:kms:" + REGION + ":" + ACCOUNT + ":alias/munaxa-nonprod-data")):
         problems.append("kms-key")
-    tags = sorted(str(t.get("Key")) + "=" + str(t.get("Value")) for t in (d.get("Tags") or []) if isinstance(t, dict))
+    # CloudFormation adds its own aws:cloudformation:* tags to every resource it creates (Stage E
+    # finding F-1, 21 Nov 2026). Keys with the reserved `aws:` prefix cannot be set or removed by
+    # anyone else, so only the tags a person can change are compared; one extra or missing tag of
+    # those still fails.
+    tags = sorted(str(t.get("Key")) + "=" + str(t.get("Value")) for t in (d.get("Tags") or [])
+                  if isinstance(t, dict) and not str(t.get("Key", "")).startswith("aws:"))
     if tags != EXPECTED_TAGS:
         problems.append("secret-tags")
     if d.get("DeletedDate"):

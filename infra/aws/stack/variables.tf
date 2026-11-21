@@ -642,3 +642,14 @@ variable "session_cleanup_schedule" {
     error_message = "An EventBridge Scheduler cron() expression."
   }
 }
+
+variable "rds_restart_stop_enabled" {
+  description = "Nonprod only: stop the database a fixed time after RDS auto-starts it (rds-restart-stop.tf). Needs the session cleanup (its P/S schedule names and alarm topic) and a bootstrap change first. Off by default."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.rds_restart_stop_enabled || (var.environment == "nonprod" && var.session_cleanup_enabled)
+    error_message = "The RDS restart stop exists only in nonprod, and needs the session cleanup (session_cleanup_enabled)."
+  }
+}

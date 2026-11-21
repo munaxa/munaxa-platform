@@ -687,6 +687,23 @@ class C8G(unittest.TestCase):
         current = [v for v in fake.secrets[PERSISTENT]["versions"].values() if "AWSCURRENT" in v["stages"]]
         self.assertEqual(json.loads(current[0]["value"])["IDENTITY_SECRET_GENERATION"], "2")
 
+    def test_status_ignores_the_tags_cloudformation_adds(self):
+        # Stage E F-1: the live secret carries aws:cloudformation:* tags beside the four expected ones.
+        fake = created()
+        fake.secrets[PERSISTENT].setdefault("Tags", [])
+        fake.secrets[PERSISTENT]["Tags"] = list(fake.secrets[PERSISTENT]["Tags"]) + [
+            {"Key": "aws:cloudformation:stack-name", "Value": "munaxa-nonprod-identity-operator"},
+            {"Key": "aws:cloudformation:logical-id", "Value": "OperatorSecret"},
+            {"Key": "aws:cloudformation:stack-id", "Value": "arn:aws:cloudformation:eu-central-1:229251310592:stack/x/y"},
+        ]
+        r = run8g(fake)
+        self.assertEqual(r["result"], "PASS", r.get("problems"))
+        # A tag a person can set still counts.
+        fake.secrets[PERSISTENT]["Tags"].append({"Key": "Owner", "Value": "someone"})
+        r = run8g(fake)
+        self.assertEqual(r["result"], "FAIL")
+        self.assertIn("secret-tags", r["problems"])
+
     def test_status_reports_every_drift(self):
         def policy(fake, f):
             doc = json.loads(fake.secrets[PERSISTENT]["policy"])
