@@ -1,0 +1,382 @@
+{
+  "boundary": {
+    "Statement": [
+      {
+        "Action": "ecr:GetAuthorizationToken",
+        "Effect": "Allow",
+        "Resource": "*",
+        "Sid": "EcrSignIn"
+      },
+      {
+        "Action": [
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchCheckLayerAvailability"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:ecr:eu-central-1:229251310592:repository/munaxa-*",
+        "Sid": "EcrPull"
+      },
+      {
+        "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+        "Effect": "Allow",
+        "Resource": "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/*",
+        "Sid": "Logs"
+      },
+      {
+        "Action": "secretsmanager:GetSecretValue",
+        "Effect": "Allow",
+        "Resource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/*",
+        "Sid": "OwnSecrets"
+      },
+      {
+        "Action": "secretsmanager:GetSecretValue",
+        "Condition": {
+          "StringLike": {
+            "aws:ResourceTag/aws:rds:primaryDBInstanceArn": "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-*"
+          }
+        },
+        "Effect": "Allow",
+        "Resource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!*",
+        "Sid": "OwnRdsMasterSecret"
+      },
+      {
+        "Action": "secretsmanager:GetSecretValue",
+        "Condition": {
+          "StringEquals": {
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:ResourceTag/Project": "munaxa"
+          }
+        },
+        "Effect": "Allow",
+        "Resource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!*",
+        "Sid": "OwnRdsMasterSecretByTag"
+      },
+      {
+        "Action": ["kms:Decrypt", "kms:Sign"],
+        "Condition": {
+          "StringEquals": {
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:ResourceTag/Project": "munaxa"
+          }
+        },
+        "Effect": "Allow",
+        "Resource": "arn:aws:kms:eu-central-1:229251310592:key/*",
+        "Sid": "OwnKeys"
+      },
+      {
+        "Action": [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:AbortMultipartUpload",
+          "s3:ListBucket"
+        ],
+        "Effect": "Allow",
+        "Resource": ["arn:aws:s3:::munaxa-nonprod-*", "arn:aws:s3:::munaxa-nonprod-*/*"],
+        "Sid": "OwnFileBuckets"
+      },
+      {
+        "Action": "ecs:RunTask",
+        "Effect": "Allow",
+        "Resource": "arn:aws:ecs:eu-central-1:229251310592:task-definition/munaxa-nonprod-*:*",
+        "Sid": "ScheduledTasks"
+      },
+      {
+        "Action": "iam:PassRole",
+        "Effect": "Allow",
+        "Resource": "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-*",
+        "Sid": "PassOwnRoles"
+      },
+      {
+        "Condition": {
+          "StringNotEquals": {
+            "aws:RequestedRegion": "eu-central-1"
+          }
+        },
+        "Effect": "Deny",
+        "NotAction": ["iam:PassRole"],
+        "Resource": "*",
+        "Sid": "ThisRegionOnly"
+      },
+      {
+        "Action": "*",
+        "Condition": {
+          "Null": {
+            "aws:SourceIdentity": "false"
+          }
+        },
+        "Effect": "Deny",
+        "Resource": "*",
+        "Sid": "NeverFromADeployerSession"
+      },
+      {
+        "Action": "*",
+        "Condition": {
+          "StringEquals": {
+            "aws:ResourceTag/Environment": "prod"
+          }
+        },
+        "Effect": "Deny",
+        "Resource": "*",
+        "Sid": "NeverTheOtherEnvironment"
+      },
+      {
+        "Action": "*",
+        "Effect": "Deny",
+        "Resource": ["arn:aws:secretsmanager:*:*:secret:munaxa-docs*", "arn:aws:s3:::munaxa-docs*"],
+        "Sid": "NeverMunaxaDocsProduction"
+      },
+      {
+        "Effect": "Deny",
+        "NotAction": [
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchCheckLayerAvailability"
+        ],
+        "Resource": "arn:aws:ecr:*:*:repository/munaxa-docs/*",
+        "Sid": "MunaxaDocsImagesPullOnly"
+      },
+      {
+        "Action": ["rds:StopDBInstance", "ecs:UpdateService"],
+        "Effect": "Allow",
+        "Resource": [
+          "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-*",
+          "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/*"
+        ],
+        "Sid": "TestingBackstop"
+      },
+      {
+        "Action": [
+          "secretsmanager:DeleteSecret",
+          "elasticloadbalancing:DeleteLoadBalancer",
+          "ecs:DescribeServices",
+          "ecs:StopTask",
+          "rds:DescribeDBInstances",
+          "states:StartExecution"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+          "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-bootstrap-??????",
+          "arn:aws:elasticloadbalancing:eu-central-1:229251310592:loadbalancer/app/munaxa-nonprod/*",
+          "arn:aws:ecs:eu-central-1:229251310592:service/munaxa-nonprod/*",
+          "arn:aws:ecs:eu-central-1:229251310592:task/munaxa-nonprod/*",
+          "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-*",
+          "arn:aws:states:eu-central-1:229251310592:stateMachine:munaxa-nonprod-session-cleanup"
+        ],
+        "Sid": "TestingSessionCleanup"
+      },
+      {
+        "Action": [
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "ecs:ListTasks",
+          "secretsmanager:ListSecrets"
+        ],
+        "Effect": "Allow",
+        "Resource": ["*"],
+        "Sid": "TestingSessionCleanupLookups"
+      }
+    ],
+    "Version": "2012-10-17"
+  },
+  "cleanup": {
+    "Statement": [
+      {
+        "Action": [
+          "states:UpdateStateMachine",
+          "states:UntagResource",
+          "states:TagResource",
+          "states:ListTagsForResource",
+          "states:ListStateMachineVersions",
+          "states:DescribeStateMachine",
+          "states:DeleteStateMachine",
+          "states:CreateStateMachine"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:states:eu-central-1:229251310592:stateMachine:munaxa-nonprod-*",
+        "Sid": "OwnSessionCleanupStateMachine"
+      },
+      {
+        "Action": "states:ValidateStateMachineDefinition",
+        "Effect": "Allow",
+        "Resource": "*",
+        "Sid": "ValidateDefinitions"
+      },
+      {
+        "Action": [
+          "sns:UntagResource",
+          "sns:TagResource",
+          "sns:SetTopicAttributes",
+          "sns:ListTagsForResource",
+          "sns:GetTopicAttributes",
+          "sns:DeleteTopic",
+          "sns:CreateTopic"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:sns:eu-central-1:229251310592:munaxa-nonprod-*",
+        "Sid": "OwnAlarmTopics"
+      },
+      {
+        "Action": "iam:PassRole",
+        "Condition": {
+          "StringEquals": {
+            "iam:PassedToService": "states.amazonaws.com"
+          }
+        },
+        "Effect": "Allow",
+        "Resource": "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-session-cleanup",
+        "Sid": "PassTheCleanupRole"
+      }
+    ],
+    "Version": "2012-10-17"
+  },
+  "session_read_before": {
+    "Statement": [
+      {
+        "Action": [
+          "kms:ListResourceTags",
+          "kms:GetKeyRotationStatus",
+          "kms:GetKeyPolicy",
+          "kms:DescribeKey"
+        ],
+        "Condition": {
+          "StringEquals": {
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:ResourceTag/Project": "munaxa"
+          }
+        },
+        "Effect": "Allow",
+        "Resource": "arn:aws:kms:eu-central-1:229251310592:key/*",
+        "Sid": "RefreshOwnKeys"
+      },
+      {
+        "Action": ["secretsmanager:GetResourcePolicy", "secretsmanager:DescribeSecret"],
+        "Effect": "Allow",
+        "Resource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/*",
+        "Sid": "RefreshOwnSecretContainers"
+      },
+      {
+        "Action": [
+          "s3:ListBucket",
+          "s3:GetReplicationConfiguration",
+          "s3:GetLifecycleConfiguration",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetBucket*",
+          "s3:GetAccelerateConfiguration"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:s3:::munaxa-nonprod-*",
+        "Sid": "RefreshOwnBuckets"
+      },
+      {
+        "Action": [
+          "iam:ListRoleTags",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:GetRolePolicy",
+          "iam:GetRole"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-*",
+        "Sid": "RefreshOwnRoles"
+      },
+      {
+        "Action": [
+          "states:ListTagsForResource",
+          "states:ListStateMachineVersions",
+          "states:DescribeStateMachine",
+          "sns:ListTagsForResource",
+          "sns:GetTopicAttributes",
+          "cloudwatch:ListTagsForResource"
+        ],
+        "Effect": "Allow",
+        "Resource": [
+          "arn:aws:states:eu-central-1:229251310592:stateMachine:munaxa-nonprod-*",
+          "arn:aws:sns:eu-central-1:229251310592:munaxa-nonprod-*",
+          "arn:aws:cloudwatch:eu-central-1:229251310592:alarm:munaxa-nonprod-*"
+        ],
+        "Sid": "RefreshSessionCleanup"
+      }
+    ],
+    "Version": "2012-10-17"
+  },
+  "session_read_after": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "RefreshOwnKeys",
+        "Effect": "Allow",
+        "Action": [
+          "kms:ListResourceTags",
+          "kms:GetKeyRotationStatus",
+          "kms:GetKeyPolicy",
+          "kms:DescribeKey"
+        ],
+        "Resource": "arn:aws:kms:eu-central-1:229251310592:key/*",
+        "Condition": {
+          "StringEquals": {
+            "aws:ResourceTag/Environment": "nonprod",
+            "aws:ResourceTag/Project": "munaxa"
+          }
+        }
+      },
+      {
+        "Sid": "RefreshOwnSecretContainers",
+        "Effect": "Allow",
+        "Action": ["secretsmanager:GetResourcePolicy", "secretsmanager:DescribeSecret"],
+        "Resource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/*"
+      },
+      {
+        "Sid": "RefreshOwnBuckets",
+        "Effect": "Allow",
+        "Action": [
+          "s3:ListBucket",
+          "s3:GetReplicationConfiguration",
+          "s3:GetLifecycleConfiguration",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetBucket*",
+          "s3:GetAccelerateConfiguration"
+        ],
+        "Resource": "arn:aws:s3:::munaxa-nonprod-*"
+      },
+      {
+        "Sid": "RefreshOwnRoles",
+        "Effect": "Allow",
+        "Action": [
+          "iam:ListRoleTags",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:GetRolePolicy",
+          "iam:GetRole"
+        ],
+        "Resource": "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-*"
+      },
+      {
+        "Sid": "RefreshSessionCleanup",
+        "Effect": "Allow",
+        "Action": [
+          "states:ListTagsForResource",
+          "states:ListStateMachineVersions",
+          "states:DescribeStateMachine",
+          "sns:ListTagsForResource",
+          "sns:GetTopicAttributes",
+          "cloudwatch:ListTagsForResource"
+        ],
+        "Resource": [
+          "arn:aws:states:eu-central-1:229251310592:stateMachine:munaxa-nonprod-*",
+          "arn:aws:sns:eu-central-1:229251310592:munaxa-nonprod-*",
+          "arn:aws:cloudwatch:eu-central-1:229251310592:alarm:munaxa-nonprod-*"
+        ]
+      },
+      {
+        "Sid": "GateSessionCleanup",
+        "Effect": "Allow",
+        "Action": ["states:ListExecutions", "states:DescribeExecution"],
+        "Resource": [
+          "arn:aws:states:eu-central-1:229251310592:stateMachine:munaxa-nonprod-session-cleanup",
+          "arn:aws:states:eu-central-1:229251310592:execution:munaxa-nonprod-session-cleanup:*"
+        ]
+      }
+    ]
+  }
+}
