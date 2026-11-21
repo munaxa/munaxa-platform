@@ -26,8 +26,11 @@ budgets at the code default US$10, so no budget update is expected. Terraform 1.
 ## 2. Owner plan script: requirement check
 
 Canonical location now `scripts/aws/owner/docs-bootstrap-migrate-plan-owner-cloudshell.sh` (CI runs
-`shellcheck` and the tests on it). It is **byte-identical** to the copy in the previous report;
-SHA-256 **`1dc70ce4115e225e837991e155eff7567047e8d1eb6cd875e8d4da7712303845`**.
+`shellcheck` and the tests on it). CI's `shellcheck` (first run on this script, job 136958660684) flagged SC2164 (`cd
+infra/terraform/bootstrap` unchecked: the script runs with `set -u` but not `-e`, so a failed `cd`
+would have continued; the later checks would still have failed closed) and two SC2015 notes. Fixed
+with explicit `if … then stop` and `cd … || stop`; nothing else changed. New SHA-256
+**`0b61f4a2729badf01f2d518b4a881f03914660a8ba04c8d0bb970fb9d88df70b`** (supersedes `1dc70ce4…3845` in the previous report's copy, which stays as history).
 
 | Brief requirement | Script | Test (`scripts/aws/owner/test/test_docs_bootstrap_plan.py`) |
 | --- | --- | --- |
@@ -59,7 +62,7 @@ not the policy message (still a stop).
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/munaxa/munaxa-platform/main/scripts/aws/owner/docs-bootstrap-migrate-plan-owner-cloudshell.sh
-sha256sum docs-bootstrap-migrate-plan-owner-cloudshell.sh   # must be 1dc70ce4115e225e837991e155eff7567047e8d1eb6cd875e8d4da7712303845
+sha256sum docs-bootstrap-migrate-plan-owner-cloudshell.sh   # must be 0b61f4a2729badf01f2d518b4a881f03914660a8ba04c8d0bb970fb9d88df70b
 bash docs-bootstrap-migrate-plan-owner-cloudshell.sh f1fca8fd7a9a3e09cada5956bd37ac3b5b9a5aad
 ```
 

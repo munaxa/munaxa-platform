@@ -65,17 +65,17 @@ mkdir -p "$TF_PLUGIN_CACHE_DIR"
 [ "$(command -v terraform)" = "$T/terraform" ] && [ "$(terraform version | head -1)" = "Terraform v1.16.5" ] || stop "terraform is not the checked 1.16.5 binary"; ok "Terraform v1.16.5"
 
 echo "== 3 pinned clone"
-git clone -q https://github.com/munaxa/munaxa-docs.git && cd munaxa-docs || stop "clone"
+if ! git clone -q https://github.com/munaxa/munaxa-docs.git || ! cd munaxa-docs; then stop "clone"; fi
 git checkout -q --detach "$PIN" && [ "$(git rev-parse HEAD)" = "$PIN" ] || stop "HEAD is not $PIN"
 git merge-base --is-ancestor "$PIN" origin/main || stop "$PIN is not on main"
 F=$(git diff --name-only "$APPLIED" HEAD -- infra/terraform/bootstrap | tr '\n' ' ')
 [ "$F" = "infra/terraform/bootstrap/ecr.tf " ] || stop "bootstrap files changed since $APPLIED are not exactly ecr.tf: $F"
 [ "$(git rev-parse HEAD:infra/terraform/bootstrap/ecr.tf)" = $BLOB_ECR ] || stop "ecr.tf is not the reviewed content"
 ok "pin $PIN on main; bootstrap change since $APPLIED: ecr.tf only (reviewed)"
-cd infra/terraform/bootstrap
+cd infra/terraform/bootstrap || stop "bootstrap directory"
 grep -q 'version     = "6.67.0"' .terraform.lock.hcl || stop "provider version is not 6.67.0"
 grep -q 'h1:EB9ixYOZrSlYD7wtJxf88qwoyyWrlKDKxhzaCLIb3t4=' .terraform.lock.hcl || stop "provider lock hash"; ok "provider lock hashicorp/aws 6.67.0"
-grep -qF "bucket              = \"$B\"" backend.tf && grep -qF "key                 = \"$K\"" backend.tf || stop "backend.tf bucket/key"
+if ! grep -qF "bucket              = \"$B\"" backend.tf || ! grep -qF "key                 = \"$K\"" backend.tf; then stop "backend.tf bucket/key"; fi
 ok "backend.tf: s3://$B/$K"
 
 echo "== 4 budget alert addresses from the live budgets (read-only, not printed)"

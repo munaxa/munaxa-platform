@@ -59,5 +59,5 @@ entry and the final thread message).
 | Apply 1 change set with placeholders (scratch worktree): stack tests / connector tests / `check-plan-intent.sh --validate` | **95 passed** / **143 OK** / valid, 37 declared |
 | Terraform 1.16.5 zip and aws 6.67.0 zip vs HashiCorp `SHA256SUMS` | match |
 
-Not run locally: `shellcheck` (not installed here; CI runs it, now also on the bootstrap script).
+Not run locally: `shellcheck` (not installed here). CI runs it, now also on the bootstrap script; its first run (job 136958660684) found SC2164/SC2015 in that script, fixed in this PR (file 02).
 No image build: D-SSL makes every scan fail by design and the bump PRs already show it.
