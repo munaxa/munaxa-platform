@@ -75,7 +75,7 @@ def main():
         store_then_fail = sf["seen"] == sf["nth"]
 
     if service == "sts" and op == "get-caller-identity":
-        print(json.dumps({"Account": s.get("account", ACCOUNT), "Arn": f"arn:aws:iam::{s.get('account', ACCOUNT)}:root", "UserId": ACCOUNT}))
+        print(json.dumps({"Account": s.get("account", ACCOUNT), "Arn": s.get("caller_arn") or f"arn:aws:iam::{s.get('account', ACCOUNT)}:root", "UserId": ACCOUNT}))
         return
     if service == "rds" and op == "describe-db-instances":
         print(json.dumps({"DBInstances": [{"DBInstanceIdentifier": req["DBInstanceIdentifier"], "DBInstanceStatus": "stopped",

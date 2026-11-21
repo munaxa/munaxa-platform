@@ -1,0 +1,6 @@
+Evaluated with infra/aws/identity-center/test_permission_sets.py decide() (offline model, not AWS)
+action                       resource                                                   29Oct-draft  mgmt-interim
+iam:UpdateAssumeRolePolicy   role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod   allow        deny
+iam:PutRolePolicy            role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod   allow        deny
+iam:AttachRolePolicy         role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod   allow        deny
+iam:CreatePolicyVersion      policy/munaxa-shared/munaxa-shared-workload-boundary       allow        deny

@@ -1,0 +1,190 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OrganizationAndAccountAdministration",
+      "Effect": "Allow",
+      "Action": [
+        "organizations:*",
+        "account:*",
+        "sso:*",
+        "sso-directory:*",
+        "identitystore:*",
+        "cloudtrail:*",
+        "budgets:*",
+        "ce:*",
+        "cur:*",
+        "billing:*",
+        "invoicing:*",
+        "tax:Get*",
+        "tax:List*",
+        "freetier:*",
+        "servicequotas:*",
+        "health:*",
+        "support:*",
+        "pricing:*",
+        "tag:*",
+        "notifications:*",
+        "notifications-contacts:*",
+        "sts:GetCallerIdentity",
+        "signin:*",
+        "payments:Get*",
+        "payments:List*",
+        "sts:AssumeRoot"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IamForOrganizationSetupOnly",
+      "Effect": "Allow",
+      "Action": [
+        "iam:Get*",
+        "iam:List*",
+        "iam:GenerateCredentialReport",
+        "iam:GenerateServiceLastAccessedDetails",
+        "iam:EnableOrganizationsRootCredentialsManagement",
+        "iam:EnableOrganizationsRootSessions",
+        "iam:DisableOrganizationsRootCredentialsManagement",
+        "iam:DisableOrganizationsRootSessions",
+        "iam:UpdateAccountPasswordPolicy"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ServiceLinkedRolesForFoundationServices",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "sso.amazonaws.com",
+            "cloudtrail.amazonaws.com",
+            "organizations.amazonaws.com",
+            "account.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "OrganizationTrailBucketAndKey",
+      "Effect": "Allow",
+      "Action": ["s3:*"],
+      "Resource": [
+        "arn:aws:s3:::munaxa-org-cloudtrail-229251310592",
+        "arn:aws:s3:::munaxa-org-cloudtrail-229251310592/*"
+      ]
+    },
+    {
+      "Sid": "AccountBaselineSettings",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetAccountPublicAccessBlock",
+        "s3:PutAccountPublicAccessBlock",
+        "s3:ListAllMyBuckets",
+        "ec2:GetEbsEncryptionByDefault",
+        "ec2:EnableEbsEncryptionByDefault",
+        "ec2:DescribeRegions",
+        "kms:ListAliases",
+        "kms:ListKeys",
+        "kms:DescribeKey",
+        "ds:DescribeDirectories"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ReadEverythingElse",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "ecs:Describe*",
+        "ecs:List*",
+        "elasticloadbalancing:Describe*",
+        "rds:Describe*",
+        "ecr:Describe*",
+        "logs:Describe*",
+        "secretsmanager:ListSecrets",
+        "acm:List*",
+        "acm:Describe*",
+        "route53:List*",
+        "route53:Get*",
+        "backup:List*",
+        "s3:GetBucket*",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "cloudwatch:GetMetricData",
+        "cloudwatch:GetMetricStatistics",
+        "cloudwatch:ListMetrics",
+        "cloudwatch:DescribeAlarms"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CreateOnlyTheTrailKey",
+      "Effect": "Allow",
+      "Action": "kms:CreateKey",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Purpose": "munaxa-org-trail"
+        },
+        "ForAllValues:StringEquals": {
+          "aws:TagKeys": ["Purpose"]
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyTheTrailKey",
+      "Effect": "Allow",
+      "Action": "kms:*",
+      "Resource": "arn:aws:kms:eu-central-1:229251310592:key/*",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "kms:ResourceAliases": "alias/munaxa-org-trail"
+        }
+      }
+    },
+    {
+      "Sid": "TrailKeyAlias",
+      "Effect": "Allow",
+      "Action": ["kms:CreateAlias", "kms:UpdateAlias"],
+      "Resource": "arn:aws:kms:eu-central-1:229251310592:alias/munaxa-org-trail"
+    },
+    {
+      "Sid": "ProtectDocsKeys",
+      "Effect": "Deny",
+      "Action": [
+        "kms:ScheduleKeyDeletion",
+        "kms:DisableKey",
+        "kms:PutKeyPolicy",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:DeleteAlias",
+        "kms:UpdateAlias",
+        "kms:CreateGrant",
+        "kms:Decrypt"
+      ],
+      "Resource": [
+        "arn:aws:kms:eu-central-1:229251310592:key/9758d15e-1487-4de4-bc74-d5f95327423b",
+        "arn:aws:kms:eu-central-1:229251310592:key/c11c7689-b420-4c70-a785-6105d563ec29"
+      ]
+    },
+    {
+      "Sid": "NoWorkloadsInManagement",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:CreateVpc",
+        "ec2:CreateNatGateway",
+        "ecs:CreateService",
+        "ecs:RunTask",
+        "rds:CreateDBInstance",
+        "elasticache:Create*",
+        "lambda:CreateFunction",
+        "elasticloadbalancing:CreateLoadBalancer",
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
