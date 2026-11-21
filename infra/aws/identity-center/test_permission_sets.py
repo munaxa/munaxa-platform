@@ -159,6 +159,102 @@ class Engineering(unittest.TestCase):
         self.assertEqual(decide(self.p, "sts:GetCallerIdentity", **{"aws:RequestedRegion": "us-east-1"}), "implicit")
 
 
+# IC-1 regression (21 Nov 2026): the 29 Oct Engineering draft let an Engineering session rewrite the
+# Production deployer's trust, attach policies to it and create new boundary versions. These tests
+# walk every IAM write action AWS documents against every privileged principal and policy in this
+# account and require an explicit deny (not just "no allow"), so a future edit that adds an allow
+# cannot silently reopen the path.
+IAM_WRITE_ACTIONS = (
+    # roles, trust and boundaries
+    "iam:UpdateAssumeRolePolicy", "iam:PutRolePolicy", "iam:AttachRolePolicy", "iam:DetachRolePolicy",
+    "iam:DeleteRolePolicy", "iam:PutRolePermissionsBoundary", "iam:DeleteRolePermissionsBoundary",
+    "iam:CreateRole", "iam:DeleteRole", "iam:UpdateRole", "iam:UpdateRoleDescription", "iam:TagRole",
+    "iam:UntagRole", "iam:PassRole", "iam:CreateServiceLinkedRole",
+    # managed policies (boundaries are managed policies)
+    "iam:CreatePolicy", "iam:CreatePolicyVersion", "iam:SetDefaultPolicyVersion", "iam:DeletePolicyVersion",
+    "iam:DeletePolicy", "iam:TagPolicy",
+    # users, keys, groups
+    "iam:CreateUser", "iam:CreateAccessKey", "iam:UpdateAccessKey", "iam:CreateLoginProfile",
+    "iam:UpdateLoginProfile", "iam:PutUserPolicy", "iam:AttachUserPolicy", "iam:PutUserPermissionsBoundary",
+    "iam:AddUserToGroup", "iam:CreateGroup", "iam:PutGroupPolicy", "iam:AttachGroupPolicy",
+    "iam:EnableMFADevice", "iam:DeactivateMFADevice", "iam:CreateVirtualMFADevice", "iam:UploadSSHPublicKey",
+    "iam:CreateServiceSpecificCredential", "iam:UploadServerCertificate", "iam:UploadSigningCertificate",
+    # instance profiles and federation (GitHub OIDC)
+    "iam:CreateInstanceProfile", "iam:AddRoleToInstanceProfile", "iam:CreateOpenIDConnectProvider",
+    "iam:UpdateOpenIDConnectProviderThumbprint", "iam:AddClientIDToOpenIDConnectProvider",
+    "iam:RemoveClientIDFromOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider", "iam:TagOpenIDConnectProvider",
+    "iam:CreateSAMLProvider", "iam:UpdateSAMLProvider",
+    # account-wide
+    "iam:UpdateAccountPasswordPolicy", "iam:CreateAccountAlias", "iam:SetSecurityTokenServicePreferences",
+)
+PRIVILEGED = (
+    DEPLOYER_PROD,
+    f"arn:aws:iam::{ACCT}:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod",
+    f"arn:aws:iam::{ACCT}:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session",
+    f"arn:aws:iam::{ACCT}:role/munaxa-shared/bootstrap/munaxa-shared-ci-nonprod-session",
+    f"arn:aws:iam::{ACCT}:role/munaxa-docs/eu-prod/munaxa-docs-eu-prod-deployer",
+    f"arn:aws:iam::{ACCT}:role/munaxa-shared/munaxa-nonprod-docs-api-task",
+    f"arn:aws:iam::{ACCT}:role/aws-reserved/sso.amazonaws.com/eu-central-1/AWSReservedSSO_MunaxaAdministrator_0123456789abcdef",
+    f"arn:aws:iam::{ACCT}:role/OrganizationAccountAccessRole",
+    BOUNDARY,
+    f"arn:aws:iam::{ACCT}:policy/munaxa-shared/munaxa-shared-image-publisher-boundary",
+    f"arn:aws:iam::{ACCT}:policy/munaxa-docs/eu-prod/munaxa-docs-workload-boundary",
+    f"arn:aws:iam::{ACCT}:oidc-provider/token.actions.githubusercontent.com",
+    f"arn:aws:iam::{ACCT}:user/anyone",
+    "*",
+)
+
+
+class EngineeringIC1Regression(unittest.TestCase):
+    p = load("MunaxaEngineering.management-interim.inline.json")
+
+    def test_every_iam_write_is_explicitly_denied_everywhere(self):
+        for act in IAM_WRITE_ACTIONS:
+            for res in PRIVILEGED:
+                for region in ("eu-central-1", "us-east-1"):
+                    self.assertEqual(decide(self.p, act, res, base_allow=VIEW_ONLY, **{"aws:RequestedRegion": region}),
+                                     "deny", (act, res, region))
+
+    def test_cannot_assume_or_federate_into_privileged_roles(self):
+        for act in ("sts:AssumeRole", "sts:AssumeRoot", "sts:AssumeRoleWithWebIdentity"):
+            for res in PRIVILEGED:
+                self.assertEqual(decide(self.p, act, res), "deny", (act, res))
+
+    def test_no_allow_statement_grants_identity_or_role_control(self):
+        # Structural guard: no Allow may name iam:, sts:, sso:, identitystore:, organizations: or a
+        # wildcard service, whatever its resource; only CloudShell may use a service-wide wildcard.
+        banned = re.compile(r"^(iam|sts|sso|sso-directory|identitystore|organizations|account|lambda|cloudformation):|^\*$")
+        for st in self.p["Statement"]:
+            if st["Effect"] != "Allow":
+                continue
+            self.assertNotIn("NotAction", st, st["Sid"])
+            for act in _list(st["Action"]):
+                self.assertIsNone(banned.match(act), (st["Sid"], act))
+                if act.endswith(":*"):
+                    self.assertEqual(act, "cloudshell:*", st["Sid"])
+
+    def test_production_secrets_and_keys_refused(self):
+        prod_secrets = (f"{SECRET}munaxa-prod/identity-Ab12Cd", f"{SECRET}munaxa-prod/control-api-Ab12Cd",
+                        f"{SECRET}munaxa-docs/eu-prod/app-Ab12Cd", f"{SECRET}munaxa-nonprod/identity-operator-Ab12Cd",
+                        f"{SECRET}munaxa-nonprod/identity-Ab12Cd")
+        for arn in prod_secrets:
+            for act in ("secretsmanager:GetSecretValue", "secretsmanager:BatchGetSecretValue", "secretsmanager:PutSecretValue"):
+                self.assertIn(decide(self.p, act, arn, base_allow=VIEW_ONLY), ("deny", "implicit"), (act, arn))
+        prod_key = f"arn:aws:kms:eu-central-1:{ACCT}:key/22222222-2222-2222-2222-222222222222"
+        for act in ("kms:Decrypt", "kms:GenerateDataKey", "kms:Sign", "kms:CreateGrant", "kms:ReEncryptFrom"):
+            self.assertEqual(decide(self.p, act, prod_key, **{"kms:ViaService": "secretsmanager.eu-central-1.amazonaws.com"}),
+                             "deny", act)
+            self.assertEqual(decide(self.p, act, NONPROD_KEY, **{"aws:ResourceTag/Environment": "production"}), "deny", act)
+
+
+class OtherSetsNoIAMWrite(unittest.TestCase):
+    def test_readonly_grants_no_iam_write_and_no_assume(self):
+        p = load("MunaxaReadOnly.inline.json")
+        for act in IAM_WRITE_ACTIONS + ("sts:AssumeRole", "sts:AssumeRoot"):
+            for res in (DEPLOYER_PROD, BOUNDARY, "*"):
+                self.assertIn(decide(p, act, res), ("deny", "implicit"), (act, res))
+
+
 class ReadOnly(unittest.TestCase):
     p = load("MunaxaReadOnly.inline.json")
 

@@ -1,0 +1,17 @@
+IC-1 regression tests (infra/aws/identity-center/test_permission_sets.py, class EngineeringIC1Regression),
+run against deliberately weakened copies of MunaxaEngineering.management-interim.inline.json in a
+scratch directory, 21 Nov 2026 ~19:20 UTC. Command per case:
+  python3 -I -m unittest discover -s <scratch> -p 'test_*.py' -k EngineeringIC1Regression
+
+case                                                         result
+reviewed policy (main + this PR)                             Ran 4 tests  OK
+29 Oct MunaxaEngineering draft (project files, PowerUser)    Ran 4 tests  FAILED (failures=4)
+deny list without iam:Update*                                FAILED (failures=1)
+deny list without iam:Attach*                                FAILED (failures=1)
+deny list without iam:Create*                                FAILED (failures=1)
+deny list without iam:Set*                                   FAILED (failures=1)
+deny list without iam:PassRole                               FAILED (failures=1)
+deny list without sts:AssumeRole                             FAILED (failures=1)
+an added Allow naming iam:GetRole                            FAILED (failures=1)
+
+Every weakening is caught. Full suite on the reviewed policy: Ran 18 tests, OK (13 before this PR).

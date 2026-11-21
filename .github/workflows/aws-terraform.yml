@@ -124,6 +124,15 @@ jobs:
           python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_work_testing_secrets.py
           python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_caller_identity.py
 
+      # The owner's Docs bootstrap plan script (root, CloudShell, plan only; report
+      # 2026-11-21-testing-owner-preparation, file 02): end to end against fake aws/terraform and a
+      # synthetic munaxa-docs repository. No AWS call, no network.
+      - name: Docs bootstrap owner plan script tests
+        run: |
+          set -euo pipefail
+          shellcheck scripts/aws/owner/docs-bootstrap-migrate-plan-owner-cloudshell.sh
+          python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_docs_bootstrap_plan.py -v
+
       # IAM Identity Center permission sets for the management account (report
       # 2026-11-21-testing-readiness, file 02): an offline model of IAM evaluation, no AWS call.
       - name: Identity Center permission-set policy tests

@@ -1,0 +1,124 @@
+run baseline_main: pass
+run apply1_plan: pass  create=33 update=4 replace=0 destroy=0
+    will be updated in-place   aws_ecs_task_definition.identity_bootstrap[0]
+    will be updated in-place   aws_ecs_task_definition.identity_probe[0]
+    will be created            aws_kms_alias.licence[0]
+    will be created            aws_kms_key.licence[0]
+    will be created            aws_kms_key_policy.licence[0]
+    will be created            aws_vpc_security_group_egress_rule.alb_to_service["control-api"]
+    will be created            aws_vpc_security_group_egress_rule.alb_to_service["control-portal"]
+    will be created            module.control_api[0].aws_cloudwatch_log_group.this
+    will be created            module.control_api[0].aws_ecs_task_definition.this
+    will be created            module.control_api[0].aws_iam_role.execution
+    will be created            module.control_api[0].aws_iam_role.task[0]
+    will be created            module.control_api[0].aws_iam_role_policy.execution
+    will be created            module.control_api[0].aws_iam_role_policy.task[0]
+    will be created            module.control_api[0].aws_security_group.this
+    will be created            module.control_api[0].aws_vpc_security_group_egress_rule.database[0]
+    will be created            module.control_api[0].aws_vpc_security_group_egress_rule.https
+    will be created            module.control_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+    will be created            module.control_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+    will be created            module.control_api[0].aws_vpc_security_group_ingress_rule.from_callers["control-portal"]
+    will be created            module.control_migrate[0].aws_cloudwatch_log_group.this
+    will be created            module.control_migrate[0].aws_ecs_task_definition.this
+    will be created            module.control_migrate[0].aws_iam_role.execution
+    will be created            module.control_migrate[0].aws_iam_role_policy.execution
+    will be created            module.control_migrate[0].aws_security_group.this
+    will be created            module.control_migrate[0].aws_vpc_security_group_egress_rule.database[0]
+    will be created            module.control_migrate[0].aws_vpc_security_group_egress_rule.https
+    will be created            module.control_migrate[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+    will be created            module.control_portal[0].aws_cloudwatch_log_group.this
+    will be created            module.control_portal[0].aws_ecs_task_definition.this
+    will be created            module.control_portal[0].aws_iam_role.execution
+    will be created            module.control_portal[0].aws_iam_role_policy.execution
+    will be created            module.control_portal[0].aws_security_group.this
+    will be created            module.control_portal[0].aws_vpc_security_group_egress_rule.https
+    will be created            module.control_portal[0].aws_vpc_security_group_egress_rule.to_services["control-api"]
+    will be created            module.control_portal[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+    will be updated in-place   module.identity[0].aws_ecs_task_definition.this
+    will be updated in-place   module.migrate["identity"].aws_ecs_task_definition.this
+    Plan: 33 to add, 4 to change, 0 to destroy.
+run apply1: pass
+run apply2_plan: pass  create=42 update=3 replace=0 destroy=0
+    will be updated in-place   aws_ecs_task_definition.db_admin[0]
+    will be created            aws_ecs_task_definition.docs_db_admin[0]
+    will be created            aws_ecs_task_definition.docs_provision[0]
+    will be created            aws_iam_role.docs_provision_execution[0]
+    will be created            aws_iam_role_policy.docs_provision_execution[0]
+    will be created            aws_vpc_security_group_egress_rule.alb_to_service["docs-api"]
+    will be created            aws_vpc_security_group_egress_rule.alb_to_service["docs-web"]
+    will be updated in-place   module.control_api[0].aws_ecs_task_definition.this
+    will be updated in-place   module.control_migrate[0].aws_ecs_task_definition.this
+    will be created            module.docs_api[0].aws_cloudwatch_log_group.this
+    will be created            module.docs_api[0].aws_ecs_task_definition.this
+    will be created            module.docs_api[0].aws_iam_role.execution
+    will be created            module.docs_api[0].aws_iam_role.task[0]
+    will be created            module.docs_api[0].aws_iam_role_policy.execution
+    will be created            module.docs_api[0].aws_iam_role_policy.task[0]
+    will be created            module.docs_api[0].aws_security_group.this
+    will be created            module.docs_api[0].aws_vpc_security_group_egress_rule.database[0]
+    will be created            module.docs_api[0].aws_vpc_security_group_egress_rule.https
+    will be created            module.docs_api[0].aws_vpc_security_group_egress_rule.to_services["docs-scanner"]
+    will be created            module.docs_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+    will be created            module.docs_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+    will be created            module.docs_api[0].aws_vpc_security_group_ingress_rule.from_callers["docs-web"]
+    will be created            module.docs_migrate[0].aws_cloudwatch_log_group.this
+    will be created            module.docs_migrate[0].aws_ecs_task_definition.this
+    will be created            module.docs_migrate[0].aws_iam_role.execution
+    will be created            module.docs_migrate[0].aws_iam_role_policy.execution
+    will be created            module.docs_migrate[0].aws_security_group.this
+    will be created            module.docs_migrate[0].aws_vpc_security_group_egress_rule.database[0]
+    will be created            module.docs_migrate[0].aws_vpc_security_group_egress_rule.https
+    will be created            module.docs_migrate[0].aws_vpc_security_group_ingress_rule.database_from_service[0]
+    will be created            module.docs_scanner[0].aws_cloudwatch_log_group.this
+    will be created            module.docs_scanner[0].aws_ecs_task_definition.this
+    will be created            module.docs_scanner[0].aws_iam_role.execution
+    will be created            module.docs_scanner[0].aws_iam_role_policy.execution
+    will be created            module.docs_scanner[0].aws_security_group.this
+    will be created            module.docs_scanner[0].aws_vpc_security_group_egress_rule.https
+    will be created            module.docs_scanner[0].aws_vpc_security_group_ingress_rule.from_callers["docs-api"]
+    will be created            module.docs_web[0].aws_cloudwatch_log_group.this
+    will be created            module.docs_web[0].aws_ecs_task_definition.this
+    will be created            module.docs_web[0].aws_iam_role.execution
+    will be created            module.docs_web[0].aws_iam_role_policy.execution
+    will be created            module.docs_web[0].aws_security_group.this
+    will be created            module.docs_web[0].aws_vpc_security_group_egress_rule.https
+    will be created            module.docs_web[0].aws_vpc_security_group_egress_rule.to_services["docs-api"]
+    will be created            module.docs_web[0].aws_vpc_security_group_ingress_rule.from_alb[0]
+    Plan: 42 to add, 3 to change, 0 to destroy.
+run apply2: pass
+run docs_credential_pin_plan: pass  create=0 update=2 replace=0 destroy=0
+    will be updated in-place   aws_ecs_task_definition.docs_provision[0]
+    will be updated in-place   module.docs_api[0].aws_ecs_task_definition.this
+    Plan: 0 to add, 2 to change, 0 to destroy.
+run docs_session_plan: pass  create=28 update=0 replace=0 destroy=0
+    will be created            aws_acm_certificate_validation.main[0]
+    will be created            aws_lb.main[0]
+    will be created            aws_lb_listener.http[0]
+    will be created            aws_lb_listener.https[0]
+    will be created            aws_lb_listener_rule.control_admin_refused[0]
+    will be created            aws_lb_listener_rule.control_api_refused[0]
+    will be created            aws_lb_listener_rule.operator_refused[0]
+    will be created            module.control_api[0].aws_ecs_service.this[0]
+    will be created            module.control_api[0].aws_lb_listener_rule.this["20"]
+    will be created            module.control_api[0].aws_lb_target_group.this[0]
+    will be created            module.control_api[0].aws_service_discovery_service.this[0]
+    will be created            module.control_portal[0].aws_ecs_service.this[0]
+    will be created            module.control_portal[0].aws_lb_listener_rule.this["31"]
+    will be created            module.control_portal[0].aws_lb_target_group.this[0]
+    will be created            module.docs_api[0].aws_ecs_service.this[0]
+    will be created            module.docs_api[0].aws_lb_listener_rule.this["70"]
+    will be created            module.docs_api[0].aws_lb_target_group.this[0]
+    will be created            module.docs_api[0].aws_service_discovery_service.this[0]
+    will be created            module.docs_scanner[0].aws_ecs_service.this[0]
+    will be created            module.docs_scanner[0].aws_service_discovery_service.this[0]
+    will be created            module.docs_web[0].aws_ecs_service.this[0]
+    will be created            module.docs_web[0].aws_lb_listener_rule.this["71"]
+    will be created            module.docs_web[0].aws_lb_target_group.this[0]
+    will be created            module.identity[0].aws_ecs_service.this[0]
+    will be created            module.identity[0].aws_lb_listener_rule.this["30"]
+    will be created            module.identity[0].aws_lb_listener_rule.this["40"]
+    will be created            module.identity[0].aws_lb_listener_rule.this["50"]
+    will be created            module.identity[0].aws_lb_target_group.this[0]
+    Plan: 28 to add, 0 to change, 0 to destroy.
+Success! 7 passed, 0 failed.

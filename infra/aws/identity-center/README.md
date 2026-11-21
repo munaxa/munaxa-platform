@@ -150,6 +150,25 @@ aws iam simulate-principal-policy --policy-source-arn "$ENG" \
 # expected: both allowed
 ```
 
+**C2. Wider IC-1 regression checks** (same CloudShell, same `$ENG`; read-only). They mirror the
+offline test class `EngineeringIC1Regression` (report 2026-11-21-testing-owner-preparation, file 01):
+every role, boundary and the GitHub OIDC provider, every IAM write that could widen access.
+
+```bash
+for R in arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-prod \
+         arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-shared-deployer-nonprod-session \
+         arn:aws:iam::229251310592:policy/munaxa-shared/munaxa-shared-workload-boundary \
+         arn:aws:iam::229251310592:oidc-provider/token.actions.githubusercontent.com; do
+  aws iam simulate-principal-policy --policy-source-arn "$ENG" --resource-arns "$R" \
+    --action-names iam:DetachRolePolicy iam:DeleteRolePolicy iam:PutRolePermissionsBoundary \
+      iam:DeleteRolePermissionsBoundary iam:UpdateRole iam:TagRole iam:PassRole iam:SetDefaultPolicyVersion \
+      iam:DeletePolicyVersion iam:UpdateOpenIDConnectProviderThumbprint iam:AddClientIDToOpenIDConnectProvider \
+      iam:CreateLoginProfile iam:AttachUserPolicy sts:AssumeRole \
+    --query 'EvaluationResults[?EvalDecision!=`explicitDeny`].[EvalActionName,EvalDecision]' --output text
+done
+# expected: no output at all (every pair is explicitDeny). Any printed line = stop, send it to Claude.
+```
+
 If any expectation differs: stop, send Claude the output, and do not use that permission set.
 Root still works throughout.
 
