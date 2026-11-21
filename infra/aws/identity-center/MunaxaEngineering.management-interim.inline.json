@@ -40,10 +40,7 @@
     {
       "Sid": "NonprodDataKeyOnlyThroughSecretsManager",
       "Effect": "Allow",
-      "Action": [
-        "kms:GenerateDataKey",
-        "kms:Decrypt"
-      ],
+      "Action": ["kms:GenerateDataKey", "kms:Decrypt"],
       "Resource": "arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37",
       "Condition": {
         "StringEquals": {
@@ -74,11 +71,7 @@
     {
       "Sid": "LogQueryResults",
       "Effect": "Allow",
-      "Action": [
-        "logs:GetQueryResults",
-        "logs:StopQuery",
-        "logs:StopLiveTail"
-      ],
+      "Action": ["logs:GetQueryResults", "logs:StopQuery", "logs:StopLiveTail"],
       "Resource": "*"
     },
     {
@@ -206,10 +199,7 @@
       "Resource": "*",
       "Condition": {
         "StringEqualsIgnoreCase": {
-          "aws:ResourceTag/Environment": [
-            "prod",
-            "production"
-          ]
+          "aws:ResourceTag/Environment": ["prod", "production"]
         }
       }
     },

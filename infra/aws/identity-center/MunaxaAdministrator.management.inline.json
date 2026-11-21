@@ -69,9 +69,7 @@
     {
       "Sid": "OrganizationTrailBucketAndKey",
       "Effect": "Allow",
-      "Action": [
-        "s3:*"
-      ],
+      "Action": ["s3:*"],
       "Resource": [
         "arn:aws:s3:::munaxa-org-cloudtrail-229251310592",
         "arn:aws:s3:::munaxa-org-cloudtrail-229251310592/*"
@@ -131,9 +129,7 @@
           "aws:RequestTag/Purpose": "munaxa-org-trail"
         },
         "ForAllValues:StringEquals": {
-          "aws:TagKeys": [
-            "Purpose"
-          ]
+          "aws:TagKeys": ["Purpose"]
         }
       }
     },
@@ -151,10 +147,7 @@
     {
       "Sid": "TrailKeyAlias",
       "Effect": "Allow",
-      "Action": [
-        "kms:CreateAlias",
-        "kms:UpdateAlias"
-      ],
+      "Action": ["kms:CreateAlias", "kms:UpdateAlias"],
       "Resource": "arn:aws:kms:eu-central-1:229251310592:alias/munaxa-org-trail"
     },
     {
