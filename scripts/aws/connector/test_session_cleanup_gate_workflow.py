@@ -466,6 +466,19 @@ class Workflow(unittest.TestCase):
         self.assertIn("required: false", m.group(1))
         self.assertIn("type: string", m.group(1))
 
+    def test_operator_ranges_come_from_an_environment_variable_never_the_repository(self):
+        # 21 Nov 2026 (OPERATOR-ACCESS.md): no Cloudflare Access; the operator host opens only from
+        # the aws-nonprod-session variable OPERATOR_CIDRS, masked, and stays closed when it is unset.
+        body = self.step("Plan the switches")["body"]
+        self.assertIn("OPERATOR_CIDRS: ${{ vars.OPERATOR_CIDRS }}", body)
+        run = body.split("run: |", 1)[1]
+        self.assertNotIn("${{", run)
+        self.assertIn("::add-mask::", run)
+        self.assertIn('"${operator[@]}"', run)
+        self.assertNotRegex(self.text.lower(), r"cloudflare|cf_access|operator_access")
+        with open(os.path.join(os.path.dirname(WORKFLOW), "..", "..", "infra", "aws", "stack", "envs", "nonprod.tfvars"), encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"(?m)^operator_cidrs\s*=\s*\[\]")
+
 
 class LiveSandboxErrors(unittest.TestCase):
     """18 Nov 2026: the live connector sandbox has no `ClientError` name, so `isinstance(e, ClientError)`

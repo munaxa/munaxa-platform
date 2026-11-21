@@ -18,19 +18,21 @@ session_backstop_schedule = "cron(0 21 * * ? *)"
 hosts = {
   identity    = "id.test.munaxa.com"
   control_api = "control-api.test.munaxa.com"
-  operator    = "operator-test.munaxa.com" # first level: Cloudflare Access proxies it (cloudflare-access.md)
+  operator    = "operator-test.munaxa.com" # DNS only; ALB operator_cidrs + Identity MFA (../../OPERATOR-ACCESS.md §5)
   work        = "work.test.munaxa.com"
   school      = "school.test.munaxa.com"
   docs        = "docs.test.munaxa.com" # Docs recreated in the shared stack (docs.tf); DNS only
 }
 certificate_domains = ["*.test.munaxa.com", "operator-test.munaxa.com"]
 
-# The operator network (Control ADR-0006). Empty, and with operator_access unset, refuses every
-# request to the operator host.
+# The operator network (Control ADR-0006; ../../OPERATOR-ACCESS.md §5). Empty here, and with
+# operator_access unset, refuses every request to the operator host. Never commit an operator's
+# address: the session workflow passes the aws-nonprod-session variable OPERATOR_CIDRS at up.
 operator_cidrs = []
 
-# Cloudflare Access (../../cloudflare-access.md). Set once the Access application exists; the team
-# domain and AUD tag are public. Required before any Control image is set.
+# OPTIONAL Cloudflare Access layer (../../cloudflare-access.md); not used by the Testing deployment
+# and not required for Control (21 Nov 2026). Without it, Control needs identity_security_config
+# with an MFA policy that covers the Control operator role.
 # operator_access = { team_domain = "https://<team>.cloudflareaccess.com", audience = "<AUD tag>" }
 
 database_backup_retention_days = 7

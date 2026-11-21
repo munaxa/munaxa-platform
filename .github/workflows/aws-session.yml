@@ -221,13 +221,27 @@ jobs:
 
       - name: Plan the switches
         if: steps.stack.outputs.exists == 'true' && (env.SESSION != 'up' || steps.h20.outcome == 'success')
+        env:
+          # AWS-native operator access (infra/aws/OPERATOR-ACCESS.md): the operator's source ranges
+          # for the Control operator host, comma-separated, from the aws-nonprod-session
+          # environment's variable OPERATOR_CIDRS, so an operator's address is never committed to
+          # this public repository. Unset: operator_cidrs stays [] and the ALB refuses the operator
+          # host to everyone (rule 39). Terraform refuses 0.0.0.0/0, ::/0 and more than three.
+          OPERATOR_CIDRS: ${{ vars.OPERATOR_CIDRS }}
         run: |
           set -euo pipefail
           on=$([ "$SESSION" = up ] && echo true || echo false)
+          operator=()
+          if [ -n "${OPERATOR_CIDRS// /}" ]; then
+            cidrs=$(jq -cn --arg s "$OPERATOR_CIDRS" '$s | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))')
+            for c in $(jq -r '.[]' <<<"$cidrs"); do echo "::add-mask::$c"; done
+            operator=(-var "operator_cidrs=$cidrs")
+            echo "Operator source ranges: $(jq length <<<"$cidrs") (values masked)"
+          fi
           # The human-readable plan (attribute values) stays out of the public log; errors go to
           # stderr. Warnings go to stdout with the plan, so only their headings are printed.
           terraform plan -input=false -no-color -lock-timeout=5m -var-file=envs/nonprod.tfvars \
-            -var "edge_enabled=$on" -var "services_enabled=$on" -out=tfplan > plan.stdout
+            -var "edge_enabled=$on" -var "services_enabled=$on" "${operator[@]}" -out=tfplan > plan.stdout
           grep -E '^Warning: ' plan.stdout | sort -u | sed 's/^/::warning::/' || true
           rm -f plan.stdout
           terraform show -json tfplan > plan.json

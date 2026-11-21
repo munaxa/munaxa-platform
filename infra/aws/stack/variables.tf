@@ -112,7 +112,7 @@ variable "certificate_domains" {
 }
 
 variable "operator_cidrs" {
-  description = "Source ranges allowed to reach the operator host (Control ADR-0006). With operator_access unset, empty refuses every request to it; with it set, empty takes any source and the origin checks the Access token."
+  description = "Source ranges allowed to reach the operator host (Control ADR-0006; ../OPERATOR-ACCESS.md). The AWS-native default: the ALB forwards the operator host only from these ranges and rule 39 answers 403 to everyone else. With operator_access unset, empty refuses every request to it; with the optional operator_access set, empty takes any source and the origin checks the Access token."
   type        = list(string)
   default     = []
 
@@ -130,7 +130,7 @@ variable "operator_cidrs" {
 }
 
 variable "operator_access" {
-  description = "Cloudflare Access in front of the operator host (../cloudflare-access.md): the team domain and the Access application's AUD tag. Public identifiers, not secrets. Control's API and portal verify the Access token with them; set, the operator host takes any source."
+  description = "OPTIONAL, not used by the Testing deployment: Cloudflare Access in front of the operator host (../cloudflare-access.md), as the team domain and the Access application's AUD tag. Public identifiers, not secrets. Control's API and portal verify the Access token with them; set, the operator host takes any source. Unset (default), operator access is AWS-native (../OPERATOR-ACCESS.md): operator_cidrs at the ALB and Identity MFA in Control."
   type = object({
     team_domain = string
     audience    = string
@@ -145,10 +145,14 @@ variable "operator_access" {
     error_message = "operator_access is { team_domain = \"https://<team>.cloudflareaccess.com\", audience = \"<AUD tag>\" }."
   }
 
-  # Control refuses to run in production without Access (its OPERATOR_ACCESS_* settings).
+  # Without the optional Access layer, Control in production requires OPERATOR_REQUIRE_MFA=true
+  # (munaxa-control config/environment.ts), and only a hardened Identity with an MFA policy ever
+  # issues mfa: true. Refused here rather than at Control's startup.
   validation {
-    condition     = var.operator_access != null || (var.images.control_api == "" && var.images.control_portal == "")
-    error_message = "Control's API and portal need operator_access."
+    condition = var.operator_access != null || (var.images.control_api == "" && var.images.control_portal == "") || (
+      var.identity_security_config != null && try(var.identity_security_config.mfa_policy, "off") != "off"
+    )
+    error_message = "Without the optional operator_access, Control needs Identity MFA: identity_security_config.mfa_policy = privileged (listing the Control operator role) or all."
   }
 }
 
@@ -453,7 +457,7 @@ variable "control_operator_organisation_id" {
 }
 
 variable "control_operator_subjects" {
-  description = "OPERATOR_SUBJECT_ALLOWLIST (Control ADR-0006): required while Identity issues no mfa claim."
+  description = "OPERATOR_SUBJECT_ALLOWLIST (Control ADR-0006): the Identity subjects allowed to operate Control. Required for any session that runs control-api (Control also requires it in production without Cloudflare Access)."
   type        = list(string)
   default     = []
 }

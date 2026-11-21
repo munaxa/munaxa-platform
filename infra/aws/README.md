@@ -12,10 +12,13 @@ authorized, and no Testing or Production workload resource is evidenced. No prod
 shared ECR repositories. Evidence: `docs/aws-migration/agent-reports/` (index `README.md`). Every step
 below that creates, changes or deletes anything is an owner approval gate (G1 to G9).
 
-**Access (8 Nov 2026):** during development the owner and Claude use the existing root account (MFA
-on, no root keys) and the existing root-connected Claude AWS connector; no IAM user, role or Identity
-Center is created just to develop or run read-only checks. Deployment-stage IAM (Identity Center,
-permission sets, break-glass) is prepared but deferred. Policy: [ACCESS-POLICY.md](ACCESS-POLICY.md).
+**Access (21 Nov 2026):** AWS IAM Identity Center is the operator identity layer (named users, MFA,
+the `MunaxaAdministrator`, `MunaxaEngineering` and `MunaxaReadOnly` permission sets; the Claude
+connector on `MunaxaReadOnly`); root is break-glass only; GitHub reaches AWS by OIDC only. Munaxa
+Identity stays the application sign-in. Cloudflare Access is optional and not needed for any
+deployment. Design and procedure: [OPERATOR-ACCESS.md](OPERATOR-ACCESS.md) (nothing created in AWS
+yet; owner steps O-IAM-1 to O-IAM-6). Until those are done, the 8 Nov development method in
+[ACCESS-POLICY.md](ACCESS-POLICY.md) remains the working way in.
 
 ## Layout
 
@@ -59,9 +62,12 @@ permission sets, break-glass) is prepared but deferred. Policy: [ACCESS-POLICY.m
 Control portal → Work and School (both need Control for `LICENSING_MODE=CONTROL_PLANE`; Work needs
 Identity for every authenticated route) → Docs (its own stack; needs Control and docs#164's TLS fix).
 
-**Operator access:** the owner chose Cloudflare Access. The Testing operator host is
-`operator-test.munaxa.com`, the one proxied record; it stays closed (403) until Control verifies the
-Access token. Design, open decisions and the MFA limitation: [cloudflare-access.md](cloudflare-access.md).
+**Operator access (21 Nov 2026, AWS-native):** the Testing operator host `operator-test.munaxa.com`
+(Control portal, Identity sign-in) is a DNS-only record like the others. The ALB forwards it only
+from the operator's source ranges (`OPERATOR_CIDRS` environment variable of `aws-nonprod-session`,
+never committed) and answers 403 to everyone else; Control requires Identity MFA and the subject
+allow-list. [OPERATOR-ACCESS.md](OPERATOR-ACCESS.md) §5. Cloudflare Access is an optional extra layer
+([cloudflare-access.md](cloudflare-access.md)).
 
 **Isolation:** one database, one owner role and one runtime role per product; `CONNECT` revoked from
 `PUBLIC`; a secret bundle per service and per migration job; each execution role reads only its own
@@ -282,15 +288,17 @@ the digests in `stack/envs/<env>.tfvars` (`images`), with `valkey_image` and `po
 ### G6. DNS
 
 Within 72 hours of G3, add the `certificate_validation_records` output to Cloudflare as DNS only
-records. On the first session, add a CNAME from each host to `alb_dns_name` (DNS only), and the
-operator host as the one proxied record behind Cloudflare Access.
+records. On the first session, add a CNAME from each host to `alb_dns_name` (DNS only), the
+operator host included (DNS only, so the ALB sees the operator's address; OPERATOR-ACCESS.md §5).
 
 ### G7. A Testing session
 
 0. First session only, before step 1 (Control refuses to start without these, and Terraform
    refuses a session that runs `control-api` above zero tasks until they are set):
-   a. Merge the image digests with `services_enabled = false`, **together with** `operator_access`
-      (cloudflare-access.md; Terraform refuses any Control image without it), `valkey_image`,
+   a. Merge the image digests with `services_enabled = false`, **together with** a hardened
+      Identity with an MFA policy (`identity_security_config.mfa_policy` `privileged` listing the
+      Control operator role, or `all`; Terraform refuses any Control image without it unless the
+      optional `operator_access` is set), `valkey_image`,
       `identity_signing_kid` and `identity_public_keys` (G4), and `desired_counts` 0 for
       `control-api` and `control-portal`, and apply (G3 workflow). This creates the Control licence
       key (`control_licence_key_arn`) without starting any task.
@@ -351,8 +359,9 @@ operator host as the one proxied record behind Cloudflare Access.
    `CONTROL_PLANE_TOKEN` in that product's bundle (Docs Testing: `munaxa-nonprod/docs-api`).
 5. Smoke: `id.*/api/auth/health/ready`; `control-api.*/health/ready` and
    `/api/v1/licensing/public-keys`; `/api/v1/admin/*` on control-api answers 403; the operator
-   host shows the Cloudflare Access login without a valid Access session (with `operator_access`
-   set, Access decides, not `operator_cidrs`); sign in on `work.*`; School login; a product's
+   host answers 403 from any address outside `OPERATOR_CIDRS` and, from the operator's address,
+   sends to Identity sign-in with MFA (with the optional `operator_access` set, Access decides,
+   not `operator_cidrs`); sign in on `work.*`; School login; a product's
    entitlement request with its credential; logs show no `Entitlements could not be confirmed`.
 6. Dispatch `aws-session.yml` → `down`. Do not rely on the schedule: the crons are 19:17 and
    01:47 UTC, but from 30 Oct to 5 Nov GitHub started only one scheduled run a night, up to about

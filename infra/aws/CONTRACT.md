@@ -25,7 +25,7 @@ image published to the shared ECR). Account `229251310592`, region `eu-central-1
 | ------------- | ------------------------------ | ---------------------------------------------------------------------- |
 | `identity`    | `id.test.munaxa.com`           | `/*` → identity:4001                                                   |
 | `control_api` | `control-api.test.munaxa.com`  | `/api/v1/products/*`, `/api/v1/licensing/*`, `/health/*` → control-api:3100; anything else (any case, including `/api/v1/admin/*`) → 403 |
-| `operator`    | `operator-test.munaxa.com` (proxied, Cloudflare Access) | `/api/auth/*` → identity; `/*` → control-portal:3200; closed (403) until `operator_access` is set |
+| `operator`    | `operator-test.munaxa.com` (DNS only) | From `operator_cidrs` only (OPERATOR-ACCESS.md §5): `/api/auth/*` → identity; `/*` → control-portal:3200; everyone else 403; closed (403) with no ranges and no optional `operator_access` |
 | `work`        | `work.test.munaxa.com`         | `/api/auth/*` → identity; `/api/v1/*` → work-api:3000; `/*` → work-admin:3001 |
 | `school`      | `school.test.munaxa.com`       | `/api/v1/*` → school-api:4000; `/*` → school-admin:3000                |
 | `docs`        | `docs.test.munaxa.com`         | `/api/v1/preview/stream*` → docs-api:3001; `/*` → docs-web:3000 (web calls the API privately) |
@@ -159,8 +159,9 @@ Supabase, Render or Docs Production.
   host goes to Identity (Identity ADR-0004). `CSRF_TRUSTED_ORIGINS` lists those origins.
 - **No OIDC.** Identity has no discovery, authorize or JWKS endpoints by design (ADR-0004). School
   and Docs keep their own sign-in for Testing; single sign-on for them is a later phase.
-- MFA: Identity issues no `mfa` claim yet, so Control runs `OPERATOR_REQUIRE_MFA=false` with
-  `OPERATOR_SUBJECT_ALLOWLIST` and Cloudflare Access in front of the operator host.
+- MFA: Identity issues `mfa: true` after TOTP (identity#7). Without the optional Cloudflare Access
+  layer, Control runs `OPERATOR_REQUIRE_MFA=true` with `OPERATOR_SUBJECT_ALLOWLIST`, and Identity's
+  MFA policy must cover the Control operator role (`identity_security_config`).
 
 ## 8. Licensing (Control)
 
@@ -176,8 +177,8 @@ Supabase, Render or Docs Production.
 - Products call Control's public paths in **lowercase**, exactly as listed in §1. The ALB's allow
   list is case-sensitive, so `/API/v1/products/...` gets 403 even though Express would serve it.
 - The Control admin API (`/api/v1/admin/*`) is never public: 403 on the public host, reachable
-  only from the portal over Cloud Map; the portal and API verify the Cloudflare Access token
-  (`OPERATOR_ACCESS_TEAM_DOMAIN`, `OPERATOR_ACCESS_AUDIENCE`).
+  only from the portal over Cloud Map. When the optional Cloudflare Access layer is configured,
+  the portal and API also verify its token (`OPERATOR_ACCESS_TEAM_DOMAIN`, `OPERATOR_ACCESS_AUDIENCE`).
 
 ## 9. Storage
 
