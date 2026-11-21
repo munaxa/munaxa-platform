@@ -64,7 +64,8 @@ is not referenced by any `file()` in the stack, so it cannot change a plan durin
 | platform #142 | 21 Nov 10:05 | `2beb70e51e53ed475135407bcd88c0d945586a4e` | yes |
 | platform #141 | 21 Nov 10:23 | `38d9f942505fd7f1683fa18da0b447bf7cdedb3a` | yes |
 | platform #143 | 21 Nov 10:38 | `3ff48a44447d166dcd3053c3ffe5ca6aa68acb22` | yes |
-| platform (this report PR) | see the PR | squash SHA recorded in the PR's closing comment and the agent-report index | yes |
+| platform #149 (this report) | 21 Nov 11:10 | `8e2a712ec61c8229c16c8d3e920db54b8cc8425c` | yes |
+| platform #150 (Stage E session report) | carried byte for byte by the follow-up PR from this branch (its README row conflicted with #149's rows) | see the agent-report index | yes |
 
 Carried, not merged on their own (closed with a link to this PR): #148 head `6ea9b2f`, #144 head
 `766360e`, #145 head `282d1f9`, #128 `9578664`, #127 `ecbc358`, #126 `76c4385`, #98 `c7b06ae`.
@@ -199,3 +200,13 @@ interfere with Identity Stage E** or Control C-1/C-2. The only writes were GitHu
 updates, squash merges, PR comments, closing superseded PRs, and this report's branch and PR.
 The Testing operator email appears nowhere in this report or in any merged PR (checked with a
 fixed-string search against the private runtime input, 0 matches).
+
+## Addendum, 21 Nov 11:15 UTC
+
+- #149's first Accessibility run on head `bd4d43a` failed on a colour-contrast check of the
+  `workspace-query-builders--generic-across-products` story (docs brand, dark). The PR changed
+  Markdown only; the single re-run passed and #149 merged as `8e2a712`. Recorded as a possibly
+  intermittent a11y test, not investigated further here.
+- #148, #144, #145, #128, #127, #126 and #98 were closed with a comment pointing to `8e2a712`.
+- #150 (Stage E session report) conflicted on the README after #149 and is carried to `main` by
+  the follow-up PR from this branch, then closed the same way.
