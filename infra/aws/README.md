@@ -258,6 +258,18 @@ write one JSON secret version with the keys listed in `stack/data.tf`.
   `scripts/aws/owner/control-testing-secrets.sh bundles`, which generates both hex passwords inside
   the script and prints only the two version ids. Then add `control` to `db_bootstrap_products` and
   pin both bundles in the same PR, so db-admin creates the `control` database and roles.
+- **Work (Testing):** `work-migrate` (`DATABASE_MIGRATION_URL`, `work_owner`) and `work-api`
+  (`DATABASE_URL` as `work_app`, `PII_MATCH_SECRET`, `CONTROL_PLANE_TOKEN`) are filled by the owner in
+  CloudShell with `/bin/bash -p ./work-testing-secrets.sh bundles` (`scripts/aws/owner/`; type `FILL`),
+  which generates both hex passwords and `PII_MATCH_SECRET` (64 base64url characters, never Work's
+  development default) inside the script and asks for `CONTROL_PLANE_TOKEN` with hidden input: the
+  `mxc_` credential Control issued for Work, or Enter for a marked placeholder (Work starts, licence
+  checks fail) until `replace-key CONTROL_PLANE_TOKEN` (type `REPLACE`), which writes one new
+  `work-api` version with only that key changed. `PII_MATCH_SECRET` is never replaced: rotating it
+  invalidates Work's stored duplicate-match digests. `status` shows versions and whether the token
+  is `mxc` or `placeholder`. It prints only version ids; pin them as `secret_version_ids.work-migrate`
+  and `secret_version_ids.work-api` and add `work` to `db_bootstrap_products` in the same PR, so
+  db-admin creates the `work` database and roles. After a `replace-key`, move only the `work-api` pin.
 - Then pin each bundle with `secret_version_ids` in a PR.
 
 ### G5. Images
