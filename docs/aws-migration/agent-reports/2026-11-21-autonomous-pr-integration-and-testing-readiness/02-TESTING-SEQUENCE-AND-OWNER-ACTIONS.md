@@ -10,7 +10,7 @@ Stage E thread (not re-checked here, to avoid interfering with it).
 The 19-20 Nov order still holds; nothing found today changes it.
 
 ```
-1  Identity Stage E            RUNNING NOW [L] (owner-approved 08:11 UTC 21 Nov)
+1  Identity Stage E            EXECUTED 21 Nov 09:56-10:42 UTC, probe 28/28, cleanup verified (#150)
 2  Control C-1 (+ Cloudflare Access app)   independent of Stage E, but after A-5C (clean images)
 3  Control C-2 (+ Docs D-1 pins)           AFTER Stage E (E-1 guard), A-4, A-4C, A-5, A-5C, A-7
 4  Control + Docs session, mint the Docs credential, replace-key, licensed Docs session
@@ -26,12 +26,12 @@ their images are unpublished on the new base, and both would be blocked today by
 | Stage D | APPLIED 13 Nov 21:45 UTC (run 43513076111); report now on `main` via this PR (folder `2026-11-13-identity-stage-d-execution`) | [V] |
 | RDS rotation precondition | SUCCEEDED 20 Nov 21:26:28 UTC (`2026-11-21-rds-secret-rotation-verification`) | [V] |
 | Owner authorization | given 21 Nov 08:11 UTC on the card "Yes, if rotation verifies"; covers Stage E only | [L] |
-| Live state | E-1 discover PASS; H-20 armed (H = 13:25 UTC, P 13:25, S 13:55); `up` run 44891901758 dispatched 09:56:04 UTC; thread's own hard stop: `down` by 12:56 UTC | [L] |
+| Result | EXECUTED: `up` 09:56 UTC (run 44891901758), db-admin and migrate exit 0, C-8G operator secret created by CloudFormation and its read window closed, organisation munaxa-group and operator created, Control roles seeded, probe 28/28, `down` 10:38 to 10:42:48 (run 44895287466), cleanup verified 10:45 UTC, H-20 schedules disarmed. Findings F-1 (Low, C-8G status tag check) to F-5 (Info) | [V] PR #150 |
 | Image pin | `envs/nonprod.tfvars` still pins Identity api `sha256:9a8c6ebd…` and migrate `sha256:5f3bdcce…` (source 2db6ed9). D-I1 (republish from `7615589` before Stage E) was **not** done; the owner approved Stage E on the existing pin | [V] code, [L] decision |
 | Known image risk | 9a8c6ebd/5f3bdcce were built before the OpenSSL 3.5.9-r1 pin, so they very likely carry the 20 Nov OpenSSL HIGHs, and, from today's Grype DB, the D-SSL HIGHs too. Testing-only, short session, no production data | [I] |
 | What this task did | nothing to Stage E: no dispatch, no AWS read, no merge that touches `infra/aws/stack` Terraform or `aws-session.yml` | [V] |
 
-**Next for Stage E (owned by that thread):** its session report and PR; then a fresh Identity
+**Next after Stage E:** fix F-1; then a fresh Identity
 image from `main` once D-SSL clears, a pin PR (`nonprod.tfvars`, `nonprod.stage-e-tasks.json`,
 `e1-task-guard.py` fixtures) and withdrawal of `9a8c6ebd`/`5f3bdcce` in
 `infra/aws/stack/withdrawn-images.tf`.
@@ -97,10 +97,11 @@ The Grype database was built 06:20 UTC 21 Nov (coordinator note) [U here].
   (10 ECS scale-to-zero, 1 RDS stop); scheduled GitHub `down` twice a day; H-20 gate refuses `up`
   without armed P/S and a real R success in the last 26 h [V code/reports].
 - Last idle verification: 21 Nov 04:23 UTC: ECS 0, no ALB/NAT/EIP/EC2/ElastiCache, DB stopped,
-  12 schedules enabled [V #148]. During Stage E today, ALB/ECS/DB run by design until its `down`;
-  P 13:25 and S 13:55 UTC are the safety net [L].
+  12 schedules enabled [V #148]. During Stage E today, ALB/ECS/DB ran by design 09:56 to 10:42 UTC;
+  cleanup verified idle again at 10:45 UTC [V #150].
 - Budgets: Testing 3.98/50; the legacy US$10 account budget is over (alerts only, owner decision).
-- Gap: RDS auto-starts after 21:05 UTC run until the late GitHub `down` (file 01).
+- Gap: RDS auto-starts after 21:05 UTC run until the late GitHub `down` (file 01). The next one
+  (about 28 Nov 10:45 UTC [I]) falls before the 21:00 backstop.
 
 ## 8. Owner-only actions (none is needed for safety today)
 

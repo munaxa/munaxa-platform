@@ -16,22 +16,22 @@ Evidence tags: **[V]** verified directly (from the cited report's AWS evidence o
 | The DB was auto-started by RDS 20 Nov 21:11:51 UTC (7-day limit) and stopped 21 Nov 00:57:33 UTC by the late scheduled GitHub `down` (run 44846513554) | [V] | same, file 02 |
 | At 04:23 UTC 21 Nov: NextRotationDate 27 Nov 23:59:59 UTC; AutomaticRestartTime 28 Nov 00:57:33 UTC | [V] | same, files 01 and 02 |
 | Database backstop `cron(0 21 * * ? *)` and cleanup R `cron(5 21 * * ? *)`, both UTC; scheduled GitHub `down` `17 19 * * *` and `47 1 * * *`, which in practice runs hours late | [V] | `infra/aws/stack/envs/nonprod.tfvars`, `variables.tf`, `.github/workflows/aws-session.yml`; run times in the 20-21 Nov reports |
-| Identity Stage E is running today (owner-approved 08:11 UTC; `up` run 44891901758 dispatched 09:56:04 UTC; own hard stop `down` by 12:56 UTC; H-20 P 13:25, S 13:55 UTC) | [V] | Stage E thread status, 09:56 UTC |
+| Identity Stage E ran today: `up` run 44891901758 at 09:56:04 UTC; `down` run 44895287466 10:38:16 to 10:42:48 UTC, its database stop job green; DB stopped at the 10:45 UTC cleanup check | [V] | PR #150, `2026-11-21-identity-stage-e-session/00` |
 
 ## 2. The timing changes today [I]
 
 AutomaticRestartTime is always "seven days after the instance last stopped". Stage E starts the
-database this morning and stops it again during its `down` (expected by about 13:00 UTC). From
-that moment the **28 Nov 00:57:33 UTC** restart time in PR #148 is **stale**; the new restart
-time should be about **28 Nov 13:00 UTC** (the Stage E stop time plus 7 days).
+database this morning and stopped it again in its `down` (10:38 to 10:42 UTC). The **28 Nov
+00:57:33 UTC** restart time in PR #148 is therefore **stale**; the new restart time should be
+about **28 Nov 10:45 UTC** (the Stage E stop time plus 7 days).
 
 Consequences, all inference until the Stage E report or a read-only check records the new value:
 
-- The rotation due 27 Nov 23:59:59 UTC will fail hourly for about 13 hours instead of about 1,
+- The rotation due 27 Nov 23:59:59 UTC will fail hourly for about 11 hours instead of about 1,
   then succeed after the auto-start (the 13 Nov and 20 Nov pattern). No access impact: the
   current password stays valid until the rotation completes.
-- An auto-start at about 13:00 UTC falls **before** the 21:00 UTC database backstop and the 21:05
-  cleanup R, so this time the backstop **will** stop it, after about 8 hours (about US$0.13 of
+- An auto-start at about 10:45 UTC falls **before** the 21:00 UTC database backstop and the 21:05
+  cleanup R, so this time the backstop **will** stop it, after about 10 hours (about US$0.16 of
   db.t4g.micro [E]).
 - If a later Testing session stops the database again before 28 Nov, the restart time moves again.
 
@@ -65,10 +65,10 @@ Not implemented in this task, by design (owner instruction section 6).
 
 Run with the AWS connector (read-only, metadata only). Times UTC (Amman = UTC+3).
 
-**Window.** If Stage E stopped the database about 13:00 UTC on 21 Nov (to be confirmed from its
-report), run the check **after 22:00 UTC on 28 Nov** (01:00 Amman 29 Nov), after the backstop.
-If the database was **not** stopped by Stage E (restart time still 00:57:33), run it **after
-01:30 UTC on 28 Nov** as PR #148 planned. Run the first check below on 22 Nov to know which.
+**Window.** Stage E stopped the database about 10:42 UTC on 21 Nov, so run the check **after
+22:00 UTC on 28 Nov** (01:00 Amman 29 Nov), after the backstop and R. Run step 1 once on 22 Nov to
+replace the inferred restart time; if it still shows 00:57:33, use PR #148's window (after 01:30
+UTC on 28 Nov) instead.
 
 1. `rds:DescribeDBInstances munaxa-nonprod-pg`: record `DBInstanceStatus` and
    `AutomaticRestartTime` (do this once on 22 Nov too, to replace the inferred time in section 2).
