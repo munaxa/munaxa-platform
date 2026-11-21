@@ -237,6 +237,128 @@ run "a_malformed_access_setting_is_refused" {
   expect_failures = [var.operator_access]
 }
 
+# Withdrawn digests (withdrawn-images.tf): every one is refused, one run each, so a digest dropped
+# from the list by mistake fails here.
+run "withdrawn_control_api_a24c568_is_refused" {
+  command = plan
+  variables {
+    images = {
+      control_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:d6bf8c3c9bdd9b2d6bf67e16412f9a1bfdda19fdf67ff47cee627c63c41b7ce1"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_control_migrate_a24c568_is_refused" {
+  command = plan
+  variables {
+    images = {
+      control_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/migrate@sha256:203079c9ecda08a16803a9fc9785f51aa5930706dd1c119a7edc3aceb2822c18"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_control_portal_a24c568_is_refused" {
+  command = plan
+  variables {
+    images = {
+      control_portal = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal@sha256:5a76933c875444c7f6a4067c6219eef4c25698b4e6e924a9b2a5fd69e89c63b1"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_work_api_b490b25_is_refused" {
+  command = plan
+  variables {
+    images = {
+      work_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/api@sha256:39a89a6fa02c556a7c135c6b5fd801ba563c0bc62883ab2f8cd863db929e3d2e"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_work_admin_b490b25_is_refused" {
+  command = plan
+  variables {
+    images = {
+      work_admin = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/admin@sha256:c06bb7ef50f21f857ddab1f762f8500110d7c90b03b616347a53f3afdb731fdf"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_work_migrate_b490b25_is_refused" {
+  command = plan
+  variables {
+    images = {
+      work_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/migrate@sha256:ca8c02d9e67cb703b85da4f91e3042234052529c85e7c9f42e0a4966613350fe"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_identity_api_5a5994f_is_refused" {
+  command = plan
+  variables {
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:848d33c086ae72f6b478bc605b97e64628dcae00477e751a170847b7ea565c97"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_identity_migrate_5a5994f_is_refused" {
+  command = plan
+  variables {
+    images = {
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:df44505d9ec562020c659b47c58289ef88d7533aa7e9ed23d74f237a0d6c3ada"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_identity_api_5277d71_is_refused" {
+  command = plan
+  variables {
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_identity_migrate_5277d71_is_refused" {
+  command = plan
+  variables {
+    images = {
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+# Matched by digest, not path: a withdrawn digest under another repository name is still refused.
+run "a_withdrawn_digest_under_another_repository_is_refused" {
+  command = plan
+  variables {
+    images = {
+      school_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/api@sha256:39a89a6fa02c556a7c135c6b5fd801ba563c0bc62883ab2f8cd863db929e3d2e"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+# The list is exactly the ten withdrawn digests, so an edit to it is a reviewed, tested change.
+run "the_withdrawn_list_is_the_ten_known_digests" {
+  command = plan
+  assert {
+    condition     = length(local.withdrawn_image_digests) == 10
+    error_message = "withdrawn-images.tf changed: update this count and add a refusal run for each new digest."
+  }
+}
+
 run "an_image_tag_is_refused" {
   command = plan
   variables {
