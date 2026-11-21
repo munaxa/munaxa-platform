@@ -23,13 +23,13 @@ deployed or published.
 bundle fill (owner) → Control credential → config PR with pins (Claude) → plan/apply (owner) →
 session with `bootstrap-tenant` (owner approval).
 
-## 2. School (`main` `1e5977e`)
+## 2. School (`main` `a22ad9e`)
 
 | Area | Evidence | Status |
 | --- | --- | --- |
 | Authentication | own HS256 JWT (`JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`), optional Firebase; **not** Munaxa Identity (SC-07) [from 11 Nov audit; not re-verified line by line today] | BLOCKED (product work) |
 | Licensing | no Control integration found in the 11 Nov audit | BLOCKED (product work) |
-| Deploy workflow | SC-04 (missing migration secret ended green) and SC-05 (rollout printed success with no target) | **FIXED in [school#28](https://github.com/munaxa/munaxa-school/pull/28)**, `deploy-gate.test.mjs` 39/39 |
+| Deploy workflow | SC-04 (missing migration secret ended green) and SC-05 (rollout printed success with no target) | **FIXED: [school#28](https://github.com/munaxa/munaxa-school/pull/28) merged `a22ad9e`**, `deploy-gate.test.mjs` 39/39 |
 | `render.yaml` | SC-06: staging blueprint lists production domains | OWNER DECISION (editing it may change a connected Render service) |
 | Images | api, migrate, admin build, verify and scan in CI; only D-SSL fails (run 44900062129); none published | BLOCKED (D-SSL) |
 | Health checks | `HEALTHCHECK` in api and admin; non-root `nestjs`/`nextjs`/`migrate` | READY |

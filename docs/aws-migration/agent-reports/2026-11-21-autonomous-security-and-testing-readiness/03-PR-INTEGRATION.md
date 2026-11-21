@@ -30,6 +30,7 @@ Nothing further was needed for #151.
 | [identity#23](https://github.com/munaxa/munaxa-identity/pull/23) | Actions hardening | MERGED `b08e887` |
 | [work#34](https://github.com/munaxa/munaxa-work/pull/34) | Actions hardening | MERGED `61c115b` |
 | [school#27](https://github.com/munaxa/munaxa-school/pull/27) | Actions hardening | MERGED `1e5977e` |
+| [school#28](https://github.com/munaxa/munaxa-school/pull/28) | SC-04/SC-05 deploy fail-closed | MERGED `a22ad9e` |
 | [control#12](https://github.com/munaxa/munaxa-control/pull/12) | Actions hardening | OPEN, blocked by D-SSL in a required check |
 | [docs#181](https://github.com/munaxa/munaxa-docs/pull/181) | Actions hardening | OPEN, blocked by D-SSL in a required check |
 | [platform#152](https://github.com/munaxa/munaxa-platform/pull/152) | this report, F-1 fix, RDS restart stop (off) | see the PR; merged under the standing rule when the three required checks pass on a head up to date with `main` |

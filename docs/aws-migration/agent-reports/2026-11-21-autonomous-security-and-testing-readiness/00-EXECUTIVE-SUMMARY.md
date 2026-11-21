@@ -14,7 +14,7 @@ Status labels: VERIFIED, IMPLEMENTED, TESTED, BLOCKED, RECOMMENDED, OWNER ACTION
 | D-SSL (5 OpenSSL HIGHs on libssl3/libcrypto3 3.5.9-r1) | No fixed Alpine package anywhere (3.22, 3.23, 3.24, edge stop at 3.5.9-r1); OpenSSL's fix release 3.5.10 is scheduled for **1 Dec 2026**; OpenSSL rates the advisories it printed in full as Low. Gate kept fail-closed, no exception. Alternatives tested; Wolfi is cleaner but not compatible without a five-repository migration, so not adopted | BLOCKED (upstream), VERIFIED | 02 |
 | Image scans today | every product image fails **only** on D-SSL; no other HIGH/CRITICAL | TESTED | 02 |
 | Actions supply chain | every third-party action pinned to a commit SHA, no persisted checkout tokens, least-privilege defaults: identity#23 `b08e887`, work#34 `61c115b`, school#27 `1e5977e` **merged**; control#12, docs#181 open (D-SSL in a required check) | IMPLEMENTED | 01 |
-| School deploy findings SC-04, SC-05 | requested migration/rollout that cannot run now fails instead of ending green: school#28 | IMPLEMENTED, TESTED (39/39) | 05 |
+| School deploy findings SC-04, SC-05 | requested migration/rollout that cannot run now fails instead of ending green: school#28 merged `a22ad9e` | IMPLEMENTED, TESTED (39/39) | 05 |
 | Stage E finding F-1 | C-8G status ignores CloudFormation's `aws:` tags: platform#152 | IMPLEMENTED, TESTED | 01 |
 | RDS restart stop (option C) | built in code, **off by default** (no plan change): platform#152; 11 simulator + 4 Terraform tests; stack suite 91/91 | IMPLEMENTED, TESTED | 06 |
 | Platform #151 | already merged `e7b0c0b` (11:23 UTC); Stage E report and addendum on `main`, no sensitive data | VERIFIED | 03 |
@@ -31,7 +31,7 @@ Status labels: VERIFIED, IMPLEMENTED, TESTED, BLOCKED, RECOMMENDED, OWNER ACTION
 | [identity#23](https://github.com/munaxa/munaxa-identity/pull/23) | MERGED squash `b08e887` |
 | [work#34](https://github.com/munaxa/munaxa-work/pull/34) | MERGED squash `61c115b` |
 | [school#27](https://github.com/munaxa/munaxa-school/pull/27) | MERGED squash `1e5977e` |
-| [school#28](https://github.com/munaxa/munaxa-school/pull/28) | SC-04/SC-05; see the final index row for its merge |
+| [school#28](https://github.com/munaxa/munaxa-school/pull/28) | SC-04/SC-05; MERGED squash `a22ad9e` (JS/TS and security jobs success; images D-SSL only; no ruleset) |
 | [control#12](https://github.com/munaxa/munaxa-control/pull/12) | OPEN: required `Build the images` fails on D-SSL only |
 | [docs#181](https://github.com/munaxa/munaxa-docs/pull/181) | OPEN: required `Container images` fails on D-SSL only |
 | [platform#152](https://github.com/munaxa/munaxa-platform/pull/152) | this report + F-1 + RDS restart stop; merged when required checks pass |

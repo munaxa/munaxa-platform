@@ -110,4 +110,4 @@ demonstrated, and demonstrating it is larger than the risk it removes. [RECOMMEN
 | Control | `7b607e0` | none usable (a24c568 withdrawn) | after D-SSL (A-5C) |
 | Docs | `f1fca8f` | only old `f8a8bea`; no `migrate` repository | after D-SSL and Docs bootstrap (A-3, A-5) |
 | Work | `61c115b` | none usable (b490b25 withdrawn) | after D-SSL; not on the first Testing path |
-| School | `1e5977e` | none | after D-SSL and S-3; not on the first Testing path |
+| School | `a22ad9e` | none | after D-SSL and S-3; not on the first Testing path |
