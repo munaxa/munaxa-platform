@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# D-SSL round 4: upstream facts. Public sources only, nothing pushed, no secret.
+set -uo pipefail
+CVES="CVE-2026-124709 CVE-2026-107494 CVE-2026-121482 CVE-2026-84786 CVE-2026-107493"
+G=anchore/grype:v0.121.2@sha256:6a36234da13f9faa327306ac0b3dab3405cfa2b4eb20c8f904125a8707863913
+sec() { echo; echo "################ $*"; }
+
+sec "OpenSSL advisory 20261117 (full)"
+curl -sSfL https://openssl-library.org/news/secadv/20261117.txt || echo "advisory fetch failed"
+sec "OpenSSL release branches (tags newest)"
+git ls-remote --tags https://github.com/openssl/openssl.git 'openssl-3.5.*' 'openssl-3.6.*' 'openssl-3.0.*' 2>/dev/null | awk '{print $2}' | grep -v '\^{}' | sort -V | tail -12
+
+sec "Alpine package indexes"
+mkdir -p /tmp/apk
+for r in v3.22/main v3.23/main v3.24/main v3.24/community edge/main edge/community edge/testing; do
+  f="/tmp/apk/$(echo $r | tr / _)"; mkdir -p "$f"
+  curl -sSfL "https://dl-cdn.alpinelinux.org/alpine/$r/x86_64/APKINDEX.tar.gz" | tar -xzf - -C "$f" APKINDEX 2>/dev/null || { echo "$r: fetch failed"; continue; }
+  echo "== $r"
+  awk -v RS= '/\nP:(openssl[0-9.]*|libssl[0-9.]*|libcrypto[0-9.]*|nodejs|nodejs-current|nodejs[0-9-]*)\n/' "$f/APKINDEX" | grep -E '^(P|V|D):' | paste - - - | sed 's/\t/ /g' | cut -c1-220
+done
+sec "Alpine secdb entries for the five CVEs"
+for r in v3.24/main edge/main; do
+  curl -sSfL "https://secdb.alpinelinux.org/$r.json" -o /tmp/secdb.json || { echo "$r secdb failed"; continue; }
+  echo "== $r"; for c in $CVES; do jq -r --arg c "$c" '.packages[].pkg | select([.secfixes[]?[]] | index($c)) | .name + " fixed in " + ([.secfixes | to_entries[] | select(.value|index($c)) | .key] | join(","))' /tmp/secdb.json | sed "s/^/$c /"; done
+done
+sec "aports: openssl APKBUILD on 3.24-stable and master, open MRs"
+for b in 3.24-stable master; do
+  echo "== $b"; curl -sSfL "https://gitlab.alpinelinux.org/alpine/aports/-/raw/$b/main/openssl/APKBUILD" | grep -E '^(pkgver|pkgrel)=|CVE-2026-(124709|107494|121482|84786|107493)|^#\s+3\.5' | head -20
+done
+curl -sSfL "https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports/merge_requests?state=opened&search=openssl&per_page=20" | jq -r '.[] | "\(.iid) \(.target_branch) \(.title) \(.created_at)"' 2>/dev/null | head -20
+
+sec "Wolfi package index"
+curl -sSfL https://packages.wolfi.dev/os/x86_64/APKINDEX.tar.gz | tar -xzf - -C /tmp APKINDEX && \
+for p in openssl libssl3 libcrypto3 nodejs-22 glibc libgcc libstdc++ npm; do
+  printf '%s: ' "$p"; awk -v RS= -v p="$p" '$0 ~ "\nP:" p "\n" {match($0,/\nV:[^\n]*/); print substr($0,RSTART+3,RLENGTH-3)}' /tmp/APKINDEX | sort -V | tail -4 | tr '\n' ' '; echo
+done
+sec "Wolfi secdb and advisories for the five CVEs"
+curl -sSfL https://packages.wolfi.dev/os/security.json -o /tmp/wsec.json && for c in $CVES; do
+  jq -r --arg c "$c" '.packages[].pkg | select([.secfixes[]?[]] | index($c)) | .name + " " + ([.secfixes | to_entries[] | select(.value|index($c)) | .key] | join(","))' /tmp/wsec.json | sed "s/^/$c /"
+done
+curl -sSfL https://raw.githubusercontent.com/wolfi-dev/advisories/main/openssl.advisories.yaml -o /tmp/wadv.yaml && for c in $CVES; do
+  echo "== $c"; grep -n -A14 "$c" /tmp/wadv.yaml | head -30
+done
+curl -sSfL https://raw.githubusercontent.com/wolfi-dev/os/main/openssl.yaml | sed -n '1,12p;/patches:/,/^[a-z]/p' | head -40
+
+sec "Debian security tracker"
+for c in $CVES; do echo "== $c"; curl -sSfL "https://security-tracker.debian.org/tracker/$c" | sed -e 's/<[^>]*>/ /g' | grep -E 'openssl|trixie|bookworm|sid|Description' | tr -s ' ' | head -8; done
+
+sec "Grype database records for the five CVEs"
+mkdir -p /tmp/db
+for c in $CVES; do echo "== $c"; docker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db "$G" db search --vuln "$c" 2>/dev/null | head -25; done
+docker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db "$G" db status 2>/dev/null
+
+sec "Node builds and their OpenSSL"
+for spec in "node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a|" "alpine:3.24|apk add -q --no-cache nodejs >/dev/null" "alpine:edge|apk add -q --no-cache nodejs >/dev/null" "cgr.dev/chainguard/wolfi-base:latest|apk add -q --no-cache nodejs-22 >/dev/null"; do
+  img="${spec%%|*}"; pre="${spec#*|}"
+  echo "== $img ($pre)"
+  docker run --rm "$img" sh -c "$pre; n=\$(command -v node); echo node=\$n; node -p 'process.versions.node+\" bundled-or-linked openssl=\"+process.versions.openssl'; ldd \$n 2>&1 | grep -Ei 'ssl|crypto|libc|musl' ; (apk info -v 2>/dev/null | grep -E '^(nodejs|libssl3|libcrypto3|openssl)') " 2>&1 | head -20
+done
+echo; echo "wolfi-base digest: $(docker inspect --format '{{index .RepoDigests 0}}' cgr.dev/chainguard/wolfi-base:latest)"
