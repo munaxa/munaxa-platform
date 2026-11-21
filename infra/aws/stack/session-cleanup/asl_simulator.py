@@ -1,5 +1,5 @@
 """A small, strict offline interpreter for the subset of Amazon States Language (JSONPath mode) that
-session-cleanup/definition.asl.json uses. It exists so the cleanup's control flow can be tested
+session-cleanup/definition.asl.json and rds-restart-stop/definition.asl.json use. It exists so the cleanup's control flow can be tested
 against a fake AWS with no network and no AWS account (Stage E blocker BE-2).
 
 It is NOT Step Functions. What it models, from the ASL specification:
@@ -8,7 +8,7 @@ It is NOT Step Functions. What it models, from the ASL specification:
     OutputPath; context object paths "$$.Map.Item.Value";
   - JSONPath: dotted names, [n] indexes, and filters [?(@.key == literal)] followed by a projection;
   - intrinsics States.Array, States.ArrayLength, States.MathAdd, States.JsonToString, States.Format;
-  - Choice rules And, Or, Not, IsPresent, IsBoolean, StringEquals, StringMatches, BooleanEquals,
+  - Choice rules And, Or, Not, IsPresent, IsBoolean, IsString, StringEquals, StringMatches, BooleanEquals,
     NumericEquals, NumericLessThan, NumericLessThanEquals;
   - Retry (first matching retrier, MaxAttempts, IntervalSeconds, BackoffRate) and Catch, where
     States.ALL matches every error except States.Runtime (which always fails the execution);
@@ -212,6 +212,8 @@ def _matches(rule, data):
         raise StatesError("States.Runtime", f"Choice variable {rule['Variable']} not found")
     if "IsBoolean" in rule:
         return isinstance(value, bool) == rule["IsBoolean"]
+    if "IsString" in rule:
+        return isinstance(value, str) == rule["IsString"]
     if "StringEquals" in rule:
         return isinstance(value, str) and value == rule["StringEquals"]
     if "StringMatches" in rule:

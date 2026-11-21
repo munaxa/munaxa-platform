@@ -642,3 +642,25 @@ variable "session_cleanup_schedule" {
     error_message = "An EventBridge Scheduler cron() expression."
   }
 }
+
+variable "rds_restart_stop_enabled" {
+  description = "Nonprod only: stop the database a fixed time after RDS auto-starts it (rds-restart-stop.tf). Needs the session cleanup (its P/S schedule names and alarm topic) and a bootstrap change first. Off by default."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.rds_restart_stop_enabled || (var.environment == "nonprod" && var.session_cleanup_enabled)
+    error_message = "The RDS restart stop exists only in nonprod, and needs the session cleanup (session_cleanup_enabled)."
+  }
+}
+
+variable "rds_restart_stop_wait_seconds" {
+  description = "How long the RDS restart stop waits after the auto-start before it may stop the database, so the overdue master-secret rotation can run (rotation retries hourly)."
+  type        = number
+  default     = 7200
+
+  validation {
+    condition     = var.rds_restart_stop_wait_seconds >= 3600 && var.rds_restart_stop_wait_seconds <= 14400 && floor(var.rds_restart_stop_wait_seconds) == var.rds_restart_stop_wait_seconds
+    error_message = "Wait between 1 and 4 hours (whole seconds): at least one hourly rotation attempt, and well inside the 6-hour execution timeout."
+  }
+}
