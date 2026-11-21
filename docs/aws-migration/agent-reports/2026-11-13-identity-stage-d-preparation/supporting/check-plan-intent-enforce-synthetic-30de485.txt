@@ -1,0 +1,23 @@
+# check-plan-intent.sh --enforce on SYNTHETIC plan JSON files (not real plans), PR #121 head 30de485 declaration
+
+== plan-full: [{"a":"aws_ecs_task_definition.db_admin[0]","x":["delete","create"]},{"a":"aws_ecs_task_definition.identity_bootstrap[0]","x":["delete","create"]},{"a":"aws_iam_role_policy.docs_db_admin_execution[0]","x":["update"]},{"a":"aws_secretsmanager_secret.service[\"docs-migrate\"]","x":["create"]},{"a":"module.identity[0].aws_ecs_task_definition.this","x":["delete","create"]},{"a":"module.migrate[\"identity\"].aws_ecs_task_definition.this","x":["delete","create"]}]
+The plan matches the declared changes exactly (6 resource action(s)).
+exit=0
+
+== plan-no-dbadmin: [{"a":"aws_ecs_task_definition.identity_bootstrap[0]","x":["delete","create"]},{"a":"aws_iam_role_policy.docs_db_admin_execution[0]","x":["update"]},{"a":"aws_secretsmanager_secret.service[\"docs-migrate\"]","x":["create"]},{"a":"module.identity[0].aws_ecs_task_definition.this","x":["delete","create"]},{"a":"module.migrate[\"identity\"].aws_ecs_task_definition.this","x":["delete","create"]}]
+Declared but not in the plan (address, actions):
+  aws_ecs_task_definition.db_admin[0] delete,create
+::error::Plan intent check failed: the plan does not match infra/aws/stack/envs/nonprod.expected-changes.json. Nothing may be applied: correct the code or the declaration in a reviewed PR, then plan again
+exit=1
+
+== plan-extra: [{"a":"aws_ecs_task_definition.db_admin[0]","x":["delete","create"]},{"a":"aws_ecs_task_definition.identity_bootstrap[0]","x":["delete","create"]},{"a":"aws_iam_role_policy.docs_db_admin_execution[0]","x":["update"]},{"a":"aws_secretsmanager_secret.service[\"docs-migrate\"]","x":["create"]},{"a":"module.identity[0].aws_ecs_task_definition.this","x":["delete","create"]},{"a":"module.migrate[\"identity\"].aws_ecs_task_definition.this","x":["delete","create"]},{"a":"aws_secretsmanager_secret_version.unexpected","x":["create"]}]
+In the plan but not declared (address, actions):
+  aws_secretsmanager_secret_version.unexpected create
+::error::Plan intent check failed: the plan does not match infra/aws/stack/envs/nonprod.expected-changes.json. Nothing may be applied: correct the code or the declaration in a reviewed PR, then plan again
+exit=1
+
+== plan-dbadmin-noop: [{"a":"aws_ecs_task_definition.identity_bootstrap[0]","x":["delete","create"]},{"a":"aws_iam_role_policy.docs_db_admin_execution[0]","x":["update"]},{"a":"aws_secretsmanager_secret.service[\"docs-migrate\"]","x":["create"]},{"a":"module.identity[0].aws_ecs_task_definition.this","x":["delete","create"]},{"a":"module.migrate[\"identity\"].aws_ecs_task_definition.this","x":["delete","create"]}]
+Declared but not in the plan (address, actions):
+  aws_ecs_task_definition.db_admin[0] delete,create
+::error::Plan intent check failed: the plan does not match infra/aws/stack/envs/nonprod.expected-changes.json. Nothing may be applied: correct the code or the declaration in a reviewed PR, then plan again
+exit=1
