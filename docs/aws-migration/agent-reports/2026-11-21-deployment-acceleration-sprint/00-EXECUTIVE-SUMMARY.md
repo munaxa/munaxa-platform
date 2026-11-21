@@ -27,7 +27,7 @@
 | D-SSL bump PRs | Draft and pinned to `3.5.10-r0`, so release day is a CI re-run: identity#24, control#13 (also drops the `openssl` CLI), docs#182, work#35. School: patch ready (file 04) |
 | Open PRs | All inspected; none mergeable (file 02). The package-token drafts identity#19, control#9 and work#32 were rebased and diagnosed: the owner's GitHub Packages grant has **not** been given (403 on a cold install) |
 | W-3 Work custody | `scripts/aws/owner/work-testing-secrets.sh` plus 30 offline tests, on `main` with this PR |
-| School SC-07 | file 04 |
+| School SC-07 | Identity token sign-in implemented on the School API with an organisation-to-school binding protected by row-level security; tests 606 unit and 339 e2e pass; draft school#29, because merging needs `SCHOOL_LOCAL_AUTH=enabled` set on Render production first (owner yes) (file 04) |
 | RDS restart stop | Enablement package prepared and off by default. It also fixes a bug in #152: the restart-stop alarm could not publish to its topic. Bootstrap 23/23 and stack 91/91 tests pass (file 06) |
 | Owner pack | 13 ordered actions, each with where, command, inputs, expected result, verification, rollback and cost (file 05) |
 

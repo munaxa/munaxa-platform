@@ -208,4 +208,4 @@ Before item 7, Claude:
 3. Pin apply with `db_bootstrap_products` adding `"work"`.
 4. Session with the W-4 tenant binding.
 
-**School** is on Render and stays there until you decide otherwise (file 04).
+**School** is on Render and stays there until you decide otherwise (file 04). School's Identity sign-in (school#29) needs one yes from you before it can merge: setting `SCHOOL_LOCAL_AUTH=enabled` on the Render production API. This is a production configuration change, so Claude has not made it.

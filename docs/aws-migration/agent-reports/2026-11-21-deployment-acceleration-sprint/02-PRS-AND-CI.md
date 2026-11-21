@@ -10,7 +10,8 @@ No PR was superseded, so none was closed.
 | control#13 | OpenSSL `3.5.10-r0` pin; removes the `openssl` CLI from the image (new) | draft | same | same |
 | docs#182 | OpenSSL `3.5.10-r0` pin, Alpine stage and scratch runtime-fs (new) | draft | same | same |
 | work#35 | OpenSSL `3.5.10-r0` pin, api and admin images (new) | draft | same | same |
-| school (no PR yet) | the same pin; the patch is ready | not opened | School branch in use by the SC-07 work (file 04) | open after SC-07 |
+| school (no PR yet) | the same pin; the patch is ready | not opened | the School branch carries school#29 | open after school#29 merges |
+| school#29 | SC-07: the School API accepts Identity tokens; organisation-to-school binding (new this sprint) | draft | needs the owner to set `SCHOOL_LOCAL_AUTH=enabled` on Render production before merge, and full-workspace CI | owner yes on the Render variable, then CI, then merge |
 | control#12 | Actions SHA pinning, no persisted token, least privilege | ready | required image scan fails on D-SSL only | merge after control#13 |
 | docs#181 | same hardening, with D-SSL in the required check | ready | same | merge after docs#182 |
 | docs#178 | Runbook: the S3 adapter signs with the ECS task role | ready | same | merge after docs#182 |
