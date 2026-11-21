@@ -19,11 +19,13 @@
 # rds-restart-stop/test_rds_restart_stop.py; the resources in tests/rds-restart-stop.tftest.hcl.
 #
 # Enabling it is an owner-approved infrastructure change in two steps (none is done by merging):
-#   1. bootstrap (root): the nonprod workload boundary must allow scheduler:ListSchedules,
-#      secretsmanager:DescribeSecret on the RDS master secret and states:StartExecution on this
-#      state machine; the nonprod deployer needs events:* on the rule; the session-read role needs
-#      the events read calls a refresh makes. Listed in the report; not in this change.
-#   2. stack: rds_restart_stop_enabled = true in envs/nonprod.tfvars, plan, declaration, apply.
+#   1. bootstrap (root): -var testing_rds_restart_stop=true (bootstrap/iam_rds_restart_stop.tf):
+#      the nonprod workload boundary allows scheduler:ListSchedules, secretsmanager:DescribeSecret
+#      on the RDS master secret and states:StartExecution on this state machine; the nonprod
+#      deployer gets events on the rule and passes the two roles; the session-read role gets the
+#      events reads a refresh makes. 2 creates, 2 in-place updates.
+#   2. stack: rds_restart_stop_enabled = true in envs/nonprod.tfvars, plan, declaration, apply:
+#      8 creates and 1 update (the alerts topic policy admits this alarm, session-cleanup.tf).
 # Cost: inside the free tiers (a few state transitions and events a week).
 
 locals {

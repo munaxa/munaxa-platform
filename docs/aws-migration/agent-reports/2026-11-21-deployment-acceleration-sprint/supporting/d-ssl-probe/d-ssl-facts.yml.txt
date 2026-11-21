@@ -1,0 +1,44 @@
+# TEMPORARY diagnostic (D-SSL round 5): Alpine's OpenSSL backport merge requests and Grype records.
+# Public sources only. Never merged.
+name: d-ssl-facts
+on:
+  push:
+    branches: [claude/project-thread-4sspd9]
+    paths: ['.github/workflows/d-ssl-facts.yml']
+permissions:
+  contents: read
+jobs:
+  facts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Alpine aports OpenSSL merge requests and branch history
+        run: |
+          A='https://gitlab.alpinelinux.org/api/v4/projects/alpine%2Faports'
+          for iid in 112073 112072; do
+            echo "== MR $iid"
+            curl -sSfL "$A/merge_requests/$iid" | jq -r '"state=\(.state) target=\(.target_branch) merged_at=\(.merged_at) updated=\(.updated_at) author=\(.author.username)\ntitle=\(.title)\n\(.description)"' | head -40
+            curl -sSfL "$A/merge_requests/$iid/changes" | jq -r '.changes[] | .new_path' | head -20
+            curl -sSfL "$A/merge_requests/$iid/changes" | jq -r '.changes[] | select(.new_path|test("APKBUILD")) | .diff' | grep -E '^[+-]' | head -40
+          done
+          echo "== all openssl MRs (any state), newest"
+          curl -sSfL "$A/merge_requests?search=openssl&in=title&per_page=30&order_by=updated_at" | jq -r '.[] | "\(.iid) \(.state) \(.target_branch) \(.updated_at) \(.title)"' | head -30
+          for b in 3.24-stable master 3.23-stable; do
+            echo "== commits on $b touching main/openssl"
+            curl -sSfL "$A/repository/commits?ref_name=$b&path=main/openssl&per_page=6" | jq -r '.[] | "\(.short_id) \(.committed_date) \(.title)"'
+            curl -sSfL "$A/repository/files/main%2Fopenssl%2FAPKBUILD/raw?ref=$b" | grep -E '^(pkgver|pkgrel)=|^#\s+3\.5\.9|CVE-2026-(124709|107494|121482|84786|107493|35190)' | head -20
+          done
+          echo "== Alpine openssl issues"
+          curl -sSfL "$A/issues?search=openssl&per_page=10&order_by=updated_at" | jq -r '.[] | "\(.iid) \(.state) \(.updated_at) \(.title)"' | head
+      - name: Grype database records
+        run: |
+          G=anchore/grype:v0.121.2@sha256:6a36234da13f9faa327306ac0b3dab3405cfa2b4eb20c8f904125a8707863913
+          mkdir -p /tmp/db
+          docker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db "$G" db update 2>&1 | tail -2
+          docker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db "$G" db status
+          for c in CVE-2026-124709 CVE-2026-107494 CVE-2026-121482 CVE-2026-84786 CVE-2026-107493; do
+            echo "== $c"; docker run --rm -v /tmp/db:/db -e GRYPE_DB_CACHE_DIR=/db -e GRYPE_DB_AUTO_UPDATE=false "$G" db search --vuln "$c" 2>&1 | head -30
+          done
+      - name: OpenSSL 3.5 branch fix commits (public repository)
+        run: |
+          git clone -q --filter=blob:none --no-checkout --single-branch -b openssl-3.5 https://github.com/openssl/openssl.git /tmp/o
+          git -C /tmp/o log --since=2026-10-15 --format='%h %cs %s' | head -40

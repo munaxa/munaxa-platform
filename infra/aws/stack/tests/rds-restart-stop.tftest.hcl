@@ -85,6 +85,12 @@ run "merging_the_restart_stop_changes_no_nonprod_plan" {
     session_cleanup_enabled   = true
   }
 
+  override_resource {
+    target          = aws_sns_topic.session_cleanup_alerts[0]
+    override_during = plan
+    values          = { arn = "arn:aws:sns:eu-central-1:229251310592:munaxa-nonprod-session-cleanup-alerts" }
+  }
+
   assert {
     condition = (
       length(aws_sfn_state_machine.rds_restart_stop) == 0 && length(aws_iam_role.rds_restart_stop) == 0 &&
@@ -93,6 +99,10 @@ run "merging_the_restart_stop_changes_no_nonprod_plan" {
       length(aws_cloudwatch_event_target.rds_restart_stop) == 0 && length(aws_cloudwatch_metric_alarm.rds_restart_stop_failed) == 0
     )
     error_message = "With rds_restart_stop_enabled unset nothing of the restart stop exists."
+  }
+  assert {
+    condition     = [for s in jsondecode(aws_sns_topic_policy.session_cleanup_alerts[0].policy).Statement : s.Sid] == ["CloudWatchAlarmsOfThisAccount", "TlsOnly"]
+    error_message = "With rds_restart_stop_enabled unset the alerts topic policy keeps exactly its applied statements."
   }
 }
 
@@ -195,5 +205,16 @@ run "enabled_restart_stop_is_scoped" {
   assert {
     condition     = length(aws_cloudwatch_metric_alarm.rds_restart_stop_failed) == 1
     error_message = "A failed execution raises the alarm."
+  }
+  # The alarm's name is not under munaxa-nonprod-session-cleanup-*, so the topic policy must admit it
+  # by name, or CloudWatch could not publish its notification.
+  assert {
+    condition = (
+      aws_cloudwatch_metric_alarm.rds_restart_stop_failed[0].alarm_name == "munaxa-nonprod-rds-restart-stop-failed" &&
+      [for s in jsondecode(aws_sns_topic_policy.session_cleanup_alerts[0].policy).Statement : s.Sid] == ["CloudWatchAlarmsOfThisAccount", "TlsOnly", "RdsRestartStopAlarm"] &&
+      [for s in jsondecode(aws_sns_topic_policy.session_cleanup_alerts[0].policy).Statement : s.Condition.ArnLike["aws:SourceArn"] if s.Sid == "RdsRestartStopAlarm"] == ["arn:aws:cloudwatch:eu-central-1:229251310592:alarm:munaxa-nonprod-rds-restart-stop-failed"] &&
+      [for s in jsondecode(aws_sns_topic_policy.session_cleanup_alerts[0].policy).Statement : s.Action if s.Sid == "RdsRestartStopAlarm"] == ["sns:Publish"]
+    )
+    error_message = "The alerts topic admits the restart stop alarm, by its exact name, for sns:Publish only."
   }
 }

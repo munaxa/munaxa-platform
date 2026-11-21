@@ -321,6 +321,19 @@ data "aws_iam_policy_document" "deployer_session_read" {
       ]
     }
   }
+
+  # Testing's RDS restart stop (stack/rds-restart-stop.tf, iam_rds_restart_stop.tf): once applied,
+  # every session plan refreshes its EventBridge rule and target. Reads only, on that one rule. Its
+  # roles, state machine and alarm are already covered by RefreshOwnRoles, RefreshSessionCleanup
+  # (stateMachine and alarm munaxa-nonprod-*) and deployer_read (cloudwatch:DescribeAlarms).
+  dynamic "statement" {
+    for_each = local.rds_restart_stop_bootstrap && each.key == "nonprod" ? [1] : []
+    content {
+      sid       = "RefreshRdsRestartStop"
+      actions   = ["events:DescribeRule", "events:ListTargetsByRule", "events:ListTagsForResource"]
+      resources = ["arn:aws:events:${var.region}:${var.account_id}:rule/munaxa-${each.key}-rds-restart-stop"]
+    }
+  }
 }
 
 resource "aws_iam_policy" "deployer_session_read" {

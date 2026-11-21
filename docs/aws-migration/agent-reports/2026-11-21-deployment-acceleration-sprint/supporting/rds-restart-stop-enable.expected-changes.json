@@ -1,0 +1,42 @@
+{
+  "root": "stack-nonprod",
+  "intent": "Testing RDS restart stop (stack/rds-restart-stop.tf, platform#152; report 2026-11-21-autonomous-security-and-testing-readiness file 06 section 3), rds_restart_stop_enabled = true in envs/nonprod.tfvars: 8 creates (the state machine role and its policy, the Step Functions state machine, the EventBridge role and its policy, the RDS-EVENT-0154 rule and its target, the ExecutionsFailed alarm) and 1 update (the session cleanup alerts topic policy admits that alarm by name, session-cleanup.tf RdsRestartStopAlarm). Needs the bootstrap apply with -var testing_rds_restart_stop=true first. No secret value, no ECS service, ALB, network, database, KMS, DNS or production resource.",
+  "changes": [
+    {
+      "address": "aws_cloudwatch_event_rule.rds_restart_stop[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_cloudwatch_event_target.rds_restart_stop[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_cloudwatch_metric_alarm.rds_restart_stop_failed[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role.rds_restart_stop[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role.rds_restart_stop_events[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role_policy.rds_restart_stop[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_iam_role_policy.rds_restart_stop_events[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_sfn_state_machine.rds_restart_stop[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "aws_sns_topic_policy.session_cleanup_alerts[0]",
+      "actions": ["update"]
+    }
+  ]
+}

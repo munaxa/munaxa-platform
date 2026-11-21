@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# D-SSL round 4: build Identity on one base, then verify, scan, migrate, boot and health-check it.
+# Nothing is pushed. The package token reaches the build only as a BuildKit secret.
+set -uo pipefail
+V="${1:?alpine|wolfi}"
+R=0
+step() { echo; echo "################ [$V] $*"; }
+bad() { echo "::error::[$V] $*"; R=1; }
+
+if [ "$V" = wolfi ]; then
+  docker pull -q cgr.dev/chainguard/wolfi-base:latest >/dev/null
+  BASE="$(docker inspect --format '{{index .RepoDigests 0}}' cgr.dev/chainguard/wolfi-base:latest)"
+  echo "wolfi-base resolved to $BASE"
+  DF=probe/Dockerfile.wolfi; ARGS=(--build-arg "WOLFI_BASE=$BASE")
+else
+  DF=apps/api/Dockerfile; ARGS=()
+fi
+
+step build
+for t in runtime migrate build; do
+  docker build --platform linux/amd64 -f "$DF" --target "$t" "${ARGS[@]}" \
+    --secret id=npm_token,env=NPM_TOKEN -t "id-$V-$t" . > "/tmp/build-$V-$t.log" 2>&1 || { tail -60 "/tmp/build-$V-$t.log"; bad "build $t failed"; exit 1; }
+  grep -E 'nodejs-22|libssl3-|libcrypto3-|openssl [0-9]' "/tmp/build-$V-$t.log" | head -8
+done
+docker images --format '{{.Repository}} {{.Size}}' | grep "id-$V-"
+
+step "identity of the images"
+for t in runtime migrate; do
+  docker run --rm --entrypoint sh "id-$V-$t" -c 'echo "user=$(id -un) uid=$(id -u)"; cat /etc/os-release | grep -E "^(ID|VERSION_ID)="; n=$(command -v node); node -p "\"node \"+process.versions.node+\" openssl \"+process.versions.openssl"; ldd $n | grep -Ei "ssl|crypto"; (apk info -v 2>/dev/null | grep -E "^(libssl3|libcrypto3|openssl|nodejs|zlib|glibc)-"); for p in npm npx corepack pnpm yarn; do command -v $p && echo "TOOL $p present"; done; true'
+  u="$(docker run --rm --entrypoint id "id-$V-$t" -u)"; [ "$u" != 0 ] || bad "$t runs as root"
+  docker run --rm --entrypoint sh "id-$V-$t" -c 'for p in npm npx corepack pnpm yarn; do command -v $p >/dev/null && exit 1; done; exit 0' || bad "$t has Node tooling"
+done
+docker run --rm --entrypoint sh "id-$V-runtime" -c 'find / -xdev -name "libquery_engine-*.so.node" 2>/dev/null'
+
+step "scan (same scan-image.sh, same policy, no .grype.yaml exceptions)"
+[ ! -f .grype.yaml ] || bad ".grype.yaml exists"
+for t in runtime migrate; do
+  .github/scripts/scan-image.sh "id-$V-$t" "id-$V-$t" "image-reports-$V" > "/tmp/scan-$V-$t.log" 2>&1; s=$?
+  grep -E 'NAME|High|Critical' "/tmp/scan-$V-$t.log" | head -30
+  jq -r '[.matches[].vulnerability.severity] | group_by(.) | map(.[0]+"="+(length|tostring)) | join(" ")' "image-reports-$V/id-$V-$t.grype.json"
+  [ $s = 0 ] && echo "SCAN PASS $t" || bad "scan $t exit $s"
+done
+
+step "unit tests inside the build stage (this base's Node and Prisma engines)"
+docker run --rm --network host --entrypoint sh -e CI=true "id-$V-build" -c 'cd /app && pnpm test' > "/tmp/unit-$V.log" 2>&1 && echo "UNIT PASS" || { tail -40 "/tmp/unit-$V.log"; bad "unit tests failed"; }
+grep -E 'Test Files|Tests ' "/tmp/unit-$V.log" | tail -6
+
+step "PostgreSQL + Redis, migrate image, runtime boot, health"
+docker rm -f pg redis >/dev/null 2>&1
+docker run -d --name pg --network host -e POSTGRES_USER=identity -e POSTGRES_PASSWORD=identity -e POSTGRES_DB=identity postgres:16-alpine >/dev/null
+RPW="$(openssl rand -hex 16)"
+docker run -d --name redis --network host redis:7-alpine redis-server --requirepass "$RPW" >/dev/null
+for i in $(seq 1 30); do docker exec pg pg_isready -U identity >/dev/null 2>&1 && break; sleep 1; done
+DBURL=postgresql://identity:identity@127.0.0.1:5432/identity
+docker run --rm --network host -e DATABASE_MIGRATION_URL="$DBURL" "id-$V-migrate" > "/tmp/mig-$V.log" 2>&1 && echo "MIGRATE PASS" || bad "migrate failed"
+tail -5 "/tmp/mig-$V.log"
+docker exec pg psql -U identity -d identity -Atc "select count(*) from _prisma_migrations where finished_at is not null"
+
+mkdir -p /tmp/sec-$V && chmod 755 /tmp/sec-$V
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out /tmp/sec-$V/key.pem 2>/dev/null; chmod 644 /tmp/sec-$V/key.pem
+docker rm -f "rt-$V" >/dev/null 2>&1
+docker run -d --name "rt-$V" --network host \
+  -v /tmp/sec-$V/key.pem:/run/secrets/signing_key:ro \
+  -e NODE_ENV=production -e PORT=4001 -e DATABASE_URL="$DBURL" \
+  -e IDENTITY_SIGNING_PRIVATE_KEY_FILE=/run/secrets/signing_key \
+  -e IDENTITY_SIGNING_SECRET="$(openssl rand -hex 32)" -e IDENTITY_SIGNING_KID=probe-2026-11 \
+  -e IDENTITY_BASE_URL=https://id.probe.invalid/api/auth -e IDENTITY_AUTH_AUDIENCE=munaxa-work \
+  -e CSRF_TRUSTED_ORIGINS=https://id.probe.invalid -e REDIS_URL="redis://:$RPW@127.0.0.1:6379" \
+  -e MFA_ENCRYPTION_KEYS="k1=$(openssl rand -base64 32)" -e MFA_ENCRYPTION_PRIMARY_KID=k1 \
+  -e IDENTITY_PASSWORD_RESET=disabled -e LOG_PRETTY=false \
+  "id-$V-runtime" >/dev/null
+ok=0
+for i in $(seq 1 40); do
+  c="$(curl -s -o /tmp/ready-$V.json -w '%{http_code}' http://127.0.0.1:4001/api/auth/health/ready || true)"
+  [ "$c" = 200 ] && { ok=1; break; }; sleep 1
+done
+docker logs "rt-$V" 2>&1 | tail -15 | cut -c1-300
+if [ $ok = 1 ]; then echo "HEALTH READY 200: $(cat /tmp/ready-$V.json)"; else bad "runtime not ready (last $c)"; fi
+curl -s -o /dev/null -w 'live %{http_code}\n' http://127.0.0.1:4001/api/auth/health/live || true
+curl -s -w '\njwks %{http_code}\n' http://127.0.0.1:4001/api/auth/.well-known/jwks.json | cut -c1-200 || true
+docker inspect --format 'docker-health={{.State.Health.Status}}' "rt-$V" 2>/dev/null; sleep 22; docker inspect --format 'docker-health-after-start-period={{.State.Health.Status}}' "rt-$V"
+docker run --rm --network host --entrypoint node "id-$V-runtime" -e "const {PrismaClient}=require('/app/node_modules/.prisma/identity-client');const p=new PrismaClient({datasources:{db:{url:'$DBURL?sslmode=disable'}}});p.\$queryRawUnsafe('select version() v').then(r=>{console.log('PRISMA QUERY OK',r[0].v.slice(0,40));process.exit(0)}).catch(e=>{console.error('PRISMA FAIL',e.message);process.exit(1)})" || bad "prisma query from runtime image failed"
+docker rm -f "rt-$V" pg redis >/dev/null 2>&1
+
+step "reproducibility: digest of a second runtime build from cache-free rebuild"
+docker image inspect --format '{{.Id}}' "id-$V-runtime"
+step "RESULT $V: $([ $R = 0 ] && echo PASS || echo FAIL)"
+exit $R
