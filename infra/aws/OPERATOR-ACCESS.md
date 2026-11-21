@@ -42,7 +42,7 @@ application credentials.
 | Permission set | Policies (29 Oct design) | Used for | Session |
 | --- | --- | --- | --- |
 | `MunaxaReadOnly` | `ViewOnlyAccess` + `SecurityAudit` + `AWSMCPSignInOAuthAccessPolicy` + inline reads (cost, budgets, Organizations, Identity Center, quotas, CloudWatch metrics and alarms, `cloudtrail:LookupEvents`). **Explicit deny:** `secretsmanager:GetSecretValue`, `kms:Decrypt`, `s3:GetObject*`, log contents (`logs:GetLogEvents`, `FilterLogEvents`, `StartQuery`), `ecs:ExecuteCommand`, `ssm:StartSession`, `ssm:GetParameter*` | Read-only inspection by people, and **the Claude AWS connector** (read-only checks) | 8 h |
-| `MunaxaEngineering` | `PowerUserAccess` + inline guardrails: no IAM users or keys, no OIDC provider changes, no Organizations/account/SSO changes, no trail or budget tampering; may create, change and pass roles only under `/munaxa-*/`; boundaries read-only | Owner-executed workload operations: CloudShell custody scripts (Secrets Manager versions), reading CloudWatch log contents, Docs bootstrap (ECR) | 4 h |
+| `MunaxaEngineering` | **In `229251310592` (now):** `ViewOnlyAccess` + [`identity-center/MunaxaEngineering.management-interim.inline.json`](identity-center/MunaxaEngineering.management-interim.inline.json): the seven custody bundles and the Docs one-run provision secret, the nonprod data key only through Secrets Manager, nonprod log contents, CloudShell; **no IAM write**, explicit denies on Production-tagged resources, other secrets and keys, state and trail buckets, ECS Exec, Session Manager, other Regions. The 29 Oct `PowerUserAccess` draft is for a future member account only and must not be used here (finding IC-1, [identity-center/README.md](identity-center/README.md)) | Owner-executed custody scripts (Secrets Manager versions), reading nonprod CloudWatch log contents | 4 h |
 | `MunaxaAdministrator` | Inline management-account policy: Organizations, account, Identity Center, CloudTrail, budgets and cost, support; IAM reads; `sts:AssumeRoot`; **explicitly denies workloads in the management account** (EC2, VPC, NAT, ECS, RDS, ElastiCache, Lambda, ALB, `GetSecretValue`) | Organization and Identity Center administration only | 1 h |
 
 **Assignment while workloads are in the management account (owner decision D-IAM-1).** The
@@ -53,15 +53,23 @@ deliberately denies workload actions. The recommended interim assignment, in `22
 - owner: `MunaxaAdministrator`, `MunaxaEngineering`, `MunaxaReadOnly`;
 - Claude AWS connector sign-in: `MunaxaReadOnly` only.
 
-`MunaxaEngineering` in the management account is broader than its member-account intent
-(PowerUser applies to Production resources in the same account too). That is the honest cost of
-one account; ACCESS-POLICY F-3 (re-review against the current stack) and F-6 (production
-separation) still apply before any Production deployment.
+**Re-review of 21 Nov 2026 (ACCESS-POLICY F-3, report `2026-11-21-testing-readiness` file 02):**
+the 29 Oct `MunaxaEngineering` draft must **not** be provisioned in this account. Its IAM allows on
+`role/munaxa-*/*` match the GitHub OIDC deployers under `/munaxa-shared/bootstrap/` (including the
+prod deployer) and the boundary policies under `/munaxa-shared/`, so it could rewrite a deployer's
+trust policy (finding IC-1), and `PowerUserAccess` reaches every Production-tagged resource and
+secret here (IC-2). The management-account interim policy in
+[`identity-center/`](identity-center/README.md) replaces it, with no IAM write at all. The policies
+to paste, the console steps and the verification commands are in that README; the JSON in the
+project files is superseded for this account. F-6 (production separation) still applies before any
+Production deployment.
 
-Operations that remain **root (break-glass) until F-3 is re-reviewed**, because the permission sets
-deliberately refuse them: `bootstrap/` applies that change the GitHub OIDC provider or the
-`munaxa-boundaries/` policies. The planned D-B*/H-20 style bootstrap re-applies are in this group.
-Every other owner step in the execution pack is designed to run under `MunaxaEngineering`.
+Operations that remain **root (break-glass)**, because the permission sets deliberately refuse them:
+every `bootstrap/` apply of this repository (OIDC provider, deployer roles, boundaries; the planned
+RDS restart stop and any D-B*/H-20 style re-apply) and the **Docs bootstrap** apply in munaxa-docs
+(`infra/terraform/bootstrap`, tagged `Environment=Production`; pack item 4). The custody-script
+steps of the execution pack (Control bundles, Docs bundles, Docs credential, Docs provisioning)
+run under `MunaxaEngineering`.
 
 ### 2.3 Machine access (unchanged)
 
@@ -210,7 +218,7 @@ this model (execution pack item 2).
 | O-IAM-1 | Enable Identity Center (organization instance, `eu-central-1`, Identity Center directory) as root | Instance listed; access portal URL shown |
 | O-IAM-2 | MFA settings as §2.1 | "Every time they sign in"; register-at-sign-in |
 | O-IAM-3 | Create user (`IDENTITY_OPERATOR_EMAIL`), sign in once, register MFA | User status Enabled; one MFA device |
-| O-IAM-4 | Create the three permission sets from the reviewed JSON; assign per D-IAM-1 | Three sets; assignments in `229251310592` provisioned |
+| O-IAM-4 | Create the three permission sets from [`identity-center/`](identity-center/README.md) (management-account versions, not the 29 Oct drafts); assign per D-IAM-1 | Three sets; assignments in `229251310592` provisioned |
 | O-IAM-5 | Verify: console sign-in asks for MFA; `aws sso login` works; `get-caller-identity` shows `AWSReservedSSO_MunaxaReadOnly_*`; with ReadOnly, `aws ecs list-clusters` works and `aws secretsmanager get-secret-value --secret-id munaxa-nonprod/identity` is **AccessDenied**; with Engineering, the custody scripts' `status` command works | All as stated; Claude reviews the pasted output (no values) |
 | O-IAM-6 | Re-sign-in the Claude AWS connector with `MunaxaReadOnly` | Claude's `get-caller-identity` shows the ReadOnly role, not root |
 

@@ -1,0 +1,269 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudShellForOwnerScripts",
+      "Effect": "Allow",
+      "Action": "cloudshell:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "NonprodSecretCustody",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:ListSecretVersionIds",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/control-api-??????",
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/control-migrate-??????",
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-api-??????",
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-operator-??????",
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-migrate-??????",
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/work-api-??????",
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/work-migrate-??????",
+        "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-provision/*"
+      ]
+    },
+    {
+      "Sid": "DocsProvisionOneRunSecret",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CreateSecret",
+        "secretsmanager:TagResource",
+        "secretsmanager:DeleteSecret"
+      ],
+      "Resource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/docs-provision/*"
+    },
+    {
+      "Sid": "NonprodDataKeyOnlyThroughSecretsManager",
+      "Effect": "Allow",
+      "Action": [
+        "kms:GenerateDataKey",
+        "kms:Decrypt"
+      ],
+      "Resource": "arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "secretsmanager.eu-central-1.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "NonprodDataKeyMetadata",
+      "Effect": "Allow",
+      "Action": "kms:DescribeKey",
+      "Resource": "arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37"
+    },
+    {
+      "Sid": "NonprodLogContents",
+      "Effect": "Allow",
+      "Action": [
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents",
+        "logs:StartQuery",
+        "logs:StartLiveTail"
+      ],
+      "Resource": [
+        "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/*",
+        "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/*:*"
+      ]
+    },
+    {
+      "Sid": "LogQueryResults",
+      "Effect": "Allow",
+      "Action": [
+        "logs:GetQueryResults",
+        "logs:StopQuery",
+        "logs:StopLiveTail"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenySecretsOutsideNonprod",
+      "Effect": "Deny",
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:BatchGetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:UpdateSecretVersionStage",
+        "secretsmanager:CreateSecret",
+        "secretsmanager:DeleteSecret",
+        "secretsmanager:RestoreSecret",
+        "secretsmanager:RotateSecret",
+        "secretsmanager:CancelRotateSecret",
+        "secretsmanager:PutResourcePolicy",
+        "secretsmanager:DeleteResourcePolicy",
+        "secretsmanager:ReplicateSecretToRegions",
+        "secretsmanager:RemoveRegionsFromReplication",
+        "secretsmanager:StopReplicationToReplica",
+        "secretsmanager:TagResource",
+        "secretsmanager:UntagResource"
+      ],
+      "NotResource": "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/*"
+    },
+    {
+      "Sid": "DenySecretChangesBeyondCustody",
+      "Effect": "Deny",
+      "Action": [
+        "secretsmanager:BatchGetSecretValue",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:UpdateSecretVersionStage",
+        "secretsmanager:RestoreSecret",
+        "secretsmanager:RotateSecret",
+        "secretsmanager:CancelRotateSecret",
+        "secretsmanager:PutResourcePolicy",
+        "secretsmanager:DeleteResourcePolicy",
+        "secretsmanager:ReplicateSecretToRegions",
+        "secretsmanager:UntagResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyKeyUseOutsideNonprodDataKey",
+      "Effect": "Deny",
+      "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:GenerateDataKey*",
+        "kms:ReEncrypt*",
+        "kms:CreateGrant",
+        "kms:Sign",
+        "kms:GetPublicKey"
+      ],
+      "NotResource": "arn:aws:kms:eu-central-1:229251310592:key/45eda044-092a-4f31-9243-3f9548636e37"
+    },
+    {
+      "Sid": "DenyKeyAdministration",
+      "Effect": "Deny",
+      "Action": [
+        "kms:CreateKey",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion",
+        "kms:DisableKey",
+        "kms:EnableKey",
+        "kms:PutKeyPolicy",
+        "kms:CreateAlias",
+        "kms:UpdateAlias",
+        "kms:DeleteAlias",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:RetireGrant",
+        "kms:RevokeGrant"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyIdentityOrganizationAndAuditChanges",
+      "Effect": "Deny",
+      "Action": [
+        "iam:Add*",
+        "iam:Attach*",
+        "iam:Change*",
+        "iam:Create*",
+        "iam:Deactivate*",
+        "iam:Delete*",
+        "iam:Detach*",
+        "iam:Enable*",
+        "iam:PassRole",
+        "iam:Put*",
+        "iam:Remove*",
+        "iam:Reset*",
+        "iam:Resync*",
+        "iam:Set*",
+        "iam:Tag*",
+        "iam:Untag*",
+        "iam:Update*",
+        "iam:Upload*",
+        "organizations:*",
+        "account:*",
+        "sso:*",
+        "sso-directory:*",
+        "identitystore:*",
+        "sts:AssumeRole",
+        "sts:AssumeRoot",
+        "sts:AssumeRoleWithWebIdentity",
+        "cloudtrail:Delete*",
+        "cloudtrail:Stop*",
+        "cloudtrail:Update*",
+        "cloudtrail:Put*",
+        "budgets:Modify*",
+        "budgets:Delete*",
+        "ecs:ExecuteCommand",
+        "ssm:StartSession",
+        "ssm:SendCommand",
+        "ssm:GetParameter*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyEverythingOnProductionTaggedResources",
+      "Effect": "Deny",
+      "Action": "*",
+      "Resource": "*",
+      "Condition": {
+        "StringEqualsIgnoreCase": {
+          "aws:ResourceTag/Environment": [
+            "prod",
+            "production"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyStateAndTrailBuckets",
+      "Effect": "Deny",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::munaxa-shared-tfstate-229251310592",
+        "arn:aws:s3:::munaxa-shared-tfstate-229251310592/*",
+        "arn:aws:s3:::munaxa-docs-tfstate-eu-prod-229251310592",
+        "arn:aws:s3:::munaxa-docs-tfstate-eu-prod-229251310592/*",
+        "arn:aws:s3:::munaxa-org-cloudtrail-229251310592",
+        "arn:aws:s3:::munaxa-org-cloudtrail-229251310592/*"
+      ]
+    },
+    {
+      "Sid": "DenyOutsideFrankfurt",
+      "Effect": "Deny",
+      "NotAction": [
+        "iam:Get*",
+        "iam:List*",
+        "sts:GetCallerIdentity",
+        "sts:GetSessionToken",
+        "cloudfront:Get*",
+        "cloudfront:List*",
+        "route53:Get*",
+        "route53:List*",
+        "support:*",
+        "health:*",
+        "ce:Get*",
+        "ce:Describe*",
+        "ce:List*",
+        "budgets:View*",
+        "budgets:Describe*",
+        "organizations:Describe*",
+        "organizations:List*",
+        "tag:Get*",
+        "pricing:*",
+        "account:Get*",
+        "account:List*",
+        "notifications:List*",
+        "notifications:Get*",
+        "signin:*",
+        "sso:List*",
+        "sso:Get*",
+        "sso:Describe*"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotEquals": {
+          "aws:RequestedRegion": "eu-central-1"
+        }
+      }
+    }
+  ]
+}

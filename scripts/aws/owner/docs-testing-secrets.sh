@@ -468,7 +468,20 @@ say(f"aws_cli         {AWS} {version}")
 who = call("sts", "get-caller-identity", {})
 if who.get("Account") != ACCOUNT:
     stop("WRONG_ACCOUNT")
-say(f"caller          {who.get('Arn')}")
+# Expected identity (report 2026-11-21-testing-readiness, file 03): root (the approved interim method
+# until IAM Identity Center exists) or an IAM Identity Center session of the MunaxaEngineering
+# permission set. Anything else (MunaxaReadOnly, MunaxaAdministrator, an IAM user, a GitHub OIDC
+# role, another account's role) stops here, before any secret call. The session name (the Identity
+# Center user name, possibly an e-mail address) is never printed.
+CALLER = who.get("Arn", "")
+if CALLER == f"arn:aws:iam::{ACCOUNT}:root":
+    caller_shown = CALLER
+else:
+    m_sso = re.fullmatch(rf"arn:aws:sts::{ACCOUNT}:assumed-role/(AWSReservedSSO_MunaxaEngineering_[0-9a-f]{{16}})/[A-Za-z0-9+=,.@_-]{{1,64}}", CALLER)
+    if not m_sso:
+        stop("CALLER_NOT_ALLOWED (run as MunaxaEngineering through IAM Identity Center, or root)")
+    caller_shown = f"arn:aws:sts::{ACCOUNT}:assumed-role/{m_sso.group(1)}/<session name not shown>"
+say(f"caller          {caller_shown}")
 say(f"account         {ACCOUNT}   region {REGION}")
 
 for name in (API, OPERATOR, MIGRATE):

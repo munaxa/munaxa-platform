@@ -1,0 +1,9 @@
+  run "as_applied_a04723a"... pass
+  run "main_plan"... pass
+  # aws_ecr_lifecycle_policy.images["migrate"] will be created
+  # aws_ecr_repository.images["migrate"] will be created
+  # aws_iam_policy.image_publisher_boundary will be updated in-place
+  # aws_iam_policy.workload_boundary will be updated in-place
+  # aws_iam_role_policy.image_publisher will be updated in-place
+Plan: 2 to add, 3 to change, 0 to destroy.
+Success! 2 passed, 0 failed.

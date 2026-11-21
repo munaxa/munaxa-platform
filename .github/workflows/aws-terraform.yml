@@ -122,6 +122,12 @@ jobs:
           python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_docs_testing_secrets.py
           python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_control_testing_secrets.py
           python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_work_testing_secrets.py
+          python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_caller_identity.py
+
+      # IAM Identity Center permission sets for the management account (report
+      # 2026-11-21-testing-readiness, file 02): an offline model of IAM evaluation, no AWS call.
+      - name: Identity Center permission-set policy tests
+        run: python3 -I -W error -m unittest discover -s infra/aws/identity-center -p 'test_*.py' -v
 
       # docs-cluster-roles.sql is Docs' infra/sql/cluster/01-roles.sql below a 4-line header that
       # records the original's sha256. The copy must still hash to it; Docs CI pins the same hash on
