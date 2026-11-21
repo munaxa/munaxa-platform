@@ -1,0 +1,38 @@
+Mocked render (terraform test with the mock provider: no AWS, no credentials) of PR #121 head 3ca18ce.
+A = nonprod.tfvars as on the PR (identity pin ad02f18e-...).
+B = the same file with ONLY secret_version_ids.identity set to the stage C version id 80914756-68cd-420d-8094-0fd49afe3492,
+    as committed. Only references and images are shown.
+
+== module.identity[0].aws_ecs_task_definition.this: container definitions A vs B DIFFER
+  container identity: image api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b
+    DATABASE_URL                   ad02f18e-f3e7-41da-9959-f9b41e0b7e1a -> 80914756-68cd-420d-8094-0fd49afe3492
+    IDENTITY_SIGNING_PRIVATE_KEY   ad02f18e-f3e7-41da-9959-f9b41e0b7e1a -> 80914756-68cd-420d-8094-0fd49afe3492
+    IDENTITY_SIGNING_SECRET        ad02f18e-f3e7-41da-9959-f9b41e0b7e1a -> 80914756-68cd-420d-8094-0fd49afe3492
+    REDIS_URL                      ad02f18e-f3e7-41da-9959-f9b41e0b7e1a -> 80914756-68cd-420d-8094-0fd49afe3492
+    REDIS_PASSWORD                 ad02f18e-f3e7-41da-9959-f9b41e0b7e1a -> 80914756-68cd-420d-8094-0fd49afe3492
+    MFA_ENCRYPTION_KEYS            ad02f18e-f3e7-41da-9959-f9b41e0b7e1a -> 80914756-68cd-420d-8094-0fd49afe3492
+    environment changes: none
+    MFA env: MFA_ENCRYPTION_PRIMARY_KID=mfa-nonprod-2026-11 MFA_POLICY=off IDENTITY_PASSWORD_RESET=disabled NODE_ENV=production
+  container valkey: image valkey@sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e
+    REDIS_PASSWORD                 ad02f18e-f3e7-41da-9959-f9b41e0b7e1a -> 80914756-68cd-420d-8094-0fd49afe3492
+    environment changes: none
+
+== module.migrate["identity"].aws_ecs_task_definition.this: container definitions A vs B IDENTICAL
+  container identity-migrate: image migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874
+    DATABASE_MIGRATION_URL         a3cc6622-df66-4787-bae7-83ccfec56ff4 (unchanged)
+    environment changes: none
+
+== aws_ecs_task_definition.identity_bootstrap[0]: container definitions A vs B IDENTICAL
+  container identity-bootstrap: image api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b
+    DIRECT_DATABASE_URL            a3cc6622-df66-4787-bae7-83ccfec56ff4 (unchanged)
+    IDENTITY_OWNER_EMAIL           (unpinned) (unchanged)
+    IDENTITY_OWNER_PASSWORD        (unpinned) (unchanged)
+    environment changes: none
+
+== aws_ecs_task_definition.db_admin[0]: container definitions A vs B DIFFER
+  container db-admin: image postgres@sha256:5983db9a9c6ad225a48a46cfe2e03e6680b1826662befd0465eb05b34cb1c64e
+    PGUSER                         (unpinned) (unchanged)
+    PGPASSWORD                     (unpinned) (unchanged)
+    IDENTITY_APP_URL               ad02f18e-f3e7-41da-9959-f9b41e0b7e1a -> 80914756-68cd-420d-8094-0fd49afe3492
+    IDENTITY_OWNER_URL             a3cc6622-df66-4787-bae7-83ccfec56ff4 (unchanged)
+    environment changes: none
