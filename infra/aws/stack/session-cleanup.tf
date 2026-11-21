@@ -221,7 +221,7 @@ resource "aws_sns_topic_policy" "session_cleanup_alerts" {
   arn = aws_sns_topic.session_cleanup_alerts[0].arn
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Sid       = "CloudWatchAlarmsOfThisAccount"
         Effect    = "Allow"
@@ -241,7 +241,22 @@ resource "aws_sns_topic_policy" "session_cleanup_alerts" {
         Resource  = aws_sns_topic.session_cleanup_alerts[0].arn
         Condition = { Bool = { "aws:SecureTransport" = "false" } }
       },
-    ]
+      ], local.rds_restart_stop_enabled ? [
+      # The RDS restart stop's failure alarm (rds-restart-stop.tf) notifies this topic too; its name
+      # is not under the session cleanup's, so without this CloudWatch could not publish it. Only
+      # while the restart stop is enabled, so the policy is unchanged otherwise.
+      {
+        Sid       = "RdsRestartStopAlarm"
+        Effect    = "Allow"
+        Principal = { Service = "cloudwatch.amazonaws.com" }
+        Action    = "sns:Publish"
+        Resource  = aws_sns_topic.session_cleanup_alerts[0].arn
+        Condition = {
+          StringEquals = { "aws:SourceAccount" = var.account_id }
+          ArnLike      = { "aws:SourceArn" = "arn:aws:cloudwatch:${var.region}:${var.account_id}:alarm:${local.rds_restart_stop_name}-failed" }
+        }
+      },
+    ] : [])
   })
 }
 

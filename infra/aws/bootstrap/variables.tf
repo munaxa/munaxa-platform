@@ -103,3 +103,17 @@ variable "testing_session_cleanup" {
   # cleanup, in a reviewed plan.
   default = true
 }
+
+variable "testing_rds_restart_stop" {
+  description = "Testing's RDS restart stop (stack/rds-restart-stop.tf): widens the nonprod workload boundary for its two roles, lets the nonprod deployer manage its EventBridge rule and pass its two roles, and lets the session deployer refresh the rule. Nonprod only; needs testing_session_cleanup. Applied by root, before the stack apply that sets rds_restart_stop_enabled = true."
+  type        = bool
+  # Off: merging this changes no bootstrap plan. The owner passes -var testing_rds_restart_stop=true
+  # in the reviewed root plan (2 creates, 2 in-place updates), then makes it the default in a
+  # follow-up PR once applied, as R-8 did for testing_session_cleanup.
+  default = false
+
+  validation {
+    condition     = !var.testing_rds_restart_stop || var.testing_session_cleanup
+    error_message = "testing_rds_restart_stop needs testing_session_cleanup: the restart stop's alarm uses the cleanup topic, and its boundary reads (rds:DescribeDBInstances, ecs:ListTasks) are the cleanup's."
+  }
+}

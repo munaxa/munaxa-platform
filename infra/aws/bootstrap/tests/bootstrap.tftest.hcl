@@ -825,3 +825,178 @@ run "h20_gate_reads_are_off_with_the_cleanup" {
     error_message = "H-20: without the cleanup there is nothing to gate on, so no execution reads."
   }
 }
+
+# Testing's RDS restart stop (stack/rds-restart-stop.tf, iam_rds_restart_stop.tf): OFF by default,
+# so merging changes no bootstrap plan. On, it adds exactly four nonprod boundary statements, one
+# nonprod deployer policy (the one EventBridge rule and passing the two roles) and one session read
+# statement, and needs the session cleanup.
+run "rds_restart_stop_is_off_by_default" {
+  command = plan
+
+  assert {
+    condition     = var.testing_rds_restart_stop == false
+    error_message = "The restart stop bootstrap flag defaults to false."
+  }
+  assert {
+    condition = (
+      length([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s if startswith(s.Sid, "TestingRdsRestartStop")]) == 0 &&
+      length([for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s if startswith(s.Sid, "TestingRdsRestartStop")]) == 0
+    )
+    error_message = "Off: no boundary gains a restart stop statement."
+  }
+  # The applied nonprod boundary (D-B2, D-B2R): exactly these statements, so the default plan is unchanged.
+  assert {
+    condition = [for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s.Sid] == [
+      "EcrSignIn", "EcrPull", "Logs", "OwnSecrets", "OwnRdsMasterSecret", "OwnRdsMasterSecretByTag", "OwnKeys",
+      "OwnFileBuckets", "ScheduledTasks", "PassOwnRoles", "ThisRegionOnly", "NeverFromADeployerSession",
+      "NeverTheOtherEnvironment", "NeverMunaxaDocsProduction", "MunaxaDocsImagesPullOnly", "TestingBackstop",
+      "TestingSessionCleanup", "TestingSessionCleanupLookups",
+    ]
+    error_message = "Off: the nonprod boundary keeps exactly the applied statements, in order."
+  }
+  assert {
+    condition = (
+      length(data.aws_iam_policy_document.deployer_rds_restart_stop) == 0 &&
+      length(aws_iam_policy.deployer_rds_restart_stop) == 0 &&
+      length(aws_iam_role_policy_attachment.deployer_rds_restart_stop) == 0
+    )
+    error_message = "Off: no restart stop deployer policy or attachment."
+  }
+  assert {
+    condition = [for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s.sid] == [
+      "RefreshOwnKeys", "RefreshOwnSecretContainers", "RefreshOwnBuckets", "RefreshOwnRoles", "RefreshSessionCleanup", "GateSessionCleanup",
+    ]
+    error_message = "Off: the session read policy keeps exactly the applied statements, with no events read."
+  }
+}
+
+run "rds_restart_stop_needs_the_session_cleanup" {
+  command = plan
+
+  variables {
+    testing_rds_restart_stop = true
+    testing_session_cleanup  = false
+  }
+
+  expect_failures = [var.testing_rds_restart_stop]
+}
+
+run "rds_restart_stop_on_adds_exactly_these_statements" {
+  command = plan
+
+  variables {
+    testing_rds_restart_stop = true
+  }
+
+  assert {
+    condition = [for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : s if startswith(s.Sid, "TestingRdsRestartStop")] == [
+      {
+        Sid      = "TestingRdsRestartStop"
+        Effect   = "Allow"
+        Action   = ["states:StartExecution"]
+        Resource = ["arn:aws:states:eu-central-1:229251310592:stateMachine:munaxa-nonprod-rds-restart-stop"]
+      },
+      {
+        Sid      = "TestingRdsRestartStopLookups"
+        Effect   = "Allow"
+        Action   = ["scheduler:ListSchedules"]
+        Resource = ["*"]
+      },
+      {
+        Sid       = "TestingRdsRestartStopRotationMetadata"
+        Effect    = "Allow"
+        Action    = ["secretsmanager:DescribeSecret"]
+        Resource  = ["arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!*"]
+        Condition = { StringEquals = { "aws:ResourceTag/aws:rds:primaryDBInstanceArn" = "arn:aws:rds:eu-central-1:229251310592:db:munaxa-nonprod-pg" } }
+      },
+      {
+        Sid       = "TestingRdsRestartStopRotationMetadataByTag"
+        Effect    = "Allow"
+        Action    = ["secretsmanager:DescribeSecret"]
+        Resource  = ["arn:aws:secretsmanager:eu-central-1:229251310592:secret:rds!*"]
+        Condition = { StringEquals = { "aws:ResourceTag/Project" = "munaxa", "aws:ResourceTag/Environment" = "nonprod" } }
+      },
+    ]
+    error_message = "On: the nonprod boundary gains exactly StartExecution on this state machine, ListSchedules, and DescribeSecret on the nonprod master secret."
+  }
+  assert {
+    condition     = length(jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement) == 22
+    error_message = "On: the nonprod boundary has the 18 applied statements plus 4, nothing else changed."
+  }
+  assert {
+    condition = [for s in jsondecode(aws_iam_policy.workload_boundary["prod"].policy).Statement : s.Sid] == [
+      "EcrSignIn", "EcrPull", "Logs", "OwnSecrets", "OwnRdsMasterSecret", "OwnRdsMasterSecretByTag", "OwnKeys",
+      "OwnFileBuckets", "ScheduledTasks", "PassOwnRoles", "ThisRegionOnly", "NeverFromADeployerSession",
+      "NeverTheOtherEnvironment", "NeverMunaxaDocsProduction", "MunaxaDocsImagesPullOnly",
+    ]
+    error_message = "On: the prod boundary is unchanged."
+  }
+  assert {
+    condition = alltrue(flatten([for s in jsondecode(aws_iam_policy.workload_boundary["nonprod"].policy).Statement : [
+      for a in s.Action : !contains(["secretsmanager:GetSecretValue", "secretsmanager:BatchGetSecretValue", "secretsmanager:PutSecretValue", "rds:StartDBInstance"], a)
+    ] if startswith(s.Sid, "TestingRdsRestartStop")]))
+    error_message = "On: no secret value action and no database start."
+  }
+
+  assert {
+    condition = (
+      length(aws_iam_policy.deployer_rds_restart_stop) == 1 &&
+      aws_iam_policy.deployer_rds_restart_stop[0].name == "munaxa-shared-deployer-nonprod-rds-restart-stop" &&
+      aws_iam_policy.deployer_rds_restart_stop[0].path == "/munaxa-shared/bootstrap/" &&
+      length(aws_iam_role_policy_attachment.deployer_rds_restart_stop) == 1 &&
+      aws_iam_role_policy_attachment.deployer_rds_restart_stop[0].role == "munaxa-shared-deployer-nonprod"
+    )
+    error_message = "On: one restart stop policy, attached to the nonprod deployer only."
+  }
+  assert {
+    condition = [for s in data.aws_iam_policy_document.deployer_rds_restart_stop[0].statement : {
+      sid = s.sid, actions = toset(s.actions), resources = toset(s.resources), passed = toset(flatten([for c in s.condition : c.values if c.variable == "iam:PassedToService"]))
+      }] == [
+      {
+        sid = "OwnRestartStopRule"
+        actions = toset([
+          "events:PutRule", "events:DeleteRule", "events:DescribeRule", "events:PutTargets", "events:RemoveTargets",
+          "events:ListTargetsByRule", "events:TagResource", "events:UntagResource", "events:ListTagsForResource",
+        ])
+        resources = toset(["arn:aws:events:eu-central-1:229251310592:rule/munaxa-nonprod-rds-restart-stop"])
+        passed    = toset([])
+      },
+      {
+        sid       = "PassTheRestartStopRole"
+        actions   = toset(["iam:PassRole"])
+        resources = toset(["arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-rds-restart-stop"])
+        passed    = toset(["states.amazonaws.com"])
+      },
+      {
+        sid       = "PassTheRestartStopEventsRole"
+        actions   = toset(["iam:PassRole"])
+        resources = toset(["arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-rds-restart-stop-events"])
+        passed    = toset(["events.amazonaws.com"])
+      },
+    ]
+    error_message = "On: the deployer gains events on the one rule and passes each of the two roles to its one service, nothing else."
+  }
+
+  assert {
+    condition = length([for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s if s.sid == "RefreshRdsRestartStop"
+      && toset(s.actions) == toset(["events:DescribeRule", "events:ListTargetsByRule", "events:ListTagsForResource"])
+      && toset(s.resources) == toset(["arn:aws:events:eu-central-1:229251310592:rule/munaxa-nonprod-rds-restart-stop"])
+    ]) == 1
+    error_message = "On: the session deployer gains the three events reads a refresh makes, on the one rule."
+  }
+  assert {
+    condition = [for s in data.aws_iam_policy_document.deployer_session_read["nonprod"].statement : s.sid] == [
+      "RefreshOwnKeys", "RefreshOwnSecretContainers", "RefreshOwnBuckets", "RefreshOwnRoles", "RefreshSessionCleanup", "GateSessionCleanup", "RefreshRdsRestartStop",
+    ]
+    error_message = "On: the session read policy gains only RefreshRdsRestartStop."
+  }
+  # Unchanged by the flag: the session cleanup IAM and the deployer's own policies.
+  assert {
+    condition = (
+      length(aws_iam_policy.deployer_session_cleanup) == 1 &&
+      length([for s in data.aws_iam_policy_document.deployer_session_cleanup[0].statement : s]) == 4 &&
+      length(data.aws_iam_policy_document.deployer_session["nonprod"].statement) == length([for s in data.aws_iam_policy_document.deployer_session["nonprod"].statement : s if !can(regex("^events:", join(",", s.actions)))])
+    )
+    error_message = "On: the cleanup policy and the session deployer's own policy are unchanged; no events write for sessions."
+  }
+}

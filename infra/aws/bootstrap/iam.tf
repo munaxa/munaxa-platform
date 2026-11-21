@@ -191,7 +191,42 @@ resource "aws_iam_policy" "workload_boundary" {
           Action   = ["elasticloadbalancing:DescribeLoadBalancers", "ecs:ListTasks", "secretsmanager:ListSecrets"]
           Resource = ["*"]
         },
-    ] : statement if each.key == "nonprod" && var.testing_session_cleanup])
+        ] : statement if each.key == "nonprod" && var.testing_session_cleanup], [for statement in [
+        # Testing's RDS restart stop (stack/rds-restart-stop.tf, iam_rds_restart_stop.tf): what the
+        # cleanup statements above do not already admit. The state machine role also calls
+        # rds:DescribeDBInstances, rds:StopDBInstance and ecs:ListTasks (TestingSessionCleanup,
+        # TestingBackstop, TestingSessionCleanupLookups); the EventBridge role starts only this
+        # state machine. Nonprod names only.
+        {
+          Sid      = "TestingRdsRestartStop"
+          Effect   = "Allow"
+          Action   = ["states:StartExecution"]
+          Resource = ["arn:aws:states:${var.region}:${var.account_id}:stateMachine:munaxa-${each.key}-rds-restart-stop"]
+        },
+        {
+          # ListSchedules has no resource-level permission; it returns names and states only.
+          Sid      = "TestingRdsRestartStopLookups"
+          Effect   = "Allow"
+          Action   = ["scheduler:ListSchedules"]
+          Resource = ["*"]
+        },
+        {
+          # Rotation metadata of this environment's database's RDS-managed master secret (never a
+          # value), by the two tags OwnRdsMasterSecret and OwnRdsMasterSecretByTag use.
+          Sid       = "TestingRdsRestartStopRotationMetadata"
+          Effect    = "Allow"
+          Action    = ["secretsmanager:DescribeSecret"]
+          Resource  = ["arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:rds!*"]
+          Condition = { StringEquals = { "aws:ResourceTag/aws:rds:primaryDBInstanceArn" = "arn:aws:rds:${var.region}:${var.account_id}:db:munaxa-${each.key}-pg" } }
+        },
+        {
+          Sid       = "TestingRdsRestartStopRotationMetadataByTag"
+          Effect    = "Allow"
+          Action    = ["secretsmanager:DescribeSecret"]
+          Resource  = ["arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:rds!*"]
+          Condition = { StringEquals = { "aws:ResourceTag/Project" = "munaxa", "aws:ResourceTag/Environment" = each.key } }
+        },
+    ] : statement if each.key == "nonprod" && local.rds_restart_stop_bootstrap])
   })
 }
 
