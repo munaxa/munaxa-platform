@@ -1,0 +1,15 @@
+Alpine package index check, 21 Nov 2026, about 19:08-19:09 UTC (pkgs.alpinelinux.org, fetched through
+a web reader; repo=main, arch=x86_64). All six pages returned HTTP 200.
+
+branch  package     version     build date (UTC)
+v3.24   libssl3     3.5.9-r1    2026-11-18 23:31:47
+v3.24   libcrypto3  3.5.9-r1    2026-11-18 23:31:47
+v3.24   openssl     3.5.9-r1    2026-11-18 23:31:47
+edge    libssl3     3.5.9-r1    2026-11-11 07:17:13
+edge    libcrypto3  3.5.8-r0    2026-08-25 22:47:49   (index page shows an older row; the edge openssl origin is 3.5.9-r1)
+edge    openssl     3.5.9-r1    2026-11-11 07:17:13
+
+"3.5.10" appears on none of the pages. The images use Alpine v3.24 (node:22-alpine, 3.24.4).
+The 16:40 UTC reading (report 2026-11-21-testing-readiness, file 05) showed v3.24 libssl3 as
+3.5.9-r0; this reading shows 3.5.9-r1 for both packages in v3.24 (consistent with the images
+already installing 3.5.9-r1). Gate unchanged: 0 HIGH, 0 CRITICAL.

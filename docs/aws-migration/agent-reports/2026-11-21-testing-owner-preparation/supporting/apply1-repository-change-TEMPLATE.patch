@@ -1,0 +1,502 @@
+diff --git a/infra/aws/stack/envs/nonprod.expected-changes.json b/infra/aws/stack/envs/nonprod.expected-changes.json
+index 020b0d2..f598bec 100644
+--- a/infra/aws/stack/envs/nonprod.expected-changes.json
++++ b/infra/aws/stack/envs/nonprod.expected-changes.json
+@@ -1,54 +1,232 @@
+ {
+   "root": "stack-nonprod",
+-  "intent": "Stage E owner decisions D-B3 and D-PIN (15 Nov 2026, report 2026-11-15-identity-stage-e-owner-decisions, files 04 and 05), services off, the session down. D-B3: the independent Testing session cleanup, session_cleanup_enabled = true: 8 creates (its IAM role and policy, the Step Functions state machine, the daily UTC schedule R, the alerts topic and its policy, the failed and not-run alarms) and the backstop role's policy update (StartTheSessionCleanup on that one state machine). Needs the bootstrap apply with testing_session_cleanup = true (D-B2) first. D-PIN: the Identity session probe task definition (throwaway mode), pinned to commit 2f6d443 and the probe's SHA-256 7254a0ba...e369: 1 create. L-A0 (PR #131, merged first): the identity-bootstrap task definition is replaced (a new revision that reads IDENTITY_OWNER_* from munaxa-nonprod/identity-operator; skip_destroy keeps the old one) and its execution role policy is updated (GetSecretValue on identity-operator instead of the retired one-run copy): 2 changes. No secret value, no ECS service, ALB, network, database, KMS, DNS or production resource.",
++  "intent": "APPLY 1 of the first Docs Testing deployment (report 2026-11-21-testing-owner-preparation, file 06): Control C-1 (Control api, migrate and portal images by digest, services off, Control desired counts 0; no operator_access, Cloudflare Access not used) = 33 creates; the Identity images rebuilt on OpenSSL 3.5.10 and D-OP-1 (identity_security_config.mfa_policy = privileged, roles control-operator-admin and control-operator-viewer) = the four Identity task definitions replaced (identity, identity-migrate, identity-bootstrap, identity-probe; new revisions). The 2db6ed9 digests 9a8c6ebd and 5f3bdcce are withdrawn. No destroy, no ECS service, ALB, network, database, KMS change other than the Control licence key, no DNS, no production resource.",
+   "changes": [
+     {
+-      "address": "aws_cloudwatch_metric_alarm.session_cleanup_failed[0]",
+-      "actions": ["create"]
++      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
++      "actions": [
++        "delete",
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_cloudwatch_metric_alarm.session_cleanup_not_run[0]",
+-      "actions": ["create"]
++      "address": "aws_ecs_task_definition.identity_probe[0]",
++      "actions": [
++        "delete",
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
+-      "actions": ["delete", "create"]
++      "address": "aws_kms_alias.licence[0]",
++      "actions": [
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_ecs_task_definition.identity_probe[0]",
+-      "actions": ["create"]
++      "address": "aws_kms_key.licence[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "aws_kms_key_policy.licence[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"control-api\"]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"control-portal\"]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_cloudwatch_log_group.this",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_ecs_task_definition.this",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_iam_role.execution",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_iam_role.task[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_iam_role_policy.execution",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_iam_role_policy.task[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_security_group.this",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_vpc_security_group_egress_rule.database[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_vpc_security_group_egress_rule.https",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_api[0].aws_vpc_security_group_ingress_rule.from_callers[\"control-portal\"]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_migrate[0].aws_cloudwatch_log_group.this",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_migrate[0].aws_ecs_task_definition.this",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_migrate[0].aws_iam_role.execution",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_migrate[0].aws_iam_role_policy.execution",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_migrate[0].aws_security_group.this",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_migrate[0].aws_vpc_security_group_egress_rule.database[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_migrate[0].aws_vpc_security_group_egress_rule.https",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_migrate[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_portal[0].aws_cloudwatch_log_group.this",
++      "actions": [
++        "create"
++      ]
++    },
++    {
++      "address": "module.control_portal[0].aws_ecs_task_definition.this",
++      "actions": [
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_iam_role.session_cleanup[0]",
+-      "actions": ["create"]
++      "address": "module.control_portal[0].aws_iam_role.execution",
++      "actions": [
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_iam_role_policy.identity_bootstrap_execution[0]",
+-      "actions": ["update"]
++      "address": "module.control_portal[0].aws_iam_role_policy.execution",
++      "actions": [
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_iam_role_policy.session_backstop[0]",
+-      "actions": ["update"]
++      "address": "module.control_portal[0].aws_security_group.this",
++      "actions": [
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_iam_role_policy.session_cleanup[0]",
+-      "actions": ["create"]
++      "address": "module.control_portal[0].aws_vpc_security_group_egress_rule.https",
++      "actions": [
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_scheduler_schedule.session_cleanup_daily[0]",
+-      "actions": ["create"]
++      "address": "module.control_portal[0].aws_vpc_security_group_egress_rule.to_services[\"control-api\"]",
++      "actions": [
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_sfn_state_machine.session_cleanup[0]",
+-      "actions": ["create"]
++      "address": "module.control_portal[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
++      "actions": [
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_sns_topic.session_cleanup_alerts[0]",
+-      "actions": ["create"]
++      "address": "module.identity[0].aws_ecs_task_definition.this",
++      "actions": [
++        "delete",
++        "create"
++      ]
+     },
+     {
+-      "address": "aws_sns_topic_policy.session_cleanup_alerts[0]",
+-      "actions": ["create"]
++      "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
++      "actions": [
++        "delete",
++        "create"
++      ]
+     }
+   ]
+ }
+diff --git a/infra/aws/stack/envs/nonprod.stage-e-tasks.json b/infra/aws/stack/envs/nonprod.stage-e-tasks.json
+index 2ddba11..ae6b990 100644
+--- a/infra/aws/stack/envs/nonprod.stage-e-tasks.json
++++ b/infra/aws/stack/envs/nonprod.stage-e-tasks.json
+@@ -97,7 +97,7 @@
+       "service": false,
+       "containers": {
+         "identity-migrate": {
+-          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874",
++          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2",
+           "secrets": {
+             "DATABASE_MIGRATION_URL": {
+               "form": "full",
+@@ -150,7 +150,7 @@
+       "service": false,
+       "containers": {
+         "identity-bootstrap": {
+-          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
++          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+           "secrets": {
+             "DIRECT_DATABASE_URL": {
+               "form": "full",
+@@ -236,7 +236,7 @@
+       "service": false,
+       "containers": {
+         "throwaway-account": {
+-          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
++          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+           "secrets": {
+             "DIRECT_DATABASE_URL": {
+               "form": "full",
+@@ -284,7 +284,7 @@
+           }
+         },
+         "identity-probe": {
+-          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
++          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+           "secrets": {},
+           "environmentNames": [
+             "NODE_ENV",
+@@ -383,7 +383,7 @@
+       "service": true,
+       "containers": {
+         "identity": {
+-          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
++          "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+           "secrets": {
+             "DATABASE_URL": {
+               "form": "full",
+@@ -433,6 +433,7 @@
+             "LOG_PRETTY",
+             "MFA_ENCRYPTION_PRIMARY_KID",
+             "MFA_POLICY",
++            "MFA_PRIVILEGED_ROLES",
+             "NODE_ENV",
+             "PORT",
+             "TRUST_PROXY_HOPS"
+@@ -483,7 +484,8 @@
+             "IDENTITY_SIGNING_KID": "identity-nonprod-2026-11",
+             "LOG_PRETTY": "false",
+             "MFA_ENCRYPTION_PRIMARY_KID": "mfa-nonprod-2026-11",
+-            "MFA_POLICY": "off",
++            "MFA_POLICY": "privileged",
++            "MFA_PRIVILEGED_ROLES": "control-operator-admin,control-operator-viewer",
+             "NODE_ENV": "production",
+             "PORT": "4001",
+             "TRUST_PROXY_HOPS": "1"
+diff --git a/infra/aws/stack/envs/nonprod.tfvars b/infra/aws/stack/envs/nonprod.tfvars
+index fc16d0c..6c3d5ec 100644
+--- a/infra/aws/stack/envs/nonprod.tfvars
++++ b/infra/aws/stack/envs/nonprod.tfvars
+@@ -63,8 +63,11 @@ docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61db
+ # 2026-11-13-identity-cve-2026-4738-remediation). Never the 5277d71 or 5a5994f images. Every other
+ # image stays unset, so no Control, Work, School or Docs resource exists.
+ images = {
+-  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b"
+-  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874"
++  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1"
++  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2"
++  control_api      = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1"
++  control_migrate  = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/migrate@sha256:c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2"
++  control_portal   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal@sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+ }
+ 
+ # Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Required by the 2db6ed9
+@@ -76,8 +79,9 @@ images = {
+ # P-4) until the privileged accounts' enrolment and recovery procedure exists (munaxa-identity
+ # docs/production-readiness.md section 6).
+ identity_security_config = {
+-  mfa_primary_kid = "mfa-nonprod-2026-11"
+-  mfa_policy      = "off"
++  mfa_primary_kid      = "mfa-nonprod-2026-11"
++  mfa_policy           = "privileged"
++  mfa_privileged_roles = ["control-operator-admin", "control-operator-viewer"]
+ }
+ 
+ # Identity's cache sidecar: Valkey 8.1.11, linux/amd64 manifest.
+diff --git a/infra/aws/stack/tests/stack.tftest.hcl b/infra/aws/stack/tests/stack.tftest.hcl
+index 7e9534d..09ecbb4 100644
+--- a/infra/aws/stack/tests/stack.tftest.hcl
++++ b/infra/aws/stack/tests/stack.tftest.hcl
+@@ -374,6 +374,26 @@ run "withdrawn_identity_migrate_5277d71_is_refused" {
+   expect_failures = [var.images]
+ }
+ 
++run "withdrawn_identity_api_2db6ed9_is_refused" {
++  command = plan
++  variables {
++    images = {
++      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b"
++    }
++  }
++  expect_failures = [var.images]
++}
++
++run "withdrawn_identity_migrate_2db6ed9_is_refused" {
++  command = plan
++  variables {
++    images = {
++      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874"
++    }
++  }
++  expect_failures = [var.images]
++}
++
+ # Matched by digest, not path: a withdrawn digest under another repository name is still refused.
+ run "a_withdrawn_digest_under_another_repository_is_refused" {
+   command = plan
+@@ -385,11 +405,11 @@ run "a_withdrawn_digest_under_another_repository_is_refused" {
+   expect_failures = [var.images]
+ }
+ 
+-# The list is exactly the ten withdrawn digests, so an edit to it is a reviewed, tested change.
+-run "the_withdrawn_list_is_the_ten_known_digests" {
++# The list is exactly the twelve withdrawn digests, so an edit to it is a reviewed, tested change.
++run "the_withdrawn_list_is_the_twelve_known_digests" {
+   command = plan
+   assert {
+-    condition     = length(local.withdrawn_image_digests) == 10
++    condition     = length(local.withdrawn_image_digests) == 12
+     error_message = "withdrawn-images.tf changed: update this count and add a refusal run for each new digest."
+   }
+ }
+diff --git a/infra/aws/stack/tests/stage-e-manifest.tftest.hcl b/infra/aws/stack/tests/stage-e-manifest.tftest.hcl
+index abd3a97..d49a762 100644
+--- a/infra/aws/stack/tests/stage-e-manifest.tftest.hcl
++++ b/infra/aws/stack/tests/stage-e-manifest.tftest.hcl
+@@ -151,8 +151,9 @@ run "stage_e_task_definitions_match_the_manifest" {
+       identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+     }
+     identity_security_config = {
+-      mfa_primary_kid = "mfa-nonprod-2026-11"
+-      mfa_policy      = "off"
++      mfa_primary_kid      = "mfa-nonprod-2026-11"
++      mfa_policy           = "privileged"
++      mfa_privileged_roles = ["control-operator-admin", "control-operator-viewer"]
+     }
+     identity_probe_source = {
+       commit = "0123456789abcdef0123456789abcdef01234567"
+diff --git a/infra/aws/stack/withdrawn-images.tf b/infra/aws/stack/withdrawn-images.tf
+index aee51cc..b0be0d8 100644
+--- a/infra/aws/stack/withdrawn-images.tf
++++ b/infra/aws/stack/withdrawn-images.tf
+@@ -31,5 +31,9 @@ locals {
+     # munaxa-identity 5277d71 (8 Nov): before the security hardening (identity#7 to #17), owner decision.
+     "sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156" = "munaxa-identity/api 5277d71: pre-hardening"
+     "sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820" = "munaxa-identity/migrate 5277d71: pre-hardening"
++
++    # munaxa-identity 2db6ed9 (13 Nov): OpenSSL 3.5.9-r1, 5 HIGH (D-SSL); replaced in Apply 1.
++    "sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b" = "munaxa-identity/api 2db6ed9: OpenSSL 3.5.9 HIGH"
++    "sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874" = "munaxa-identity/migrate 2db6ed9: OpenSSL 3.5.9 HIGH"
+   }
+ }
+diff --git a/scripts/aws/connector/e1-task-guard.py b/scripts/aws/connector/e1-task-guard.py
+index e80f39a..211b03b 100644
+--- a/scripts/aws/connector/e1-task-guard.py
++++ b/scripts/aws/connector/e1-task-guard.py
+@@ -194,7 +194,7 @@ MANIFEST = {
+             "service": False,
+             "containers": {
+                 "identity-migrate": {
+-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874",
++                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2",
+                     "secrets": {
+                         "DATABASE_MIGRATION_URL": {
+                             "form": "full",
+@@ -251,7 +251,7 @@ MANIFEST = {
+             "service": False,
+             "containers": {
+                 "identity-bootstrap": {
+-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
++                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+                     "secrets": {
+                         "DIRECT_DATABASE_URL": {
+                             "form": "full",
+@@ -346,7 +346,7 @@ MANIFEST = {
+             "service": False,
+             "containers": {
+                 "throwaway-account": {
+-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
++                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+                     "secrets": {
+                         "DIRECT_DATABASE_URL": {
+                             "form": "full",
+@@ -401,7 +401,7 @@ MANIFEST = {
+                     }
+                 },
+                 "identity-probe": {
+-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
++                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+                     "secrets": {},
+                     "environmentNames": [
+                         "NODE_ENV",
+@@ -506,7 +506,7 @@ MANIFEST = {
+             "service": True,
+             "containers": {
+                 "identity": {
+-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
++                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+                     "secrets": {
+                         "DATABASE_URL": {
+                             "form": "full",
+@@ -556,6 +556,7 @@ MANIFEST = {
+                         "LOG_PRETTY",
+                         "MFA_ENCRYPTION_PRIMARY_KID",
+                         "MFA_POLICY",
++                        "MFA_PRIVILEGED_ROLES",
+                         "NODE_ENV",
+                         "PORT",
+                         "TRUST_PROXY_HOPS"
+@@ -608,7 +609,8 @@ MANIFEST = {
+                         "IDENTITY_SIGNING_KID": "identity-nonprod-2026-11",
+                         "LOG_PRETTY": "false",
+                         "MFA_ENCRYPTION_PRIMARY_KID": "mfa-nonprod-2026-11",
+-                        "MFA_POLICY": "off",
++                        "MFA_POLICY": "privileged",
++                        "MFA_PRIVILEGED_ROLES": "control-operator-admin,control-operator-viewer",
+                         "NODE_ENV": "production",
+                         "PORT": "4001",
+                         "TRUST_PROXY_HOPS": "1"
