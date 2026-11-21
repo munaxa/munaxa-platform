@@ -150,6 +150,21 @@ describe(
       });
     }
 
+    // The exact shape scripts/aws/owner/docs-testing-secrets.sh writes (report
+    // 2026-11-19-docs-first-testing-deployment-program): 64 hex characters, the RDS host with its
+    // port, and sslmode=require.
+    test('accepts the URL docs-testing-secrets.sh writes', () => {
+      const pw = 'a3'.repeat(32);
+      const url = `postgresql://edms_owner:${pw}@munaxa-nonprod-pg.cjw44yig4u0v.eu-central-1.rds.amazonaws.com:5432/edms_munaxa_internal?sslmode=require`;
+      const result = run(url);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout.trim(), md5(pw));
+      assert.ok(
+        !result.stdout.includes(pw) && !result.stderr.includes(pw),
+        'the password was printed',
+      );
+    });
+
     for (const [why, url, database] of [
       ['another role', 'postgresql://edms_app:secret-value-1@db/edms_munaxa_internal'],
       ['no password', 'postgresql://edms_owner:@db/edms_munaxa_internal'],

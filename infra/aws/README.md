@@ -244,6 +244,20 @@ write one JSON secret version with the keys listed in `stack/data.tf`.
   with the placeholder, which is the expected state until step 4.
 - **School:** `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (different), `CONTROL_PLANE_TOKEN`,
   `RESEND_API_KEY` (sending access only).
+- **Docs (Testing):** the three bundles `docs-operator`, `docs-migrate` and `docs-api` are filled by the
+  owner in CloudShell with `scripts/aws/owner/docs-testing-secrets.sh bundles`, which generates every
+  credential inside the script, derives `DATABASE_URL`, `DATABASE_MIGRATION_URL`, `REDIS_URL` and the
+  one-tenant `TENANT_CATALOGUE` from them (so the app password in `DATABASE_URL` and in
+  `docs-operator` cannot drift), and prints only version ids and the tenant id. `CONTROL_PLANE_TOKEN`
+  starts as a marked placeholder until G7 step 4 (`replace-key CONTROL_PLANE_TOKEN`); an empty Resend
+  answer stores a marked placeholder too (Docs then starts, but mail fails until `replace-key
+  MAIL_RESEND_API_KEY`). The one-run `docs-provision/<slug>` secret: `provision-create`, then
+  `provision-delete` after the run. Offline tests: `scripts/aws/owner/test/`.
+- **Control (Testing):** `control-migrate` (`DATABASE_MIGRATION_URL`, `control_owner`) and
+  `control-api` (`DATABASE_URL`, `control_app`) are filled by the owner in CloudShell with
+  `scripts/aws/owner/control-testing-secrets.sh bundles`, which generates both hex passwords inside
+  the script and prints only the two version ids. Then add `control` to `db_bootstrap_products` and
+  pin both bundles in the same PR, so db-admin creates the `control` database and roles.
 - Then pin each bundle with `secret_version_ids` in a PR.
 
 ### G5. Images

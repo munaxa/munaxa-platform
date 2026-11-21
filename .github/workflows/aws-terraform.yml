@@ -111,6 +111,16 @@ jobs:
           python3 -I -m unittest discover -s infra/aws/stack/session-cleanup -p 'test_*.py' -v
           python3 -I -m unittest discover -s scripts/aws/connector -p 'test_*.py' -v
 
+      # The owner's Docs and Control Testing secret custody scripts (report
+      # 2026-11-19-docs-first-testing-deployment-program): the unchanged script, through a fake AWS
+      # CLI, with every value checked out of the output, the CLI's arguments and its environment.
+      - name: Docs and Control Testing secret custody script tests
+        run: |
+          set -euo pipefail
+          shellcheck scripts/aws/owner/docs-testing-secrets.sh scripts/aws/owner/control-testing-secrets.sh
+          python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_docs_testing_secrets.py
+          python3 -W ignore::ResourceWarning scripts/aws/owner/test/test_control_testing_secrets.py
+
       # docs-cluster-roles.sql is Docs' infra/sql/cluster/01-roles.sql below a 4-line header that
       # records the original's sha256. The copy must still hash to it; Docs CI pins the same hash on
       # its side, so a change there fails until this copy is refreshed (finding F-3).
