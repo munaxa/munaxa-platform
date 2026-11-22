@@ -1,0 +1,12 @@
+2:  run "baseline_main"... pass
+5625:  run "apply1_plan"... pass
+6593:Plan: 33 to add, 4 to change, 0 to destroy.
+6605:  run "apply1"... pass
+13467:  run "apply2_plan"... pass
+15506:Plan: 42 to add, 3 to change, 0 to destroy.
+15518:  run "apply2"... pass
+24547:  run "docs_credential_pin_plan"... pass
+24693:Plan: 0 to add, 2 to change, 0 to destroy.
+24695:  run "docs_session_plan"... pass
+25633:Plan: 28 to add, 0 to change, 0 to destroy.
+25641:Success! 7 passed, 0 failed.
