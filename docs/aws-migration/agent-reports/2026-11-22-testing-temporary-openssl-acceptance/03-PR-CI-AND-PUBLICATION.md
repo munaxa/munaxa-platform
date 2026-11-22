@@ -27,7 +27,7 @@ tag was created, no workflow was dispatched.**
 | --- | --- |
 | control#14 (operator access optional) | **merged** 22 Nov 14:42 UTC (`e9fb445`) after its branch was updated and CI passed |
 | control#12, docs#181 (actions pinned to SHAs) | control#12 **merged** 14:50 UTC; docs#181 **merged** `d1d10af` after branch update and green CI (the D-SSL exception made their image jobs pass; no other change) |
-| docs#178 (runbook storage credentials, docs only) | branch updated after docs#181; merged when its CI is green (documentation only) |
+| docs#178 (runbook storage credentials, docs only) | **merged** `9348aab` after branch update and green CI (documentation only) |
 | identity#24, control#13, docs#182, work#35 (OpenSSL 3.5.10 bumps) | stay **draft**; they are the permanent fix after 1 Dec |
 | identity#19, control#9, work#32 (package token) | untouched, wait on the owner's GitHub Packages Read grant |
 | school#29 | untouched, out of scope |
