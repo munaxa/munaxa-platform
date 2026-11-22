@@ -86,6 +86,9 @@ jobs:
           # The service module's own rules (deployment percentages, per-task store, sidecar ports).
           terraform -chdir=infra/aws/modules/service init -backend=false -input=false -lockfile=readonly
           terraform -chdir=infra/aws/modules/service test
+          # The temporary D-SSL image exception guard (P-2, E-1, T-1; no provider).
+          terraform -chdir=infra/aws/modules/image-exception-guard init -backend=false -input=false
+          terraform -chdir=infra/aws/modules/image-exception-guard test
 
       # The identity-probe task's loader (identity-probe.tf) and any probe tests beside it: Node 22,
       # built-in modules only, no network (fetch is stubbed).
@@ -111,6 +114,8 @@ jobs:
           python3 -I -m unittest discover -s infra/aws/stack/session-cleanup -p 'test_*.py' -v
           python3 -I -m unittest discover -s infra/aws/stack/rds-restart-stop -p 'test_*.py' -v
           python3 -I -m unittest discover -s scripts/aws/connector -p 'test_*.py' -v
+          # D-SSL P-1: production pins no image while the temporary exception exists.
+          python3 -I -m unittest discover -s infra/aws/stack/tests -p 'test_dssl_exception.py' -v
 
       # The owner's Docs, Control and Work Testing secret custody scripts (report
       # 2026-11-19-docs-first-testing-deployment-program; Work: gap W-3): the unchanged script, through
