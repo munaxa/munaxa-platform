@@ -298,7 +298,8 @@ class DocsBootstrapPlanScript(unittest.TestCase):
         self.assertStopped("drift reported")
         self.h.set(plan_text="Plan: 2 to add, 3 to change, 0 to destroy.")
         p = self.h.plan(); p["resource_drift"] = [{"address": "aws_budgets_budget.account"}]; self.h.set(plan_json=p)
-        self.assertStopped("the plan JSON lists resource drift")
+        self.assertStopped("the plan JSON lists resource drift other than the known")
+
 
     def test_unexpected_address_or_action(self):
         cases = {
@@ -382,6 +383,104 @@ class PinnedRepository(unittest.TestCase):
         lock = git(d, "show", CONSTANTS["REVIEWED_PIN"] + ":infra/terraform/bootstrap/.terraform.lock.hcl")
         self.assertIn('version     = "6.67.0"', lock)
         self.assertIn("h1:EB9ixYOZrSlYD7wtJxf88qwoyyWrlKDKxhzaCLIb3t4=", lock)
+
+
+
+DEFAULT_TAGS = {"Project": "MunaxaDocs", "Environment": "Production", "ManagedBy": "Terraform", "Stack": "bootstrap"}
+
+
+def known_drift(form="null"):
+    """The refresh-only drift of the 22 Nov 2026 owner run: tags in a different form, tags_all equal."""
+    before_tags = {"null": {}, "recorded": dict(DEFAULT_TAGS)}[form]
+    d = []
+    for addr in ('aws_ecr_repository.images["antivirus"]', 'aws_ecr_repository.images["api"]',
+                 'aws_ecr_repository.images["web"]', "aws_iam_policy.image_publisher_boundary"):
+        d.append({"address": addr, "change": {"actions": ["update"],
+                  "before": {"name": addr, "tags": before_tags, "tags_all": dict(DEFAULT_TAGS)},
+                  "after": {"name": addr, "tags": None, "tags_all": dict(DEFAULT_TAGS)}}})
+    d.append({"address": "aws_iam_role.image_publisher", "change": {"actions": ["update"],
+              "before": {"name": "r", "tags": before_tags, "tags_all": dict(DEFAULT_TAGS), "inline_policy": []},
+              "after": {"name": "r", "tags": None, "tags_all": dict(DEFAULT_TAGS),
+                        "inline_policy": [{"name": "push-production-images", "policy": "{}"}]}}})
+    return d
+
+
+class KnownRefreshDrift(unittest.TestCase):
+    """22 Nov 2026: tags (form only) on 4 resources + tags/inline_policy on the publisher role."""
+
+    def setUp(self):
+        self.h = Harness()
+
+    def tearDown(self):
+        self.h.close()
+
+    def with_drift(self, mutate=None, form="null"):
+        p = self.h.plan(); p["resource_drift"] = known_drift(form)
+        if mutate:
+            mutate(p["resource_drift"])
+        self.h.set(plan_json=p)
+
+    def stopped(self):
+        rc, out, calls, log = self.h.run()
+        self.assertNotEqual(rc, 0, out)
+        self.assertIn("STOP: the plan JSON lists resource drift other than the known", out)
+        self.assertNotIn("PLAN VERIFIED", out)
+        return out
+
+    def test_known_drift_is_accepted_in_both_forms(self):
+        for form in ("null", "recorded"):
+            with self.subTest(form=form):
+                self.with_drift(form=form)
+                rc, out, calls, log = self.h.run()
+                self.assertEqual(rc, 0, out)
+                self.assertIn("drift entries 5", out)
+                self.assertIn("OK   drift limited to the known refresh-only tags/inline_policy differences", out)
+                self.assertIn("DOCS BOOTSTRAP PLAN VERIFIED, NOT APPLIED", out)
+                self.assertNotRegex(calls, r"(?m)^terraform apply")
+
+    def test_no_drift_still_passes_without_the_drift_line(self):
+        rc, out, calls, log = self.h.run()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("drift entries 0", out)
+        self.assertNotIn("drift limited", out)
+
+    def test_effective_tags_changed(self):
+        self.with_drift(lambda d: d[0]["change"]["after"]["tags_all"].update(Environment="Testing"))
+        self.stopped()
+
+    def test_configured_tag_value_changed(self):
+        def m(d):
+            d[1]["change"]["before"]["tags"] = {"Owner": "someone"}; d[1]["change"]["after"]["tags"] = {"Owner": "else"}
+        self.with_drift(m)
+        self.stopped()
+
+    def test_other_attribute_drifted(self):
+        def m(d):
+            d[2]["change"]["before"]["image_tag_mutability"] = "IMMUTABLE"
+            d[2]["change"]["after"]["image_tag_mutability"] = "MUTABLE"
+        self.with_drift(m)
+        self.stopped()
+
+    def test_inline_policy_on_a_resource_that_may_only_drift_tags(self):
+        def m(d):
+            d[3]["change"]["before"]["inline_policy"] = []
+            d[3]["change"]["after"]["inline_policy"] = [{"name": "push-production-images"}]
+        self.with_drift(m)
+        self.stopped()
+
+    def test_unknown_inline_policy_on_the_publisher_role(self):
+        self.with_drift(lambda d: d[4]["change"]["after"]["inline_policy"].append({"name": "admin", "policy": "{}"}))
+        self.stopped()
+
+    def test_unlisted_address(self):
+        def m(d):
+            e = copy.deepcopy(d[0]); e["address"] = "aws_iam_openid_connect_provider.github"; d.append(e)
+        self.with_drift(m)
+        self.stopped()
+
+    def test_drift_action_other_than_update(self):
+        self.with_drift(lambda d: d[0]["change"].update(actions=["delete"]))
+        self.stopped()
 
 
 if __name__ == "__main__":
