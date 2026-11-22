@@ -100,7 +100,30 @@ grep -E '^Plan:|No changes|changed outside of Terraform|Error' "$W/plan.txt"
 grep -qx 'Plan: 2 to add, 3 to change, 0 to destroy.' "$W/plan.txt" || stop "summary is not 2 to add, 3 to change, 0 to destroy"
 grep -q 'changed outside of Terraform' "$W/plan.txt" && stop "drift reported"
 terraform show -json "$W/docs-bootstrap.tfplan" > "$W/plan.json" || stop "show -json"
-[ "$(jq '[.resource_drift // [] | .[]] | length' "$W/plan.json")" = 0 ] || stop "the plan JSON lists resource drift"
+# Known refresh-only drift (owner run 22 Nov 2026): the five resources created by the 22 Oct #141 apply
+# (Terraform 1.16.6) refresh with `tags` differing only in form (null versus {}, or the default tags
+# recorded in `tags`) and, for the publisher role, the computed
+# `inline_policy` now listing push-production-images. CloudTrail shows no tag or policy write on them
+# since 22 Oct, and tags_all (the effective tags) is unchanged. Accept exactly that and nothing else:
+# only these addresses, only these attributes, tags_all identical, tags equal once null is read as
+# {} (or recorded tags equal to tags_all with none configured), and the role's
+# inline_policy holding only push-production-images (its content is checked through
+# aws_iam_role_policy.image_publisher below).
+jq -r '.resource_drift // [] | .[] | . as $r | "\($r.address) \($r.change.actions|join("+")) " + ([($r.change.before // {} | keys[]) as $k | select($r.change.before[$k] != $r.change.after[$k]) | $k] | join(","))' "$W/plan.json" | sort > "$W/drift.txt"
+grep -c . "$W/drift.txt" | sed 's/^/drift entries /'
+jq -e '
+  def allowed: {"aws_ecr_repository.images[\"antivirus\"]": ["tags"], "aws_ecr_repository.images[\"api\"]": ["tags"],
+    "aws_ecr_repository.images[\"web\"]": ["tags"], "aws_iam_policy.image_publisher_boundary": ["tags"],
+    "aws_iam_role.image_publisher": ["inline_policy", "tags"]};
+  [.resource_drift // [] | .[] | . as $r | ($r.change.before // {}) as $b | ($r.change.after // {}) as $a |
+    (allowed[$r.address] // null) as $ok |
+    ($ok != null) and ($r.change.actions == ["update"]) and
+    ([($b|keys[]) as $k | select($b[$k] != $a[$k]) | $k] - $ok | length == 0) and
+    ($b.tags_all == $a.tags_all) and
+    ((($b.tags // {}) == ($a.tags // {})) or ((($a.tags // {}) == {}) and (($b.tags // {}) == ($a.tags_all // {})))) and
+    (if ($ok|index("inline_policy")) then ([($a.inline_policy // [])[].name] - ["push-production-images"] | length == 0) else true end)
+  ] | all' "$W/plan.json" >/dev/null || stop "the plan JSON lists resource drift other than the known tags/inline_policy refresh: $(tr '\n' ';' < "$W/drift.txt")"
+[ -s "$W/drift.txt" ] && ok "drift limited to the known refresh-only tags/inline_policy differences"
 
 echo "== 6 addresses, actions, attributes, policy delta"
 jq -r '.resource_changes[]|select(.change.actions!=["no-op"] and .change.actions!=["read"])|"\(.address) \(.change.actions|join("+"))"' "$W/plan.json" | sort > "$W/actual.txt"

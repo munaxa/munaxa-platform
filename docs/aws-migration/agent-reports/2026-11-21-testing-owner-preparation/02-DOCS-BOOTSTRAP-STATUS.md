@@ -30,7 +30,7 @@ Canonical location now `scripts/aws/owner/docs-bootstrap-migrate-plan-owner-clou
 infra/terraform/bootstrap` unchecked: the script runs with `set -u` but not `-e`, so a failed `cd`
 would have continued; the later checks would still have failed closed) and two SC2015 notes. Fixed
 with explicit `if … then stop` and `cd … || stop`; nothing else changed. New SHA-256
-**`0b61f4a2729badf01f2d518b4a881f03914660a8ba04c8d0bb970fb9d88df70b`** (supersedes `1dc70ce4…3845` in the previous report's copy, which stays as history).
+**`0b61f4a2729badf01f2d518b4a881f03914660a8ba04c8d0bb970fb9d88df70b`** (supersedes `1dc70ce4…3845` in the previous report's copy, which stays as history). **22 Nov: superseded by `7a9c5cdceb0c16c18fe531573e4a20fadc7953d3187f221272c9f6ed9479ffb0` (known refresh drift accepted, file 10).**
 
 | Brief requirement | Script | Test (`scripts/aws/owner/test/test_docs_bootstrap_plan.py`) |
 | --- | --- | --- |
@@ -62,7 +62,7 @@ not the policy message (still a stop).
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/munaxa/munaxa-platform/main/scripts/aws/owner/docs-bootstrap-migrate-plan-owner-cloudshell.sh
-sha256sum docs-bootstrap-migrate-plan-owner-cloudshell.sh   # must be 0b61f4a2729badf01f2d518b4a881f03914660a8ba04c8d0bb970fb9d88df70b
+sha256sum docs-bootstrap-migrate-plan-owner-cloudshell.sh   # must be 7a9c5cdceb0c16c18fe531573e4a20fadc7953d3187f221272c9f6ed9479ffb0 (22 Nov, file 10)
 bash docs-bootstrap-migrate-plan-owner-cloudshell.sh f1fca8fd7a9a3e09cada5956bd37ac3b5b9a5aad
 ```
 
