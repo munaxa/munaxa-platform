@@ -41,7 +41,8 @@ yet; owner steps O-IAM-1 to O-IAM-6). Until those are done, the 8 Nov developmen
         ┌────────────────────────────────▼─────────────────────────────────────▼──────────┐
         │ ALB  munaxa-<env>   HTTPS (TLS 1.2+), HTTP→HTTPS, default 404                       │
         │  id.*          ─────────────────────────────────────────► identity  (Testing: + Valkey sidecar)
-        │  work.*        /api/auth/* ► identity · /api/v1/* ► work-api · /* ► work-admin       │
+        │  work.*        /api/auth/* ► identity · /api/v1/*, GET /health/ready ► work-api      │
+        │                /* ► work-admin                                                       │
         │  school.*      /api/v1/* ► school-api · /* ► school-admin                               │
         │  control-api.* /api/v1/{products,licensing}/*, /health/* ► control-api · rest ► 403  │
         │  docs.*        /api/v1/preview/stream* ► docs-api (+ Redis) · /* ► docs-web          │
@@ -364,9 +365,9 @@ operator host included (DNS only, so the ALB sees the operator's address; OPERAT
 4. Control (the licence key's public half is already set, step 0). In the operator portal create the
    deployments for Work, School and Docs, issue one credential each, and write it as
    `CONTROL_PLANE_TOKEN` in that product's bundle (Docs Testing: `munaxa-nonprod/docs-api`).
-5. Smoke: `id.*/api/auth/health/ready`; `control-api.*/health/ready` and
-   `/api/v1/licensing/public-keys`; `/api/v1/admin/*` on control-api answers 403; the operator
-   host answers 403 from any address outside `OPERATOR_CIDRS` and, from the operator's address,
+5. Smoke: `id.*/api/auth/health/ready`; `work.*/health/ready` (GET only, answered by work-api);
+   `control-api.*/health/ready` and `/api/v1/licensing/public-keys`; `/api/v1/admin/*` on
+   control-api answers 403; the operator host answers 403 from any address outside `OPERATOR_CIDRS` and, from the operator's address,
    sends to Identity sign-in with MFA (with the optional `operator_access` set, Access decides,
    not `operator_cidrs`); sign in on `work.*`; School login; a product's
    entitlement request with its credential; logs show no `Entitlements could not be confirmed`.

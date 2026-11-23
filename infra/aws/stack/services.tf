@@ -598,7 +598,16 @@ module "work_api" {
   routed               = local.routed
   listener_arn         = local.listener
   health_check_path    = "/health/ready"
-  routes               = [{ priority = 51, hosts = [var.hosts.work], paths = ["/api/v1/*"] }]
+  # Work serves its health routes outside /api/v1, so without rule 49 the work host sends
+  # /health/ready to work-admin (rule 52). Rule 49 forwards that exact path, GET only, so the smoke
+  # test reads readiness from outside, as it does for Identity, Control and School. /health/ready
+  # answers 200 {"status":"ok"} or a 503 problem+json whose detail is "Not ready: the database is
+  # unreachable." with its instance, requestId and correlationId; neither carries a version, a
+  # build or a dependency list. /health (which does) and /health/live stay unrouted.
+  routes = [
+    { priority = 49, hosts = [var.hosts.work], paths = ["/health/ready"], methods = ["GET"] },
+    { priority = 51, hosts = [var.hosts.work], paths = ["/api/v1/*"] },
+  ]
 
   discovery_namespace_id     = aws_service_discovery_private_dns_namespace.main.id
   register_discovery         = true

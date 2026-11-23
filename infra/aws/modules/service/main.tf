@@ -314,6 +314,15 @@ resource "aws_lb_listener_rule" "this" {
     }
   }
 
+  dynamic "condition" {
+    for_each = length(each.value.methods) > 0 ? [1] : []
+    content {
+      http_request_method {
+        values = each.value.methods
+      }
+    }
+  }
+
   tags = var.tags
 }
 
