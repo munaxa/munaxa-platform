@@ -113,6 +113,10 @@ run "a_session_forwards_get_health_ready_on_the_work_host_to_work_api" {
     error_message = "Rule 49 forwards the exact path /health/ready, GET only; /health and /health/live stay unrouted."
   }
   assert {
+    condition     = join(",", module.work_api[0].listener_rule_hosts["49"]) == "work.test.munaxa.com" && join(",", module.work_api[0].listener_rule_hosts["51"]) == "work.test.munaxa.com"
+    error_message = "Rules 49 and 51 render the work host, and only it."
+  }
+  assert {
     condition = (
       join(",", module.work_api[0].listener_rule_paths["51"]) == "/api/v1/*"
       && length(module.work_api[0].listener_rule_methods["51"]) == 0

@@ -28,6 +28,15 @@ output "listener_rule_methods" {
   value       = { for k, r in local.route_map : k => r.methods }
 }
 
+output "listener_rule_hosts" {
+  description = "Host names per listener rule priority, read from the rendered rules' host_header conditions (for plan tests)."
+  value = {
+    for k, rule in aws_lb_listener_rule.this : k => sort(flatten([
+      for c in rule.condition : [for h in c.host_header : tolist(h.values)]
+    ]))
+  }
+}
+
 output "listener_rule_priorities" {
   description = "Priorities of the listener rules this plan creates: none without a service or an edge (for plan tests)."
   value       = sort(keys(aws_lb_listener_rule.this))
