@@ -75,10 +75,10 @@ def pinned_loader(pin=PIN):
     return LOADER.replace("__PROBE_COMMIT__", pin["commit"]).replace("__PROBE_SHA256__", pin["sha256"])
 
 
-def render(family, revision, pin=PIN):
+def render(family, revision, pin=PIN, families=None):
     """The task definition Terraform would register for `family`, as DescribeTaskDefinition returns it
     (with the empty defaults ECS adds, which the guard must ignore)."""
-    spec = FAMILIES[family]
+    spec = (families or FAMILIES)[family]
     containers = []
     for name, cs in spec["containers"].items():
         c = {"name": name, "image": cs["image"], "cpu": 0, "portMappings": [], "volumesFrom": [], "systemControls": [],
@@ -240,6 +240,8 @@ class Manifest(unittest.TestCase):
         self.assertEqual(FAMILIES["munaxa-nonprod-identity"]["containers"]["valkey"]["image"], value("valkey_image"))
         versions = dict(re.findall(r'^\s*(identity(?:-migrate)?)\s*=\s*"([0-9a-f-]{36})"', tfvars, re.M))
         for family in FAMILIES.values():
+            if family.get("pending"):
+                continue  # test_a_pending_family_is_pending_in_nonprod_tfvars_too
             for c in family["containers"].values():
                 for s in c["secrets"].values():
                     if s["form"] == "full":
@@ -299,6 +301,8 @@ class Manifest(unittest.TestCase):
 
     def test_every_image_is_pinned_by_digest_and_every_version_is_a_uuid(self):
         for name, family in FAMILIES.items():
+            if family.get("pending"):
+                continue  # test_a_pending_family_carries_no_pin_at_all
             for c in family["containers"].values():
                 self.assertRegex(c["image"], r"@sha256:[0-9a-f]{64}$", name)
                 for s in c["secrets"].values():
@@ -848,7 +852,7 @@ class NoRevisionNumbers(unittest.TestCase):
         readme = read("infra", "aws", "README.md")
         step = readme[readme.index("3. Run the db-admin task"):readme.index("using the\n   `run_task_network`")]
         hand = step[step.index("`aws ecs run-task` is used only for"):]
-        for family in ("db-admin", "identity-migrate", "identity-bootstrap", "identity-probe", "`identity`"):
+        for family in ("db-admin", "identity-migrate", "identity-bootstrap", "identity-probe", "`identity`", "work-migrate"):
             self.assertIn(family, step[:step.index("`aws ecs run-task` is used only for")])
             self.assertNotIn(family, hand)
 
@@ -867,6 +871,177 @@ class NoRevisionNumbers(unittest.TestCase):
                      'params={"taskDefinition": "munaxa-nonprod-identity-bootstrap:1"}', "`munaxa-nonprod-identity-migrate:12`"):
             self.assertRegex(line, self.PATTERN)
         self.assertNotRegex("munaxa-nonprod-identity-bootstrap:REVISION_FROM_E1", self.PATTERN)
+
+
+
+# --- MW-005: work-migrate and Work's first-tenant bootstrap under E-1 -------------------------------
+
+WORK = "munaxa-nonprod-work-migrate"
+WORK_IMAGE = f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/munaxa-work/migrate@sha256:" + "0a1b2c3d" * 8
+WORK_VERSION = "11111111-2222-4333-8444-555555555555"
+ORG = "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+OTHER_ORG = "16fd2706-8baf-433b-82eb-8c7fada847da"
+
+
+def pinned_work():
+    """The manifest as the MW-002 pin PR will leave it: work-migrate pinned (synthetic digest and
+    version, never real ones) and no longer pending."""
+    manifest = copy.deepcopy(MANIFEST)
+    manifest.pop("description")
+    family = manifest["families"][WORK]
+    family.pop("pending")
+    family["containers"]["work-migrate"]["image"] = WORK_IMAGE
+    family["containers"]["work-migrate"]["secrets"]["DATABASE_MIGRATION_URL"]["version"] = WORK_VERSION
+    return manifest
+
+
+def script_with(manifest):
+    text = json.dumps(manifest, indent=4, ensure_ascii=False).replace(": true", ": True").replace(": false", ": False").replace(": null", ": None")
+    pattern = re.compile(r"^MANIFEST = .*?\n# --- end manifest ---", re.S | re.M)
+    assert len(pattern.findall(SCRIPT)) == 1
+    return pattern.sub(lambda _: "MANIFEST = " + text + "\n# --- end manifest ---", SCRIPT)
+
+
+WORK_SCRIPT = script_with(pinned_work())
+
+
+def work_fake(td=None):
+    fake = FakeEcs()
+    fake.defs[WORK] = {1: td or render(WORK, 1, families=pinned_work()["families"])}
+    return fake
+
+
+class WorkMigrate(unittest.TestCase):
+    def base(self, **inputs):
+        args = {"MODE": "run", "FAMILY": WORK, "EXPECTED_REVISION": 1, "RUN_TOKEN": "w-bootstrap-0001",
+                "COMMAND": "bootstrap-tenant", "PLATFORM_USER_ID": SUB, "ORGANISATION_ID": ORG,
+                "CONFIRM_ORGANISATION_ID": ORG}
+        args.update(inputs)
+        return args
+
+    # The manifest itself.
+
+    def test_a_pending_family_carries_no_pin_at_all(self):
+        family = FAMILIES[WORK]
+        self.assertTrue(family["pending"])
+        container = family["containers"]["work-migrate"]
+        self.assertEqual(container["image"], "")
+        self.assertEqual(container["secrets"]["DATABASE_MIGRATION_URL"]["version"], "")
+
+    def test_a_pending_family_is_pending_in_nonprod_tfvars_too(self):
+        # Once the pin PR sets images.work_migrate or the work-migrate version, it must pin the manifest
+        # to the same values and drop "pending" (test_the_manifest_equals_nonprod_tfvars then covers it).
+        tfvars = read("infra", "aws", "stack", "envs", "nonprod.tfvars")
+        if FAMILIES[WORK].get("pending"):
+            self.assertNotRegex(tfvars, r'(?m)^\s*work_migrate\s*=\s*"[^"]+"')
+            self.assertNotRegex(tfvars, r'(?m)^\s*work-migrate\s*=\s*"[0-9a-f-]{36}"')
+
+    def test_the_issuer_is_pinned_once_and_equals_the_identity_host(self):
+        tfvars = read("infra", "aws", "stack", "envs", "nonprod.tfvars")
+        block = re.search(r"^hosts\s*=\s*\{(.*?)^\}", tfvars, re.M | re.S).group(1)
+        identity = "https://" + re.search(r'^\s*identity\s*=\s*"([^"]+)"', block, re.M).group(1)
+        family = FAMILIES[WORK]
+        self.assertEqual(family["containers"]["work-migrate"]["environment"],
+                         {"NODE_ENV": "production", "PLATFORM_AUTH_ISSUER": identity})
+        self.assertEqual(FAMILIES["munaxa-nonprod-identity"]["containers"]["identity"]["environment"]["IDENTITY_BASE_URL"], identity)
+        for key in ("bootstrap-tenant", "bootstrap-tenant-dry-run"):
+            command = family["commands"][key]["command"]
+            self.assertEqual(command[:2], ["node", "../../scripts/bootstrap-tenant.mjs"])
+            self.assertEqual(command[command.index("--issuer") + 1], identity)
+            self.assertIn("--allow-production", command)
+            self.assertEqual("--dry-run" in command, key.endswith("dry-run"))
+            self.assertEqual(command[command.index("--confirm-organisation") + 1], "{CONFIRM_ORGANISATION_ID}")
+        self.assertIsNone(family["commands"]["default"])
+        self.assertEqual(set(family["commands"]), {"default", "bootstrap-tenant", "bootstrap-tenant-dry-run"})
+
+    def test_the_family_follows_the_service_module_names(self):
+        self.assertEqual(FAMILIES[WORK]["executionRole"], WORK + "-execution")
+        self.assertEqual(FAMILIES[WORK]["securityGroup"], WORK)
+
+    # While pending.
+
+    def test_discover_of_every_family_skips_and_lists_the_pending_one(self):
+        fake = FakeEcs()
+        r = guard(fake)
+        self.assertEqual(r["result"], "PASS")
+        self.assertEqual(r["pending"], [WORK])
+        self.assertNotIn(WORK, [f["family"] for f in r["families"]])
+        self.assertNotIn(WORK, json.dumps(fake.calls))
+
+    def test_discover_or_run_of_the_pending_family_refuses(self):
+        fake = FakeEcs()
+        self.assertEqual(guard(fake, FAMILY=WORK)["code"], "FAMILY_PENDING")
+        for command in ("default", "bootstrap-tenant", "bootstrap-tenant-dry-run"):
+            with self.subTest(command=command):
+                self.assertEqual(guard(fake, **self.base(COMMAND=command))["code"], "FAMILY_PENDING")
+        self.assertEqual([c[0] for c in fake.calls], ["GetCallerIdentity"] * 4)
+
+    # Once pinned (a synthetic pin, as the MW-002 PR will set a real one).
+
+    def test_the_pinned_family_passes_discover_and_runs_its_migration_unmodified(self):
+        fake = work_fake()
+        self.assertEqual(guard(fake, WORK_SCRIPT, FAMILY=WORK)["result"], "PASS")
+        r = guard(fake, WORK_SCRIPT, **self.base(COMMAND="default", PLATFORM_USER_ID="", ORGANISATION_ID="", CONFIRM_ORGANISATION_ID=""))
+        self.assertEqual(r["result"], "STARTED")
+        run = fake.ops("RunTask")[0]
+        self.assertEqual(run["taskDefinition"], TD + WORK + ":1")
+        self.assertNotIn("overrides", run)
+        self.assertEqual(run["networkConfiguration"]["awsvpcConfiguration"]["securityGroups"], ["sg-" + WORK])
+
+    def test_bootstrap_runs_the_reviewed_command_with_the_validated_inputs_only(self):
+        for key, dry in (("bootstrap-tenant-dry-run", True), ("bootstrap-tenant", False)):
+            with self.subTest(command=key):
+                fake = work_fake()
+                r = guard(fake, WORK_SCRIPT, **self.base(COMMAND=key))
+                self.assertEqual(r["result"], "STARTED")
+                expected = ["node", "../../scripts/bootstrap-tenant.mjs", "--platform-user-id", SUB, "--platform-tenant-id", ORG,
+                            "--confirm-organisation", ORG, "--issuer", "https://id.test.munaxa.com", "--allow-production"]
+                self.assertEqual(fake.ops("RunTask")[0]["overrides"], {"containerOverrides": [
+                    {"name": "work-migrate", "command": expected + (["--dry-run"] if dry else [])}]})
+
+    def test_an_unconfirmed_organisation_never_runs(self):
+        fake = work_fake()
+        self.assertEqual(guard(fake, WORK_SCRIPT, **self.base(CONFIRM_ORGANISATION_ID=OTHER_ORG))["code"], "ORGANISATION_NOT_CONFIRMED")
+        self.assertEqual(guard(fake, WORK_SCRIPT, **self.base(CONFIRM_ORGANISATION_ID=""))["code"], "CONFIRM_ORGANISATION_ID_SHAPE")
+        self.assertEqual(fake.ops("RunTask"), [])
+
+    def test_every_bootstrap_input_must_be_a_lowercase_uuid(self):
+        bad_values = ("", "munaxa-group", "root", ORG.upper(), ORG + " --dry-run", ORG + "\n", "--issuer", "{ORGANISATION_ID}")
+        for field in ("PLATFORM_USER_ID", "ORGANISATION_ID", "CONFIRM_ORGANISATION_ID"):
+            for bad in bad_values:
+                with self.subTest(field=field, bad=bad):
+                    fake = work_fake()
+                    self.assertEqual(guard(fake, WORK_SCRIPT, **self.base(**{field: bad}))["code"], field + "_SHAPE")
+                    self.assertEqual(fake.ops("RunTask"), [])
+
+    def test_an_input_the_command_does_not_name_is_refused(self):
+        fake = work_fake()
+        self.assertEqual(guard(fake, WORK_SCRIPT, **self.base(COMMAND="default"))["code"], "UNUSED_INPUT")
+        self.assertEqual(guard(fake, WORK_SCRIPT, **self.base(ACCOUNT_ID=SUB))["code"], "UNUSED_INPUT")
+        self.assertEqual(guard(fake, WORK_SCRIPT, **self.base(PROBE_ALB_DNS=ALB))["code"], "UNUSED_INPUT")
+        identity = {"MODE": "run", "FAMILY": "munaxa-nonprod-identity-bootstrap", "EXPECTED_REVISION": 1, "RUN_TOKEN": "s6a-bootstrap-0001"}
+        for name in ("PLATFORM_USER_ID", "ORGANISATION_ID", "CONFIRM_ORGANISATION_ID"):
+            with self.subTest(name=name):
+                self.assertEqual(guard(FakeEcs(), WORK_SCRIPT, **dict(identity, **{name: ORG}))["code"], "UNUSED_INPUT")
+        self.assertEqual(fake.ops("RunTask"), [])
+
+    def test_a_revision_with_another_issuer_image_or_command_is_refused(self):
+        cases = {
+            "work-migrate:env:PLATFORM_AUTH_ISSUER": lambda c: [e.update(value="https://id.evil.example") for e in c["environment"] if e["name"] == "PLATFORM_AUTH_ISSUER"],
+            "work-migrate:env-names": lambda c: c["environment"].append({"name": "NODE_OPTIONS", "value": "--require /tmp/x"}),
+            "work-migrate:image": lambda c: c.update(image=OLD_IMAGE),
+            "work-migrate:command": lambda c: c.update(command=["sh", "-c", "env"]),
+        }
+        for problem, change in cases.items():
+            with self.subTest(problem=problem):
+                td = render(WORK, 2, families=pinned_work()["families"])
+                change(container(td, "work-migrate"))
+                fake = work_fake()
+                fake.register(WORK, td)
+                r = guard(fake, WORK_SCRIPT, **self.base(EXPECTED_REVISION=2))
+                self.assertEqual(r["code"], "REVISION_INVALID")
+                self.assertIn(problem, r["problems"])
+                self.assertEqual(fake.ops("RunTask"), [])
 
 
 if __name__ == "__main__":

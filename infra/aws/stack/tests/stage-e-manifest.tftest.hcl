@@ -301,3 +301,62 @@ run "stage_e_task_definitions_match_the_manifest" {
     error_message = "The manifest's loader and db-admin hashes, and the task volumes, are what Terraform registers."
   }
 }
+
+# MW-005: work-migrate joins E-1 as a pending family (no Work image or work-migrate version is pinned
+# yet). What Terraform renders for it, given a synthetic pin, must already equal the manifest in
+# everything but those two pins: the container, the environment names AND values (PLATFORM_AUTH_ISSUER,
+# which Work's bootstrap compares its --issuer with), the secret and its reference form, the shape the
+# guard compares, no command, and the task's size. The pin PR then only fills the image and version.
+run "work_migrate_renders_the_pending_manifest_family" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["work-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/work-migrate-Wk56Mg" }
+  }
+
+  variables {
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator-test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+    }
+    images = {
+      work_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/migrate@sha256:0a1b2c3d0a1b2c3d0a1b2c3d0a1b2c3d0a1b2c3d0a1b2c3d0a1b2c3d0a1b2c3d"
+    }
+    secret_version_ids = {
+      work-migrate = "11111111-2222-4333-8444-555555555555"
+    }
+  }
+
+  assert {
+    condition = (
+      [for c in jsondecode(module.migrate["work"].task_definition_container_definitions) : c.name] == keys(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers)
+      && { for e in jsondecode(module.migrate["work"].task_definition_container_definitions)[0].environment : e.name => e.value } == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers["work-migrate"].environment
+      && sort([for e in jsondecode(module.migrate["work"].task_definition_container_definitions)[0].environment : e.name]) == sort(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers["work-migrate"].environmentNames)
+    )
+    error_message = "work-migrate's rendered container or environment (names and values, PLATFORM_AUTH_ISSUER included) differs from envs/nonprod.stage-e-tasks.json."
+  }
+
+  assert {
+    condition = (
+      [for s in jsondecode(module.migrate["work"].task_definition_container_definitions)[0].secrets : s.name] == ["DATABASE_MIGRATION_URL"]
+      && can(regex("^arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/work-migrate-[A-Za-z0-9]{6}:DATABASE_MIGRATION_URL::11111111-2222-4333-8444-555555555555$", jsondecode(module.migrate["work"].task_definition_container_definitions)[0].secrets[0].valueFrom))
+      && jsondecode(module.migrate["work"].task_definition_container_definitions)[0].image == var.images.work_migrate
+    )
+    error_message = "work-migrate's rendered secret reference or image is not in the form the E-1 guard accepts."
+  }
+
+  assert {
+    condition = (
+      jsondecode(module.migrate["work"].task_definition_container_definitions)[0].logConfiguration == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers["work-migrate"].shape.logConfiguration
+      && jsondecode(module.migrate["work"].task_definition_container_definitions)[0].linuxParameters.capabilities.drop == ["ALL"]
+      && jsondecode(module.migrate["work"].task_definition_container_definitions)[0].readonlyRootFilesystem == false
+      && try(jsondecode(module.migrate["work"].task_definition_container_definitions)[0].command, null) == null
+    )
+    error_message = "work-migrate's rendered shape (log configuration, capabilities, root filesystem, command) differs from envs/nonprod.stage-e-tasks.json."
+  }
+}

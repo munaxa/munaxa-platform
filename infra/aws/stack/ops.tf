@@ -178,8 +178,14 @@ module "migrate" {
   name                     = "${each.key}-migrate"
   image                    = each.value
   readonly_root_filesystem = false
-  environment              = { NODE_ENV = "production" }
-  secret_arn               = aws_secretsmanager_secret.service["${each.key}-migrate"].arn
+  # Work's migrate image also runs its first-tenant bootstrap (munaxa-work scripts/bootstrap-tenant.mjs,
+  # through the E-1 guard), which refuses unless its --issuer equals PLATFORM_AUTH_ISSUER here: the
+  # same value work-api verifies tokens against (MW-005).
+  environment = merge(
+    { NODE_ENV = "production" },
+    each.key == "work" ? { PLATFORM_AUTH_ISSUER = local.https.identity } : {},
+  )
+  secret_arn = aws_secretsmanager_secret.service["${each.key}-migrate"].arn
   # Each product's migrate target points Prisma at DATABASE_MIGRATION_URL.
   secret_keys       = local.secret_keys["${each.key}-migrate"]
   secret_version_id = lookup(var.secret_version_ids, "${each.key}-migrate", "")
