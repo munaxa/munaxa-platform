@@ -2,7 +2,8 @@
 #
 # Stage E blocker BE-1 (report 2026-11-14-identity-stage-e-blockers-remediation, file 01). No runbook
 # names a task-definition revision any more. Every Stage E task (db-admin, identity-migrate,
-# identity-bootstrap, the probe, and the throwaway account's disable) goes through this script:
+# identity-bootstrap, the probe, and the throwaway account's disable) goes through this script, and so
+# do work-migrate and Work's first-tenant bootstrap (MW-005) once that family is pinned:
 #
 #   MODE "discover"  read-only. For FAMILY (or every family when FAMILY is ""), list the ACTIVE
 #                    revisions by exact family name, describe the LATEST one and validate it against
@@ -25,6 +26,15 @@
 #                    proof that nothing ran (use TASK_ARN, or the log stream), and never a reason to
 #                    run a migration or bootstrap again.
 #
+# A family whose manifest entry has a "pending" key (work-migrate until the MW-002 pin PR) has no
+# pinned image or secret version: discover of every family skips it and lists it under "pending";
+# discover or run of that family refuses with FAMILY_PENDING. It can never run unpinned.
+#
+# Command inputs are lowercase UUIDs, each validated and used only by a command that names it:
+# ACCOUNT_ID (account-disable), PLATFORM_USER_ID, ORGANISATION_ID and CONFIRM_ORGANISATION_ID (Work's
+# bootstrap-tenant and bootstrap-tenant-dry-run; the confirmation must equal ORGANISATION_ID). The
+# issuer is pinned in the command and in the task's PLATFORM_AUTH_ISSUER, which the script compares.
+#
 # Read-only except the one RunTask. Never a secret value: task definitions carry secret ARNs only,
 # and the result holds names, revision numbers, task ARNs, statuses and codes. Checked by
 # sandbox_harness.py and tested against a fake AWS (test_task_guard.py). NOT RUN.
@@ -34,6 +44,9 @@ FAMILY = ""  # INPUT: a MANIFEST family name ("" = every family, discover only)
 EXPECTED_REVISION = 0  # INPUT: run only, the revision number discover recorded
 COMMAND = "default"  # INPUT: run only, a key of the family's commands
 ACCOUNT_ID = ""  # INPUT: run only, the throwaway account's sub (account-disable commands)
+PLATFORM_USER_ID = ""  # INPUT: run only, Work bootstrap-tenant*: the Identity account's sub (a UUID)
+ORGANISATION_ID = ""  # INPUT: run only, Work bootstrap-tenant*: the Identity organisation id (a UUID)
+CONFIRM_ORGANISATION_ID = ""  # INPUT: run only, Work bootstrap-tenant*: ORGANISATION_ID again, checked in Identity
 PROBE_ALB_DNS = ""  # INPUT: run only, the session ALB's DNS name (probe)
 RUN_TOKEN = ""  # INPUT: run and status, fresh per run, e.g. s3-db-admin-20261120t1200
 TASK_ARN = ""  # INPUT: status only, instead of RUN_TOKEN
@@ -709,6 +722,99 @@ MANIFEST = {
                 }
             },
             "volumes": []
+        },
+        "munaxa-nonprod-work-migrate": {
+            "pending": "MW-002: no Work migrate image digest or work-migrate secret version is pinned yet; discover skips this family and run refuses it until the pin PR sets image and version and removes this key",
+            "executionRole": "munaxa-nonprod-work-migrate-execution",
+            "taskRole": None,
+            "task": {
+                "cpu": "256",
+                "memory": "512",
+                "runtimePlatform": {
+                    "cpuArchitecture": "X86_64",
+                    "operatingSystemFamily": "LINUX"
+                }
+            },
+            "securityGroup": "munaxa-nonprod-work-migrate",
+            "service": False,
+            "containers": {
+                "work-migrate": {
+                    "image": "",
+                    "secrets": {
+                        "DATABASE_MIGRATION_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/work-migrate",
+                            "key": "DATABASE_MIGRATION_URL",
+                            "version": ""
+                        }
+                    },
+                    "environmentNames": [
+                        "NODE_ENV",
+                        "PLATFORM_AUTH_ISSUER"
+                    ],
+                    "shape": {
+                        "essential": True,
+                        "readonlyRootFilesystem": False,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/work-migrate",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "work-migrate"
+                            }
+                        }
+                    },
+                    "environment": {
+                        "NODE_ENV": "production",
+                        "PLATFORM_AUTH_ISSUER": "https://id.test.munaxa.com"
+                    }
+                }
+            },
+            "commands": {
+                "default": None,
+                "bootstrap-tenant-dry-run": {
+                    "container": "work-migrate",
+                    "command": [
+                        "node",
+                        "../../scripts/bootstrap-tenant.mjs",
+                        "--platform-user-id",
+                        "{PLATFORM_USER_ID}",
+                        "--platform-tenant-id",
+                        "{ORGANISATION_ID}",
+                        "--confirm-organisation",
+                        "{CONFIRM_ORGANISATION_ID}",
+                        "--issuer",
+                        "https://id.test.munaxa.com",
+                        "--allow-production",
+                        "--dry-run"
+                    ]
+                },
+                "bootstrap-tenant": {
+                    "container": "work-migrate",
+                    "command": [
+                        "node",
+                        "../../scripts/bootstrap-tenant.mjs",
+                        "--platform-user-id",
+                        "{PLATFORM_USER_ID}",
+                        "--platform-tenant-id",
+                        "{ORGANISATION_ID}",
+                        "--confirm-organisation",
+                        "{CONFIRM_ORGANISATION_ID}",
+                        "--issuer",
+                        "https://id.test.munaxa.com",
+                        "--allow-production"
+                    ]
+                }
+            },
+            "volumes": []
         }
     },
     "shapeKeys": [
@@ -1067,7 +1173,7 @@ async def tasks_started_by(token):
     filter must be the only filter (review finding C-2). ECS lists a stopped task for about an hour
     only, so an empty answer after that cannot prove a token was never used (finding C-3)."""
     arns = []
-    for family in sorted(MANIFEST["families"].keys()):
+    for family in sorted(f for f in MANIFEST["families"].keys() if not pending(f)):
         for status in ("RUNNING", "STOPPED"):
             token_ = None
             for _ in range(10):
@@ -1114,38 +1220,60 @@ async def guard_running(family):
     return running
 
 
+def pending(family):
+    """True while the family's manifest entry is marked pending (no pinned image or version yet)."""
+    return bool(MANIFEST["families"][family].get("pending"))
+
+
+def command_inputs():
+    """Placeholder -> (input value, shape error code). Every command input is a lowercase UUID."""
+    return {
+        "{ACCOUNT_ID}": (ACCOUNT_ID, "ACCOUNT_ID_SHAPE"),
+        "{PLATFORM_USER_ID}": (PLATFORM_USER_ID, "PLATFORM_USER_ID_SHAPE"),
+        "{ORGANISATION_ID}": (ORGANISATION_ID, "ORGANISATION_ID_SHAPE"),
+        "{CONFIRM_ORGANISATION_ID}": (CONFIRM_ORGANISATION_ID, "CONFIRM_ORGANISATION_ID_SHAPE"),
+    }
+
+
 def overrides_for(family, key):
-    """The allow-listed override for COMMAND, with its one validated input, or an error code."""
+    """The allow-listed override for COMMAND, with its validated inputs, or an error code. An input
+    the command does not name is refused, so nothing reaches a command it was not reviewed for."""
     commands = MANIFEST["families"][family]["commands"]
     if key not in commands:
         return None, "COMMAND_NOT_ALLOWED"
     spec = commands[key]
-    if spec is None:
-        if ACCOUNT_ID or PROBE_ALB_DNS:
+    inputs = command_inputs()
+    used = spec["command"] if spec is not None and "command" in spec else []
+    for placeholder in sorted(inputs.keys()):
+        value, code = inputs[placeholder]
+        if placeholder in used:
+            if not isinstance(value, str) or not UUID_SHAPE.fullmatch(value):
+                return None, code
+        elif value:
             return None, "UNUSED_INPUT"
+    if "{ORGANISATION_ID}" in used and CONFIRM_ORGANISATION_ID != ORGANISATION_ID:
+        return None, "ORGANISATION_NOT_CONFIRMED"
+    probe = spec is not None and spec.get("environment") == ["PROBE_ALB_DNS"]
+    if probe:
+        if not ALB_SHAPE.match(PROBE_ALB_DNS):
+            return None, "ALB_DNS_SHAPE"
+    elif PROBE_ALB_DNS:
+        return None, "UNUSED_INPUT"
+    if spec is None:
         return {}, ""
     container = {"name": spec["container"]}
     if "command" in spec:
-        if "{ACCOUNT_ID}" in spec["command"]:
-            if not UUID_SHAPE.match(ACCOUNT_ID):
-                return None, "ACCOUNT_ID_SHAPE"
-        elif ACCOUNT_ID:
-            return None, "UNUSED_INPUT"
-        container["command"] = [ACCOUNT_ID if part == "{ACCOUNT_ID}" else part for part in spec["command"]]
-    elif ACCOUNT_ID:
-        return None, "UNUSED_INPUT"
-    if spec.get("environment") == ["PROBE_ALB_DNS"]:
-        if not ALB_SHAPE.match(PROBE_ALB_DNS):
-            return None, "ALB_DNS_SHAPE"
+        container["command"] = [inputs[part][0] if part in inputs else part for part in spec["command"]]
+    if probe:
         container["environment"] = [{"name": "PROBE_ALB_DNS", "value": PROBE_ALB_DNS}]
-    elif PROBE_ALB_DNS:
-        return None, "UNUSED_INPUT"
     return {"containerOverrides": [container]}, ""
 
 
 async def run():
     if FAMILY not in MANIFEST["families"]:
         return {"result": "ABORT", "code": "UNKNOWN_FAMILY"}
+    if pending(FAMILY):
+        return {"result": "ABORT", "code": "FAMILY_PENDING", "family": FAMILY}
     if not isinstance(EXPECTED_REVISION, int) or EXPECTED_REVISION < 1:
         return {"result": "ABORT", "code": "EXPECTED_REVISION_NOT_SET"}
     if not TOKEN_SHAPE.match(RUN_TOKEN):
@@ -1271,9 +1399,14 @@ async def e1():
     if MODE == "discover":
         if FAMILY and FAMILY not in MANIFEST["families"]:
             return {"result": "ABORT", "code": "UNKNOWN_FAMILY"}
-        families = [FAMILY] if FAMILY else sorted(MANIFEST["families"].keys())
+        if FAMILY and pending(FAMILY):
+            return {"result": "ABORT", "code": "FAMILY_PENDING", "family": FAMILY}
+        families = [FAMILY] if FAMILY else sorted(f for f in MANIFEST["families"].keys() if not pending(f))
         found = [await discover_one(f) for f in families]
-        return {"result": "PASS" if all(f["valid"] for f in found) else "FAIL", "families": found}
+        out = {"result": "PASS" if all(f["valid"] for f in found) else "FAIL", "families": found}
+        if not FAMILY:
+            out["pending"] = sorted(f for f in MANIFEST["families"].keys() if pending(f))
+        return out
     if MODE == "run":
         return await run()
     if MODE == "status":
