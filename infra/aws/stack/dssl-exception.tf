@@ -25,6 +25,12 @@ locals {
     "sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0" = "munaxa-control/api 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9" = "munaxa-control/migrate 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6" = "munaxa-control/portal 744765d (run 45167349640): D-SSL Testing-only"
+
+    # Published 23 Nov 2026 (Y-1), pinned by Apply 2. munaxa-docs/antivirus passed the permanent gate
+    # and is not listed.
+    "sha256:febeaca7bb1e58b261677c30cc4aabeec7d00896b40155f89ead903597be073d" = "munaxa-docs/api 9348aab (run 45167367972): D-SSL Testing-only"
+    "sha256:28e22b96ada6237abef4f53470c1d13723bb70931ae8dfa774df8d536cbb48cd" = "munaxa-docs/web 9348aab (run 45167367972): D-SSL Testing-only"
+    "sha256:4d00650b9759a64889cf2c95a3c10cb508787737af2d69aff64c23ba56e66ae8" = "munaxa-docs/migrate 9348aab (run 45167367972): D-SSL Testing-only"
   }
 }
 
