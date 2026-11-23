@@ -318,13 +318,21 @@ operator host included (DNS only, so the ALB sees the operator's address; OPERAT
 2. Add CNAMEs in Cloudflare from each host to `alb_dns_name` (DNS only), first session only.
 3. Run the db-admin task, then the migrations, in order. The families the E-1 guard
    `scripts/aws/connector/e1-task-guard.py` covers (`db-admin`, `identity-migrate`,
-   `identity-bootstrap`, `identity-probe`, `identity`) are started only through E-1, never by a
-   direct `RunTask` or `aws ecs run-task`, for any product. `aws ecs run-task` is used only for the
-   families E-1 does not cover yet (`control-migrate`, `work-migrate`, `school-migrate`,
+   `identity-bootstrap`, `identity-probe`, `identity`, and `work-migrate` with Work's first-tenant
+   bootstrap, MW-005) are started only through E-1, never by a direct `RunTask` or
+   `aws ecs run-task`, for any product. Work's migration family stays `pending` in
+   `envs/nonprod.stage-e-tasks.json` (E-1 refuses it with `FAMILY_PENDING`) until the pin PR sets
+   its image digest and secret version there and in `nonprod.tfvars`; Work's migration is then E-1
+   `COMMAND` `default`, and its first tenant is `bootstrap-tenant-dry-run` followed by
+   `bootstrap-tenant`, with `PLATFORM_USER_ID` (the operator's Identity `sub`), `ORGANISATION_ID`
+   and `CONFIRM_ORGANISATION_ID` (the Identity organisation id, checked in Identity, typed twice);
+   the issuer is pinned (munaxa-work `deploy/aws/README.md`, "The first tenant on a fresh
+   database"). `aws ecs run-task` is used only for the
+   families E-1 does not cover yet (`control-migrate`, `school-migrate`,
    `school-bootstrap`), using the
    `run_task_network` output (one at a time; each must exit 0):
    `db-admin` (with `db_bootstrap_products` set), `identity-migrate`, `control-migrate`,
-   `work-migrate`, `school-migrate`; `school-bootstrap` after `school-migrate` (School's seeds
+   Work's migration (through E-1), `school-migrate`; `school-bootstrap` after `school-migrate` (School's seeds
    and first platform owner; db_admin's network; one-run secret `munaxa-nonprod/school-bootstrap`
    with `PLATFORM_OWNER_EMAIL` and `PLATFORM_OWNER_PASSWORD`, both non-empty, deleted after the
    run; School requires 8 or more characters with an upper-case letter, a lower-case letter and a
@@ -339,10 +347,9 @@ operator host included (DNS only, so the ALB sees the operator's address; OPERAT
    `node scripts/seed-work-roles.mjs --organisation <slug>` (the task injects that secret on every
    run), or Work members get 403; give each Work user a `work:*` role with
    `node scripts/bootstrap-account.mjs --role <role>` (seeding defines roles, it assigns none);
-   then restart `identity`, which caches role definitions); Work's first tenant: a `work-migrate`
-   command override running `bootstrap-tenant.mjs --platform-user-id <sub>`, and the tenant id
-   linked in Control as the customer's `tenantRef` with a subscription (munaxa-work
-   `deploy/aws/README.md`, "The first tenant on a fresh database");
+   then restart `identity`, which caches role definitions); Work's first tenant through E-1 as
+   above, and the tenant id it prints linked in Control as the customer's `tenantRef` with a
+   subscription;
    then Docs: `docs-db-admin` (db-admin's network; its cluster
    roles, `edms_backup` and the tenant database; `edms_owner`'s password comes from the
    `docs-migrate` bundle's `DATABASE_MIGRATION_URL`, the one copy of it, so write that bundle first

@@ -1,5 +1,5 @@
 {
-  "description": "Stage E blocker BE-1 (report 2026-11-14-identity-stage-e-blockers-remediation, file 01). The reviewed content of each nonprod task definition family Stage E runs, with no revision number: the guard connector script (scripts/aws/connector/e1-task-guard.py) finds the latest ACTIVE revision of each family and refuses it unless it matches this file. Each container's shape (shapeKeys), every environment name AND value, its other fields (extra), the command, and the task's cpu, memory and runtime platform are compared too; any task or container field not described here fails (review findings S-2, C-4; owner review B-1, B-8). Tests keep this file equal to envs/nonprod.tfvars and to what Terraform renders.",
+  "description": "Stage E blocker BE-1 (report 2026-11-14-identity-stage-e-blockers-remediation, file 01). The reviewed content of each nonprod task definition family Stage E runs, with no revision number: the guard connector script (scripts/aws/connector/e1-task-guard.py) finds the latest ACTIVE revision of each family and refuses it unless it matches this file. Each container's shape (shapeKeys), every environment name AND value, its other fields (extra), the command, and the task's cpu, memory and runtime platform are compared too; any task or container field not described here fails (review findings S-2, C-4; owner review B-1, B-8). Tests keep this file equal to envs/nonprod.tfvars and to what Terraform renders. A family with a \"pending\" key has no pinned image or secret version yet: discover of every family skips it (and lists it as pending), and discover or run of that family refuses with FAMILY_PENDING, so it can never be run unpinned.",
   "schema": 1,
   "region": "eu-central-1",
   "account": "229251310592",
@@ -575,6 +575,94 @@
             "--reference",
             "stage-e-throwaway",
             "--apply"
+          ]
+        }
+      },
+      "volumes": []
+    },
+    "munaxa-nonprod-work-migrate": {
+      "pending": "MW-002: no Work migrate image digest or work-migrate secret version is pinned yet; discover skips this family and run refuses it until the pin PR sets image and version and removes this key",
+      "executionRole": "munaxa-nonprod-work-migrate-execution",
+      "taskRole": null,
+      "task": {
+        "cpu": "256",
+        "memory": "512",
+        "runtimePlatform": {
+          "cpuArchitecture": "X86_64",
+          "operatingSystemFamily": "LINUX"
+        }
+      },
+      "securityGroup": "munaxa-nonprod-work-migrate",
+      "service": false,
+      "containers": {
+        "work-migrate": {
+          "image": "",
+          "secrets": {
+            "DATABASE_MIGRATION_URL": {
+              "form": "full",
+              "secret": "munaxa-nonprod/work-migrate",
+              "key": "DATABASE_MIGRATION_URL",
+              "version": ""
+            }
+          },
+          "environmentNames": ["NODE_ENV", "PLATFORM_AUTH_ISSUER"],
+          "shape": {
+            "essential": true,
+            "readonlyRootFilesystem": false,
+            "linuxParameters": {
+              "capabilities": {
+                "add": [],
+                "drop": ["ALL"]
+              }
+            },
+            "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/munaxa/nonprod/work-migrate",
+                "awslogs-region": "eu-central-1",
+                "awslogs-stream-prefix": "work-migrate"
+              }
+            }
+          },
+          "environment": {
+            "NODE_ENV": "production",
+            "PLATFORM_AUTH_ISSUER": "https://id.test.munaxa.com"
+          }
+        }
+      },
+      "commands": {
+        "default": null,
+        "bootstrap-tenant-dry-run": {
+          "container": "work-migrate",
+          "command": [
+            "node",
+            "../../scripts/bootstrap-tenant.mjs",
+            "--platform-user-id",
+            "{PLATFORM_USER_ID}",
+            "--platform-tenant-id",
+            "{ORGANISATION_ID}",
+            "--confirm-organisation",
+            "{CONFIRM_ORGANISATION_ID}",
+            "--issuer",
+            "https://id.test.munaxa.com",
+            "--allow-production",
+            "--dry-run"
+          ]
+        },
+        "bootstrap-tenant": {
+          "container": "work-migrate",
+          "command": [
+            "node",
+            "../../scripts/bootstrap-tenant.mjs",
+            "--platform-user-id",
+            "{PLATFORM_USER_ID}",
+            "--platform-tenant-id",
+            "{ORGANISATION_ID}",
+            "--confirm-organisation",
+            "{CONFIRM_ORGANISATION_ID}",
+            "--issuer",
+            "https://id.test.munaxa.com",
+            "--allow-production"
           ]
         }
       },
