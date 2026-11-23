@@ -1,154 +1,186 @@
 {
   "root": "stack-nonprod",
-  "intent": "APPLY 1 of the first Docs Testing deployment (report 2026-11-23-docs-testing-apply1; template from report 2026-11-21-testing-owner-preparation): Control C-1 (Control 744765d api, migrate and portal images by digest, services off, Control desired counts 0; no operator_access, Cloudflare Access not used) = 33 creates; the Identity images at 0b94951 (published 23 Nov under the Testing-only OpenSSL exception D-SSL-2026-11, listed in dssl-exception.tf) and D-OP-1 (identity_security_config.mfa_policy = privileged, roles control-operator-admin and control-operator-viewer) = the four Identity task definitions replaced (identity, identity-migrate, identity-bootstrap, identity-probe; new revisions). The 2db6ed9 digests 9a8c6ebd and 5f3bdcce are withdrawn. No destroy, no ECS service, ALB, network, database, KMS change other than the Control licence key, no DNS, no production resource.",
+  "intent": "APPLY 2 of the first Docs Testing deployment (report 2026-11-23-docs-testing-apply1): Control C-2 (licence public key of the Apply 1 KMS key, kid control-licence-nonprod-2026-11, operator organisation and subject ids, db_bootstrap_products adds control, control-api and control-migrate bundle pins) = the Control api and migrate task definitions and db-admin replaced (new revisions); Docs D-1 (Docs 9348aab api, web, migrate by digest, published 23 Nov under the Testing-only OpenSSL exception D-SSL-2026-11 and listed in dssl-exception.tf; antivirus passed the permanent gate; docs-api, docs-operator and docs-migrate bundle pins) = 42 creates (Docs task definitions, roles, policies, security groups and rules, log groups, docs-db-admin and docs-provision task definitions, the provision execution role). Services stay off (desired 0). No destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
   "changes": [
     {
-      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
+      "address": "aws_ecs_task_definition.db_admin[0]",
       "actions": ["delete", "create"]
     },
     {
-      "address": "aws_ecs_task_definition.identity_probe[0]",
-      "actions": ["delete", "create"]
-    },
-    {
-      "address": "aws_kms_alias.licence[0]",
+      "address": "aws_ecs_task_definition.docs_db_admin[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_kms_key.licence[0]",
+      "address": "aws_ecs_task_definition.docs_provision[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_kms_key_policy.licence[0]",
+      "address": "aws_iam_role.docs_provision_execution[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"control-api\"]",
+      "address": "aws_iam_role_policy.docs_provision_execution[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"control-portal\"]",
+      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"docs-api\"]",
       "actions": ["create"]
     },
     {
-      "address": "module.control_api[0].aws_cloudwatch_log_group.this",
+      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"docs-web\"]",
       "actions": ["create"]
     },
     {
       "address": "module.control_api[0].aws_ecs_task_definition.this",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_iam_role.execution",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_iam_role.task[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_iam_role_policy.execution",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_iam_role_policy.task[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_security_group.this",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_vpc_security_group_egress_rule.database[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_vpc_security_group_egress_rule.https",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_api[0].aws_vpc_security_group_ingress_rule.from_callers[\"control-portal\"]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_migrate[0].aws_cloudwatch_log_group.this",
-      "actions": ["create"]
+      "actions": ["delete", "create"]
     },
     {
       "address": "module.control_migrate[0].aws_ecs_task_definition.this",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_migrate[0].aws_iam_role.execution",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_migrate[0].aws_iam_role_policy.execution",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_migrate[0].aws_security_group.this",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_migrate[0].aws_vpc_security_group_egress_rule.database[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_migrate[0].aws_vpc_security_group_egress_rule.https",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_migrate[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_portal[0].aws_cloudwatch_log_group.this",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_portal[0].aws_ecs_task_definition.this",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_portal[0].aws_iam_role.execution",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_portal[0].aws_iam_role_policy.execution",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_portal[0].aws_security_group.this",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_portal[0].aws_vpc_security_group_egress_rule.https",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_portal[0].aws_vpc_security_group_egress_rule.to_services[\"control-api\"]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.control_portal[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.identity[0].aws_ecs_task_definition.this",
       "actions": ["delete", "create"]
     },
     {
-      "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
+      "address": "module.docs_api[0].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_iam_role.task[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_iam_role_policy.task[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_vpc_security_group_egress_rule.database[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_vpc_security_group_egress_rule.to_services[\"docs-scanner\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_vpc_security_group_ingress_rule.from_callers[\"docs-web\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_vpc_security_group_egress_rule.database[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_scanner[0].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_scanner[0].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_scanner[0].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_scanner[0].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_scanner[0].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_scanner[0].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_scanner[0].aws_vpc_security_group_ingress_rule.from_callers[\"docs-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_vpc_security_group_egress_rule.to_services[\"docs-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
+      "actions": ["create"]
     }
   ]
 }

@@ -62,13 +62,20 @@ docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61db
 # TEMPORARY Testing-only OpenSSL exception D-SSL-2026-11 (expires 2026-12-01T00:00:00Z; every digest
 # is listed in dssl-exception.tf, so production can never pin it and a Testing `up` is refused after
 # the expiry). The 2db6ed9 Identity images are withdrawn. Never the 5277d71 or 5a5994f images. Work,
-# School and Docs images stay unset here (Docs follows in Apply 2).
+# School images stay unset here.
+# Apply 2 (report 2026-11-23-docs-testing-apply1): Docs at 9348aab (run 45167367972), also published
+# 23 Nov under D-SSL-2026-11 (api, web, migrate listed in dssl-exception.tf); the antivirus image passed
+# the permanent gate alone. The Docs worker image is not part of this release.
 images = {
   identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:b69d9481e43269b5061e3f70a421a41b007bac0d3a0e17b49f8906fe78fd4caa"
   identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:f44593fa3f0021eb301f9270849cc7498012247b50cbf8a5e8dc586f14616462"
   control_api      = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0"
   control_migrate  = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/migrate@sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9"
   control_portal   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal@sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6"
+  docs_api         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:febeaca7bb1e58b261677c30cc4aabeec7d00896b40155f89ead903597be073d"
+  docs_web         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:28e22b96ada6237abef4f53470c1d13723bb70931ae8dfa774df8d536cbb48cd"
+  docs_antivirus   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/antivirus@sha256:801c77e1560ec63430463346810c83527a5183982e94cc82950cbbed3f015dfc"
+  docs_migrate     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/migrate@sha256:4d00650b9759a64889cf2c95a3c10cb508787737af2d69aff64c23ba56e66ae8"
 }
 
 # Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Required by the 2db6ed9
@@ -92,8 +99,17 @@ valkey_image = "public.ecr.aws/valkey/valkey@sha256:757b7e559b14512bcc252949b13b
 # Only psql runs (entry point sh -c db-bootstrap.sh); no server is started.
 postgres_image = "public.ecr.aws/docker/library/postgres@sha256:5983db9a9c6ad225a48a46cfe2e03e6680b1826662befd0465eb05b34cb1c64e"
 
-# db-admin creates the identity database and its two roles only.
-db_bootstrap_products = ["identity"]
+# db-admin creates the identity and control databases and their roles (Apply 2, C-2). Docs has its own
+# docs-db-admin task.
+db_bootstrap_products = ["identity", "control"]
+
+# Control C-2 (Apply 2). The licence public key is the public half of the KMS key aws_kms_key.licence
+# created by Apply 1 (alias/munaxa-nonprod-control-licence), read with kms:GetPublicKey as
+# MunaxaReadOnly; the private half never leaves KMS. Operator identifiers are ids, not secrets.
+control_licence_kid              = "control-licence-nonprod-2026-11"
+control_licence_public_key       = "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEkgQnIqd/K/RL9xq0h9+EcR0ogRKN\nLwL56mPJSDr1GEl5BiafDGaQxzPzsNSVYnY3cd1qpv4shZY5O+QSOYL+Yg==\n-----END PUBLIC KEY-----"
+control_operator_organisation_id = "071d3060-70ac-4017-9ff9-094ff715051e"
+control_operator_subjects        = ["ae62eef5-cf65-43c8-83e2-7786d2d5ae87"]
 
 # ES256 (P-256). The public half only (owner generator, 9 Nov); the private half is only in
 # munaxa-nonprod/identity.
@@ -105,9 +121,17 @@ identity_public_keys = "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-
 # (kid mfa-nonprod-2026-11) to the five earlier values; ad02f18e is its AWSPREVIOUS. Supplied by the
 # owner from the stage C output and checked with describe-secret metadata only. db-admin is replaced
 # with it (its IDENTITY_APP_URL carries this pin), as envs/nonprod.expected-changes.json declares.
+# Apply 2: the five bundles filled by the owner on 22 Nov 2026 (report 2026-11-22-testing-temporary-
+# openssl-acceptance file 02 section 3, metadata only). docs-api is pinned again after the Control
+# Plane credential is stored (runbook step 19).
 secret_version_ids = {
   identity         = "80914756-68cd-420d-8094-0fd49afe3492"
   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+  control-api      = "655501d8-19f2-4190-9460-960b6464a1a2"
+  control-migrate  = "ee66de8e-9ab8-4f72-8db8-11c631c1e0e0"
+  docs-api         = "b6ea4c3a-31ae-4d01-a4b7-7941f01e53a7"
+  docs-operator    = "85c17e64-1cec-4edd-80a2-59c5c06306d5"
+  docs-migrate     = "b9b569c4-c9d7-49ae-935f-a59ee4da6a14"
 }
 
 # Stage E owner decisions (15 Nov 2026, report 2026-11-15-identity-stage-e-owner-decisions, files 04
