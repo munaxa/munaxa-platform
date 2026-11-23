@@ -281,8 +281,17 @@ variable "routes" {
     paths    = optional(list(string), [])
     # Source ranges a request must come from (the operator host, Control ADR-0006).
     source_ips = optional(list(string), [])
+    # HTTP methods the rule matches (a read-only probe route matches GET only). Empty: any method.
+    methods = optional(list(string), [])
   }))
   default = []
+
+  validation {
+    condition = alltrue(flatten([
+      for r in var.routes : [for m in r.methods : contains(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], m)]
+    ]))
+    error_message = "A route's methods are upper-case HTTP method names (GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS)."
+  }
 }
 
 variable "health_check_path" {

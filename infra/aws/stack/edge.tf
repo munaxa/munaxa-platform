@@ -19,6 +19,7 @@
 # | 31       | operator    | Access or source IPs               | Control portal                  |
 # | 39       | operator    | —                                  | 403 (Control ADR-0006)          |
 # | 40       | identity    | —                                  | Identity                        |
+# | 49       | work        | GET /health/ready (exact)          | Work API (readiness probe)      |
 # | 50-52    | work        | /api/auth/*, /api/v1/*, rest       | Identity, Work API, Work admin  |
 # | 60-61    | school      | /api/v1/*, rest                    | School API, School admin        |
 # | 70-71    | docs        | /api/v1/preview/stream*, rest      | Docs API, Docs web              |

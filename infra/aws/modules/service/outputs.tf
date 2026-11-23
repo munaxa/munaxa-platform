@@ -23,6 +23,16 @@ output "listener_rule_paths" {
   value       = { for k, r in local.route_map : k => r.paths }
 }
 
+output "listener_rule_methods" {
+  description = "HTTP methods per listener rule priority, empty for any method (for plan tests)."
+  value       = { for k, r in local.route_map : k => r.methods }
+}
+
+output "listener_rule_priorities" {
+  description = "Priorities of the listener rules this plan creates: none without a service or an edge (for plan tests)."
+  value       = sort(keys(aws_lb_listener_rule.this))
+}
+
 output "task_definition_container_definitions" {
   description = "The rendered container definitions (for plan tests). Names and secret ARNs only; never a secret value."
   value       = aws_ecs_task_definition.this.container_definitions
