@@ -57,14 +57,18 @@ desired_counts = {
 docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f"
 
 # Images are set by reviewed PRs after each product's "Publish image" run, by digest only.
-# P-5 (report 2026-11-13-identity-testing-stage-r-p5): Identity at 2db6ed9 (identity#20: Platform
-# 2.5.0, the security hardening identity#7 to #17, zlib 1.4-r0 for CVE-2026-4738), published by run
-# 43359947421; both ECR scans complete with no findings (report
-# 2026-11-13-identity-cve-2026-4738-remediation). Never the 5277d71 or 5a5994f images. Every other
-# image stays unset, so no Control, Work, School or Docs resource exists.
+# Apply 1 of the first Docs Testing deployment (report 2026-11-23-docs-testing-apply1): Identity at
+# 0b94951 (run 45167312831) and Control at 744765d (run 45167349640), published 23 Nov 2026 under the
+# TEMPORARY Testing-only OpenSSL exception D-SSL-2026-11 (expires 2026-12-01T00:00:00Z; every digest
+# is listed in dssl-exception.tf, so production can never pin it and a Testing `up` is refused after
+# the expiry). The 2db6ed9 Identity images are withdrawn. Never the 5277d71 or 5a5994f images. Work,
+# School and Docs images stay unset here (Docs follows in Apply 2).
 images = {
-  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b"
-  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874"
+  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:b69d9481e43269b5061e3f70a421a41b007bac0d3a0e17b49f8906fe78fd4caa"
+  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:f44593fa3f0021eb301f9270849cc7498012247b50cbf8a5e8dc586f14616462"
+  control_api      = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0"
+  control_migrate  = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/migrate@sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9"
+  control_portal   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal@sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6"
 }
 
 # Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Required by the 2db6ed9
@@ -76,8 +80,9 @@ images = {
 # P-4) until the privileged accounts' enrolment and recovery procedure exists (munaxa-identity
 # docs/production-readiness.md section 6).
 identity_security_config = {
-  mfa_primary_kid = "mfa-nonprod-2026-11"
-  mfa_policy      = "off"
+  mfa_primary_kid      = "mfa-nonprod-2026-11"
+  mfa_policy           = "privileged"
+  mfa_privileged_roles = ["control-operator-admin", "control-operator-viewer"]
 }
 
 # Identity's cache sidecar: Valkey 8.1.11, linux/amd64 manifest.

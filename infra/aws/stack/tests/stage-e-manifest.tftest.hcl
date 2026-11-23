@@ -151,8 +151,9 @@ run "stage_e_task_definitions_match_the_manifest" {
       identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
     }
     identity_security_config = {
-      mfa_primary_kid = "mfa-nonprod-2026-11"
-      mfa_policy      = "off"
+      mfa_primary_kid      = "mfa-nonprod-2026-11"
+      mfa_policy           = "privileged"
+      mfa_privileged_roles = ["control-operator-admin", "control-operator-viewer"]
     }
     identity_probe_source = {
       commit = "0123456789abcdef0123456789abcdef01234567"

@@ -374,6 +374,26 @@ run "withdrawn_identity_migrate_5277d71_is_refused" {
   expect_failures = [var.images]
 }
 
+run "withdrawn_identity_api_2db6ed9_is_refused" {
+  command = plan
+  variables {
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b"
+    }
+  }
+  expect_failures = [var.images]
+}
+
+run "withdrawn_identity_migrate_2db6ed9_is_refused" {
+  command = plan
+  variables {
+    images = {
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874"
+    }
+  }
+  expect_failures = [var.images]
+}
+
 # Matched by digest, not path: a withdrawn digest under another repository name is still refused.
 run "a_withdrawn_digest_under_another_repository_is_refused" {
   command = plan
@@ -385,11 +405,11 @@ run "a_withdrawn_digest_under_another_repository_is_refused" {
   expect_failures = [var.images]
 }
 
-# The list is exactly the ten withdrawn digests, so an edit to it is a reviewed, tested change.
-run "the_withdrawn_list_is_the_ten_known_digests" {
+# The list is exactly the twelve withdrawn digests, so an edit to it is a reviewed, tested change.
+run "the_withdrawn_list_is_the_twelve_known_digests" {
   command = plan
   assert {
-    condition     = length(local.withdrawn_image_digests) == 10
+    condition     = length(local.withdrawn_image_digests) == 12
     error_message = "withdrawn-images.tf changed: update this count and add a refusal run for each new digest."
   }
 }

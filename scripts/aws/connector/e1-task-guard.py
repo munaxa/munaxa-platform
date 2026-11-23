@@ -194,7 +194,7 @@ MANIFEST = {
             "service": False,
             "containers": {
                 "identity-migrate": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:f44593fa3f0021eb301f9270849cc7498012247b50cbf8a5e8dc586f14616462",
                     "secrets": {
                         "DATABASE_MIGRATION_URL": {
                             "form": "full",
@@ -251,7 +251,7 @@ MANIFEST = {
             "service": False,
             "containers": {
                 "identity-bootstrap": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:b69d9481e43269b5061e3f70a421a41b007bac0d3a0e17b49f8906fe78fd4caa",
                     "secrets": {
                         "DIRECT_DATABASE_URL": {
                             "form": "full",
@@ -346,7 +346,7 @@ MANIFEST = {
             "service": False,
             "containers": {
                 "throwaway-account": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:b69d9481e43269b5061e3f70a421a41b007bac0d3a0e17b49f8906fe78fd4caa",
                     "secrets": {
                         "DIRECT_DATABASE_URL": {
                             "form": "full",
@@ -401,7 +401,7 @@ MANIFEST = {
                     }
                 },
                 "identity-probe": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:b69d9481e43269b5061e3f70a421a41b007bac0d3a0e17b49f8906fe78fd4caa",
                     "secrets": {},
                     "environmentNames": [
                         "NODE_ENV",
@@ -506,7 +506,7 @@ MANIFEST = {
             "service": True,
             "containers": {
                 "identity": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:b69d9481e43269b5061e3f70a421a41b007bac0d3a0e17b49f8906fe78fd4caa",
                     "secrets": {
                         "DATABASE_URL": {
                             "form": "full",
@@ -556,6 +556,7 @@ MANIFEST = {
                         "LOG_PRETTY",
                         "MFA_ENCRYPTION_PRIMARY_KID",
                         "MFA_POLICY",
+                        "MFA_PRIVILEGED_ROLES",
                         "NODE_ENV",
                         "PORT",
                         "TRUST_PROXY_HOPS"
@@ -608,7 +609,8 @@ MANIFEST = {
                         "IDENTITY_SIGNING_KID": "identity-nonprod-2026-11",
                         "LOG_PRETTY": "false",
                         "MFA_ENCRYPTION_PRIMARY_KID": "mfa-nonprod-2026-11",
-                        "MFA_POLICY": "off",
+                        "MFA_POLICY": "privileged",
+                        "MFA_PRIVILEGED_ROLES": "control-operator-admin,control-operator-viewer",
                         "NODE_ENV": "production",
                         "PORT": "4001",
                         "TRUST_PROXY_HOPS": "1"
