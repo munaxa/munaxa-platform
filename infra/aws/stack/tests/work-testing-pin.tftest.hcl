@@ -153,7 +153,16 @@ run "work_pin_creates_task_definitions_and_no_service" {
     error_message = "The pin must create no Work ECS service."
   }
 
-  # Each Work task reads its own bundle at the pinned version, never AWSCURRENT.
+  # Each Work task reads its own bundle at the pinned version, never AWSCURRENT. alltrue over an
+  # empty list is true, so each list must also be non-empty.
+  assert {
+    condition     = length(jsondecode(module.work_api[0].task_definition_container_definitions)[0].secrets) > 0
+    error_message = "work-api must read secrets from its bundle."
+  }
+  assert {
+    condition     = length(jsondecode(module.migrate["work"].task_definition_container_definitions)[0].secrets) > 0
+    error_message = "work-migrate must read secrets from its bundle."
+  }
   assert {
     condition = alltrue([
       for s in jsondecode(module.work_api[0].task_definition_container_definitions)[0].secrets :

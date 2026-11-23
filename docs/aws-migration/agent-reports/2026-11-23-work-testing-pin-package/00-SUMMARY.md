@@ -8,8 +8,10 @@ Labels: **[V]** verified, **[O]** owner action, **[P]** placeholder.
 **Status: documentation only. Nothing was applied, published or read from AWS, and no `nonprod.tfvars`
 value changed.** The pin PR itself cannot be made yet, because two things are missing:
 
-- **No publishable Work image (MW-001).** `main` CI fails the Images scan on OpenSSL 3.5.9-r1, and
-  the D-SSL exception does not cover Work. ECR holds only the withdrawn `b490b25` images.
+- **No publishable Work image (MW-001).** `main` CI fails the Images scan on OpenSSL 3.5.9-r1. The
+  owner has decided to wait for Alpine OpenSSL 3.5.10 (work#35); the D-SSL exception stays as it
+  is and does not cover Work. ECR holds only the withdrawn `b490b25` images, and **their digests
+  must never be pinned**.
 - **No Work secret values.** `munaxa-nonprod/work-api` and `munaxa-nonprod/work-migrate` have 0
   versions (audit, `DescribeSecret` metadata, 23 Nov).
 
@@ -17,7 +19,7 @@ value changed.** The pin PR itself cannot be made yet, because two things are mi
 
 | File | Content |
 | --- | --- |
-| [01-PIN-PR.md](01-PIN-PR.md) | The exact `envs/nonprod.tfvars` diff, the expected-changes declaration, the E-1 manifest step, the D-SSL branch |
+| [01-PIN-PR.md](01-PIN-PR.md) | The exact `envs/nonprod.tfvars` diff, the expected-changes declaration, the E-1 manifest step, the scan basis (permanent Grype gate only) |
 | [02-OWNER-STEPS-AND-VERIFICATION.md](02-OWNER-STEPS-AND-VERIFICATION.md) | Owner steps W-1 to W-7 in order, with what Claude verifies after each |
 | [supporting/work-pin-mocked.tftest.hcl](supporting/work-pin-mocked.tftest.hcl) | The offline plan of the pin on top of `envs/nonprod.tfvars` (`d2e6fcf`), with placeholder digests and version ids |
 | [supporting/work-pin-mocked-output.txt](supporting/work-pin-mocked-output.txt) | Its result: **28 to add, 1 to change (db-admin), 0 to destroy**, with no ECS service |

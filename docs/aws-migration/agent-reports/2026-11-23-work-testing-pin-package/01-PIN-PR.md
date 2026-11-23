@@ -33,8 +33,10 @@ The diff must stay limited to these lines:
 - `desired_counts` **do not change**: `work-api = 0`, `work-admin = 0`. `services_enabled` and
   `edge_enabled` stay `false`.
 - No other image, version id or setting changes.
+- Never pin a digest of the withdrawn `b490b25` images. Every Work digest comes from a release run
+  that passed the permanent Grype gate (section 4).
 - Add a comment above `images` naming the Work commit, the run id and the scan basis: the permanent
-  gate, or D-SSL-W (section 4).
+  Grype gate (zero HIGH/CRITICAL).
 - Add a comment above `secret_version_ids` saying the Work versions come from the owner's
   `work-testing-secrets.sh bundles` run (metadata only), and whether `CONTROL_PLANE_TOKEN` is the
   marked placeholder.
@@ -73,18 +75,20 @@ The pin PR then also does the following:
 manifest is still pending, so this step cannot be missed. With #166 merged, the work-migrate task
 also carries `PLATFORM_AUTH_ISSUER`. This adds no address.
 
-## 4. The scan basis (MW-001), one of two
+## 4. The scan basis (MW-001)
 
-- **A. OpenSSL 3.5.10 (work#35).** The images pass the permanent Grype gate. Nothing else changes.
-- **B. Owner decision D-SSL-W.** The Testing exception is extended to Work's three images, with the
-  same expiry `2026-12-01T00:00:00Z`. The three digests are then listed in
-  `infra/aws/stack/dssl-exception.tf` in the same PR, and Work's `scan-image.sh` mirrors the Testing
-  scan path. This is an owner decision, not part of this package. Under B, every Testing `up`
-  after the expiry is refused, Work's included.
+The owner has decided: **wait for Alpine OpenSSL 3.5.10 (work#35).** The only scan basis is the
+permanent Grype gate: zero HIGH and zero CRITICAL findings in all three Work images. The D-SSL
+exception, its expiry and the Grype gates stay unchanged, and the withdrawn `b490b25` digests are
+never pinned.
+
+If 3.5.10 is not published by **1 Dec 2026**, only the image-dependent steps stop (W-3, W-5 to W-7
+in file 02). W-2 and W-4 can still go ahead. The owner is then asked for a decision; this package
+proposes none.
 
 ## 5. Checks on the PR before merge
 
-- CI green: terraform fmt, validate and test; connector tests; the D-SSL test.
+- CI green: terraform fmt, validate and test; connector tests; the existing D-SSL test, unchanged.
 - `check-plan-intent.sh --validate`.
 - The mocked supporting test with the real digests and ids gives 28 add + 1 db-admin change and no
   service.
