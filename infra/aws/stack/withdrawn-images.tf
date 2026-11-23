@@ -31,5 +31,9 @@ locals {
     # munaxa-identity 5277d71 (8 Nov): before the security hardening (identity#7 to #17), owner decision.
     "sha256:71d01fdf82b8d92032d7580963e9ecdb263c8a2533484c5e8701dca1e93c8156" = "munaxa-identity/api 5277d71: pre-hardening"
     "sha256:d175ef37601673dc744144d62a15515b4b0823f1dd21204753f37d158e2a0820" = "munaxa-identity/migrate 5277d71: pre-hardening"
+
+    # munaxa-identity 2db6ed9 (13 Nov): OpenSSL 3.5.9-r1, 5 HIGH (D-SSL); replaced in Apply 1.
+    "sha256:9a8c6ebdc9a5ff33f07bb56760e3856f5a7819550b737db72bba4b0d794b3c3b" = "munaxa-identity/api 2db6ed9: OpenSSL 3.5.9 HIGH"
+    "sha256:5f3bdcce0bef560da5c9843a9be583e3c53508b0e8d11754213eb6df8734b874" = "munaxa-identity/migrate 2db6ed9: OpenSSL 3.5.9 HIGH"
   }
 }
