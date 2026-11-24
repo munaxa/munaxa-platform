@@ -41,11 +41,12 @@ log_retention_days             = 14
 
 # The whole map (every key is looked up). Only used while a session is up (services exist only
 # then). Y-8 Docs session (report 2026-11-22 file 05 step 20): Identity, Control API and the three
-# Docs services. The Control portal was needed only for the Y-6 session (24 Nov 2026).
+# Docs services, plus the Control portal (24 Nov 2026): Control refused the first Docs credential
+# (401), so the owner revokes it and issues a new one in the portal during this session.
 desired_counts = {
   identity       = 1
   control-api    = 1
-  control-portal = 0
+  control-portal = 1
   work-api       = 0
   work-admin     = 0
   school-api     = 0
