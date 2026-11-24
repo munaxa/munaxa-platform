@@ -1,21 +1,13 @@
 {
   "root": "stack-nonprod",
-  "intent": "IDENTITY RE-PIN (24 Nov 2026, report 2026-11-24-control-session-y6): Identity api and migrate at 6dbf35d (run 45359411701; identity#28 fixes browser sign-in: same-origin referrer policy so the form POST keeps its Origin), published under the Testing-only OpenSSL exception D-SSL-2026-11 and listed in dssl-exception.tf = the four task definitions that run the Identity images replaced (new revisions). Services stay off. No create, no destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
+  "intent": "DOCS CONTROL PLANE CREDENTIAL PIN (24 Nov 2026, runbook step 19, report 2026-11-24-control-session-y6): secret_version_ids docs-api moves to 0250d083-7ebc-4ca3-8efe-97c14f0b677a, the version the owner wrote with docs-testing-secrets.sh replace-key CONTROL_PLANE_TOKEN (only CONTROL_PLANE_TOKEN changed) = the two task definitions that read the docs-api bundle replaced (new revisions). Services stay off. No create, no destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
   "changes": [
     {
-      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
+      "address": "aws_ecs_task_definition.docs_provision[0]",
       "actions": ["delete", "create"]
     },
     {
-      "address": "aws_ecs_task_definition.identity_probe[0]",
-      "actions": ["delete", "create"]
-    },
-    {
-      "address": "module.identity[0].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
-    },
-    {
-      "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
+      "address": "module.docs_api[0].aws_ecs_task_definition.this",
       "actions": ["delete", "create"]
     }
   ]
