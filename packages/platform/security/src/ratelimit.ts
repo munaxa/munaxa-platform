@@ -253,8 +253,8 @@ export class RateLimiter {
    *
    * The block remembers where in the count it was recorded: the fixed window and that window's raw
    * count (`current`, which the store increments atomically, so it orders requests). A request that
-   * is itself within the limit and was counted earlier in the same fixed window arrived before the
-   * violation, and the block does not apply to it. Without this, under concurrency a request counted
+   * is itself within the limit and was counted earlier (an earlier fixed window, or earlier in the
+   * same one) arrived before the violation, and the block does not apply to it. Without this, under concurrency a request counted
    * fifth could read the block that the eleventh had just written and be refused: 9 of 10 admitted
    * (NF-3, 24 Nov 2026). The block still refuses everything counted after it, in any window.
    */
@@ -338,14 +338,21 @@ function readBlock(key: string, value: unknown): BlockRecord | undefined {
   throw new Error(`Block ${key} holds a value that is not a block`);
 }
 
-/** Whether this request was counted before the block was recorded, in the same fixed window. */
+/**
+ * Whether this request was counted before the block was recorded: in an earlier fixed window, or
+ * in the same one at a lower raw count. Fixed windows follow one another and the raw count only
+ * grows within one, so (window, count) orders every request counted for the subject.
+ *
+ * The earlier-window case is the same race across a boundary (Wave 2 R-4): the tenth request,
+ * counted in a window's last millisecond, read the block that the next one, counted in the new
+ * window while the previous ten still weighed fully, had just recorded, and was refused.
+ * A request counted in an earlier window still passed its own limit check (`over` is false), so
+ * the limit itself is never relaxed; only the penalty is kept to what came after the violation.
+ */
 function countedBefore(state: SlidingWindowState, block: BlockRecord): boolean {
-  return (
-    block.windowStart !== undefined &&
-    block.current !== undefined &&
-    state.windowStart === block.windowStart &&
-    state.current < block.current
-  );
+  if (block.windowStart === undefined || block.current === undefined) return false;
+  if (state.windowStart !== block.windowStart) return state.windowStart < block.windowStart;
+  return state.current < block.current;
 }
 
 function isFiniteNumber(value: unknown): value is number {
