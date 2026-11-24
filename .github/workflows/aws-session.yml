@@ -224,16 +224,21 @@ jobs:
         env:
           # AWS-native operator access (infra/aws/OPERATOR-ACCESS.md): the operator's source ranges
           # for the Control operator host, comma-separated, from the aws-nonprod-session
-          # environment's variable OPERATOR_CIDRS, so an operator's address is never committed to
-          # this public repository. Unset: operator_cidrs stays [] and the ALB refuses the operator
-          # host to everyone (rule 39). Terraform refuses 0.0.0.0/0, ::/0 and more than three.
-          OPERATOR_CIDRS: ${{ vars.OPERATOR_CIDRS }}
+          # environment's SECRET OPERATOR_CIDRS, so an operator's address is never committed to
+          # this public repository and never printed: a variable (vars.*) is shown in clear in the
+          # step's env block of this public log before any add-mask can run (24 Nov 2026), a secret
+          # is masked from the start. Unset: operator_cidrs stays [] and the ALB refuses the
+          # operator host to everyone (rule 39). Terraform refuses 0.0.0.0/0, ::/0 and more than
+          # three. A bare IPv4 address is taken as its /32.
+          OPERATOR_CIDRS: ${{ secrets.OPERATOR_CIDRS }}
         run: |
           set -euo pipefail
           on=$([ "$SESSION" = up ] && echo true || echo false)
           operator=()
-          if [ -n "${OPERATOR_CIDRS// /}" ]; then
-            cidrs=$(jq -cn --arg s "$OPERATOR_CIDRS" '$s | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))')
+          # `down` never reads the operator ranges: the rules they feed are being removed, and an
+          # edited or malformed value must not stop a shutdown (24 Nov 2026).
+          if [ "$SESSION" = up ] && [ -n "${OPERATOR_CIDRS// /}" ]; then
+            cidrs=$(jq -cn --arg s "$OPERATOR_CIDRS" '$s | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0)) | map(if test("^[0-9]{1,3}(\\.[0-9]{1,3}){3}$") then . + "/32" else . end)')
             for c in $(jq -r '.[]' <<<"$cidrs"); do echo "::add-mask::$c"; done
             operator=(-var "operator_cidrs=$cidrs")
             echo "Operator source ranges: $(jq length <<<"$cidrs") (values masked)"

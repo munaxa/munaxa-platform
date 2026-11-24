@@ -162,8 +162,10 @@ credentials. They are not AWS administration. Without Cloudflare Access they are
 1. **Network (ALB, AWS-native):** the operator host is forwarded only from `operator_cidrs`
    (listener rules 30 and 31, source-IP conditions); rule 39 answers **403 to every other source**.
    With no ranges, the host is closed entirely. In Testing the ranges come from the GitHub
-   environment variable `OPERATOR_CIDRS` of `aws-nonprod-session` (comma-separated, at most three,
-   never `0.0.0.0/0`), read by the session workflow at `up`, masked in logs and never committed.
+   environment **secret** `OPERATOR_CIDRS` of `aws-nonprod-session` (comma-separated, at most three,
+   never `0.0.0.0/0`; a bare IPv4 address counts as its `/32`), read by the session workflow at `up`
+   only and never committed. Not a variable: GitHub prints a variable in clear in the public step
+   log (24 Nov 2026), a secret is masked from the start.
 2. **DNS:** the record is a CNAME to the ALB, **DNS only (not proxied)**, so the ALB sees the
    operator's own address. It stays in Cloudflare DNS like every other Testing record. The name
    `operator-test.munaxa.com` is kept because the issued ACM certificate already lists it; moving
@@ -179,8 +181,9 @@ credentials. They are not AWS administration. Without Cloudflare Access they are
 4. **Products** reach Control's product API on `control-api.*` with their service credentials; the
    admin API is refused there (rule 10) and reached by the portal only over Cloud Map.
 
-An operator's address changes: update `OPERATOR_CIDRS` (GitHub → munaxa-platform → Settings →
-Environments → `aws-nonprod-session` → Variables) before `up`. Remove it after the session.
+An operator's address changes: update the secret `OPERATOR_CIDRS` (GitHub → munaxa-platform →
+Settings → Environments → `aws-nonprod-session` → Environment secrets) before `up`. `down` never
+reads it, so a wrong value cannot stop a shutdown.
 
 ## 6. Root: break-glass only
 
