@@ -40,18 +40,19 @@ database_deletion_protection   = true
 log_retention_days             = 14
 
 # The whole map (every key is looked up). Only used while a session is up (services exist only
-# then). Y-6 Control session (report 2026-11-22 file 05 step 14): Identity, Control API and portal.
+# then). Y-8 Docs session (report 2026-11-22 file 05 step 20): Identity, Control API and the three
+# Docs services. The Control portal was needed only for the Y-6 session (24 Nov 2026).
 desired_counts = {
   identity       = 1
   control-api    = 1
-  control-portal = 1
+  control-portal = 0
   work-api       = 0
   work-admin     = 0
   school-api     = 0
   school-admin   = 0
-  docs-api       = 0
-  docs-web       = 0
-  docs-scanner   = 0
+  docs-api       = 1
+  docs-web       = 1
+  docs-scanner   = 1
 }
 
 # Docs' API Redis sidecar, the digest Docs Production runs (munaxa-docs launch.auto.tfvars).
@@ -125,14 +126,16 @@ identity_public_keys = "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-
 # owner from the stage C output and checked with describe-secret metadata only. db-admin is replaced
 # with it (its IDENTITY_APP_URL carries this pin), as envs/nonprod.expected-changes.json declares.
 # Apply 2: the five bundles filled by the owner on 22 Nov 2026 (report 2026-11-22-testing-temporary-
-# openssl-acceptance file 02 section 3, metadata only). docs-api is pinned again after the Control
-# Plane credential is stored (runbook step 19).
+# openssl-acceptance file 02 section 3, metadata only). docs-api pinned again on 24 Nov 2026 (runbook
+# step 19): the owner issued the Docs Control Plane credential in the Control portal and stored it with
+# docs-testing-secrets.sh replace-key CONTROL_PLANE_TOKEN; only the version id was sent (report
+# 2026-11-24-control-session-y6). docs-api and docs-provision are replaced with it.
 secret_version_ids = {
   identity         = "80914756-68cd-420d-8094-0fd49afe3492"
   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
   control-api      = "655501d8-19f2-4190-9460-960b6464a1a2"
   control-migrate  = "ee66de8e-9ab8-4f72-8db8-11c631c1e0e0"
-  docs-api         = "b6ea4c3a-31ae-4d01-a4b7-7941f01e53a7"
+  docs-api         = "0250d083-7ebc-4ca3-8efe-97c14f0b677a"
   docs-operator    = "85c17e64-1cec-4edd-80a2-59c5c06306d5"
   docs-migrate     = "b9b569c4-c9d7-49ae-935f-a59ee4da6a14"
 }
