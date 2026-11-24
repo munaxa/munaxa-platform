@@ -67,9 +67,11 @@ docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61db
 # Apply 2 (report 2026-11-23-docs-testing-apply1): Docs at 9348aab (run 45167367972), also published
 # 23 Nov under D-SSL-2026-11 (api, web, migrate listed in dssl-exception.tf); the antivirus image passed
 # the permanent gate alone. The Docs worker image is not part of this release.
+# Identity re-pin 24 Nov 2026: Identity at 6dbf35d (run 45359411701, identity#28: same-origin referrer
+# policy, so a browser's sign-in form keeps its Origin), also under D-SSL-2026-11 and listed.
 images = {
-  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:b69d9481e43269b5061e3f70a421a41b007bac0d3a0e17b49f8906fe78fd4caa"
-  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:f44593fa3f0021eb301f9270849cc7498012247b50cbf8a5e8dc586f14616462"
+  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:98d494ed016e6702e2bd4fee1533be0d672fcb322a14ea8cc6b4287d8324de1f"
+  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:726ace441fd4a520c01ef3a92162059c92fc6ac267c83e627c62eb85990cc032"
   control_api      = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0"
   control_migrate  = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/migrate@sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9"
   control_portal   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal@sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6"
