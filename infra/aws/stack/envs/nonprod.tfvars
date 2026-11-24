@@ -39,11 +39,12 @@ database_backup_retention_days = 7
 database_deletion_protection   = true
 log_retention_days             = 14
 
-# The whole map (every key is looked up). Config A1: only Identity may run.
+# The whole map (every key is looked up). Only used while a session is up (services exist only
+# then). Y-6 Control session (report 2026-11-22 file 05 step 14): Identity, Control API and portal.
 desired_counts = {
   identity       = 1
-  control-api    = 0
-  control-portal = 0
+  control-api    = 1
+  control-portal = 1
   work-api       = 0
   work-admin     = 0
   school-api     = 0
