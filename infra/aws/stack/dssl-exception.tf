@@ -22,6 +22,10 @@ locals {
     # Published 23 Nov 2026 (Y-1), pinned by Apply 1.
     "sha256:b69d9481e43269b5061e3f70a421a41b007bac0d3a0e17b49f8906fe78fd4caa" = "munaxa-identity/api 0b94951 (run 45167312831): D-SSL Testing-only"
     "sha256:f44593fa3f0021eb301f9270849cc7498012247b50cbf8a5e8dc586f14616462" = "munaxa-identity/migrate 0b94951 (run 45167312831): D-SSL Testing-only"
+    # Published 24 Nov 2026 (Identity sign-in fix identity#28), pinned by the Identity re-pin; the
+    # 0b94951 pair above is no longer pinned.
+    "sha256:98d494ed016e6702e2bd4fee1533be0d672fcb322a14ea8cc6b4287d8324de1f" = "munaxa-identity/api 6dbf35d (run 45359411701): D-SSL Testing-only"
+    "sha256:726ace441fd4a520c01ef3a92162059c92fc6ac267c83e627c62eb85990cc032" = "munaxa-identity/migrate 6dbf35d (run 45359411701): D-SSL Testing-only"
     "sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0" = "munaxa-control/api 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9" = "munaxa-control/migrate 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6" = "munaxa-control/portal 744765d (run 45167349640): D-SSL Testing-only"
