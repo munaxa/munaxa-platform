@@ -44,9 +44,20 @@ describe('permission matching', () => {
     const grants = normalizeGrants(
       Array.from({ length: 500 }, (_, i) => `resource${i}:action${i % 7}`),
     );
-    const start = performance.now();
-    for (let i = 0; i < 100_000; i++) hasPermission(grants, 'resource499:action2');
-    expect(performance.now() - start).toBeLessThan(7_500);
+    // The same 100,000 checks and the same budget per check (75 µs) as before, measured as five
+    // batches of 20,000. The fastest batch is compared with its share of the budget (1,500 ms), so
+    // a batch slowed by another package's tests on the same cores (`turbo run test`) no longer
+    // fails the suite, while a regression that slows every check still does. It failed at
+    // 7,500.15 ms against 7,500 ms on platform#169 (run 45296061427) for that reason.
+    const batches = Array.from({ length: 5 }, () => {
+      const start = performance.now();
+      for (let i = 0; i < 20_000; i++) hasPermission(grants, 'resource499:action2');
+      return performance.now() - start;
+    });
+    expect(Math.min(...batches)).toBeLessThan(1_500);
+    // The answer is still right: a regression that returned early would be fast and wrong.
+    expect(hasPermission(grants, 'resource499:action2')).toBe(true);
+    expect(hasPermission(grants, 'resource499:action3')).toBe(false);
   });
 
   it('short-circuits on the first covering grant', () => {
