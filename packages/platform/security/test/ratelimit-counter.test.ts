@@ -187,6 +187,90 @@ describe('concurrency and several instances', () => {
     // Later attempts are refused by the block.
     expect((await limiter.check(loginFrom('203.0.113.7'))).allowed).toBe(false);
   });
+
+  // R-4 (Wave 2, 24 Nov 2026): the same race across a fixed-window boundary. The tenth request is
+  // counted in the last millisecond of one window; before it reads the block, the next request is
+  // counted in the new window, where the previous window's ten still weigh fully, so it is over the
+  // limit and records a block. The tenth was counted first and within the limit: it is admitted.
+  it('regression R-4: a block recorded in the next window does not refuse one counted before it', async () => {
+    const rule: RateLimitRule = {
+      id: 'edge',
+      dimension: 'ip',
+      limit: 10,
+      window: MINUTE,
+      adaptiveFactor: 2,
+    };
+    const clock = new FixedClock(START + MINUTE - 10);
+    let hold: Promise<void> | undefined;
+    let arrived: (() => void) | undefined;
+    const waiting = new Promise<void>((resolve) => (arrived = resolve));
+    let resume: (() => void) | undefined;
+    class HeldFirstBlockRead extends MemoryCache {
+      override async get<T>(key: string): Promise<T | undefined> {
+        if (key.endsWith(':block') && hold === undefined) {
+          hold = new Promise<void>((resolve) => (resume = resolve));
+          arrived!();
+          await hold;
+        }
+        return super.get<T>(key);
+      }
+    }
+    const store = new HeldFirstBlockRead({ clock });
+    const limiter = new RateLimiter({ cache: store, clock, rules: [rule] });
+    const target = loginFrom('203.0.113.7');
+
+    // Nine admitted earlier in the window (their block reads are not held: `hold` is set by the
+    // tenth only, because the first nine are awaited before it starts).
+    hold = Promise.resolve();
+    for (let index = 1; index <= 9; index += 1) {
+      expect((await limiter.check(target)).allowed).toBe(true);
+    }
+    hold = undefined;
+
+    clock.advance(9); // the window's last millisecond
+    const tenth = limiter.check(target);
+    await waiting; // the tenth is counted and is about to read the block
+    clock.advance(1); // the next window starts
+    const eleventh = await limiter.check(target);
+    expect(eleventh.allowed).toBe(false);
+    expect(await store.get('rl:edge:root:203.0.113.7:block')).toBeDefined();
+    resume!();
+
+    expect((await tenth).allowed).toBe(true);
+    // Everything counted after the violation is refused while the block lasts (one window, the
+    // first violation), and admitted again once it has ended and the estimate allows it.
+    expect((await limiter.check(target)).allowed).toBe(false);
+    clock.advance(MINUTE / 2);
+    expect((await limiter.check(target)).allowed).toBe(false);
+    clock.advance(MINUTE);
+    expect((await limiter.check(target)).allowed).toBe(true);
+  });
+
+  it('refuses a request counted after the violation even when its own estimate is within the limit', async () => {
+    const rule: RateLimitRule = {
+      id: 'after',
+      dimension: 'ip',
+      limit: 10,
+      window: MINUTE,
+      adaptiveFactor: 2,
+    };
+    const clock = new FixedClock(START);
+    const store = new MemoryCache({ clock });
+    const limiter = new RateLimiter({ cache: store, clock, rules: [rule] });
+    const target = loginFrom('203.0.113.7');
+    // Ten in one window, then one more at the start of the next: over (10 weighted + 1).
+    for (let index = 1; index <= 10; index += 1) {
+      expect((await limiter.check(target)).allowed).toBe(true);
+    }
+    clock.advance(MINUTE);
+    expect((await limiter.check(target)).allowed).toBe(false);
+    // Late in that window the previous ten weigh almost nothing, so the estimate is within the
+    // limit; the request was counted after the violation and the block still refuses it.
+    clock.advance(MINUTE - 1_000);
+    const late = await limiter.check(target);
+    expect(late.allowed).toBe(false);
+    expect(late.retryAfterSeconds).toBeGreaterThan(0);
+  });
 });
 
 describe('expiry, recovery and Retry-After', () => {
