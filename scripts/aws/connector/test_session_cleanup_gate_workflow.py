@@ -466,11 +466,15 @@ class Workflow(unittest.TestCase):
         self.assertIn("required: false", m.group(1))
         self.assertIn("type: string", m.group(1))
 
-    def test_operator_ranges_come_from_an_environment_variable_never_the_repository(self):
+    def test_operator_ranges_come_from_an_environment_secret_never_the_repository(self):
         # 21 Nov 2026 (OPERATOR-ACCESS.md): no Cloudflare Access; the operator host opens only from
-        # the aws-nonprod-session variable OPERATOR_CIDRS, masked, and stays closed when it is unset.
+        # the aws-nonprod-session OPERATOR_CIDRS, masked, and stays closed when it is unset.
+        # 24 Nov 2026: a secret, not a variable (GitHub prints a variable in clear in the public
+        # step log's env block), and read on `up` only (an edited value stopped a `down`).
         body = self.step("Plan the switches")["body"]
-        self.assertIn("OPERATOR_CIDRS: ${{ vars.OPERATOR_CIDRS }}", body)
+        self.assertIn("OPERATOR_CIDRS: ${{ secrets.OPERATOR_CIDRS }}", body)
+        self.assertNotIn("vars.OPERATOR_CIDRS", self.text)
+        self.assertIn('if [ "$SESSION" = up ] && [ -n "${OPERATOR_CIDRS// /}" ]; then', body)
         run = body.split("run: |", 1)[1]
         self.assertNotIn("${{", run)
         self.assertIn("::add-mask::", run)
