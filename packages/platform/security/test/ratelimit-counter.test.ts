@@ -148,6 +148,45 @@ describe('concurrency and several instances', () => {
       expect((await instance.check(loginFrom('203.0.113.7'))).allowed).toBe(false);
     }
   });
+
+  // NF-3 (24 Nov 2026): platform CI admitted 9 of 10 against Redis. A request counted within the
+  // limit read the block that a later, over-the-limit request had just recorded, and was refused.
+  // This holds every block read until all eleven are waiting, then lets the over-the-limit request
+  // (the last counted) record its block before the ten earlier ones look: the worst interleaving.
+  it('regression NF-3: a block recorded by a later request does not refuse one counted before it', async () => {
+    const clock = new FixedClock(START);
+    const held: (() => void)[] = [];
+    let release: (() => void) | undefined;
+    const allHeld = new Promise<void>((resolve) => (release = resolve));
+    class HeldBlockReads extends MemoryCache {
+      override async get<T>(key: string): Promise<T | undefined> {
+        if (key.endsWith(':block') && held.length < 11) {
+          await new Promise<void>((resolve) => {
+            held.push(resolve);
+            if (held.length === 11) release!();
+          });
+        }
+        return super.get<T>(key);
+      }
+    }
+    const store = new HeldBlockReads({ clock });
+    const limiter = new RateLimiter({ cache: store, clock, rules: [LOGIN] });
+
+    const pending = range(1, 11).map(() => limiter.check(loginFrom('203.0.113.7')));
+    await allHeld;
+    held[10]!();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(await store.get('rl:login-per-ip:root:203.0.113.7:block')).toBeDefined();
+    for (const resume of held.slice(0, 10)) resume();
+    const decisions = await Promise.all(pending);
+
+    expect(decisions.map((decision) => decision.allowed)).toEqual([
+      ...range(1, 10).map(() => true),
+      false,
+    ]);
+    // Later attempts are refused by the block.
+    expect((await limiter.check(loginFrom('203.0.113.7'))).allowed).toBe(false);
+  });
 });
 
 describe('expiry, recovery and Retry-After', () => {

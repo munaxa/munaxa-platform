@@ -194,7 +194,7 @@ export class RateLimiter {
       const state = await this.#window.hitWithHistory(key, rule.window, cost);
       const now = this.#clock.now();
       const over = state.count > rule.limit;
-      const blockedUntil = await this.#blockedUntil(rule, key, now, over);
+      const blockedUntil = await this.#blockedUntil(rule, key, now, over, state);
       const allowed = !over && blockedUntil === undefined;
 
       return {
@@ -250,22 +250,29 @@ export class RateLimiter {
    * attack cannot push a shared NAT address out to something unrecoverable). Only one of several
    * concurrent requests crossing the limit records the violation (`setIfAbsent` on the block), so a
    * burst escalates the penalty once, not once per request. While blocked, attempts still count.
+   *
+   * The block remembers where in the count it was recorded: the fixed window and that window's raw
+   * count (`current`, which the store increments atomically, so it orders requests). A request that
+   * is itself within the limit and was counted earlier in the same fixed window arrived before the
+   * violation, and the block does not apply to it. Without this, under concurrency a request counted
+   * fifth could read the block that the eleventh had just written and be refused: 9 of 10 admitted
+   * (NF-3, 24 Nov 2026). The block still refuses everything counted after it, in any window.
    */
   async #blockedUntil(
     rule: RateLimitRule,
     key: string,
     now: number,
     over: boolean,
+    state: SlidingWindowState,
   ): Promise<number | undefined> {
     const factor = rule.adaptiveFactor ?? 1;
     if (factor <= 1) return undefined;
 
     const blockKey = `${key}:block`;
-    const existing = await this.#cache.get<number>(blockKey);
-    if (existing !== undefined && !(typeof existing === 'number' && Number.isFinite(existing))) {
-      throw new Error(`Block ${blockKey} holds a value that is not a time`);
+    const existing = readBlock(blockKey, await this.#cache.get<unknown>(blockKey));
+    if (existing !== undefined && existing.until > now) {
+      return !over && countedBefore(state, existing) ? undefined : existing.until;
     }
-    if (existing !== undefined && existing > now) return existing;
     if (!over) return undefined;
 
     const violationsKey = `${key}:violations`;
@@ -275,15 +282,17 @@ export class RateLimiter {
       stored === undefined ? 0 : typeof stored === 'number' && Number.isFinite(stored) ? stored : 4;
     const penalty = Math.min(rule.window * factor ** Math.min(violations, 4), rule.window * 16);
     const until = now + penalty;
-    if (await this.#cache.setIfAbsent(blockKey, until, { ttl: penalty })) {
+    const block: BlockRecord = { until, windowStart: state.windowStart, current: state.current };
+    if (await this.#cache.setIfAbsent(blockKey, block, { ttl: penalty })) {
       // The memory of violations is set when the first one is recorded and not extended: an attack
       // sustained for more than 32 windows starts its escalation again from one window (the block
       // is then at most 1 + 2 + 4 + 8 + 16 windows behind it, and refused attempts keep counting).
       await this.#cache.increment(violationsKey, 1, { ttl: rule.window * 32 });
       return until;
     }
-    // Another request recorded this violation first; its block is the one that stands.
-    return (await this.#cache.get<number>(blockKey)) ?? until;
+    // Another request recorded this violation first; its block is the one that stands. This
+    // request is over the limit, so it is refused whichever block it reads.
+    return readBlock(blockKey, await this.#cache.get<unknown>(blockKey))?.until ?? until;
   }
 
   /**
@@ -304,6 +313,43 @@ export class RateLimiter {
     await this.#cache.delete(`${key}:block`);
     return true;
   }
+}
+
+/**
+ * An adaptive block: until when, and the fixed window and raw count at which it was recorded.
+ * A bare number (`until` only) is the earlier format and is still read; it applies to every request.
+ */
+interface BlockRecord {
+  readonly until: number;
+  readonly windowStart?: number;
+  readonly current?: number;
+}
+
+/** Reads a stored block, or throws (a store failure, handled by the rule's policy) if malformed. */
+function readBlock(key: string, value: unknown): BlockRecord | undefined {
+  if (value === undefined) return undefined;
+  if (isFiniteNumber(value)) return { until: value };
+  if (typeof value === 'object' && value !== null) {
+    const { until, windowStart, current } = value as Record<string, unknown>;
+    if (isFiniteNumber(until) && isFiniteNumber(windowStart) && isFiniteNumber(current)) {
+      return { until, windowStart, current };
+    }
+  }
+  throw new Error(`Block ${key} holds a value that is not a block`);
+}
+
+/** Whether this request was counted before the block was recorded, in the same fixed window. */
+function countedBefore(state: SlidingWindowState, block: BlockRecord): boolean {
+  return (
+    block.windowStart !== undefined &&
+    block.current !== undefined &&
+    state.windowStart === block.windowStart &&
+    state.current < block.current
+  );
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
 }
 
 /** How long a rule that refuses on a store failure tells the caller to wait. */
