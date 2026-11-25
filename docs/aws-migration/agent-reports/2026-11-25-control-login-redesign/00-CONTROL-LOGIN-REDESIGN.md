@@ -1,6 +1,6 @@
 # Control operator portal sign-in redesign (25 Nov 2026)
 
-**Outcome: DONE in the repository, NOT deployed.** The operator-test.munaxa.com sign-in page now uses the Munaxa Docs sign-in layout in the Munaxa Group colours. Change: munaxa-identity PR #29 (branch `claude/project-thread-hcnui1`, commit `74d8a75`). Nothing was published, applied or changed in AWS, DNS or Cloudflare.
+**Outcome: DONE in the repository, NOT deployed.** The operator-test.munaxa.com sign-in page now uses the Munaxa Docs sign-in layout in the Munaxa Group colours. Change: munaxa-identity PR #29, MERGED 25 Nov 19:45 UTC as `c721a8e` (CI verify + image build green on head `74d8a75`; merging publishes and deploys nothing). Nothing was published, applied or changed in AWS, DNS or Cloudflare.
 
 Owner request (Tamer, 25 Nov 19:35 UTC): "redesign the operator-test.munaxa.com to be as munaxa docs login page but use munaxa colors".
 
