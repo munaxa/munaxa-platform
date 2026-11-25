@@ -26,15 +26,29 @@ locals {
     # 0b94951 pair above is no longer pinned.
     "sha256:98d494ed016e6702e2bd4fee1533be0d672fcb322a14ea8cc6b4287d8324de1f" = "munaxa-identity/api 6dbf35d (run 45359411701): D-SSL Testing-only"
     "sha256:726ace441fd4a520c01ef3a92162059c92fc6ac267c83e627c62eb85990cc032" = "munaxa-identity/migrate 6dbf35d (run 45359411701): D-SSL Testing-only"
+    # Published 25 Nov 2026, pinned by the combined re-pin (report 2026-11-25-combined-testing-rollout);
+    # the 6dbf35d Identity pair above is no longer pinned.
+    "sha256:d24ee375e3fced5f354b471548ee70ba686085cb90becd0e941545c60dce7277" = "munaxa-identity/api c721a8e (run 45692576016): D-SSL Testing-only"
+    "sha256:05487060aed34395fd0e32958d01b1382b38c63cd4ee2ef1e0a8ed95b2370eef" = "munaxa-identity/migrate c721a8e (run 45692576016): D-SSL Testing-only"
     "sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0" = "munaxa-control/api 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9" = "munaxa-control/migrate 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6" = "munaxa-control/portal 744765d (run 45167349640): D-SSL Testing-only"
+    # Published 25 Nov 2026 (control#18 + #16), pinned by the combined re-pin; the 744765d trio above
+    # is no longer pinned.
+    "sha256:885e694f175a4b7b4fd320b96188422f425ebba66fe49eccdc8d67d9fc57e0e7" = "munaxa-control/api 659c8b8 (run 45692524545): D-SSL Testing-only"
+    "sha256:b871492f32224fabd144f5aeb38aab4c099b88415dd5319c0ddf4d3440a065f9" = "munaxa-control/migrate 659c8b8 (run 45692524545): D-SSL Testing-only"
+    "sha256:030be8122e190c83eb5d085d55ab823880ee092e26465509f6baa29ec42df2b9" = "munaxa-control/portal 659c8b8 (run 45692524545): D-SSL Testing-only"
 
     # Published 23 Nov 2026 (Y-1), pinned by Apply 2. munaxa-docs/antivirus passed the permanent gate
     # and is not listed.
     "sha256:febeaca7bb1e58b261677c30cc4aabeec7d00896b40155f89ead903597be073d" = "munaxa-docs/api 9348aab (run 45167367972): D-SSL Testing-only"
     "sha256:28e22b96ada6237abef4f53470c1d13723bb70931ae8dfa774df8d536cbb48cd" = "munaxa-docs/web 9348aab (run 45167367972): D-SSL Testing-only"
     "sha256:4d00650b9759a64889cf2c95a3c10cb508787737af2d69aff64c23ba56e66ae8" = "munaxa-docs/migrate 9348aab (run 45167367972): D-SSL Testing-only"
+    # Published 25 Nov 2026 (docs#184, #185, #187), pinned by the combined re-pin; the 9348aab trio above
+    # is no longer pinned. The a523f44 images (run 45652258762) were never pinned.
+    "sha256:9f8f474ae77f6655da697dddaa8cd18fec80ab592fa5d45105ed168192bbcedf" = "munaxa-docs/api cec7bcc (run 45692480226): D-SSL Testing-only"
+    "sha256:b01dd00693778ca361f29e1e14ed31c387e3f8602ebcd6c1a5b6797f8293a061" = "munaxa-docs/web cec7bcc (run 45692480226): D-SSL Testing-only"
+    "sha256:e174393d907f6202fe8457970ad2997601043033cffe1b01367c316fdf7d3f07" = "munaxa-docs/migrate cec7bcc (run 45692480226): D-SSL Testing-only"
   }
 }
 
