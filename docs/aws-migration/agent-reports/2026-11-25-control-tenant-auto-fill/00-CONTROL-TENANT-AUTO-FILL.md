@@ -1,8 +1,11 @@
 # Control: tenant identifier filled in automatically when linking (25 Nov 2026)
 
-**Outcome:** built in the repositories only. munaxa-control#18 (Control API, database, portal) and
-munaxa-docs#187 (Docs sends the organisation slug). Nothing deployed, migrated, published or changed
-in AWS.
+**Outcome:** built and merged in the repositories. munaxa-control#18 merged as `659c8b8` (Control
+API, database, portal) and munaxa-docs#187 merged as `cec7bcc` (Docs sends the organisation slug),
+both under the standing merge rule with all checks green. Nothing deployed, migrated, published or
+changed in AWS yet. Tamer said yes (19:45 UTC) to rolling it out on Testing. The rollout is combined
+with the Docs demo starter and Identity login redesign rollouts in one pin PR (platform#191), one
+owner apply and one session, run by the Docs demo starter thread.
 
 ## Problem
 
@@ -64,13 +67,19 @@ asked. Only `LICENSING_MODE=CONTROL_PLANE` is affected.
   record with label and still 404, link by sighting then served 200, refusal of mixed bodies and
   missing permission, the 200 cap), build, permission catalogue unchanged.
 - Docs: API typecheck, eslint and prettier on changed files, full API vitest 1065/1065.
-- CI results and merge commits: see the PR pages.
+- CI: control#18 green (Format · Lint · Typecheck · Test · Build, Build the images); docs#187 all
+  24 checks green.
 
-## Deploying it (needs Tamer's yes; not done)
+## Deploying it (approved by Tamer; combined rollout, not done yet)
 
-1. Control image from the merge commit, then run Control's migration (`20261125200000_tenant_sighting`,
-   additive) and grants, as in the Y-6 session.
-2. Docs image from the merge of #187 (before the D-SSL exception expires on 1 Dec).
+1. **[O]** Tags `image/659c8b85f5232ea6044456ca477cf9be7c9e5af9` (munaxa-control) and
+   `image/cec7bcc1b14427a5fcf811da0a12b301fb8c1177` (munaxa-docs), each with an `image-release`
+   approval. This session cannot push tags (the proxy answers 403).
+2. Pin in platform#191: `control_api`, `control_migrate`, `control_portal` (expected 3 task-definition
+   replacements for Control, services off) and the Docs images; D-SSL list only if the scans need it.
+3. Session: after `up`, run `munaxa-nonprod-control-migrate` (no overrides). Success is exit 0 with
+   `20261125200000_tenant_sighting` applied and `grants applied`. This is also the first AWS run of
+   control#16. Then Docs entitlements for `d75d9645…` must still return 200.
 3. After that, any new Docs organisation appears in Control's **Link a product tenant** list as soon
    as someone uses it. `munaxa-internal` is already linked in Testing, so it will not appear.
 
