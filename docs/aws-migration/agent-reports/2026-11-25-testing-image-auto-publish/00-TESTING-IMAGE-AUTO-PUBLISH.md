@@ -141,6 +141,10 @@ is red, and School will now get past the role but fail the pre-push scan. Neithe
 exception, and this change did not widen D-SSL. They publish automatically on the first green
 merge after the base image is fixed.
 
+Confirmed after the fix: School run [45700137547](https://github.com/munaxa/munaxa-school/actions/runs/45700137547)
+(push of `06c34e2`) assumed the role and signed in to ECR in all three jobs. It then stopped at
+"Verify and scan before pushing" (OpenSSL 3.5.9-r1), so nothing was pushed, as expected.
+
 ### 5.3 What is still owner-gated
 
 Production images (the `image/<sha>` tag plus `image-release` approval) are unchanged. Moving a
