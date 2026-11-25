@@ -645,6 +645,38 @@ data "aws_iam_policy_document" "publisher_trust" {
       values   = ["refs/tags/image/*"]
     }
   }
+
+  # Testing (nonprod) images without a reviewer: only the image-testing environment, only on main
+  # (reviewed history), and only that repository's publish-images-testing.yml as it is on main. That
+  # workflow pushes testing-* tags only. Same repositories and push-only permissions as above, and
+  # tags are immutable, so a Testing run cannot replace a release image.
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [data.aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc}:sub"
+      values   = ["${local.subject[each.key]}:environment:${var.testing_image_environment}"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc}:ref"
+      values   = ["refs/heads/main"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc}:job_workflow_ref"
+      values   = ["${var.github_owner}/${each.key}/.github/workflows/publish-images-testing.yml@refs/heads/main"]
+    }
+  }
 }
 
 resource "aws_iam_role" "publisher" {
