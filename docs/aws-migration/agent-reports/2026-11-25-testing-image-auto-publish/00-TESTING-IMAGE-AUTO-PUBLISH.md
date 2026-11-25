@@ -1,7 +1,7 @@
 # Automatic Testing image publishing (Docs, Identity, Control, Work, School)
 
 Date: 25 Nov 2026. Requested by the owner ("make it fewer for testing or auto for test", "also for
-work and school"). Status: **PREPARED IN REPOSITORIES, NOT MERGED, NOT APPLIED.** It needs one owner yes.
+work and school"). Status: **APPROVED by the owner (decision card, 25 Nov 20:17 UTC), AWS APPLIED and VERIFIED (20:19 to 20:21 UTC), PRs merged** (see section 5).
 
 ## 1. Problem
 
@@ -87,3 +87,62 @@ After that, merging code to main publishes Testing images by itself in all five 
 Pinning a new digest in Testing is still a separate, owner-approved apply. Production is unchanged.
 
 The pending Docs `a523f44` release through the old path is not affected by any of this.
+
+## 5. Execution (25 Nov 2026, after the owner's yes at 20:17:54 UTC)
+
+AWS, through the AWS connector (root, management account 229251310592, eu-central-1). Each change
+was built from the live document, keeping the existing statement byte for byte and appending the new one:
+
+| Change | Resources | Result |
+| --- | --- | --- |
+| `iam:UpdateAssumeRolePolicy`: second statement (`image-testing`, `refs/heads/main`, `<repo>/.github/workflows/publish-images-testing.yml@refs/heads/main`, all `StringEquals`; Docs also `repository_id` and `repository_owner_id`, Sid `GitHubActionsTestingImagePublishing`) | `munaxa-control-image-publisher`, `munaxa-identity-image-publisher`, `munaxa-school-image-publisher`, `munaxa-work-image-publisher`, `munaxa-docs-eu-prod-image-publisher` | 5/5 succeeded |
+| `ecr:PutLifecyclePolicy`: untagged 7 days; `testing-*` newest 30; `sha-*` newest 20 | 11 shared repositories + 4 `munaxa-docs/*` | 15/15 succeeded |
+
+Read-back verification: every role has exactly two statements. The first one is unchanged
+(`image-release`, `refs/tags/image/*`, and for Docs `publish-images.yml@refs/tags/image/*`). The
+second one is as listed above and has no `StringLike` key. All 15 lifecycle policies read back as
+`[1 untagged 7d] [2 testing-* 30] [3 sha-* 20]`. A lifecycle **preview** on all 15 repositories
+completed with **0 images to expire**. Nothing was created or deleted, and no permission policy or
+boundary changed.
+
+The Terraform in munaxa-platform `infra/aws/bootstrap` and munaxa-docs `infra/terraform/bootstrap`
+on main describes exactly this. The next bootstrap plan should show no change for these resources
+(Terraform compares IAM and lifecycle JSON by meaning). If it shows one, the difference is formatting only.
+
+GitHub: munaxa-work#60 merged as `19eb921`. Docs, Identity, Control and School merged after their
+branches were updated with main (required checks are strict). Merge commits are in the PRs. The
+`image-testing` environment is created by GitHub on each repository's first Testing run.
+
+### 5.1 First automatic runs (25 Nov 2026)
+
+| App | Run | Result | Testing tag in ECR (read-only check 21:00 UTC) |
+| --- | --- | --- | --- |
+| Identity | [45695321588](https://github.com/munaxa/munaxa-identity/actions/runs/45695321588) (after CI on `76e2209`) | Published | `testing-76e2209` in `munaxa-identity/api`, `/migrate` |
+| Control | [45696119449](https://github.com/munaxa/munaxa-control/actions/runs/45696119449) (after CI on `3213275`) | Published | `testing-3213275` in `munaxa-control/api`, `/migrate`, `/portal` |
+| Docs | [45698365396](https://github.com/munaxa/munaxa-docs/actions/runs/45698365396) (after CI on `3fc1187`) | Published; ECR confirmation passed, release smoke was still running at the time of writing | `testing-3fc1187` in `munaxa-docs/api`, `/web`, `/migrate`, `/antivirus` |
+| Work | [45696327954](https://github.com/munaxa/munaxa-work/actions/runs/45696327954) | Skipped, as designed: CI on main is red (OpenSSL 3.5.9-r1 HIGH, no Testing exception for Work) | none yet |
+| School | [45694635783](https://github.com/munaxa/munaxa-school/actions/runs/45694635783) (push of `27d08b1`) | **Failed at role assumption**, see 5.2 | none yet |
+
+### 5.2 School: wrong role ARN in a repository variable (fixed in code)
+
+CloudTrail showed 37 `AssumeRoleWithWebIdentity` AccessDenied events (20:27 to 20:28 UTC) with the
+correct subject (`repo:munaxa@311481412/munaxa-school@1318345275:environment:image-testing`), after
+the trust was updated at 20:18:38 UTC. The cause was the School repository variable
+`AWS_IMAGE_PUBLISHER_ROLE_ARN`. It names `arn:aws:iam::229251310592:role/munaxa-school-image-publisher`,
+but the role's real ARN carries the IAM path `munaxa-shared/bootstrap/`.
+
+Fix: munaxa-school#31 (merged as `06c34e2`). The Testing workflow names the full ARN
+`arn:aws:iam::229251310592:role/munaxa-shared/bootstrap/munaxa-school-image-publisher`. The AWS
+trust did not change. The School **release** workflow still reads the wrong variable and will fail
+the same way until the variable is corrected (a GitHub setting).
+
+Until OpenSSL 3.5.10 ships, Work and School still cannot publish: Work is skipped because main CI
+is red, and School will now get past the role but fail the pre-push scan. Neither has a D-SSL
+exception, and this change did not widen D-SSL. They publish automatically on the first green
+merge after the base image is fixed.
+
+### 5.3 What is still owner-gated
+
+Production images (the `image/<sha>` tag plus `image-release` approval) are unchanged. Moving a
+Testing service onto a new `testing-*` image is still a Terraform pin change and apply, which needs
+the owner's yes as before.
