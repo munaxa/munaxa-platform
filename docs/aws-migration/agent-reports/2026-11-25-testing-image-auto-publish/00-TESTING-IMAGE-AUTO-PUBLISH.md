@@ -37,7 +37,7 @@ Why this is safe:
   matters: the platform rule kept "the last 20 images of any tag". A lower-priority ECR rule
   still counts images that a higher rule selected (AWS ECR user guide, *Lifecycle policy evaluation
   rules*), so 20 Testing builds would have expired every rollback target. Now `testing-*` (30) and
-  `sha-*` (20) are counted apart, and no `any` rule is left. A read-only check at 19:5x UTC showed every image
+  `sha-*` (20) are counted apart, and no `any` rule is left. A read-only check (25 Nov, about 19:50 UTC) showed every image
   in all 15 ECR repositories has a `sha-*` tag, so no existing image is affected.
 - **The supply-chain hardening is unchanged.** Same pinned actions, same OIDC (no registry credential),
   same `PLATFORM_PACKAGES_TOKEN` as a BuildKit secret, same verify and scan gates. The only scan
