@@ -1,6 +1,6 @@
 {
   "root": "stack-nonprod",
-  "intent": "DOCS CONTROL PLANE CREDENTIAL RE-PIN (24 Nov 2026, runbook step 19, report 2026-11-24-control-session-y6): Control refused the first credential (401), the owner revoked it and issued a new one; secret_version_ids docs-api moves from 0250d083-7ebc-4ca3-8efe-97c14f0b677a to b313124e-f1d2-4454-8022-c002c714d8b3, the version the owner wrote with docs-testing-secrets.sh replace-key CONTROL_PLANE_TOKEN (only CONTROL_PLANE_TOKEN changed) = the two task definitions that read the docs-api bundle replaced (new revisions). Services stay off. No create, no destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
+  "intent": "DOCS CONTROL PLANE CREDENTIAL RE-PIN (25 Nov 2026, runbook step 19, report 2026-11-25-docs-session-y8-completion): the second credential was stored without its last character (42 of 43, Control returned 401), so the owner revoked it and issued a third one; secret_version_ids docs-api moves from b313124e-f1d2-4454-8022-c002c714d8b3 to 43690bf5-5c66-4e83-8b21-9263f523816c, the version the owner wrote with docs-testing-secrets.sh replace-key CONTROL_PLANE_TOKEN (only CONTROL_PLANE_TOKEN changed) = the two task definitions that read the docs-api bundle replaced (new revisions). Services stay off. No create, no destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
   "changes": [
     {
       "address": "aws_ecs_task_definition.docs_provision[0]",

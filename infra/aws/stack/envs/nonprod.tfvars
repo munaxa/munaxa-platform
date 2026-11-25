@@ -132,13 +132,15 @@ identity_public_keys = "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-
 # docs-testing-secrets.sh replace-key CONTROL_PLANE_TOKEN; only the version id was sent (report
 # 2026-11-24-control-session-y6). docs-api and docs-provision are replaced with it. Control refused
 # that first credential (401 on every entitlements call), so the owner revoked it and issued a new
-# one the same day; this is the second version (0250d083 before it).
+# one the same day (b313124e). That second copy also lost the token's last character (42 of 43), so
+# on 25 Nov 2026 the owner revoked it, issued a third credential, copied it whole and stored it with
+# replace-key again; this is the third version (report 2026-11-25-docs-session-y8-completion).
 secret_version_ids = {
   identity         = "80914756-68cd-420d-8094-0fd49afe3492"
   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
   control-api      = "655501d8-19f2-4190-9460-960b6464a1a2"
   control-migrate  = "ee66de8e-9ab8-4f72-8db8-11c631c1e0e0"
-  docs-api         = "b313124e-f1d2-4454-8022-c002c714d8b3"
+  docs-api         = "43690bf5-5c66-4e83-8b21-9263f523816c"
   docs-operator    = "85c17e64-1cec-4edd-80a2-59c5c06306d5"
   docs-migrate     = "b9b569c4-c9d7-49ae-935f-a59ee4da6a14"
 }
