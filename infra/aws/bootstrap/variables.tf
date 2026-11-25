@@ -43,6 +43,17 @@ variable "image_repositories" {
   }
 }
 
+variable "testing_image_environment" {
+  description = "The GitHub environment (in each product repository) whose jobs may assume that product's image publisher for Testing images: no reviewer, so the trust also requires refs/heads/main and publish-images-testing.yml."
+  type        = string
+  default     = "image-testing"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9._-]+$", var.testing_image_environment)) && var.testing_image_environment != "image-release"
+    error_message = "Use a single environment name, with no wildcard, other than image-release."
+  }
+}
+
 variable "deploy_environments" {
   description = "Per stack environment, the GitHub environments of munaxa-platform whose main-branch jobs may run its Terraform (one CI role and one deployer each, R-17)."
   type        = map(list(string))

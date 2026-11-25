@@ -1000,3 +1000,75 @@ run "rds_restart_stop_on_adds_exactly_these_statements" {
     error_message = "On: the cleanup policy and the session deployer's own policy are unchanged; no events write for sessions."
   }
 }
+
+# Testing images without a reviewer (publish-images-testing.yml): each product publisher gains one
+# statement for its own image-testing environment, only on main and only for that file. The
+# release statement (image-release, image/* tags) is unchanged.
+run "testing_image_publishing_is_main_only_and_one_file" {
+  command = plan
+
+  assert {
+    condition = alltrue([
+      for repo in keys(var.image_repositories) : length(data.aws_iam_policy_document.publisher_trust[repo].statement) == 2
+    ])
+    error_message = "Each publisher trusts exactly two statements: the release path and the Testing path."
+  }
+
+  assert {
+    condition = alltrue([
+      for repo in keys(var.image_repositories) : toset(flatten([
+        for s in data.aws_iam_policy_document.publisher_trust[repo].statement : [
+          for c in s.condition : c.values if c.variable == "token.actions.githubusercontent.com:sub"
+        ]
+      ])) == toset(["${local.subject[repo]}:environment:image-release", "${local.subject[repo]}:environment:image-testing"])
+    ])
+    error_message = "A publisher trusts only its own repository's image-release and image-testing environments."
+  }
+
+  assert {
+    condition = alltrue([
+      for repo in keys(var.image_repositories) : anytrue([
+        for s in data.aws_iam_policy_document.publisher_trust[repo].statement :
+        contains(flatten([for c in s.condition : c.values if c.variable == "token.actions.githubusercontent.com:sub"]), "${local.subject[repo]}:environment:image-testing")
+        && flatten([for c in s.condition : c.values if c.variable == "token.actions.githubusercontent.com:ref" && c.test == "StringEquals"]) == ["refs/heads/main"]
+        && flatten([for c in s.condition : c.values if c.variable == "token.actions.githubusercontent.com:job_workflow_ref" && c.test == "StringEquals"]) == ["munaxa/${repo}/.github/workflows/publish-images-testing.yml@refs/heads/main"]
+        && length([for c in s.condition : c if c.test != "StringEquals"]) == 0
+      ])
+    ])
+    error_message = "The image-testing statement requires refs/heads/main and publish-images-testing.yml exactly, with no wildcard."
+  }
+
+  assert {
+    condition = alltrue([
+      for repo in keys(var.image_repositories) : anytrue([
+        for s in data.aws_iam_policy_document.publisher_trust[repo].statement :
+        contains(flatten([for c in s.condition : c.values if c.variable == "token.actions.githubusercontent.com:sub"]), "${local.subject[repo]}:environment:image-release")
+        && flatten([for c in s.condition : c.values if c.variable == "token.actions.githubusercontent.com:ref"]) == ["refs/tags/image/*"]
+      ])
+    ])
+    error_message = "The release statement is unchanged: image-release on image/* tags."
+  }
+
+  assert {
+    condition = alltrue([
+      for k, p in aws_ecr_lifecycle_policy.image : (
+        jsondecode(p.policy).rules[1].selection.tagPatternList == ["testing-*"]
+        && jsondecode(p.policy).rules[1].selection.countNumber == 30
+        && jsondecode(p.policy).rules[2].selection.tagPatternList == ["sha-*"]
+        && jsondecode(p.policy).rules[2].selection.countNumber == 20
+        && length([for r in jsondecode(p.policy).rules : r if r.selection.tagStatus == "any"]) == 0
+      )
+    ])
+    error_message = "Testing builds (testing-*) are kept apart from release images (sha-*), and no rule counts both."
+  }
+}
+
+run "testing_image_environment_cannot_be_image_release" {
+  command = plan
+
+  variables {
+    testing_image_environment = "image-release"
+  }
+
+  expect_failures = [var.testing_image_environment]
+}

@@ -126,10 +126,20 @@ resource "aws_ecr_lifecycle_policy" "image" {
         selection    = { tagStatus = "untagged", countType = "sinceImagePushed", countUnit = "days", countNumber = 7 }
         action       = { type = "expire" }
       },
+      # Testing builds (publish-images-testing.yml, testing-* tags) are counted on their own, so
+      # they can never push a release image (a rollback target) out of the registry. The release
+      # rule selects sha-* (every release image carries sha-<full>) rather than "any": a lower rule
+      # still counts images a higher one selected, so "any" would count Testing builds too.
       {
         rulePriority = 2
-        description  = "Keep the last 20 tagged images (rollback targets)"
-        selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 20 }
+        description  = "Keep the last 30 Testing images"
+        selection    = { tagStatus = "tagged", tagPatternList = ["testing-*"], countType = "imageCountMoreThan", countNumber = 30 }
+        action       = { type = "expire" }
+      },
+      {
+        rulePriority = 3
+        description  = "Keep the last 20 release images (rollback targets)"
+        selection    = { tagStatus = "tagged", tagPatternList = ["sha-*"], countType = "imageCountMoreThan", countNumber = 20 }
         action       = { type = "expire" }
       },
     ]
