@@ -16,7 +16,7 @@ A **separate Testing path** next to the unchanged release path, in every product
 | | Release path (unchanged) | Testing path (new) |
 | --- | --- | --- |
 | Workflow | `publish-images.yml` / `publish-images-ecr.yml` | `publish-images-testing.yml` |
-| Trigger | `image/<sha>` tag (School: dispatch from the tag) | After `CI` succeeds on a push to `main` (Docs, Identity, Control, Work), or dispatched from `main` with an optional SHA on main (all five; School only this way) |
+| Trigger | `image/<sha>` tag (School: dispatch from the tag) | After `CI` succeeds on a push to `main` (Docs, Identity, Control, Work); on the push to `main` itself for School, whose CI runs on pull requests only; or dispatched from `main` with an optional SHA on main (all five) |
 | GitHub environment | `image-release`, owner is the required reviewer | `image-testing`, no reviewer |
 | AWS trust (same publisher role) | `sub …:environment:image-release`, `ref refs/tags/image/*` | `sub …:environment:image-testing`, `ref = refs/heads/main`, `job_workflow_ref = <owner>/<repo>/.github/workflows/publish-images-testing.yml@refs/heads/main`, all `StringEquals` |
 | Tags | `<short>`, `sha-<full>` | `testing-<short>`, `testing-sha-<full>` only |
@@ -48,9 +48,10 @@ Why this is safe:
   every workflow skips commits that change only `docs/**` or `*.md`). Storage is capped at 30 Testing images per
   repository.
 
-School keeps its rule that nothing with an environment runs on a merge: its Testing workflow is
-dispatch-only, and Claude dispatches it after a merge. Its deploy-gate gets an `image-testing`
-target (main only, `approval: false`). Every other target still requires a reviewer.
+School publishes on merge like the others (owner, 25 Nov 20:10 UTC: "School should be same as all
+apps"). Its deploy-gate gets an `image-testing` target (main only, `approval: false`, `onMerge:
+true`). The lint accepts a `push` trigger only when it is limited to the branch `main` and the gate
+and every gated job name `image-testing`. Every other target is still dispatch-only behind a reviewer.
 
 ## 3. Changes (all unmerged)
 
@@ -61,9 +62,14 @@ target (main only, `approval: false`). Every other target still requires a revie
 | munaxa/munaxa-identity#30 | `publish-images-testing.yml`; D-SSL workflow list | 46/46 |
 | munaxa/munaxa-control#19 | `publish-images-testing.yml`; D-SSL workflow list | 46/46 |
 | munaxa/munaxa-work#60 | `publish-images-testing.yml` (MW-009 green-CI gate kept); CODEOWNERS required list | check-codeowners OK, 31/31 |
-| munaxa/munaxa-school#30 | `publish-images-testing.yml` (dispatch-only, nonprod admin only); deploy-gate `image-testing`; docs | deploy-gate tests 41/41, lint OK |
+| munaxa/munaxa-school#30 | `publish-images-testing.yml` (push to main + dispatch, nonprod admin only); deploy-gate `image-testing` with merge allowance; docs | deploy-gate tests 43/43, lint OK |
 
 actionlint was not run locally (the session refused the binary download). School CI runs it.
+
+CI on the PRs: the `Images` job of Work and School is red because of the known OpenSSL 3.5.9-r1
+HIGH findings, which are also red on their `main` (not these PRs; commented on each). For the same reason,
+Work and School Testing publishing will refuse images until Alpine ships OpenSSL 3.5.10. Docs,
+Identity and Control can publish under the D-SSL Testing exception until 1 Dec.
 
 ## 4. Owner decision and what happens after a yes
 
@@ -77,7 +83,7 @@ One yes covers:
 3. Letting GitHub create the `image-testing` environment on its first run (no settings to click).
 4. The new workflow using the existing D-SSL Testing exception until it expires on 1 Dec.
 
-After that, merging code to main publishes Testing images by itself (School: Claude dispatches).
+After that, merging code to main publishes Testing images by itself in all five repositories.
 Pinning a new digest in Testing is still a separate, owner-approved apply. Production is unchanged.
 
 The pending Docs `a523f44` release through the old path is not affected by any of this.
