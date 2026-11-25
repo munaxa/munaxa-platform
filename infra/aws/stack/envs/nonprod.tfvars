@@ -71,16 +71,19 @@ docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61db
 # the permanent gate alone. The Docs worker image is not part of this release.
 # Identity re-pin 24 Nov 2026: Identity at 6dbf35d (run 45359411701, identity#28: same-origin referrer
 # policy, so a browser's sign-in form keeps its Origin), also under D-SSL-2026-11 and listed.
+# Docs re-pin 25 Nov 2026: api, web and migrate at a523f44 (run 45652258762; munaxa-docs#184 demo
+# starter command seed-demo.js, plus the add-document dialog fix). ECR scans of all three: no findings
+# at all, so they pass the permanent gate and are NOT D-SSL digests. The antivirus image is unchanged.
 images = {
   identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:98d494ed016e6702e2bd4fee1533be0d672fcb322a14ea8cc6b4287d8324de1f"
   identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:726ace441fd4a520c01ef3a92162059c92fc6ac267c83e627c62eb85990cc032"
   control_api      = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0"
   control_migrate  = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/migrate@sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9"
   control_portal   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal@sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6"
-  docs_api         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:febeaca7bb1e58b261677c30cc4aabeec7d00896b40155f89ead903597be073d"
-  docs_web         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:28e22b96ada6237abef4f53470c1d13723bb70931ae8dfa774df8d536cbb48cd"
+  docs_api         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/api@sha256:6325187474af31e2f49b310a5ac8e5843c0aa4db1557216a05219afdee3197c0"
+  docs_web         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:3b9f0a3a4822a371f62c2fd025980c24ac049dd45221e682a0b673a53a95205b"
   docs_antivirus   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/antivirus@sha256:801c77e1560ec63430463346810c83527a5183982e94cc82950cbbed3f015dfc"
-  docs_migrate     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/migrate@sha256:4d00650b9759a64889cf2c95a3c10cb508787737af2d69aff64c23ba56e66ae8"
+  docs_migrate     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/migrate@sha256:59058b282fad34108233905a8e7449b21b8e26e592c351161cfbf2f13fbb387a"
 }
 
 # Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Required by the 2db6ed9
