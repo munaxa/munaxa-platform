@@ -69,6 +69,10 @@ The Identity sign-in page shows the usual email and password form. When the emai
 ### 3.7 Not in scope
 SAML (Platform has only a placeholder; OpenID Connect covers Microsoft 365 and Google Workspace), automatic user sync (SCIM), and moving Docs or School onto Munaxa Identity. For Docs, the cheaper path is to add the sign-in button to the Docs web app on top of its existing server support (about 2 to 3 days), when the owner wants it.
 
+### 3.8 Follow-up question from the owner (18:00 UTC): unify sign-in across all apps?
+
+Recommendation: **yes, unify on Munaxa Identity** (not the reverse). Today there are three sign-in systems: Identity (Work, Control), Docs' own accounts, and School's own accounts (`munaxa-school/apps/api/src/auth/services/token.service.ts`, `password.service.ts`). Identity is the hardened shared authority (MFA, session revocation, rate limits, refresh reuse detection) and Work and Control already depend on it, so adding Microsoft/Google there once serves every app that uses it. Suggested order: (1) company sign-in in Identity (this proposal), (2) move Docs onto Identity (larger: Docs users, roles and document ACLs reference Docs' own user ids; not yet measured), (3) move School onto Identity before it has real users. Docs' federation code is the reference implementation for step 1. Step 1 does not block steps 2 or 3.
+
 ## 4. Phases and effort (estimates)
 
 | Phase | Content | Estimate |
