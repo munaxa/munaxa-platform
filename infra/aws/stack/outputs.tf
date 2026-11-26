@@ -61,6 +61,11 @@ output "run_task_network" {
     # identity-probe runs with identity_group (identity-probe.tf), assignPublicIp ENABLED.
     identity_probe_definition = length(aws_ecs_task_definition.identity_probe) > 0 ? aws_ecs_task_definition.identity_probe[0].family : null
     identity_group            = length(module.identity) > 0 ? module.identity[0].security_group_id : null
+    # Work demo starter data (work-demo.tf): work-demo-account with db_admin_group, then
+    # work-demo-loader with work_api_group.
+    work_demo_account_definition = length(aws_ecs_task_definition.work_demo_account) > 0 ? aws_ecs_task_definition.work_demo_account[0].family : null
+    work_demo_loader_definition  = length(aws_ecs_task_definition.work_demo_loader) > 0 ? aws_ecs_task_definition.work_demo_loader[0].family : null
+    work_api_group               = length(module.work_api) > 0 ? module.work_api[0].security_group_id : null
   }
 }
 
