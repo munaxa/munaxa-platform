@@ -19,3 +19,8 @@ Date: 26 Nov 2026. Review only. PR https://github.com/munaxa/munaxa-docs/pull/19
 - Open redirect: `next` passes `safeDestination` (WHATWG parse twice, on-origin, no `//`) on the page, in the action and at the callback; it is stored in the server-set cookie; failures go to a fixed page.
 - Cookie scope: `path=/auth/federation`, 10 min, HttpOnly, Lax, Secure in production; session cookies unchanged; middleware adds only the `/auth/federation/` prefix.
 - Error handling: one generic message; no reason in the URL; no cookie is set when the API refuses to start.
+
+## Re-review at `417c8b8632aadadcc446c0aee181440e7deed33b`
+
+L-1, L-2 and I-1 are fixed (`__Host-edms_federation` in production with path `/`; relative Location headers with `no-store`; a provider error spends the binding). I-2 is accepted (the authorization URL comes from the tenant's admin-configured provider). Verdict unchanged.
+New **L-3 (Low)**: deleting a `__Host-` cookie through `cookies().delete` emits no `Secure`, so browsers ignore the deletion and the binding lives out its 10 minutes. Not exploitable, because the API state is single-use. Fix: delete with `secure: true, maxAge: 0`.
