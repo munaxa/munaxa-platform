@@ -513,6 +513,12 @@ variable "identity_oidc_clients" {
   }
 }
 
+variable "password_sign_in_emergency" {
+  description = "Munaxa sign-in only (owner decision 26 Nov 2026): once Docs or School signs in through Munaxa Identity, staff passwords are off. True lets school and Docs organisation administrators use their password again, audited, for an Identity outage; switch it back off afterwards."
+  type        = bool
+  default     = false
+}
+
 variable "school_identity_sign_in" {
   description = "Sign in with Munaxa Identity for School (munaxa-school#32): one entry per school, naming its Identity client and organisation. Empty leaves it off. Each client must also be in identity_oidc_clients with the School callback; its secret lives in both the identity and school-api bundles."
   type = list(object({

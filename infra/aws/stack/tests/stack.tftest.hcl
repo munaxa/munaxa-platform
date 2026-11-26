@@ -1863,8 +1863,8 @@ run "school_identity_sign_in_off_by_default" {
   command = plan
 
   assert {
-    condition     = length(local.school_identity_environment) == 0 && !contains(local.secret_keys["school-api"], "IDENTITY_SIGN_IN_CLIENT_SECRETS")
-    error_message = "With no schools the School environment and bundle contract are unchanged."
+    condition     = jsonencode(local.school_identity_environment) == jsonencode({ STAFF_PASSWORD_SIGN_IN = "enabled" }) && !contains(local.secret_keys["school-api"], "IDENTITY_SIGN_IN_CLIENT_SECRETS")
+    error_message = "With no schools staff passwords stay on and the bundle contract is unchanged."
   }
 }
 
@@ -1881,13 +1881,18 @@ run "school_identity_sign_in_paired_with_identity" {
 
   assert {
     condition = jsonencode(local.school_identity_environment) == jsonencode({
+      STAFF_PASSWORD_SIGN_IN        = "disabled"
       IDENTITY_SIGN_IN              = "enabled"
       IDENTITY_ISSUER               = "https://${var.hosts.identity}"
       IDENTITY_SIGN_IN_REDIRECT_URI = "https://school.test.munaxa.com/api/v1/auth/identity/callback"
       IDENTITY_SIGN_IN_CLIENTS      = "al-noor|school-al-noor|al-noor"
       IDENTITY_PUBLIC_KEYS          = var.identity_public_keys
     })
-    error_message = "School gets the switch, Identity's issuer, its callback, the pairing and Identity's public keys."
+    error_message = "School gets Munaxa-only staff sign-in, the switch, Identity's issuer, its callback, the pairing and Identity's public keys."
+  }
+  assert {
+    condition     = local.docs_password_sign_in == "enabled"
+    error_message = "A School client does not make Docs Munaxa-only."
   }
   assert {
     condition     = contains(local.secret_keys["school-api"], "IDENTITY_SIGN_IN_CLIENT_SECRETS")
@@ -2002,4 +2007,66 @@ run "school_provision_refuses_a_bad_slug" {
     school_provision = { slug = "Munaxa Demo", name = "x" }
   }
   expect_failures = [var.school_provision]
+}
+
+# --- Munaxa sign-in only (owner decision 26 Nov 2026; munaxa-school#33, munaxa-docs#193) ----------
+
+run "password_sign_in_stays_on_without_identity" {
+  command = plan
+
+  assert {
+    condition     = local.docs_password_sign_in == "enabled"
+    error_message = "Docs keeps passwords until Identity has a Docs client."
+  }
+}
+
+run "docs_munaxa_only_once_identity_has_a_docs_client" {
+  command = plan
+
+  variables {
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator.test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+      docs        = "docs.test.munaxa.com"
+    }
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients = [
+      { client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/auth/federation/callback"] },
+    ]
+  }
+
+  assert {
+    condition     = local.docs_password_sign_in == "disabled"
+    error_message = "With a Docs client, Docs staff sign in with Munaxa."
+  }
+}
+
+run "emergency_lets_administrators_use_passwords" {
+  command = plan
+
+  variables {
+    hosts = {
+      identity    = "id.test.munaxa.com"
+      control_api = "control-api.test.munaxa.com"
+      operator    = "operator.test.munaxa.com"
+      work        = "work.test.munaxa.com"
+      school      = "school.test.munaxa.com"
+      docs        = "docs.test.munaxa.com"
+    }
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients = [
+      { client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/auth/federation/callback"] },
+      { client_id = "school-al-noor", organisation = "al-noor", redirect_uris = ["https://school.test.munaxa.com/api/v1/auth/identity/callback"] },
+    ]
+    school_identity_sign_in    = [{ school = "al-noor", client_id = "school-al-noor", organisation = "al-noor" }]
+    password_sign_in_emergency = true
+  }
+
+  assert {
+    condition     = local.docs_password_sign_in == "emergency" && local.school_identity_environment["STAFF_PASSWORD_SIGN_IN"] == "emergency"
+    error_message = "The emergency switch reaches both Docs and School."
+  }
 }

@@ -685,10 +685,16 @@ module "work_admin" {
 # NEXT_PUBLIC_API_URL into the image at build time, so each environment has its own admin build
 # (publish workflow input), served on the same host as the API so the browser stays same-origin.
 
-# Sign in with Munaxa Identity for School (school_identity_sign_in, munaxa-school#32). Empty adds
-# nothing. The client secrets are a school-api bundle key (data.tf).
+# Sign in with Munaxa Identity for School (school_identity_sign_in, munaxa-school#32). Empty keeps
+# staff passwords on and adds nothing else. The client secrets are a school-api bundle key (data.tf).
 locals {
-  school_identity_environment = length(var.school_identity_sign_in) == 0 ? {} : {
+  # Munaxa-only for staff once Identity sign-in is wired (munaxa-school#33); parents and students
+  # keep their passwords. Without Identity, staff passwords stay on: School refuses to start
+  # Munaxa-only with nothing to sign in through.
+  school_identity_environment = length(var.school_identity_sign_in) == 0 ? {
+    STAFF_PASSWORD_SIGN_IN = "enabled"
+    } : {
+    STAFF_PASSWORD_SIGN_IN        = var.password_sign_in_emergency ? "emergency" : "disabled"
     IDENTITY_SIGN_IN              = "enabled"
     IDENTITY_ISSUER               = local.https.identity
     IDENTITY_SIGN_IN_REDIRECT_URI = "${local.https.school}/api/v1/auth/identity/callback"
