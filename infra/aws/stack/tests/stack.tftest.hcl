@@ -1751,8 +1751,8 @@ run "oidc_provider_off_by_default_adds_nothing" {
   command = plan
 
   assert {
-    condition     = !contains(local.identity_secret_keys, "IDENTITY_OIDC_CLIENT_SECRETS") && length(local.identity_oidc_environment) == 0 && length(aws_secretsmanager_secret.identity_oidc_clients) == 0
-    error_message = "With no clients the identity contract and environment are unchanged and no client secret exists."
+    condition     = !contains(local.identity_secret_keys, "IDENTITY_OIDC_CLIENT_SECRETS") && length(local.identity_oidc_environment) == 0
+    error_message = "With no clients the identity contract and environment are unchanged."
   }
   assert {
     condition     = !contains(split(",", local.docs_outbound_http_allowlist), var.hosts.identity)
@@ -1767,11 +1767,6 @@ run "oidc_provider_with_clients" {
     target          = aws_secretsmanager_secret.service["identity"]
     override_during = plan
     values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
-  }
-  override_resource {
-    target          = aws_secretsmanager_secret.identity_oidc_clients[0]
-    override_during = plan
-    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-GhIjKl" }
   }
 
   variables {
@@ -1788,18 +1783,25 @@ run "oidc_provider_with_clients" {
   }
 
   assert {
-    condition     = !contains(local.secret_keys["identity"], "IDENTITY_OIDC_CLIENT_SECRETS") && aws_secretsmanager_secret.identity_oidc_clients[0].name == "munaxa-nonprod/identity-oidc-clients"
+    condition     = !contains(local.secret_keys["identity"], "IDENTITY_OIDC_CLIENT_SECRETS")
     error_message = "The client secrets never join the identity bundle; they have their own secret."
   }
   assert {
     condition = {
       for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.name => s.valueFrom
-    }["IDENTITY_OIDC_CLIENT_SECRETS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-GhIjKl:IDENTITY_OIDC_CLIENT_SECRETS::00000000-0000-4000-8000-000000000004"
+    }["IDENTITY_OIDC_CLIENT_SECRETS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients:IDENTITY_OIDC_CLIENT_SECRETS::00000000-0000-4000-8000-000000000004"
     error_message = "Identity reads the client secrets from their own secret, pinned to its version."
   }
   assert {
     condition     = length([for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s if startswith(s.valueFrom, "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:")]) == length(local.secret_keys["identity"])
     error_message = "Every other Identity secret still comes from the identity bundle."
+  }
+  assert {
+    condition = module.identity[0].execution_role_secret_arns == tolist([
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf",
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-??????",
+    ])
+    error_message = "Identity's execution role reads its bundle and the operator-created client-secret secret only."
   }
   assert {
     condition = {

@@ -95,6 +95,9 @@ variable "extra_secrets" {
     secret_arn = string
     key        = string
     version_id = string
+    # The ARN the execution role may read, when secret_arn is a name-only (partial) ARN of a secret
+    # created outside Terraform: "<partial ARN>-??????". Null: secret_arn itself.
+    policy_arn = optional(string)
   }))
   default = []
 }

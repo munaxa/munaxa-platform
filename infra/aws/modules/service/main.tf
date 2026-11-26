@@ -35,7 +35,7 @@ locals {
     [for e in var.extra_secrets : { name = e.name, valueFrom = "${e.secret_arn}:${e.key}::${e.version_id}" }],
   )
   reads_secret    = length(var.secret_keys) + length(var.secret_aliases) + length(var.extra_secrets) > 0
-  secret_arns     = distinct(concat(length(var.secret_keys) + length(var.secret_aliases) > 0 ? [var.secret_arn] : [], [for e in var.extra_secrets : e.secret_arn]))
+  secret_arns     = distinct(concat(length(var.secret_keys) + length(var.secret_aliases) > 0 ? [var.secret_arn] : [], [for e in var.extra_secrets : coalesce(e.policy_arn, e.secret_arn)]))
   no_capabilities = { capabilities = { add = [], drop = ["ALL"] } }
   route_map       = { for r in var.routes : tostring(r.priority) => r }
 }

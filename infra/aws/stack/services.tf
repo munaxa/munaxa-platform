@@ -180,8 +180,10 @@ module "identity" {
   # Identity as an OIDC provider: the relying parties' secrets from their own secret (data.tf).
   extra_secrets = length(var.identity_oidc_clients) == 0 ? [] : [{
     name       = "IDENTITY_OIDC_CLIENT_SECRETS"
-    secret_arn = aws_secretsmanager_secret.identity_oidc_clients[0].arn
+    secret_arn = local.identity_oidc_clients_secret
     key        = "IDENTITY_OIDC_CLIENT_SECRETS"
+    # Created by the operator, so its random suffix is unknown here.
+    policy_arn = "${local.identity_oidc_clients_secret}-??????"
     version_id = lookup(var.secret_version_ids, "identity-oidc-clients", "")
   }]
 

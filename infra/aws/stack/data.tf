@@ -216,15 +216,13 @@ resource "aws_secretsmanager_secret" "service" {
 }
 
 # Identity as an OIDC provider (identity_oidc_clients): the relying parties' client secrets,
-# `client_id=<secret>,...`, read by the Identity task as IDENTITY_OIDC_CLIENT_SECRETS. A separate
-# secret and not an identity bundle key: a new bundle version must carry every existing value, and
-# no operator or Claude session may read them back. Each relying party holds the same secret in its
-# own bundle (School: school-api IDENTITY_SIGN_IN_CLIENT_SECRETS); rotate both together.
-resource "aws_secretsmanager_secret" "identity_oidc_clients" {
-  count = length(var.identity_oidc_clients) == 0 ? 0 : 1
-
-  name                    = "${local.prefix}/identity-oidc-clients"
-  description             = "IDENTITY_OIDC_CLIENT_SECRETS for Identity as OIDC provider; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
-  kms_key_id              = aws_kms_key.data.arn
-  recovery_window_in_days = 30
+# `client_id=<secret>,...`, read by the Identity task as IDENTITY_OIDC_CLIENT_SECRETS from their own
+# secret <env>/identity-oidc-clients, never from an identity bundle key: a new bundle version must
+# carry every existing value, and no operator or Claude session may read them back. Each relying
+# party holds the same secret in its own bundle (School: school-api IDENTITY_SIGN_IN_CLIENT_SECRETS),
+# so the operator creates this secret and writes that bundle in one step, inside AWS, before the
+# apply that pins both (like <env>/identity-operator, it is not a Terraform resource: Terraform
+# could only create it empty, after the bundle version it must match). Rotate both together.
+locals {
+  identity_oidc_clients_secret = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-oidc-clients"
 }
