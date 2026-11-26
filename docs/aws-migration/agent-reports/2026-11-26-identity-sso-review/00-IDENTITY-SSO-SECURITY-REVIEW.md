@@ -39,3 +39,12 @@ Files read in full: `apps/api/src/sso/*.ts`, the migration, the auth/mfa/passwor
 ## CI
 
 At review time (18:40 UTC) checks `verify` and `Images (runtime and migrate)` were in progress on `ef7bb52`. The implementing thread merges only when they are green.
+
+## Re-review of fixes (head `079e395a7ca667f88ab9a129f5d7b86d3b37b122`, 18:45 UTC)
+
+Verdict unchanged: no Critical or High.
+
+- **M-1 resolved.** Microsoft tokens with an `idp` claim other than the tenant's own issuer (v1 or v2 form) are refused as `GUEST_ACCOUNT` (other-tenant and `live.com` guests). The first bind uses the UPN (`preferred_username`, verified-domain suffix); `email` only when `xms_edov` is true; `#EXT#` UPNs never match. Tests added for each case.
+- **L-2 resolved.** Foreign key is now `(identity_provider_id, tenant_id)` to `identity_sso_connection(id, tenant_id)`; Prisma relation matches.
+- **L-1 accepted as documented.** Runbook states `--trust-provider-mfa` is an operator attestation not checked per sign-in.
+- **I-4 (new, informational).** The directory-id check accepts the Microsoft consumer tenant GUID `9188040d-6c67-4c5b-b112-36a304b66dad`; a connection created with it by mistake would admit personal accounts. Suggest refusing it in `sso-connection-add`.
