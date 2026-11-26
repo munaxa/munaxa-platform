@@ -122,8 +122,8 @@ run "session_runs_every_service_behind_the_edge" {
   }
 
   assert {
-    condition     = length(aws_ecs_task_definition.identity_bootstrap) == 1 && length(aws_iam_role.identity_bootstrap_execution) == 1 && length(aws_ecs_task_definition.school_bootstrap) == 1
-    error_message = "Identity's first-operator and School's first-owner tasks are registered."
+    condition     = length(aws_ecs_task_definition.identity_bootstrap) == 1 && length(aws_iam_role.identity_bootstrap_execution) == 1
+    error_message = "Identity's first-operator task is registered."
   }
   assert {
     condition     = length(aws_lb.main) == 1 && aws_lb_listener.https[0].ssl_policy == "ELBSecurityPolicy-TLS13-1-2-2021-06"
@@ -1117,7 +1117,7 @@ run "identity_only_config_a1_registers_identity_and_nothing_of_another_product" 
     error_message = "Config A1 has no Control resource and no licence key."
   }
   assert {
-    condition     = length(module.work_api) == 0 && length(module.work_admin) == 0 && length(module.school_api) == 0 && length(module.school_admin) == 0 && length(aws_ecs_task_definition.school_bootstrap) == 0
+    condition     = length(module.work_api) == 0 && length(module.work_admin) == 0 && length(module.school_api) == 0 && length(module.school_admin) == 0 && length(aws_ecs_task_definition.school_provision) == 0
     error_message = "Config A1 has no Work or School resource."
   }
   assert {
@@ -1744,14 +1744,15 @@ run "sso_refuses_a_google_id_of_the_wrong_shape" {
 #
 # Empty leaves everything above unchanged. Set, Identity gets IDENTITY_OIDC_PROVIDER=enabled and the
 # public client list in its own `id|organisation|uri uri;...` form, reads IDENTITY_OIDC_CLIENT_SECRETS
-# from its bundle, pinned, and the Docs API may call the Identity host.
+# from its own secret <env>/identity-oidc-clients (never the identity bundle), pinned, and the Docs
+# API may call the Identity host.
 
 run "oidc_provider_off_by_default_adds_nothing" {
   command = plan
 
   assert {
-    condition     = !contains(local.identity_secret_keys, "IDENTITY_OIDC_CLIENT_SECRETS") && length(local.identity_oidc_environment) == 0
-    error_message = "With no clients the identity contract and environment are unchanged."
+    condition     = !contains(local.identity_secret_keys, "IDENTITY_OIDC_CLIENT_SECRETS") && length(local.identity_oidc_environment) == 0 && length(aws_secretsmanager_secret.identity_oidc_clients) == 0
+    error_message = "With no clients the identity contract and environment are unchanged and no client secret exists."
   }
   assert {
     condition     = !contains(split(",", local.docs_outbound_http_allowlist), var.hosts.identity)
@@ -1767,10 +1768,15 @@ run "oidc_provider_with_clients" {
     override_during = plan
     values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
   }
+  override_resource {
+    target          = aws_secretsmanager_secret.identity_oidc_clients[0]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-GhIjKl" }
+  }
 
   variables {
     db_bootstrap_products = ["identity"]
-    secret_version_ids    = { identity = "00000000-0000-4000-8000-000000000003" }
+    secret_version_ids    = { identity = "00000000-0000-4000-8000-000000000003", identity-oidc-clients = "00000000-0000-4000-8000-000000000004" }
     images = {
       identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     }
@@ -1782,14 +1788,18 @@ run "oidc_provider_with_clients" {
   }
 
   assert {
-    condition     = local.secret_keys["identity"][length(local.secret_keys["identity"]) - 1] == "IDENTITY_OIDC_CLIENT_SECRETS"
-    error_message = "The client secrets join the identity bundle contract."
+    condition     = !contains(local.secret_keys["identity"], "IDENTITY_OIDC_CLIENT_SECRETS") && aws_secretsmanager_secret.identity_oidc_clients[0].name == "munaxa-nonprod/identity-oidc-clients"
+    error_message = "The client secrets never join the identity bundle; they have their own secret."
   }
   assert {
     condition = {
       for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.name => s.valueFrom
-    }["IDENTITY_OIDC_CLIENT_SECRETS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:IDENTITY_OIDC_CLIENT_SECRETS::00000000-0000-4000-8000-000000000003"
-    error_message = "Identity reads the client secrets from its own bundle, pinned to the version."
+    }["IDENTITY_OIDC_CLIENT_SECRETS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-GhIjKl:IDENTITY_OIDC_CLIENT_SECRETS::00000000-0000-4000-8000-000000000004"
+    error_message = "Identity reads the client secrets from their own secret, pinned to its version."
+  }
+  assert {
+    condition     = length([for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s if startswith(s.valueFrom, "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:")]) == length(local.secret_keys["identity"])
+    error_message = "Every other Identity secret still comes from the identity bundle."
   }
   assert {
     condition = {
@@ -1901,4 +1911,93 @@ run "school_identity_sign_in_refuses_an_organisation_mismatch" {
     school_identity_sign_in = [{ school = "al-noor", client_id = "school-al-noor", organisation = "al-noor" }]
   }
   expect_failures = [var.school_identity_sign_in]
+}
+
+# --- School's first school and administrator (school_provision; munaxa-school#34) ---------------
+#
+# Null defines nothing. Set with the School API pinned, one run-only task from the School API image
+# that reads only the school-api DATABASE_URL (pinned) and ADMIN_EMAIL from the one-run secret
+# school-provision/<slug>; the slug and name are plain environment.
+
+run "school_provision_off_by_default" {
+  command = plan
+
+  variables {
+    images = {
+      school_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  }
+
+  assert {
+    condition     = length(aws_ecs_task_definition.school_provision) == 0 && length(aws_iam_role.school_provision_execution) == 0
+    error_message = "Without school_provision no provisioning task or role exists."
+  }
+}
+
+run "school_provision_task" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["school-api"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/school-api-AbCdEf" }
+  }
+  override_resource {
+    target          = aws_kms_key.data
+    override_during = plan
+    values          = { arn = "arn:aws:kms:eu-central-1:229251310592:key/00000000-0000-4000-8000-00000000000d" }
+  }
+  override_resource {
+    target          = aws_cloudwatch_log_group.ops
+    override_during = plan
+    values          = { arn = "arn:aws:logs:eu-central-1:229251310592:log-group:/munaxa/nonprod/ops" }
+  }
+
+  variables {
+    secret_version_ids = { school-api = "00000000-0000-4000-8000-000000000005" }
+    school_provision   = { slug = "munaxa-demo", name = "Munaxa Demo School" }
+    images = {
+      school_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  }
+
+  assert {
+    condition     = aws_ecs_task_definition.school_provision[0].family == "munaxa-nonprod-school-provision"
+    error_message = "One run-only school-provision task is registered."
+  }
+  assert {
+    condition = jsondecode(aws_ecs_task_definition.school_provision[0].container_definitions)[0].command == ["node", "dist/ops/provision-school.js"] && {
+      for e in jsondecode(aws_ecs_task_definition.school_provision[0].container_definitions)[0].environment : e.name => e.value
+      } == {
+      NODE_ENV    = "production"
+      SCHOOL_SLUG = "munaxa-demo"
+      SCHOOL_NAME = "Munaxa Demo School"
+      APPLY       = "yes"
+    }
+    error_message = "It runs School's provisioning script with the slug and name as plain environment."
+  }
+  assert {
+    condition = {
+      for s in jsondecode(aws_ecs_task_definition.school_provision[0].container_definitions)[0].secrets : s.name => s.valueFrom
+      } == {
+      DATABASE_URL = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/school-api-AbCdEf:DATABASE_URL::00000000-0000-4000-8000-000000000005"
+      ADMIN_EMAIL  = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/school-provision/munaxa-demo:ADMIN_EMAIL::"
+    }
+    error_message = "It reads the pinned School app URL and the administrator's address from the one-run secret only."
+  }
+  assert {
+    condition = [for s in jsondecode(aws_iam_role_policy.school_provision_execution[0].policy).Statement : s.Resource if s.Sid == "ReadAppUrlAndOneRunSecret"][0] == [
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/school-api-AbCdEf",
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/school-provision/munaxa-demo-??????",
+    ]
+    error_message = "Its execution role reads only those two secrets."
+  }
+}
+
+run "school_provision_refuses_a_bad_slug" {
+  command = plan
+  variables {
+    school_provision = { slug = "Munaxa Demo", name = "x" }
+  }
+  expect_failures = [var.school_provision]
 }

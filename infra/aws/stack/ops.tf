@@ -302,47 +302,74 @@ resource "aws_ecs_task_definition" "identity_bootstrap" {
   }])
 }
 
-# --- School's first platform owner (run-only) ----------------------------------------------------
+# --- School's first school and administrator (run-only) ------------------------------------------
 #
-# School's seeds (its seed-environment.yml steps: prisma/seed.ts, then
-# scripts/seed-platform-owner.ts), run from the School migrate image, which carries the sources and
-# tsx, as school_owner (the seeds write across tenants). A CI runner cannot reach the private
-# database, so this task replaces that workflow on AWS. PLATFORM_OWNER_EMAIL and
-# PLATFORM_OWNER_PASSWORD come from a one-run secret, munaxa-<env>/school-bootstrap, which the
-# owner creates before the run and deletes after it; the script's development defaults never apply,
-# because the task does not start without the secret. Run with db_admin_group, after school-migrate.
+# munaxa-school#34 removed School's own platform console and its platform-owner seed: Munaxa
+# operators manage School customers, plans and licences in Control, and a school's staff sign in
+# with Munaxa Identity only (school#33). A school and its first SchoolAdmin (no School password) are
+# created by `node dist/ops/provision-school.js` from the School API image (munaxa-school
+# docs/ops/new-school.md), with the API's own database settings (school_app; the script writes in
+# the platform RLS context like every School seed). It is idempotent and never changes an existing
+# user. The school's slug and name are not secret and come from school_provision; ADMIN_EMAIL is a
+# person's address, so it comes from a one-run secret munaxa-<env>/school-provision/<slug>, created
+# right before the run and deleted right after it (like work-demo-loader/<org>), never from this
+# repository or a run-task override. Run with db_admin_group, after school-migrate, once per school.
 
-resource "aws_iam_role" "school_bootstrap_execution" {
-  count = local.defined.school_migrate ? 1 : 0
+variable "school_provision" {
+  description = "The school the run-only school-provision task creates (munaxa-school docs/ops/new-school.md): its slug and display name, not secret. Null defines no task."
+  type = object({
+    slug = string
+    name = string
+  })
+  default = null
 
-  name                 = "${local.prefix}-school-bootstrap-execution"
+  validation {
+    condition     = var.school_provision == null || can(regex("^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$", var.school_provision.slug))
+    error_message = "school_provision.slug is lowercase letters, digits and -, at most 64 (School's own rule)."
+  }
+
+  validation {
+    condition     = var.school_provision == null || (length(trimspace(var.school_provision.name)) > 0 && length(var.school_provision.name) <= 200)
+    error_message = "school_provision.name is 1 to 200 characters."
+  }
+}
+
+locals {
+  school_provision_defined = var.school_provision != null && local.defined.school_api
+  school_provision_secret  = var.school_provision == null ? "" : "${local.prefix}/school-provision/${var.school_provision.slug}"
+}
+
+resource "aws_iam_role" "school_provision_execution" {
+  count = local.school_provision_defined ? 1 : 0
+
+  name                 = "${local.prefix}-school-provision-execution"
   path                 = "/munaxa-shared/"
   permissions_boundary = "arn:aws:iam::${var.account_id}:policy/munaxa-shared/munaxa-shared-workload-boundary"
   assume_role_policy   = aws_iam_role.db_admin_execution.assume_role_policy
 }
 
-resource "aws_iam_role_policy" "school_bootstrap_execution" {
-  count = local.defined.school_migrate ? 1 : 0
+resource "aws_iam_role_policy" "school_provision_execution" {
+  count = local.school_provision_defined ? 1 : 0
 
   name = "execution"
-  role = aws_iam_role.school_bootstrap_execution[0].id
+  role = aws_iam_role.school_provision_execution[0].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       { Sid = "EcrSignIn", Effect = "Allow", Action = "ecr:GetAuthorizationToken", Resource = "*" },
       {
-        Sid      = "PullSchoolMigrate"
+        Sid      = "PullSchoolApi"
         Effect   = "Allow"
         Action   = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"]
-        Resource = "arn:aws:ecr:${var.region}:${var.account_id}:repository/munaxa-school/migrate"
+        Resource = "arn:aws:ecr:${var.region}:${var.account_id}:repository/munaxa-school/api"
       },
       {
-        Sid    = "ReadOwnerUrlAndOneRunSecret"
+        Sid    = "ReadAppUrlAndOneRunSecret"
         Effect = "Allow"
         Action = "secretsmanager:GetSecretValue"
         Resource = [
-          aws_secretsmanager_secret.service["school-migrate"].arn,
-          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/school-bootstrap-??????",
+          aws_secretsmanager_secret.service["school-api"].arn,
+          "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.school_provision_secret}-??????",
         ]
       },
       {
@@ -362,16 +389,16 @@ resource "aws_iam_role_policy" "school_bootstrap_execution" {
   })
 }
 
-resource "aws_ecs_task_definition" "school_bootstrap" {
-  count = local.defined.school_migrate ? 1 : 0
+resource "aws_ecs_task_definition" "school_provision" {
+  count = local.school_provision_defined ? 1 : 0
 
-  family                   = "${local.prefix}-school-bootstrap"
+  family                   = "${local.prefix}-school-provision"
   skip_destroy             = true
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = 512
-  memory                   = 1024
-  execution_role_arn       = aws_iam_role.school_bootstrap_execution[0].arn
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.school_provision_execution[0].arn
 
   runtime_platform {
     operating_system_family = "LINUX"
@@ -379,30 +406,29 @@ resource "aws_ecs_task_definition" "school_bootstrap" {
   }
 
   container_definitions = jsonencode([{
-    name                   = "school-bootstrap"
-    image                  = var.images.school_migrate
+    name                   = "school-provision"
+    image                  = var.images.school_api
     essential              = true
-    readonlyRootFilesystem = false # tsx compiles into its cache
+    readonlyRootFilesystem = true
     linuxParameters        = { capabilities = { add = [], drop = ["ALL"] } }
-    # Working directory /repo/apps/api (the migrate target). The owner URL is the seeds' connection.
-    # No environment: NODE_ENV inherits production from the image, and no seed reads it.
-    entryPoint = ["sh", "-c"]
-    command = [join(" && ", [
-      "export DATABASE_URL=\"$DATABASE_MIGRATION_URL\" DIRECT_DATABASE_URL=\"$DATABASE_MIGRATION_URL\"",
-      "./node_modules/.bin/tsx ../../prisma/seed.ts",
-      "exec ./node_modules/.bin/tsx scripts/seed-platform-owner.ts",
-    ])]
+    # The runtime image's working directory is /app; Prisma reads DATABASE_URL.
+    command = ["node", "dist/ops/provision-school.js"]
+    environment = [
+      { name = "NODE_ENV", value = "production" },
+      { name = "SCHOOL_SLUG", value = var.school_provision.slug },
+      { name = "SCHOOL_NAME", value = var.school_provision.name },
+      { name = "APPLY", value = "yes" },
+    ]
     secrets = [
-      { name = "DATABASE_MIGRATION_URL", valueFrom = "${aws_secretsmanager_secret.service["school-migrate"].arn}:DATABASE_MIGRATION_URL::${lookup(var.secret_version_ids, "school-migrate", "")}" },
-      { name = "PLATFORM_OWNER_EMAIL", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/school-bootstrap:PLATFORM_OWNER_EMAIL::" },
-      { name = "PLATFORM_OWNER_PASSWORD", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/school-bootstrap:PLATFORM_OWNER_PASSWORD::" },
+      { name = "DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.service["school-api"].arn}:DATABASE_URL::${lookup(var.secret_version_ids, "school-api", "")}" },
+      { name = "ADMIN_EMAIL", valueFrom = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.school_provision_secret}:ADMIN_EMAIL::" },
     ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
         awslogs-group         = aws_cloudwatch_log_group.ops.name
         awslogs-region        = var.region
-        awslogs-stream-prefix = "school-bootstrap"
+        awslogs-stream-prefix = "school-provision"
       }
     }
   }])

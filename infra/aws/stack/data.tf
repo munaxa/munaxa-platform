@@ -154,7 +154,9 @@ resource "aws_db_instance" "main" {
 # |                          | + MFA_ENCRYPTION_KEYS (only with identity_security_config, AW-01)   |
 # |                          | + IDENTITY_SSO_MICROSOFT_CLIENT_SECRET, IDENTITY_SSO_GOOGLE_CLIENT_  |
 # |                          |   SECRET (each only for a provider in identity_sso_config)          |
-# |                          | + IDENTITY_OIDC_CLIENT_SECRETS (only with identity_oidc_clients)     |
+# | <env>/identity-oidc-     | IDENTITY_OIDC_CLIENT_SECRETS (only with identity_oidc_clients): its  |
+# |   clients                | own secret, so adding a relying party never rewrites the identity   |
+# |                          | bundle (whose values nobody may read back to copy them)             |
 # | <env>/control-api        | DATABASE_URL                                                        |
 # | <env>/work-api           | DATABASE_URL, PII_MATCH_SECRET, CONTROL_PLANE_TOKEN                 |
 # | <env>/school-api         | DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,                |
@@ -178,8 +180,6 @@ locals {
     # Company sign-in client secrets (identity_sso_config): one key per configured provider only.
     try(var.identity_sso_config.microsoft_client_id, "") == "" ? [] : ["IDENTITY_SSO_MICROSOFT_CLIENT_SECRET"],
     try(var.identity_sso_config.google_client_id, "") == "" ? [] : ["IDENTITY_SSO_GOOGLE_CLIENT_SECRET"],
-    # Identity as OIDC provider (identity_oidc_clients): `client_id=<secret>,...` for every client.
-    length(var.identity_oidc_clients) == 0 ? [] : ["IDENTITY_OIDC_CLIENT_SECRETS"],
   )
 
   secret_keys = merge(local.docs_enabled ? {
@@ -211,6 +211,20 @@ resource "aws_secretsmanager_secret" "service" {
 
   name                    = "${local.prefix}/${each.key}"
   description             = "${each.key} bundle; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
+  kms_key_id              = aws_kms_key.data.arn
+  recovery_window_in_days = 30
+}
+
+# Identity as an OIDC provider (identity_oidc_clients): the relying parties' client secrets,
+# `client_id=<secret>,...`, read by the Identity task as IDENTITY_OIDC_CLIENT_SECRETS. A separate
+# secret and not an identity bundle key: a new bundle version must carry every existing value, and
+# no operator or Claude session may read them back. Each relying party holds the same secret in its
+# own bundle (School: school-api IDENTITY_SIGN_IN_CLIENT_SECRETS); rotate both together.
+resource "aws_secretsmanager_secret" "identity_oidc_clients" {
+  count = length(var.identity_oidc_clients) == 0 ? 0 : 1
+
+  name                    = "${local.prefix}/identity-oidc-clients"
+  description             = "IDENTITY_OIDC_CLIENT_SECRETS for Identity as OIDC provider; keys listed in infra/aws/stack/data.tf. Values are written by the operator, never by Terraform"
   kms_key_id              = aws_kms_key.data.arn
   recovery_window_in_days = 30
 }

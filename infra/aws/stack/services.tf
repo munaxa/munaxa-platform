@@ -123,8 +123,8 @@ locals {
 }
 
 # Identity as an OIDC provider (identity_oidc_clients, munaxa-identity ADR-0008): the switch and the
-# public client list in Identity's `id|organisation|uri uri;...` form. The secrets are a bundle key
-# (data.tf). Empty adds nothing, so the environment is unchanged.
+# public client list in Identity's `id|organisation|uri uri;...` form. The secrets are their own
+# secret, <env>/identity-oidc-clients (data.tf). Empty adds nothing, so the environment is unchanged.
 locals {
   identity_oidc_environment = length(var.identity_oidc_clients) == 0 ? {} : {
     IDENTITY_OIDC_PROVIDER = "enabled"
@@ -177,6 +177,13 @@ module "identity" {
   # local.identity_secret_keys (data.tf): MFA_ENCRYPTION_KEYS joins only with identity_security_config.
   secret_keys       = local.secret_keys["identity"]
   secret_version_id = lookup(var.secret_version_ids, "identity", "")
+  # Identity as an OIDC provider: the relying parties' secrets from their own secret (data.tf).
+  extra_secrets = length(var.identity_oidc_clients) == 0 ? [] : [{
+    name       = "IDENTITY_OIDC_CLIENT_SECRETS"
+    secret_arn = aws_secretsmanager_secret.identity_oidc_clients[0].arn
+    key        = "IDENTITY_OIDC_CLIENT_SECRETS"
+    version_id = lookup(var.secret_version_ids, "identity-oidc-clients", "")
+  }]
 
   # Identity's security state (rate limits, lockouts, MFA challenges and attempts, TOTP replay
   # markers, reauthentication markers, the permission cache) lives in one Redis-protocol store
