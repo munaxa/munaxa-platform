@@ -77,8 +77,8 @@ locals {
     # Published 26 Nov 2026 by munaxa-school publish-images-testing.yml on c51dd62 (school#35 School
     # exception, owner decision 26 Nov 21:30 UTC), pinned by the School pin
     # (report 2026-11-26-school-testing). First School images on Testing.
-    "sha256:a6541698a5f58777c8f91464a1bca47be22669e0d2591845d6b3175693c94d03"     = "munaxa-school/api testing-c51dd62: D-SSL Testing-only"
-    "sha256:b0ed1eff0fd914c04f1d2d5532599d0d9641305d39cab85f4fb49e0f9ef3dbe3"   = "munaxa-school/admin testing-c51dd62-nonprod: D-SSL Testing-only"
+    "sha256:a6541698a5f58777c8f91464a1bca47be22669e0d2591845d6b3175693c94d03" = "munaxa-school/api testing-c51dd62: D-SSL Testing-only"
+    "sha256:b0ed1eff0fd914c04f1d2d5532599d0d9641305d39cab85f4fb49e0f9ef3dbe3" = "munaxa-school/admin testing-c51dd62-nonprod: D-SSL Testing-only"
     "sha256:7aa8a73e581dccefacef01875bf4b85aafd3acb21738c3a59e7ba601d1c2e14a" = "munaxa-school/migrate testing-c51dd62: D-SSL Testing-only"
   }
 }
