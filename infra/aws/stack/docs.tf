@@ -41,7 +41,13 @@ locals {
     for v in [var.images.docs_api, var.images.docs_web, var.images.docs_antivirus, var.images.docs_migrate, var.docs_redis_image] : v != ""
   ])
 
-  docs_origin      = local.docs_enabled ? "https://${var.hosts.docs}" : ""
+  docs_origin = local.docs_enabled ? "https://${var.hosts.docs}" : ""
+  # Munaxa sign-in only once Identity has a client for Docs (munaxa-docs#193). Docs still keeps
+  # passwords for an organisation that has not turned its Munaxa sign-in on, so nobody is locked
+  # out; the web /login leads with Sign in with Munaxa.
+  docs_password_sign_in = local.docs_enabled && anytrue([
+    for c in var.identity_oidc_clients : anytrue([for u in c.redirect_uris : startswith(u, "${local.docs_origin}/")])
+  ]) ? (var.password_sign_in_emergency ? "emergency" : "disabled") : "enabled"
   docs_bucket      = local.docs_enabled ? aws_s3_bucket.files["docs"] : null
   docs_api_dns     = "docs-api.${aws_service_discovery_private_dns_namespace.main.name}"
   docs_scanner_dns = "docs-scanner.${aws_service_discovery_private_dns_namespace.main.name}"
@@ -99,6 +105,7 @@ locals {
     LICENSING_MODE          = "CONTROL_PLANE"
     CONTROL_PLANE_URL       = local.https.control_api
     OUTBOUND_HTTP_ALLOWLIST = local.docs_outbound_http_allowlist
+    PASSWORD_SIGN_IN        = local.docs_password_sign_in
   }
 
   # Redis reads its password from the environment and writes it to a config file with a shell
@@ -231,6 +238,7 @@ module "docs_web" {
     PORT                = "3000"
     NEXT_PUBLIC_API_URL = "http://${local.docs_api_dns}:3001"
     WEB_TRUST_PROXY     = local.docs_trust_proxy
+    PASSWORD_SIGN_IN    = local.docs_password_sign_in
   }
 
   create_service    = local.running
