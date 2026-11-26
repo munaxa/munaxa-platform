@@ -127,6 +127,17 @@ identity_security_config = {
 #   google_client_id    = "<…apps.googleusercontent.com>"
 # }
 
+# Identity as the sign-in provider for Docs (munaxa-identity ADR-0008, docs#192). Before uncommenting,
+# the owner writes IDENTITY_OIDC_CLIENT_SECRETS (`docs-munaxa-group=<48 random base64url characters>`)
+# into the identity bundle, the same secret goes into the Docs organisation's identity-provider record,
+# and secret_version_ids.identity names the new version. Then, with an Identity image containing
+# identity#33 and a Docs web image containing docs#192:
+# identity_oidc_clients = [{
+#   client_id     = "docs-munaxa-group"
+#   organisation  = "munaxa-group"
+#   redirect_uris = ["https://<hosts.docs>/auth/federation/callback"]
+# }]
+
 # Work demo starter data (work-demo.tf): the run-only work-demo-account and work-demo-loader tasks.
 # Testing only; prod.tfvars never sets it.
 work_demo_data_enabled = true

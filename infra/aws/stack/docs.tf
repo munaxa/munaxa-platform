@@ -65,7 +65,13 @@ locals {
 
   # The API refuses every Control lookup whose host is not allow-listed, without failing at boot,
   # so the Control host is always derived from the URL and listed first (as Docs Production).
-  docs_outbound_http_allowlist = join(",", distinct(compact(concat([var.hosts.control_api], var.docs_outbound_http_allowlist_extra))))
+  # With identity_oidc_clients, Docs signs people in through Identity (ADR-0008) and fetches its
+  # discovery, keys and token endpoint, so the Identity host is listed too.
+  docs_outbound_http_allowlist = join(",", distinct(compact(concat(
+    [var.hosts.control_api],
+    length(var.identity_oidc_clients) == 0 ? [] : [var.hosts.identity],
+    var.docs_outbound_http_allowlist_extra,
+  ))))
 
   docs_api_environment = {
     NODE_ENV                   = "production"

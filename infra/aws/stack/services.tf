@@ -122,6 +122,18 @@ locals {
   )
 }
 
+# Identity as an OIDC provider (identity_oidc_clients, munaxa-identity ADR-0008): the switch and the
+# public client list in Identity's `id|organisation|uri uri;...` form. The secrets are a bundle key
+# (data.tf). Empty adds nothing, so the environment is unchanged.
+locals {
+  identity_oidc_environment = length(var.identity_oidc_clients) == 0 ? {} : {
+    IDENTITY_OIDC_PROVIDER = "enabled"
+    IDENTITY_OIDC_CLIENTS = join(";", [
+      for c in var.identity_oidc_clients : "${c.client_id}|${c.organisation}|${join(" ", c.redirect_uris)}"
+    ])
+  }
+}
+
 module "identity" {
   source = "../modules/service"
   count  = local.defined.identity_api ? 1 : 0
@@ -160,7 +172,7 @@ module "identity" {
     # The ALB is the one proxy in front of Identity; without it every client shares the ALB's
     # address and so one per-IP login limiter (identity#2).
     TRUST_PROXY_HOPS = "1"
-  }, local.identity_security_environment, local.identity_sso_environment)
+  }, local.identity_security_environment, local.identity_sso_environment, local.identity_oidc_environment)
   secret_arn = aws_secretsmanager_secret.service["identity"].arn
   # local.identity_secret_keys (data.tf): MFA_ENCRYPTION_KEYS joins only with identity_security_config.
   secret_keys       = local.secret_keys["identity"]
