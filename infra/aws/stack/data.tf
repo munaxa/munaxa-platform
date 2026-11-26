@@ -154,6 +154,7 @@ resource "aws_db_instance" "main" {
 # |                          | + MFA_ENCRYPTION_KEYS (only with identity_security_config, AW-01)   |
 # |                          | + IDENTITY_SSO_MICROSOFT_CLIENT_SECRET, IDENTITY_SSO_GOOGLE_CLIENT_  |
 # |                          |   SECRET (each only for a provider in identity_sso_config)          |
+# |                          | + IDENTITY_OIDC_CLIENT_SECRETS (only with identity_oidc_clients)     |
 # | <env>/control-api        | DATABASE_URL                                                        |
 # | <env>/work-api           | DATABASE_URL, PII_MATCH_SECRET, CONTROL_PLANE_TOKEN                 |
 # | <env>/school-api         | DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,                |
@@ -176,6 +177,8 @@ locals {
     # Company sign-in client secrets (identity_sso_config): one key per configured provider only.
     try(var.identity_sso_config.microsoft_client_id, "") == "" ? [] : ["IDENTITY_SSO_MICROSOFT_CLIENT_SECRET"],
     try(var.identity_sso_config.google_client_id, "") == "" ? [] : ["IDENTITY_SSO_GOOGLE_CLIENT_SECRET"],
+    # Identity as OIDC provider (identity_oidc_clients): `client_id=<secret>,...` for every client.
+    length(var.identity_oidc_clients) == 0 ? [] : ["IDENTITY_OIDC_CLIENT_SECRETS"],
   )
 
   secret_keys = merge(local.docs_enabled ? {

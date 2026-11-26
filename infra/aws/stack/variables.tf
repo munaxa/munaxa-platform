@@ -476,6 +476,43 @@ variable "identity_sso_config" {
   }
 }
 
+variable "identity_oidc_clients" {
+  description = "Identity as the OpenID Connect provider for other Munaxa products (munaxa-identity ADR-0008): one entry per relying party (for example one per Docs organisation), each bound to one Identity organisation key. Empty leaves the provider off. The client secrets live only in the <env>/identity bundle (IDENTITY_OIDC_CLIENT_SECRETS)."
+  type = list(object({
+    client_id     = string
+    organisation  = string
+    redirect_uris = list(string)
+  }))
+  default = []
+
+  validation {
+    condition     = alltrue([for c in var.identity_oidc_clients : can(regex("^[a-z0-9][a-z0-9-]{2,63}$", c.client_id))])
+    error_message = "identity_oidc_clients client_id is 3-64 characters of a-z, 0-9 and -."
+  }
+
+  validation {
+    condition     = alltrue([for c in var.identity_oidc_clients : can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", c.organisation))])
+    error_message = "identity_oidc_clients organisation is an Identity organisation key."
+  }
+
+  # Production Identity refuses anything else at boot; refusing it here keeps a plan from shipping it.
+  validation {
+    condition     = alltrue([for c in var.identity_oidc_clients : length(c.redirect_uris) > 0 && alltrue([for u in c.redirect_uris : can(regex("^https://[a-z0-9.-]+(:[0-9]+)?(/[^#?\\s|;]*)?$", u))])])
+    error_message = "identity_oidc_clients redirect_uris are one or more https URLs without a query, fragment, space, '|' or ';'."
+  }
+
+  validation {
+    condition     = length(distinct([for c in var.identity_oidc_clients : c.client_id])) == length(var.identity_oidc_clients)
+    error_message = "identity_oidc_clients lists a client_id twice."
+  }
+
+  # The provider exists only in images built after identity#33, which also need the MFA contract.
+  validation {
+    condition     = length(var.identity_oidc_clients) == 0 || var.identity_security_config != null
+    error_message = "identity_oidc_clients needs identity_security_config: only a hardened Identity image is an OIDC provider."
+  }
+}
+
 variable "identity_public_keys" {
   description = "Identity's public signing keys as JSON [{kid, publicKey}], for Work (PLATFORM_AUTH_PUBLIC_KEYS) and Control (OPERATOR_AUTH_PUBLIC_KEYS). Public."
   type        = string

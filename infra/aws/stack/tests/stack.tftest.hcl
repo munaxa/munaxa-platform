@@ -1739,3 +1739,108 @@ run "sso_refuses_a_google_id_of_the_wrong_shape" {
   }
   expect_failures = [var.identity_sso_config]
 }
+
+# --- Identity as an OIDC provider (identity_oidc_clients; munaxa-identity#33, ADR-0008) -----------
+#
+# Empty leaves everything above unchanged. Set, Identity gets IDENTITY_OIDC_PROVIDER=enabled and the
+# public client list in its own `id|organisation|uri uri;...` form, reads IDENTITY_OIDC_CLIENT_SECRETS
+# from its bundle, pinned, and the Docs API may call the Identity host.
+
+run "oidc_provider_off_by_default_adds_nothing" {
+  command = plan
+
+  assert {
+    condition     = !contains(local.identity_secret_keys, "IDENTITY_OIDC_CLIENT_SECRETS") && length(local.identity_oidc_environment) == 0
+    error_message = "With no clients the identity contract and environment are unchanged."
+  }
+  assert {
+    condition     = !contains(split(",", local.docs_outbound_http_allowlist), var.hosts.identity)
+    error_message = "With no clients Docs may not call the Identity host."
+  }
+}
+
+run "oidc_provider_with_clients" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
+  }
+
+  variables {
+    db_bootstrap_products = ["identity"]
+    secret_version_ids    = { identity = "00000000-0000-4000-8000-000000000003" }
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients = [
+      { client_id = "docs-munaxa-group", organisation = "munaxa-group", redirect_uris = ["https://docs.test.munaxa.com/auth/federation/callback"] },
+      { client_id = "school-acme", organisation = "acme", redirect_uris = ["https://school.test.munaxa.com/a", "https://school.test.munaxa.com/b"] },
+    ]
+  }
+
+  assert {
+    condition     = local.secret_keys["identity"][length(local.secret_keys["identity"]) - 1] == "IDENTITY_OIDC_CLIENT_SECRETS"
+    error_message = "The client secrets join the identity bundle contract."
+  }
+  assert {
+    condition = {
+      for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.name => s.valueFrom
+    }["IDENTITY_OIDC_CLIENT_SECRETS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:IDENTITY_OIDC_CLIENT_SECRETS::00000000-0000-4000-8000-000000000003"
+    error_message = "Identity reads the client secrets from its own bundle, pinned to the version."
+  }
+  assert {
+    condition = {
+      for e in jsondecode(module.identity[0].task_definition_container_definitions)[0].environment : e.name => e.value
+      if startswith(e.name, "IDENTITY_OIDC")
+      } == {
+      IDENTITY_OIDC_PROVIDER = "enabled"
+      IDENTITY_OIDC_CLIENTS  = "docs-munaxa-group|munaxa-group|https://docs.test.munaxa.com/auth/federation/callback;school-acme|acme|https://school.test.munaxa.com/a https://school.test.munaxa.com/b"
+    }
+    error_message = "The plain environment gains the switch and the client list in Identity's format."
+  }
+  assert {
+    condition     = contains(split(",", local.docs_outbound_http_allowlist), var.hosts.identity)
+    error_message = "Docs may call the Identity host for discovery, keys and the token endpoint."
+  }
+}
+
+run "oidc_provider_needs_the_hardened_identity_contract" {
+  command = plan
+  variables {
+    identity_oidc_clients = [{ client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/auth/federation/callback"] }]
+  }
+  expect_failures = [var.identity_oidc_clients]
+}
+
+run "oidc_provider_refuses_http_redirect" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients    = [{ client_id = "docs-acme", organisation = "acme", redirect_uris = ["http://docs.test.munaxa.com/cb"] }]
+  }
+  expect_failures = [var.identity_oidc_clients]
+}
+
+run "oidc_provider_refuses_a_separator_in_a_redirect" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients    = [{ client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/cb;evil|x"] }]
+  }
+  expect_failures = [var.identity_oidc_clients]
+}
+
+run "oidc_provider_refuses_a_duplicate_or_malformed_client" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients = [
+      { client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/cb"] },
+      { client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/cb"] },
+    ]
+  }
+  expect_failures = [var.identity_oidc_clients]
+}
