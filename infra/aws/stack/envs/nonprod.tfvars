@@ -47,8 +47,8 @@ desired_counts = {
   identity       = 1
   control-api    = 1
   control-portal = 1
-  work-api       = 0
-  work-admin     = 0
+  work-api       = 1
+  work-admin     = 1
   school-api     = 0
   school-admin   = 0
   docs-api       = 1
@@ -84,6 +84,10 @@ docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61db
 # docs#184 demo starter command, docs#185 add-document dialog, docs#187 tenant label). Published by
 # the release workflows' D-SSL-2026-11 path (grype: libssl3/libcrypto3 3.5.9-r1; the ECR basic scan
 # does not report them) and all listed in dssl-exception.tf. The antivirus image is unchanged.
+# Work pin 26 Nov 2026 (report 2026-11-26-work-testing-like-docs): Work api, admin and migrate at
+# ad96f98 (testing-ad96f98, publish-images-testing.yml after green main CI; work#61 Testing-only
+# OpenSSL exception, owner decision 26 Nov 12:35 UTC; work#62 test fix), under D-SSL-2026-11 and
+# listed in dssl-exception.tf. Never the withdrawn b490b25 Work images.
 images = {
   identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cd3b3180a75778d04b1564f74eed8eea7e1622bbc21e72bae9ec4c66af7f09d9"
   identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:760e16b3e28cf8eb89827988d39b7ebc1c81db8f9d3a33d8336b49eed27b295c"
@@ -94,6 +98,9 @@ images = {
   docs_web         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/web@sha256:224bc621630dbc678b76439f6c3398245b2cdc9b2b5f3617c40e9f586a5153ee"
   docs_antivirus   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/antivirus@sha256:801c77e1560ec63430463346810c83527a5183982e94cc82950cbbed3f015dfc"
   docs_migrate     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-docs/migrate@sha256:b5afba103ac07e7786ac92df6fc2e7a67941f5e54a53a05d968deec183c8c5c5"
+  work_api         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/api@sha256:2ea322011ab46b4d041ac3c4f35803835f39d1dfa7be282639f81f1485cb6be7"
+  work_admin       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/admin@sha256:6aee624db2573255b92f487d1e923dd2f3befa1c8266aaab8fac878c10f99517"
+  work_migrate     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/migrate@sha256:ac693b0280c0a82a6923eea417817c70392e204daed3f7669ee13ee47fc1041a"
 }
 
 # Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Required by the 2db6ed9
@@ -110,6 +117,10 @@ identity_security_config = {
   mfa_privileged_roles = ["control-operator-admin", "control-operator-viewer"]
 }
 
+# Work demo starter data (work-demo.tf): the run-only work-demo-account and work-demo-loader tasks.
+# Testing only; prod.tfvars never sets it.
+work_demo_data_enabled = true
+
 # Identity's cache sidecar: Valkey 8.1.11, linux/amd64 manifest.
 valkey_image = "public.ecr.aws/valkey/valkey@sha256:757b7e559b14512bcc252949b13b717385d9381ed42e6b325982d03f4a5c8e8e"
 
@@ -119,7 +130,7 @@ postgres_image = "public.ecr.aws/docker/library/postgres@sha256:5983db9a9c6ad225
 
 # db-admin creates the identity and control databases and their roles (Apply 2, C-2). Docs has its own
 # docs-db-admin task.
-db_bootstrap_products = ["identity", "control"]
+db_bootstrap_products = ["identity", "control", "work"]
 
 # Control C-2 (Apply 2). The licence public key is the public half of the KMS key aws_kms_key.licence
 # created by Apply 1 (alias/munaxa-nonprod-control-licence), read with kms:GetPublicKey as
@@ -148,6 +159,10 @@ identity_public_keys = "[{\"kid\":\"identity-nonprod-2026-11\",\"publicKey\":\"-
 # one the same day (b313124e). That second copy also lost the token's last character (42 of 43), so
 # on 25 Nov 2026 the owner revoked it, issued a third credential, copied it whole and stored it with
 # replace-key again; this is the third version (report 2026-11-25-docs-session-y8-completion).
+# Work (26 Nov 2026, owner approval 12:40 UTC): both bundles written by the root connector with
+# passwords generated in AWS by GetRandomPassword (values never returned; metadata only). work-api's
+# CONTROL_PLANE_TOKEN is still the marked placeholder pending-control-credential-<hex>: the owner
+# issues the Work credential in the Control portal during a session, and a re-pin to that version follows.
 secret_version_ids = {
   identity         = "80914756-68cd-420d-8094-0fd49afe3492"
   identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
@@ -156,6 +171,8 @@ secret_version_ids = {
   docs-api         = "43690bf5-5c66-4e83-8b21-9263f523816c"
   docs-operator    = "85c17e64-1cec-4edd-80a2-59c5c06306d5"
   docs-migrate     = "b9b569c4-c9d7-49ae-935f-a59ee4da6a14"
+  work-api         = "2364cb0a-a6c2-4481-a65f-4c7fab374a69"
+  work-migrate     = "7e14f855-452c-44b1-98e1-78c5c8b77d50"
 }
 
 # Stage E owner decisions (15 Nov 2026, report 2026-11-15-identity-stage-e-owner-decisions, files 04

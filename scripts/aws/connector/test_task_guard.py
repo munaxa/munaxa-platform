@@ -238,7 +238,9 @@ class Manifest(unittest.TestCase):
         self.assertEqual(FAMILIES["munaxa-nonprod-identity-migrate"]["containers"]["identity-migrate"]["image"], value("identity_migrate"))
         self.assertEqual(FAMILIES["munaxa-nonprod-db-admin"]["containers"]["db-admin"]["image"], value("postgres_image"))
         self.assertEqual(FAMILIES["munaxa-nonprod-identity"]["containers"]["valkey"]["image"], value("valkey_image"))
-        versions = dict(re.findall(r'^\s*(identity(?:-migrate)?)\s*=\s*"([0-9a-f-]{36})"', tfvars, re.M))
+        if not FAMILIES[WORK].get("pending"):
+            self.assertEqual(FAMILIES[WORK]["containers"]["work-migrate"]["image"], value("work_migrate"))
+        versions = dict(re.findall(r'^\s*(identity(?:-migrate)?|work-migrate)\s*=\s*"([0-9a-f-]{36})"', tfvars, re.M))
         for family in FAMILIES.values():
             if family.get("pending"):
                 continue  # test_a_pending_family_is_pending_in_nonprod_tfvars_too
@@ -889,7 +891,7 @@ def pinned_work():
     manifest = copy.deepcopy(MANIFEST)
     manifest.pop("description")
     family = manifest["families"][WORK]
-    family.pop("pending")
+    family.pop("pending", None)
     family["containers"]["work-migrate"]["image"] = WORK_IMAGE
     family["containers"]["work-migrate"]["secrets"]["DATABASE_MIGRATION_URL"]["version"] = WORK_VERSION
     return manifest
@@ -903,6 +905,21 @@ def script_with(manifest):
 
 
 WORK_SCRIPT = script_with(pinned_work())
+
+
+def pending_work():
+    """The manifest as it stood before the Work pin (26 Nov 2026): work-migrate pending, no image and
+    no version. Keeps the pending path tested now that the real manifest is pinned."""
+    manifest = copy.deepcopy(MANIFEST)
+    manifest.pop("description")
+    family = manifest["families"][WORK]
+    family["pending"] = "MW-002: not pinned yet"
+    family["containers"]["work-migrate"]["image"] = ""
+    family["containers"]["work-migrate"]["secrets"]["DATABASE_MIGRATION_URL"]["version"] = ""
+    return manifest
+
+
+PENDING_SCRIPT = script_with(pending_work())
 
 
 def work_fake(td=None):
@@ -921,12 +938,13 @@ class WorkMigrate(unittest.TestCase):
 
     # The manifest itself.
 
-    def test_a_pending_family_carries_no_pin_at_all(self):
+    def test_the_work_pin_leaves_the_family_pinned_and_not_pending(self):
+        # The Work pin (report 2026-11-26-work-testing-like-docs) set the real digest and version.
         family = FAMILIES[WORK]
-        self.assertTrue(family["pending"])
+        self.assertNotIn("pending", family)
         container = family["containers"]["work-migrate"]
-        self.assertEqual(container["image"], "")
-        self.assertEqual(container["secrets"]["DATABASE_MIGRATION_URL"]["version"], "")
+        self.assertRegex(container["image"], r"^229251310592\.dkr\.ecr\.eu-central-1\.amazonaws\.com/munaxa-work/migrate@sha256:[0-9a-f]{64}$")
+        self.assertRegex(container["secrets"]["DATABASE_MIGRATION_URL"]["version"], r"^[0-9a-f-]{36}$")
 
     def test_a_pending_family_is_pending_in_nonprod_tfvars_too(self):
         # Once the pin PR sets images.work_migrate or the work-migrate version, it must pin the manifest
@@ -962,7 +980,7 @@ class WorkMigrate(unittest.TestCase):
 
     def test_discover_of_every_family_skips_and_lists_the_pending_one(self):
         fake = FakeEcs()
-        r = guard(fake)
+        r = guard(fake, PENDING_SCRIPT)
         self.assertEqual(r["result"], "PASS")
         self.assertEqual(r["pending"], [WORK])
         self.assertNotIn(WORK, [f["family"] for f in r["families"]])
@@ -970,10 +988,10 @@ class WorkMigrate(unittest.TestCase):
 
     def test_discover_or_run_of_the_pending_family_refuses(self):
         fake = FakeEcs()
-        self.assertEqual(guard(fake, FAMILY=WORK)["code"], "FAMILY_PENDING")
+        self.assertEqual(guard(fake, PENDING_SCRIPT, FAMILY=WORK)["code"], "FAMILY_PENDING")
         for command in ("default", "bootstrap-tenant", "bootstrap-tenant-dry-run"):
             with self.subTest(command=command):
-                self.assertEqual(guard(fake, **self.base(COMMAND=command))["code"], "FAMILY_PENDING")
+                self.assertEqual(guard(fake, PENDING_SCRIPT, **self.base(COMMAND=command))["code"], "FAMILY_PENDING")
         self.assertEqual([c[0] for c in fake.calls], ["GetCallerIdentity"] * 4)
 
     # Once pinned (a synthetic pin, as the MW-002 PR will set a real one).

@@ -1,38 +1,138 @@
 {
   "root": "stack-nonprod",
-  "intent": "COMBINED RE-PIN (26 Nov 2026). (1) Identity (report 2026-11-25-control-login-redesign file 01): Identity api and migrate at 7641300 (testing-7641300, run 45815404306; identity#31 gives the sign-in, MFA and password pages their own Content-Security-Policy so browsers apply the styles and mark). (2) Docs (report 2026-11-26-docs-library-tree): Docs api, web and migrate at 75cdcc3 (testing-75cdcc3, run 45822198363; docs#189 libraries tree and remembered folder, docs#190 approver decision keys, docs#191 Check in from the library). All published under the Testing-only OpenSSL exception D-SSL-2026-11 and listed in dssl-exception.tf = the eight task definitions that run those images replaced (new revisions). Services stay off. No create, no destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
+  "intent": "WORK TESTING PIN (26 Nov 2026, report 2026-11-26-work-testing-like-docs; owner approvals 12:35 and 12:40 UTC). Work api, admin and migrate at ad96f98 (testing-ad96f98, publish-images-testing.yml; under the Testing-only OpenSSL exception D-SSL-2026-11 and listed in dssl-exception.tf), work-api and work-migrate bundle pins, db_bootstrap_products adds work, work_demo_data_enabled = 32 creates (Work api, admin and migrate task definitions, execution roles and policies, security groups and rules, log groups, the two ALB egress rules; the work-demo execution role and policy and the run-only work-demo-account and work-demo-loader task definitions) and db-admin replaced (a new revision that also reads WORK_APP_URL and WORK_OWNER_URL). Services stay off until a session (services_enabled false). No destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
   "changes": [
     {
-      "address": "aws_ecs_task_definition.docs_provision[0]",
+      "address": "aws_ecs_task_definition.db_admin[0]",
       "actions": ["delete", "create"]
     },
     {
-      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
-      "actions": ["delete", "create"]
+      "address": "aws_ecs_task_definition.work_demo_account[0]",
+      "actions": ["create"]
     },
     {
-      "address": "aws_ecs_task_definition.identity_probe[0]",
-      "actions": ["delete", "create"]
+      "address": "aws_ecs_task_definition.work_demo_loader[0]",
+      "actions": ["create"]
     },
     {
-      "address": "module.docs_api[0].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
+      "address": "aws_iam_role.work_demo_execution[0]",
+      "actions": ["create"]
     },
     {
-      "address": "module.docs_migrate[0].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
+      "address": "aws_iam_role_policy.work_demo_execution[0]",
+      "actions": ["create"]
     },
     {
-      "address": "module.docs_web[0].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
+      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"work-admin\"]",
+      "actions": ["create"]
     },
     {
-      "address": "module.identity[0].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
+      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"work-api\"]",
+      "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
-      "actions": ["delete", "create"]
+      "address": "module.migrate[\"work\"].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"work\"].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"work\"].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"work\"].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"work\"].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"work\"].aws_vpc_security_group_egress_rule.database[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"work\"].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.migrate[\"work\"].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_admin[0].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_admin[0].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_admin[0].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_admin[0].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_admin[0].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_admin[0].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_admin[0].aws_vpc_security_group_egress_rule.to_services[\"work-api\"]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_admin[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_cloudwatch_log_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_ecs_task_definition.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_iam_role.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_iam_role_policy.execution",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_security_group.this",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_vpc_security_group_egress_rule.database[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_vpc_security_group_egress_rule.https",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
+      "actions": ["create"]
+    },
+    {
+      "address": "module.work_api[0].aws_vpc_security_group_ingress_rule.from_callers[\"work-admin\"]",
+      "actions": ["create"]
     }
   ]
 }
