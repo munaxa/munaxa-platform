@@ -142,11 +142,47 @@ MANIFEST = {
                             "key": "DATABASE_URL",
                             "version": "80914756-68cd-420d-8094-0fd49afe3492"
                         },
+                        "CONTROL_APP_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/control-api",
+                            "key": "DATABASE_URL",
+                            "version": "655501d8-19f2-4190-9460-960b6464a1a2"
+                        },
+                        "WORK_APP_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/work-api",
+                            "key": "DATABASE_URL",
+                            "version": "2364cb0a-a6c2-4481-a65f-4c7fab374a69"
+                        },
+                        "SCHOOL_APP_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/school-api",
+                            "key": "DATABASE_URL",
+                            "version": "2dccc556-8aa7-4254-9113-1e6e3bb3ebf8"
+                        },
                         "IDENTITY_OWNER_URL": {
                             "form": "full",
                             "secret": "munaxa-nonprod/identity-migrate",
                             "key": "DATABASE_MIGRATION_URL",
                             "version": "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+                        },
+                        "CONTROL_OWNER_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/control-migrate",
+                            "key": "DATABASE_MIGRATION_URL",
+                            "version": "ee66de8e-9ab8-4f72-8db8-11c631c1e0e0"
+                        },
+                        "WORK_OWNER_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/work-migrate",
+                            "key": "DATABASE_MIGRATION_URL",
+                            "version": "7e14f855-452c-44b1-98e1-78c5c8b77d50"
+                        },
+                        "SCHOOL_OWNER_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/school-migrate",
+                            "key": "DATABASE_MIGRATION_URL",
+                            "version": "00600322-99b1-49a4-a860-c8f716c6a453"
                         }
                     },
                     "environmentNames": [
@@ -207,7 +243,7 @@ MANIFEST = {
             "service": False,
             "containers": {
                 "identity-migrate": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:760e16b3e28cf8eb89827988d39b7ebc1c81db8f9d3a33d8336b49eed27b295c",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:9d11e0ceddc8d210a497a5c390a81fd93997c083906bec8ef8eba7a8ccfbe196",
                     "secrets": {
                         "DATABASE_MIGRATION_URL": {
                             "form": "full",
@@ -264,7 +300,7 @@ MANIFEST = {
             "service": False,
             "containers": {
                 "identity-bootstrap": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cd3b3180a75778d04b1564f74eed8eea7e1622bbc21e72bae9ec4c66af7f09d9",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:53cadf045e8522fae6a9e70f683b9c5b6cebd352466ccdcaac8bca3ac83b5073",
                     "secrets": {
                         "DIRECT_DATABASE_URL": {
                             "form": "full",
@@ -359,7 +395,7 @@ MANIFEST = {
             "service": False,
             "containers": {
                 "throwaway-account": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cd3b3180a75778d04b1564f74eed8eea7e1622bbc21e72bae9ec4c66af7f09d9",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:53cadf045e8522fae6a9e70f683b9c5b6cebd352466ccdcaac8bca3ac83b5073",
                     "secrets": {
                         "DIRECT_DATABASE_URL": {
                             "form": "full",
@@ -414,7 +450,7 @@ MANIFEST = {
                     }
                 },
                 "identity-probe": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cd3b3180a75778d04b1564f74eed8eea7e1622bbc21e72bae9ec4c66af7f09d9",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:53cadf045e8522fae6a9e70f683b9c5b6cebd352466ccdcaac8bca3ac83b5073",
                     "secrets": {},
                     "environmentNames": [
                         "NODE_ENV",
@@ -519,7 +555,7 @@ MANIFEST = {
             "service": True,
             "containers": {
                 "identity": {
-                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cd3b3180a75778d04b1564f74eed8eea7e1622bbc21e72bae9ec4c66af7f09d9",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:53cadf045e8522fae6a9e70f683b9c5b6cebd352466ccdcaac8bca3ac83b5073",
                     "secrets": {
                         "DATABASE_URL": {
                             "form": "full",
@@ -556,6 +592,12 @@ MANIFEST = {
                             "secret": "munaxa-nonprod/identity",
                             "key": "MFA_ENCRYPTION_KEYS",
                             "version": "80914756-68cd-420d-8094-0fd49afe3492"
+                        },
+                        "IDENTITY_OIDC_CLIENT_SECRETS": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/identity-oidc-clients",
+                            "key": "IDENTITY_OIDC_CLIENT_SECRETS",
+                            "version": "3e83e65c-8d47-461f-830f-b70110e5e711"
                         }
                     },
                     "environmentNames": [
@@ -563,6 +605,8 @@ MANIFEST = {
                         "IDENTITY_AUTH_AUDIENCE",
                         "IDENTITY_BASE_URL",
                         "IDENTITY_DEFAULT_ORGANISATION",
+                        "IDENTITY_OIDC_CLIENTS",
+                        "IDENTITY_OIDC_PROVIDER",
                         "IDENTITY_PASSWORD_RESET",
                         "IDENTITY_SIGNING_ALGORITHM",
                         "IDENTITY_SIGNING_KID",
@@ -617,6 +661,8 @@ MANIFEST = {
                         "IDENTITY_AUTH_AUDIENCE": "munaxa-work,munaxa-control",
                         "IDENTITY_BASE_URL": "https://id.test.munaxa.com",
                         "IDENTITY_DEFAULT_ORGANISATION": "",
+                        "IDENTITY_OIDC_CLIENTS": "school-munaxa-demo|munaxa-group|https://school.test.munaxa.com/api/v1/auth/identity/callback",
+                        "IDENTITY_OIDC_PROVIDER": "enabled",
                         "IDENTITY_PASSWORD_RESET": "disabled",
                         "IDENTITY_SIGNING_ALGORITHM": "ES256",
                         "IDENTITY_SIGNING_KID": "identity-nonprod-2026-11",
@@ -719,6 +765,35 @@ MANIFEST = {
                         "stage-e-throwaway",
                         "--apply"
                     ]
+                },
+                "account-email-verified-plan": {
+                    "container": "identity",
+                    "command": [
+                        "node",
+                        "dist/ops/operator-cli.js",
+                        "account-email-verified",
+                        "--organisation",
+                        "munaxa-group",
+                        "--account-id",
+                        "{ACCOUNT_ID}",
+                        "--reference",
+                        "school-testing-admin"
+                    ]
+                },
+                "account-email-verified": {
+                    "container": "identity",
+                    "command": [
+                        "node",
+                        "dist/ops/operator-cli.js",
+                        "account-email-verified",
+                        "--organisation",
+                        "munaxa-group",
+                        "--account-id",
+                        "{ACCOUNT_ID}",
+                        "--reference",
+                        "school-testing-admin",
+                        "--apply"
+                    ]
                 }
             },
             "volumes": []
@@ -812,6 +887,135 @@ MANIFEST = {
                         "--allow-production"
                     ]
                 }
+            },
+            "volumes": []
+        },
+        "munaxa-nonprod-school-migrate": {
+            "executionRole": "munaxa-nonprod-school-migrate-execution",
+            "taskRole": None,
+            "task": {
+                "cpu": "256",
+                "memory": "512",
+                "runtimePlatform": {
+                    "cpuArchitecture": "X86_64",
+                    "operatingSystemFamily": "LINUX"
+                }
+            },
+            "securityGroup": "munaxa-nonprod-school-migrate",
+            "service": False,
+            "containers": {
+                "school-migrate": {
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/migrate@sha256:7aa8a73e581dccefacef01875bf4b85aafd3acb21738c3a59e7ba601d1c2e14a",
+                    "secrets": {
+                        "DATABASE_MIGRATION_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/school-migrate",
+                            "key": "DATABASE_MIGRATION_URL",
+                            "version": "00600322-99b1-49a4-a860-c8f716c6a453"
+                        }
+                    },
+                    "environmentNames": [
+                        "NODE_ENV"
+                    ],
+                    "shape": {
+                        "essential": True,
+                        "readonlyRootFilesystem": False,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/school-migrate",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "school-migrate"
+                            }
+                        }
+                    },
+                    "environment": {
+                        "NODE_ENV": "production"
+                    }
+                }
+            },
+            "commands": {
+                "default": None
+            },
+            "volumes": []
+        },
+        "munaxa-nonprod-school-provision": {
+            "executionRole": "munaxa-nonprod-school-provision-execution",
+            "taskRole": None,
+            "task": {
+                "cpu": "256",
+                "memory": "512",
+                "runtimePlatform": {
+                    "cpuArchitecture": "X86_64",
+                    "operatingSystemFamily": "LINUX"
+                }
+            },
+            "securityGroup": "munaxa-nonprod-db-admin",
+            "service": False,
+            "containers": {
+                "school-provision": {
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/api@sha256:a6541698a5f58777c8f91464a1bca47be22669e0d2591845d6b3175693c94d03",
+                    "secrets": {
+                        "DATABASE_URL": {
+                            "form": "full",
+                            "secret": "munaxa-nonprod/school-api",
+                            "key": "DATABASE_URL",
+                            "version": "2dccc556-8aa7-4254-9113-1e6e3bb3ebf8"
+                        },
+                        "ADMIN_EMAIL": {
+                            "form": "partial",
+                            "secret": "munaxa-nonprod/school-provision/munaxa-demo",
+                            "key": "ADMIN_EMAIL"
+                        }
+                    },
+                    "environmentNames": [
+                        "APPLY",
+                        "NODE_ENV",
+                        "SCHOOL_NAME",
+                        "SCHOOL_SLUG"
+                    ],
+                    "shape": {
+                        "essential": True,
+                        "readonlyRootFilesystem": True,
+                        "linuxParameters": {
+                            "capabilities": {
+                                "add": [],
+                                "drop": [
+                                    "ALL"
+                                ]
+                            }
+                        },
+                        "logConfiguration": {
+                            "logDriver": "awslogs",
+                            "options": {
+                                "awslogs-group": "/munaxa/nonprod/ops",
+                                "awslogs-region": "eu-central-1",
+                                "awslogs-stream-prefix": "school-provision"
+                            }
+                        }
+                    },
+                    "command": [
+                        "node",
+                        "dist/ops/provision-school.js"
+                    ],
+                    "environment": {
+                        "APPLY": "yes",
+                        "NODE_ENV": "production",
+                        "SCHOOL_NAME": "Munaxa Demo School",
+                        "SCHOOL_SLUG": "munaxa-demo"
+                    }
+                }
+            },
+            "commands": {
+                "default": None
             },
             "volumes": []
         }

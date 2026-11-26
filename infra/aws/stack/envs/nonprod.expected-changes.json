@@ -1,137 +1,169 @@
 {
   "root": "stack-nonprod",
-  "intent": "WORK TESTING PIN (26 Nov 2026, report 2026-11-26-work-testing-like-docs; owner approvals 12:35 and 12:40 UTC). Work api, admin and migrate at ad96f98 (testing-ad96f98, publish-images-testing.yml; under the Testing-only OpenSSL exception D-SSL-2026-11 and listed in dssl-exception.tf), work-api and work-migrate bundle pins, db_bootstrap_products adds work, work_demo_data_enabled = 32 creates (Work api, admin and migrate task definitions, execution roles and policies, security groups and rules, log groups, the two ALB egress rules; the work-demo execution role and policy and the run-only work-demo-account and work-demo-loader task definitions) and db-admin replaced (a new revision that also reads WORK_APP_URL and WORK_OWNER_URL). Services stay off until a session (services_enabled false). No destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
+  "intent": "SCHOOL TESTING PIN (26 Nov 2026, report 2026-11-26-school-testing; owner decision 21:30 UTC 'Yes, and all School Testing steps'). School api, admin (-nonprod build) and migrate at c51dd62 (testing-c51dd62, publish-images-testing.yml, under the Testing-only OpenSSL exception D-SSL-2026-11 and listed in dssl-exception.tf); Identity api and migrate at 101ef90 (testing-101ef90: OIDC provider, truthful email_verified); school-api, school-migrate and identity-oidc-clients version pins; identity_oidc_clients and school_identity_sign_in for school-munaxa-demo (organisation munaxa-group); school_provision munaxa-demo; db_bootstrap_products adds school. = 31 creates (School api, admin and migrate task definitions, execution and task roles and policies, security groups and rules, log groups, the two ALB egress rules; the run-only school-provision task definition, execution role and policy), 9 task definitions replaced (new revisions: identity, identity-migrate, identity-bootstrap, identity-probe and work-demo-account for the Identity image and OIDC client; db-admin for SCHOOL_APP_URL and SCHOOL_OWNER_URL; docs-api, docs-web and docs-provision for PASSWORD_SIGN_IN=enabled from #204 and the Identity host in OUTBOUND_HTTP_ALLOWLIST) and the Identity execution role policy updated in place (reads IDENTITY_OIDC_CLIENT_SECRETS from munaxa-nonprod/identity-oidc-clients). Services stay off until a session (services_enabled false). No destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
   "changes": [
     {
       "address": "aws_ecs_task_definition.db_admin[0]",
       "actions": ["delete", "create"]
     },
     {
+      "address": "aws_ecs_task_definition.docs_provision[0]",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "aws_ecs_task_definition.identity_bootstrap[0]",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "aws_ecs_task_definition.identity_probe[0]",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "aws_ecs_task_definition.school_provision[0]",
+      "actions": ["create"]
+    },
+    {
       "address": "aws_ecs_task_definition.work_demo_account[0]",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "aws_iam_role.school_provision_execution[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_ecs_task_definition.work_demo_loader[0]",
+      "address": "aws_iam_role_policy.school_provision_execution[0]",
       "actions": ["create"]
     },
     {
-      "address": "aws_iam_role.work_demo_execution[0]",
+      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"school-admin\"]",
       "actions": ["create"]
     },
     {
-      "address": "aws_iam_role_policy.work_demo_execution[0]",
+      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"school-api\"]",
       "actions": ["create"]
     },
     {
-      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"work-admin\"]",
+      "address": "module.docs_api[0].aws_ecs_task_definition.this",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_ecs_task_definition.this",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "module.identity[0].aws_ecs_task_definition.this",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "module.identity[0].aws_iam_role_policy.execution",
+      "actions": ["update"]
+    },
+    {
+      "address": "module.migrate[\"identity\"].aws_ecs_task_definition.this",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "module.migrate[\"school\"].aws_cloudwatch_log_group.this",
       "actions": ["create"]
     },
     {
-      "address": "aws_vpc_security_group_egress_rule.alb_to_service[\"work-api\"]",
+      "address": "module.migrate[\"school\"].aws_ecs_task_definition.this",
       "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"work\"].aws_cloudwatch_log_group.this",
+      "address": "module.migrate[\"school\"].aws_iam_role.execution",
       "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"work\"].aws_ecs_task_definition.this",
+      "address": "module.migrate[\"school\"].aws_iam_role_policy.execution",
       "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"work\"].aws_iam_role.execution",
+      "address": "module.migrate[\"school\"].aws_security_group.this",
       "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"work\"].aws_iam_role_policy.execution",
+      "address": "module.migrate[\"school\"].aws_vpc_security_group_egress_rule.database[0]",
       "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"work\"].aws_security_group.this",
+      "address": "module.migrate[\"school\"].aws_vpc_security_group_egress_rule.https",
       "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"work\"].aws_vpc_security_group_egress_rule.database[0]",
+      "address": "module.migrate[\"school\"].aws_vpc_security_group_ingress_rule.database_from_service[0]",
       "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"work\"].aws_vpc_security_group_egress_rule.https",
+      "address": "module.school_admin[0].aws_cloudwatch_log_group.this",
       "actions": ["create"]
     },
     {
-      "address": "module.migrate[\"work\"].aws_vpc_security_group_ingress_rule.database_from_service[0]",
+      "address": "module.school_admin[0].aws_ecs_task_definition.this",
       "actions": ["create"]
     },
     {
-      "address": "module.work_admin[0].aws_cloudwatch_log_group.this",
+      "address": "module.school_admin[0].aws_iam_role.execution",
       "actions": ["create"]
     },
     {
-      "address": "module.work_admin[0].aws_ecs_task_definition.this",
+      "address": "module.school_admin[0].aws_iam_role_policy.execution",
       "actions": ["create"]
     },
     {
-      "address": "module.work_admin[0].aws_iam_role.execution",
+      "address": "module.school_admin[0].aws_security_group.this",
       "actions": ["create"]
     },
     {
-      "address": "module.work_admin[0].aws_iam_role_policy.execution",
+      "address": "module.school_admin[0].aws_vpc_security_group_egress_rule.https",
       "actions": ["create"]
     },
     {
-      "address": "module.work_admin[0].aws_security_group.this",
+      "address": "module.school_admin[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
       "actions": ["create"]
     },
     {
-      "address": "module.work_admin[0].aws_vpc_security_group_egress_rule.https",
+      "address": "module.school_api[0].aws_cloudwatch_log_group.this",
       "actions": ["create"]
     },
     {
-      "address": "module.work_admin[0].aws_vpc_security_group_egress_rule.to_services[\"work-api\"]",
+      "address": "module.school_api[0].aws_ecs_task_definition.this",
       "actions": ["create"]
     },
     {
-      "address": "module.work_admin[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
+      "address": "module.school_api[0].aws_iam_role.execution",
       "actions": ["create"]
     },
     {
-      "address": "module.work_api[0].aws_cloudwatch_log_group.this",
+      "address": "module.school_api[0].aws_iam_role.task[0]",
       "actions": ["create"]
     },
     {
-      "address": "module.work_api[0].aws_ecs_task_definition.this",
+      "address": "module.school_api[0].aws_iam_role_policy.execution",
       "actions": ["create"]
     },
     {
-      "address": "module.work_api[0].aws_iam_role.execution",
+      "address": "module.school_api[0].aws_iam_role_policy.task[0]",
       "actions": ["create"]
     },
     {
-      "address": "module.work_api[0].aws_iam_role_policy.execution",
+      "address": "module.school_api[0].aws_security_group.this",
       "actions": ["create"]
     },
     {
-      "address": "module.work_api[0].aws_security_group.this",
+      "address": "module.school_api[0].aws_vpc_security_group_egress_rule.database[0]",
       "actions": ["create"]
     },
     {
-      "address": "module.work_api[0].aws_vpc_security_group_egress_rule.database[0]",
+      "address": "module.school_api[0].aws_vpc_security_group_egress_rule.https",
       "actions": ["create"]
     },
     {
-      "address": "module.work_api[0].aws_vpc_security_group_egress_rule.https",
+      "address": "module.school_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
       "actions": ["create"]
     },
     {
-      "address": "module.work_api[0].aws_vpc_security_group_ingress_rule.database_from_service[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.work_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
-      "actions": ["create"]
-    },
-    {
-      "address": "module.work_api[0].aws_vpc_security_group_ingress_rule.from_callers[\"work-admin\"]",
+      "address": "module.school_api[0].aws_vpc_security_group_ingress_rule.from_alb[0]",
       "actions": ["create"]
     }
   ]

@@ -240,7 +240,10 @@ class Manifest(unittest.TestCase):
         self.assertEqual(FAMILIES["munaxa-nonprod-identity"]["containers"]["valkey"]["image"], value("valkey_image"))
         if not FAMILIES[WORK].get("pending"):
             self.assertEqual(FAMILIES[WORK]["containers"]["work-migrate"]["image"], value("work_migrate"))
-        versions = dict(re.findall(r'^\s*(identity(?:-migrate)?|work-migrate)\s*=\s*"([0-9a-f-]{36})"', tfvars, re.M))
+        self.assertEqual(FAMILIES["munaxa-nonprod-school-migrate"]["containers"]["school-migrate"]["image"], value("school_migrate"))
+        self.assertEqual(FAMILIES["munaxa-nonprod-school-provision"]["containers"]["school-provision"]["image"], value("school_api"))
+        block = re.search(r"^secret_version_ids\s*=\s*\{(.*?)^\}", tfvars, re.M | re.S).group(1)
+        versions = dict(re.findall(r'^\s*([a-z][a-z-]*)\s*=\s*"([0-9a-f-]{36})"', block, re.M))
         for family in FAMILIES.values():
             if family.get("pending"):
                 continue  # test_a_pending_family_is_pending_in_nonprod_tfvars_too

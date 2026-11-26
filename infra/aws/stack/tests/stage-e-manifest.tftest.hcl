@@ -110,6 +110,40 @@ run "stage_e_task_definitions_match_the_manifest" {
     values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/work-migrate-Ij56Kl" }
   }
   override_resource {
+    target          = aws_secretsmanager_secret.service["school-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/school-migrate-Mn78Op" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["school-api"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/school-api-Qr90St" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["control-api"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/control-api-Uv12Wx" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["control-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/control-migrate-Yz34Ab" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["work-api"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/work-api-Cd56Ef" }
+  }
+  override_data {
+    target = data.aws_secretsmanager_secret.identity_oidc_clients[0]
+    values = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-C2QQUA" }
+  }
+  override_resource {
+    target          = aws_iam_role.school_provision_execution[0]
+    override_during = plan
+    values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-school-provision-execution" }
+  }
+  override_resource {
     target          = aws_iam_role.db_admin_execution
     override_during = plan
     values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-db-admin-execution" }
@@ -148,15 +182,30 @@ run "stage_e_task_definitions_match_the_manifest" {
       identity_api     = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity"].containers.identity.image
       identity_migrate = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-migrate"].containers["identity-migrate"].image
       work_migrate     = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers["work-migrate"].image
+      school_migrate   = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-school-migrate"].containers["school-migrate"].image
+      school_api       = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-school-provision"].containers["school-provision"].image
     }
-    postgres_image        = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].containers["db-admin"].image
-    valkey_image          = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity"].containers.valkey.image
-    db_bootstrap_products = ["identity"]
+    postgres_image = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].containers["db-admin"].image
+    valkey_image   = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity"].containers.valkey.image
+    # Every product db-admin creates (envs/nonprod.tfvars, School pin 26 Nov 2026).
+    db_bootstrap_products = ["identity", "control", "work", "school"]
     secret_version_ids = {
-      identity         = "80914756-68cd-420d-8094-0fd49afe3492"
-      identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
-      work-migrate     = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers["work-migrate"].secrets.DATABASE_MIGRATION_URL.version
+      identity              = "80914756-68cd-420d-8094-0fd49afe3492"
+      identity-migrate      = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+      work-migrate          = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers["work-migrate"].secrets.DATABASE_MIGRATION_URL.version
+      control-api           = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].containers["db-admin"].secrets.CONTROL_APP_URL.version
+      control-migrate       = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].containers["db-admin"].secrets.CONTROL_OWNER_URL.version
+      work-api              = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].containers["db-admin"].secrets.WORK_APP_URL.version
+      school-api            = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-school-provision"].containers["school-provision"].secrets.DATABASE_URL.version
+      school-migrate        = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-school-migrate"].containers["school-migrate"].secrets.DATABASE_MIGRATION_URL.version
+      identity-oidc-clients = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity"].containers.identity.secrets.IDENTITY_OIDC_CLIENT_SECRETS.version
     }
+    identity_oidc_clients = [{
+      client_id     = "school-munaxa-demo"
+      organisation  = "munaxa-group"
+      redirect_uris = ["https://school.test.munaxa.com/api/v1/auth/identity/callback"]
+    }]
+    school_provision = { slug = "munaxa-demo", name = "Munaxa Demo School" }
     identity_security_config = {
       mfa_primary_kid      = "mfa-nonprod-2026-11"
       mfa_policy           = "privileged"
@@ -180,6 +229,8 @@ run "stage_e_task_definitions_match_the_manifest" {
         "munaxa-nonprod-identity-probe"     = aws_ecs_task_definition.identity_probe[0].container_definitions
         "munaxa-nonprod-identity"           = module.identity[0].task_definition_container_definitions
         "munaxa-nonprod-work-migrate"       = module.migrate["work"].task_definition_container_definitions
+        "munaxa-nonprod-school-migrate"     = module.migrate["school"].task_definition_container_definitions
+        "munaxa-nonprod-school-provision"   = aws_ecs_task_definition.school_provision[0].container_definitions
         } : concat(
         [sort([for c in jsondecode(cd) : c.name]) == sort(keys(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers))],
         [for c in jsondecode(cd) : c.image == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].image],
@@ -208,7 +259,8 @@ run "stage_e_task_definitions_match_the_manifest" {
     condition = (
       aws_ecs_task_definition.db_admin[0].family == "munaxa-nonprod-db-admin" &&
       aws_ecs_task_definition.identity_bootstrap[0].family == "munaxa-nonprod-identity-bootstrap" &&
-      aws_ecs_task_definition.identity_probe[0].family == "munaxa-nonprod-identity-probe"
+      aws_ecs_task_definition.identity_probe[0].family == "munaxa-nonprod-identity-probe" &&
+      aws_ecs_task_definition.school_provision[0].family == "munaxa-nonprod-school-provision"
     )
     error_message = "The manifest's run-only family names are the ones Terraform registers (the two module families are <prefix>-<name>, modules/service local.id)."
   }
@@ -246,7 +298,9 @@ run "stage_e_task_definitions_match_the_manifest" {
       endswith(aws_ecs_task_definition.db_admin[0].execution_role_arn, ":role/munaxa-shared/${jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].executionRole}") &&
       endswith(aws_ecs_task_definition.identity_bootstrap[0].execution_role_arn, ":role/munaxa-shared/${jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-bootstrap"].executionRole}") &&
       endswith(aws_ecs_task_definition.identity_probe[0].execution_role_arn, ":role/munaxa-shared/${jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-probe"].executionRole}") &&
-      aws_security_group.db_admin.name == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].securityGroup
+      aws_security_group.db_admin.name == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].securityGroup &&
+      endswith(aws_ecs_task_definition.school_provision[0].execution_role_arn, ":role/munaxa-shared/${jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-school-provision"].executionRole}") &&
+      aws_security_group.db_admin.name == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-school-provision"].securityGroup
     )
     error_message = "The manifest's execution roles and the db-admin group are the ones Terraform gives the run-only families."
   }
@@ -263,6 +317,8 @@ run "stage_e_task_definitions_match_the_manifest" {
         "munaxa-nonprod-identity-probe"     = aws_ecs_task_definition.identity_probe[0].container_definitions
         "munaxa-nonprod-identity"           = module.identity[0].task_definition_container_definitions
         "munaxa-nonprod-work-migrate"       = module.migrate["work"].task_definition_container_definitions
+        "munaxa-nonprod-school-migrate"     = module.migrate["school"].task_definition_container_definitions
+        "munaxa-nonprod-school-provision"   = aws_ecs_task_definition.school_provision[0].container_definitions
         } : [for c in jsondecode(cd) : concat(
           [jsonencode(sort([for e in try(c.environment, []) : e.name])) == jsonencode(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].environmentNames)],
           [for k in jsondecode(file("envs/nonprod.stage-e-tasks.json")).shapeKeys : contains(keys(c), k) == contains(keys(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].shape), k)],
@@ -291,6 +347,8 @@ run "stage_e_task_definitions_match_the_manifest" {
         "munaxa-nonprod-identity-probe"     = { cpu = aws_ecs_task_definition.identity_probe[0].cpu, memory = aws_ecs_task_definition.identity_probe[0].memory, arch = aws_ecs_task_definition.identity_probe[0].runtime_platform[0].cpu_architecture, os = aws_ecs_task_definition.identity_probe[0].runtime_platform[0].operating_system_family }
         "munaxa-nonprod-identity-migrate"   = { cpu = module.migrate["identity"].task_definition_size.cpu, memory = module.migrate["identity"].task_definition_size.memory, arch = module.migrate["identity"].task_definition_size.cpu_architecture, os = module.migrate["identity"].task_definition_size.operating_system_family }
         "munaxa-nonprod-identity"           = { cpu = module.identity[0].task_definition_size.cpu, memory = module.identity[0].task_definition_size.memory, arch = module.identity[0].task_definition_size.cpu_architecture, os = module.identity[0].task_definition_size.operating_system_family }
+        "munaxa-nonprod-school-migrate"     = { cpu = module.migrate["school"].task_definition_size.cpu, memory = module.migrate["school"].task_definition_size.memory, arch = module.migrate["school"].task_definition_size.cpu_architecture, os = module.migrate["school"].task_definition_size.operating_system_family }
+        "munaxa-nonprod-school-provision"   = { cpu = aws_ecs_task_definition.school_provision[0].cpu, memory = aws_ecs_task_definition.school_provision[0].memory, arch = aws_ecs_task_definition.school_provision[0].runtime_platform[0].cpu_architecture, os = aws_ecs_task_definition.school_provision[0].runtime_platform[0].operating_system_family }
       } : tostring(t.cpu) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].task.cpu &&
       tostring(t.memory) == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].task.memory &&
       t.arch == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].task.runtimePlatform.cpuArchitecture &&

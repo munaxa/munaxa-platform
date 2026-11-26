@@ -49,8 +49,8 @@ desired_counts = {
   control-portal = 1
   work-api       = 1
   work-admin     = 1
-  school-api     = 0
-  school-admin   = 0
+  school-api     = 1
+  school-admin   = 1
   docs-api       = 1
   docs-web       = 1
   docs-scanner   = 1
@@ -88,9 +88,14 @@ docs_redis_image = "public.ecr.aws/docker/library/redis@sha256:c6eabf748fc7a61db
 # ad96f98 (testing-ad96f98, publish-images-testing.yml after green main CI; work#61 Testing-only
 # OpenSSL exception, owner decision 26 Nov 12:35 UTC; work#62 test fix), under D-SSL-2026-11 and
 # listed in dssl-exception.tf. Never the withdrawn b490b25 Work images.
+# School pin 26 Nov 2026 (report 2026-11-26-school-testing): School api, admin (-nonprod build) and
+# migrate at c51dd62 (testing-c51dd62, publish-images-testing.yml; school#35 Testing-only OpenSSL
+# exception, owner decision 26 Nov 21:30 UTC), and Identity api and migrate at 101ef90
+# (testing-101ef90: identity#32 company sign-in code, #33 Identity as OIDC provider, #34 truthful
+# email_verified), all under D-SSL-2026-11 and listed in dssl-exception.tf.
 images = {
-  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cd3b3180a75778d04b1564f74eed8eea7e1622bbc21e72bae9ec4c66af7f09d9"
-  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:760e16b3e28cf8eb89827988d39b7ebc1c81db8f9d3a33d8336b49eed27b295c"
+  identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:53cadf045e8522fae6a9e70f683b9c5b6cebd352466ccdcaac8bca3ac83b5073"
+  identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:9d11e0ceddc8d210a497a5c390a81fd93997c083906bec8ef8eba7a8ccfbe196"
   control_api      = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/api@sha256:885e694f175a4b7b4fd320b96188422f425ebba66fe49eccdc8d67d9fc57e0e7"
   control_migrate  = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/migrate@sha256:b871492f32224fabd144f5aeb38aab4c099b88415dd5319c0ddf4d3440a065f9"
   control_portal   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-control/portal@sha256:030be8122e190c83eb5d085d55ab823880ee092e26465509f6baa29ec42df2b9"
@@ -101,6 +106,9 @@ images = {
   work_api         = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/api@sha256:2ea322011ab46b4d041ac3c4f35803835f39d1dfa7be282639f81f1485cb6be7"
   work_admin       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/admin@sha256:6aee624db2573255b92f487d1e923dd2f3befa1c8266aaab8fac878c10f99517"
   work_migrate     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/migrate@sha256:ac693b0280c0a82a6923eea417817c70392e204daed3f7669ee13ee47fc1041a"
+  school_api       = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/api@sha256:a6541698a5f58777c8f91464a1bca47be22669e0d2591845d6b3175693c94d03"
+  school_admin     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/admin@sha256:b0ed1eff0fd914c04f1d2d5532599d0d9641305d39cab85f4fb49e0f9ef3dbe3"
+  school_migrate   = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-school/migrate@sha256:7aa8a73e581dccefacef01875bf4b85aafd3acb21738c3a59e7ba601d1c2e14a"
 }
 
 # Hardened Identity (AW-01; report 2026-11-11-identity-aw01-remediation). Required by the 2db6ed9
@@ -127,21 +135,27 @@ identity_security_config = {
 #   google_client_id    = "<…apps.googleusercontent.com>"
 # }
 
-# Identity as the sign-in provider for Docs (munaxa-identity ADR-0008, docs#192). Before uncommenting,
-# the owner writes IDENTITY_OIDC_CLIENT_SECRETS (`docs-munaxa-group=<48 random base64url characters>`)
-# into the identity bundle, the same secret goes into the Docs organisation's identity-provider record,
-# and secret_version_ids.identity names the new version. Then, with an Identity image containing
-# identity#33 and a Docs web image containing docs#192:
-# identity_oidc_clients = [{
-#   client_id     = "docs-munaxa-group"
-#   organisation  = "munaxa-group"
-#   redirect_uris = ["https://<hosts.docs>/auth/federation/callback"]
-# }]
+# Identity as the sign-in provider for Docs (munaxa-identity ADR-0008, docs#192): add a
+# { client_id = "docs-munaxa-group", organisation = "munaxa-group", redirect_uris =
+# ["https://<hosts.docs>/auth/federation/callback"] } entry to identity_oidc_clients below, with its
+# secret added to munaxa-nonprod/identity-oidc-clients (a new version, written inside AWS with the
+# School value regenerated in the same step, data.tf) and to the Docs organisation's
+# identity-provider record, and a Docs web image containing docs#192.
 
-# School signs in through Identity (munaxa-school#32). Needs a matching identity_oidc_clients entry
-# with redirect https://<hosts.school>/api/v1/auth/identity/callback, the same client secret in the
-# identity and school-api bundles (IDENTITY_SIGN_IN_CLIENT_SECRETS), and a School image with #32:
-# school_identity_sign_in = [{ school = "<school slug>", client_id = "school-<slug>", organisation = "<identity organisation>" }]
+# School signs in through Identity (munaxa-school#32, #33; report 2026-11-26-school-testing). One
+# Testing school, munaxa-demo, paired with the operator organisation. The client secret is in
+# munaxa-nonprod/identity-oidc-clients (operator-created, data.tf) and in the school-api bundle as
+# IDENTITY_SIGN_IN_CLIENT_SECRETS, written together inside AWS on 26 Nov 2026 (values never shown).
+identity_oidc_clients = [{
+  client_id     = "school-munaxa-demo"
+  organisation  = "munaxa-group"
+  redirect_uris = ["https://school.test.munaxa.com/api/v1/auth/identity/callback"]
+}]
+school_identity_sign_in = [{ school = "munaxa-demo", client_id = "school-munaxa-demo", organisation = "munaxa-group" }]
+
+# The Testing school and its first SchoolAdmin (ops.tf school-provision, munaxa-school#34). The
+# administrator's address is only in the one-run secret munaxa-nonprod/school-provision/munaxa-demo.
+school_provision = { slug = "munaxa-demo", name = "Munaxa Demo School" }
 
 # Work demo starter data (work-demo.tf): the run-only work-demo-account and work-demo-loader tasks.
 # Testing only; prod.tfvars never sets it.
@@ -156,7 +170,7 @@ postgres_image = "public.ecr.aws/docker/library/postgres@sha256:5983db9a9c6ad225
 
 # db-admin creates the identity and control databases and their roles (Apply 2, C-2). Docs has its own
 # docs-db-admin task.
-db_bootstrap_products = ["identity", "control", "work"]
+db_bootstrap_products = ["identity", "control", "work", "school"]
 
 # Control C-2 (Apply 2). The licence public key is the public half of the KMS key aws_kms_key.licence
 # created by Apply 1 (alias/munaxa-nonprod-control-licence), read with kms:GetPublicKey as
@@ -199,6 +213,13 @@ secret_version_ids = {
   docs-migrate     = "b9b569c4-c9d7-49ae-935f-a59ee4da6a14"
   work-api         = "2364cb0a-a6c2-4481-a65f-4c7fab374a69"
   work-migrate     = "7e14f855-452c-44b1-98e1-78c5c8b77d50"
+  # School (26 Nov 2026, owner approval 21:30 UTC): written by the root connector like Work, values
+  # generated in AWS and never returned. school-api's CONTROL_PLANE_TOKEN is the marked placeholder
+  # until the owner issues the School credential in the Control portal; RESEND_API_KEY is empty
+  # (School skips mail). identity-oidc-clients: created by the connector in the same step.
+  school-api            = "2dccc556-8aa7-4254-9113-1e6e3bb3ebf8"
+  school-migrate        = "00600322-99b1-49a4-a860-c8f716c6a453"
+  identity-oidc-clients = "3e83e65c-8d47-461f-830f-b70110e5e711"
 }
 
 # Stage E owner decisions (15 Nov 2026, report 2026-11-15-identity-stage-e-owner-decisions, files 04

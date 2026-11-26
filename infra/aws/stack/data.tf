@@ -222,7 +222,10 @@ resource "aws_secretsmanager_secret" "service" {
 # party holds the same secret in its own bundle (School: school-api IDENTITY_SIGN_IN_CLIENT_SECRETS),
 # so the operator creates this secret and writes that bundle in one step, inside AWS, before the
 # apply that pins both (like <env>/identity-operator, it is not a Terraform resource: Terraform
-# could only create it empty, after the bundle version it must match). Rotate both together.
-locals {
-  identity_oidc_clients_secret = "arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:${local.prefix}/identity-oidc-clients"
+# could only create it empty, after the bundle version it must match). Terraform reads its metadata
+# only (DescribeSecret, never the value) for the full ARN, so the reference and the execution role's
+# grant name exactly that secret; a plan fails if the operator has not created it. Rotate both together.
+data "aws_secretsmanager_secret" "identity_oidc_clients" {
+  count = length(var.identity_oidc_clients) == 0 ? 0 : 1
+  name  = "${local.prefix}/identity-oidc-clients"
 }
