@@ -21,3 +21,11 @@ Date: 26 Nov 2026. Review only. PR https://github.com/munaxa/munaxa-school/pull/
 - Subject pinning: unique `(tenantId, identitySubject)`; a linked user only signs in with that subject.
 - Meta-refresh continuation: fixed targets only, `no-store`, `no-referrer`; all failure redirects relative and fixed.
 - Account rules: nobody created; deleted, blocked and subscription-refused users refused; audited.
+
+## Re-review at `bc09f72263a80c24faef732f0a58c6aa7560b2e2`
+
+Verdict unchanged: no Critical or High.
+
+- **M-1 resolved for privileged accounts.** Platform roles and SchoolAdmin, Principal, VicePrincipal, FinanceOfficer, Accountant and HR are never linked by email alone. The callback sets an HMAC-sealed link offer (HKDF key with its own label, `__Host-`, HttpOnly, Lax, 10 min) that completes only on the same browser's next successful password sign-in, for the same school and email, for an unlinked user, with a subject not held by anyone else. Forgery and expiry are refused (tested).
+- **L-1 fixed.** `iat` is required and at most 10 minutes old. **L-2 accepted** (documented).
+- New residual **Lows**: R-1, the check uses role names, so a custom role with admin permissions would still auto-link (base it on permissions). R-2, a user linked by email while non-privileged keeps the link after promotion (clear or re-link on promotion), relevant while Identity's `email_verified` stays unconditional (identity#33 L-2).
