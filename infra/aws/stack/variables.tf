@@ -513,6 +513,43 @@ variable "identity_oidc_clients" {
   }
 }
 
+variable "school_identity_sign_in" {
+  description = "Sign in with Munaxa Identity for School (munaxa-school#32): one entry per school, naming its Identity client and organisation. Empty leaves it off. Each client must also be in identity_oidc_clients with the School callback; its secret lives in both the identity and school-api bundles."
+  type = list(object({
+    school       = string
+    client_id    = string
+    organisation = string
+  }))
+  default = []
+
+  validation {
+    condition     = alltrue([for s in var.school_identity_sign_in : can(regex("^[a-z0-9][a-z0-9-]{0,62}$", s.school))])
+    error_message = "school_identity_sign_in school is a School tenant slug."
+  }
+
+  validation {
+    condition     = length(distinct([for s in var.school_identity_sign_in : s.school])) == length(var.school_identity_sign_in)
+    error_message = "school_identity_sign_in lists a school twice."
+  }
+
+  # The pairing is only real when Identity has the same client, bound to the same organisation,
+  # with School's callback registered: otherwise every sign-in would fail at Identity.
+  validation {
+    condition = alltrue([
+      for s in var.school_identity_sign_in : anytrue([
+        for c in var.identity_oidc_clients :
+        c.client_id == s.client_id && c.organisation == s.organisation && contains(c.redirect_uris, "https://${var.hosts.school}/api/v1/auth/identity/callback")
+      ])
+    ])
+    error_message = "Each school_identity_sign_in client must be in identity_oidc_clients with the same organisation and https://<hosts.school>/api/v1/auth/identity/callback."
+  }
+
+  validation {
+    condition     = length(var.school_identity_sign_in) == 0 || length(try(jsondecode(var.identity_public_keys), [])) > 0
+    error_message = "school_identity_sign_in needs identity_public_keys: School verifies Identity's id tokens with them."
+  }
+}
+
 variable "identity_public_keys" {
   description = "Identity's public signing keys as JSON [{kid, publicKey}], for Work (PLATFORM_AUTH_PUBLIC_KEYS) and Control (OPERATOR_AUTH_PUBLIC_KEYS). Public."
   type        = string

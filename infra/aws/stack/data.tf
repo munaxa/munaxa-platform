@@ -159,6 +159,7 @@ resource "aws_db_instance" "main" {
 # | <env>/work-api           | DATABASE_URL, PII_MATCH_SECRET, CONTROL_PLANE_TOKEN                 |
 # | <env>/school-api         | DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,                |
 # |                          | CONTROL_PLANE_TOKEN, RESEND_API_KEY                                 |
+# |                          | + IDENTITY_SIGN_IN_CLIENT_SECRETS (only with school_identity_sign_in)|
 # | <env>/<product>-migrate  | DATABASE_MIGRATION_URL (the owner role)                             |
 # | <env>/docs-api           | docs.tf local.docs_app_keys (only with hosts.docs)                  |
 # | <env>/docs-operator      | EDMS_APP_PASSWORD, EDMS_BACKUP_PASSWORD (only with hosts.docs)      |
@@ -197,7 +198,11 @@ locals {
     work-migrate     = ["DATABASE_MIGRATION_URL"]
     school-migrate   = ["DATABASE_MIGRATION_URL"]
     work-api         = ["DATABASE_URL", "PII_MATCH_SECRET", "CONTROL_PLANE_TOKEN"]
-    school-api       = ["DATABASE_URL", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "CONTROL_PLANE_TOKEN", "RESEND_API_KEY"]
+    school-api = concat(
+      ["DATABASE_URL", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "CONTROL_PLANE_TOKEN", "RESEND_API_KEY"],
+      # Sign in with Munaxa Identity (school_identity_sign_in): `client-id=<secret>,...`.
+      length(var.school_identity_sign_in) == 0 ? [] : ["IDENTITY_SIGN_IN_CLIENT_SECRETS"],
+    )
   })
 }
 
