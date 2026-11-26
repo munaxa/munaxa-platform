@@ -676,6 +676,18 @@ module "work_admin" {
 # NEXT_PUBLIC_API_URL into the image at build time, so each environment has its own admin build
 # (publish workflow input), served on the same host as the API so the browser stays same-origin.
 
+# Sign in with Munaxa Identity for School (school_identity_sign_in, munaxa-school#32). Empty adds
+# nothing. The client secrets are a school-api bundle key (data.tf).
+locals {
+  school_identity_environment = length(var.school_identity_sign_in) == 0 ? {} : {
+    IDENTITY_SIGN_IN              = "enabled"
+    IDENTITY_ISSUER               = local.https.identity
+    IDENTITY_SIGN_IN_REDIRECT_URI = "${local.https.school}/api/v1/auth/identity/callback"
+    IDENTITY_SIGN_IN_CLIENTS      = join(";", [for s in var.school_identity_sign_in : "${s.school}|${s.client_id}|${s.organisation}"])
+    IDENTITY_PUBLIC_KEYS          = var.identity_public_keys
+  }
+}
+
 module "school_api" {
   source = "../modules/service"
   count  = local.defined.school_api ? 1 : 0
@@ -698,7 +710,7 @@ module "school_api" {
   memory = 512
   port   = 4000
 
-  environment = {
+  environment = merge({
     NODE_ENV            = "production"
     PORT                = "4000"
     API_GLOBAL_PREFIX   = "api"
@@ -713,7 +725,7 @@ module "school_api" {
     # File storage (storage.tf). Credentials come from the task role (school#21); no key is set.
     AWS_S3_BUCKET = local.school_files_bucket.bucket
     AWS_REGION    = var.region
-  }
+  }, local.school_identity_environment)
   secret_arn = aws_secretsmanager_secret.service["school-api"].arn
 
   # Its own tenants' objects only: School writes every object under tenants/<tenantId>/.

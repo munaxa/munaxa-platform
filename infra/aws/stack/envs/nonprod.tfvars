@@ -138,6 +138,11 @@ identity_security_config = {
 #   redirect_uris = ["https://<hosts.docs>/auth/federation/callback"]
 # }]
 
+# School signs in through Identity (munaxa-school#32). Needs a matching identity_oidc_clients entry
+# with redirect https://<hosts.school>/api/v1/auth/identity/callback, the same client secret in the
+# identity and school-api bundles (IDENTITY_SIGN_IN_CLIENT_SECRETS), and a School image with #32:
+# school_identity_sign_in = [{ school = "<school slug>", client_id = "school-<slug>", organisation = "<identity organisation>" }]
+
 # Work demo starter data (work-demo.tf): the run-only work-demo-account and work-demo-loader tasks.
 # Testing only; prod.tfvars never sets it.
 work_demo_data_enabled = true

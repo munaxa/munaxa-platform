@@ -1844,3 +1844,61 @@ run "oidc_provider_refuses_a_duplicate_or_malformed_client" {
   }
   expect_failures = [var.identity_oidc_clients]
 }
+
+# --- School signs in through Identity (school_identity_sign_in; munaxa-school#32) ----------------
+
+run "school_identity_sign_in_off_by_default" {
+  command = plan
+
+  assert {
+    condition     = length(local.school_identity_environment) == 0 && !contains(local.secret_keys["school-api"], "IDENTITY_SIGN_IN_CLIENT_SECRETS")
+    error_message = "With no schools the School environment and bundle contract are unchanged."
+  }
+}
+
+run "school_identity_sign_in_paired_with_identity" {
+  command = plan
+
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients = [
+      { client_id = "school-al-noor", organisation = "al-noor", redirect_uris = ["https://school.test.munaxa.com/api/v1/auth/identity/callback"] },
+    ]
+    school_identity_sign_in = [{ school = "al-noor", client_id = "school-al-noor", organisation = "al-noor" }]
+  }
+
+  assert {
+    condition = jsonencode(local.school_identity_environment) == jsonencode({
+      IDENTITY_SIGN_IN              = "enabled"
+      IDENTITY_ISSUER               = "https://${var.hosts.identity}"
+      IDENTITY_SIGN_IN_REDIRECT_URI = "https://school.test.munaxa.com/api/v1/auth/identity/callback"
+      IDENTITY_SIGN_IN_CLIENTS      = "al-noor|school-al-noor|al-noor"
+      IDENTITY_PUBLIC_KEYS          = var.identity_public_keys
+    })
+    error_message = "School gets the switch, Identity's issuer, its callback, the pairing and Identity's public keys."
+  }
+  assert {
+    condition     = contains(local.secret_keys["school-api"], "IDENTITY_SIGN_IN_CLIENT_SECRETS")
+    error_message = "The client secrets join the school-api bundle contract."
+  }
+}
+
+run "school_identity_sign_in_needs_the_identity_client" {
+  command = plan
+  variables {
+    school_identity_sign_in = [{ school = "al-noor", client_id = "school-al-noor", organisation = "al-noor" }]
+  }
+  expect_failures = [var.school_identity_sign_in]
+}
+
+run "school_identity_sign_in_refuses_an_organisation_mismatch" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients = [
+      { client_id = "school-al-noor", organisation = "other", redirect_uris = ["https://school.test.munaxa.com/api/v1/auth/identity/callback"] },
+    ]
+    school_identity_sign_in = [{ school = "al-noor", client_id = "school-al-noor", organisation = "al-noor" }]
+  }
+  expect_failures = [var.school_identity_sign_in]
+}
