@@ -40,3 +40,18 @@ Date: 26 Nov 2026 (requested 21:27 UTC). This was a review only; nothing was pus
 - **I-2:** Secrets Manager grants access per secret, so the school-provision execution role can read the whole school-api bundle, although only DATABASE_URL is injected. Only the ECS agent uses that role. A dedicated URL-only secret would be tighter.
 - **I-3:** `school_app` can set `app.is_platform` to write across tenants. This is the existing School seed design, not new here.
 - **I-4:** Teach the H-20 declaration and custody scripts the new `identity-oidc-clients` version key and the `school-provision/<slug>` one-run secret.
+
+## Re-review of `0042203` (identity-oidc-clients created by the operator)
+
+**Still nothing above informational.**
+
+What changed:
+- `identity-oidc-clients` is no longer a Terraform resource. Identity reads it by a name-only (partial) ARN.
+- `extra_secrets` gains an optional `policy_arn`, which falls back to `secret_arn`, so existing callers are unchanged.
+- The execution role gets `…/identity-oidc-clients-??????`. This is the standard pattern for an operator-created secret, the same as identity-operator. Exactly six characters must match, so a differently named secret cannot match.
+- If the secret does not exist yet, the task fails to start (fail closed).
+- The stated reason holds. Terraform could only create the secret empty, after the bundle version it must match. One operator step inside AWS writes both the secret and the school-api bundle.
+
+Informational:
+- **I-5:** The operator procedure must create the secret with the stack's data KMS key (`aws_kms_key.data`) and a 30-day recovery window. The default `aws/secretsmanager` key would work, but loses the key separation.
+- **I-6:** The name is reserved by convention only. Anyone with CreateSecret in `munaxa-<env>/*` could create it first. That is the same trust as identity-operator.
