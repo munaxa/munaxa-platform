@@ -30,6 +30,11 @@ locals {
     # the 6dbf35d Identity pair above is no longer pinned.
     "sha256:d24ee375e3fced5f354b471548ee70ba686085cb90becd0e941545c60dce7277" = "munaxa-identity/api c721a8e (run 45692576016): D-SSL Testing-only"
     "sha256:05487060aed34395fd0e32958d01b1382b38c63cd4ee2ef1e0a8ed95b2370eef" = "munaxa-identity/migrate c721a8e (run 45692576016): D-SSL Testing-only"
+    # Published 26 Nov 2026 by publish-images-testing.yml (run 45815404306, identity#31 page CSP fix),
+    # pinned by the Identity re-pin (report 2026-11-25-control-login-redesign, file 01); the c721a8e
+    # Identity pair above is no longer pinned.
+    "sha256:cd3b3180a75778d04b1564f74eed8eea7e1622bbc21e72bae9ec4c66af7f09d9" = "munaxa-identity/api testing-7641300 (run 45815404306): D-SSL Testing-only"
+    "sha256:760e16b3e28cf8eb89827988d39b7ebc1c81db8f9d3a33d8336b49eed27b295c" = "munaxa-identity/migrate testing-7641300 (run 45815404306): D-SSL Testing-only"
     "sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0" = "munaxa-control/api 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9" = "munaxa-control/migrate 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6" = "munaxa-control/portal 744765d (run 45167349640): D-SSL Testing-only"
@@ -49,6 +54,12 @@ locals {
     "sha256:9f8f474ae77f6655da697dddaa8cd18fec80ab592fa5d45105ed168192bbcedf" = "munaxa-docs/api cec7bcc (run 45692480226): D-SSL Testing-only"
     "sha256:b01dd00693778ca361f29e1e14ed31c387e3f8602ebcd6c1a5b6797f8293a061" = "munaxa-docs/web cec7bcc (run 45692480226): D-SSL Testing-only"
     "sha256:e174393d907f6202fe8457970ad2997601043033cffe1b01367c316fdf7d3f07" = "munaxa-docs/migrate cec7bcc (run 45692480226): D-SSL Testing-only"
+    # Published 26 Nov 2026 by publish-images-testing.yml (run 45822198363; docs#189, #190, #191),
+    # pinned by the Docs re-pin (report 2026-11-26-docs-library-tree); the cec7bcc trio above is no
+    # longer pinned.
+    "sha256:62a563cb84a020372ddc3370693c6f8556e16a635641276de949f15ba45dd693" = "munaxa-docs/api testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
+    "sha256:224bc621630dbc678b76439f6c3398245b2cdc9b2b5f3617c40e9f586a5153ee" = "munaxa-docs/web testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
+    "sha256:b5afba103ac07e7786ac92df6fc2e7a67941f5e54a53a05d968deec183c8c5c5" = "munaxa-docs/migrate testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
   }
 }
 
