@@ -1769,6 +1769,11 @@ run "oidc_provider_with_clients" {
     values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
   }
 
+  override_data {
+    target = data.aws_secretsmanager_secret.identity_oidc_clients[0]
+    values = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-GhIjKl" }
+  }
+
   variables {
     db_bootstrap_products = ["identity"]
     secret_version_ids    = { identity = "00000000-0000-4000-8000-000000000003", identity-oidc-clients = "00000000-0000-4000-8000-000000000004" }
@@ -1789,7 +1794,7 @@ run "oidc_provider_with_clients" {
   assert {
     condition = {
       for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.name => s.valueFrom
-    }["IDENTITY_OIDC_CLIENT_SECRETS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients:IDENTITY_OIDC_CLIENT_SECRETS::00000000-0000-4000-8000-000000000004"
+    }["IDENTITY_OIDC_CLIENT_SECRETS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-GhIjKl:IDENTITY_OIDC_CLIENT_SECRETS::00000000-0000-4000-8000-000000000004"
     error_message = "Identity reads the client secrets from their own secret, pinned to its version."
   }
   assert {
@@ -1799,9 +1804,9 @@ run "oidc_provider_with_clients" {
   assert {
     condition = module.identity[0].execution_role_secret_arns == tolist([
       "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf",
-      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-??????",
+      "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-oidc-clients-GhIjKl",
     ])
-    error_message = "Identity's execution role reads its bundle and the operator-created client-secret secret only."
+    error_message = "Identity's execution role reads its bundle and exactly the operator-created client-secret secret."
   }
   assert {
     condition = {

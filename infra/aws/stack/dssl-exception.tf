@@ -1,6 +1,7 @@
 # TEMPORARY: owner decision D-SSL (22 Nov 2026), Testing-only acceptance of the OpenSSL 3.5.9-r1 HIGH
 # findings (CVE-2026-107493, -107494, -121482, -124709, -84786 in libssl3/libcrypto3) for the first
-# Docs Testing deployment and its dependencies (Identity, Control, Docs). Expires 2026-12-01T00:00:00Z.
+# Docs Testing deployment and its dependencies (Identity, Control, Docs), extended on 26 Nov 2026 to
+# Work (12:35 UTC) and School (21:30 UTC). Expires 2026-12-01T00:00:00Z.
 # The product repositories' scan wrapper (.github/scripts/scan-image-testing.sh) decides which images
 # may be published under it; this file keeps those images out of production and fails closed on expiry:
 #
@@ -35,6 +36,11 @@ locals {
     # Identity pair above is no longer pinned.
     "sha256:cd3b3180a75778d04b1564f74eed8eea7e1622bbc21e72bae9ec4c66af7f09d9" = "munaxa-identity/api testing-7641300 (run 45815404306): D-SSL Testing-only"
     "sha256:760e16b3e28cf8eb89827988d39b7ebc1c81db8f9d3a33d8336b49eed27b295c" = "munaxa-identity/migrate testing-7641300 (run 45815404306): D-SSL Testing-only"
+    # Published 26 Nov 2026 by publish-images-testing.yml (identity#34 merge, after #32 and #33),
+    # pinned by the School pin (report 2026-11-26-school-testing); the 7641300 Identity pair above is
+    # no longer pinned.
+    "sha256:53cadf045e8522fae6a9e70f683b9c5b6cebd352466ccdcaac8bca3ac83b5073" = "munaxa-identity/api testing-101ef90: D-SSL Testing-only"
+    "sha256:9d11e0ceddc8d210a497a5c390a81fd93997c083906bec8ef8eba7a8ccfbe196" = "munaxa-identity/migrate testing-101ef90: D-SSL Testing-only"
     "sha256:6c79f98ede5159aabae316ad2f29c5e85b99e6bc011265a16da4d75fb44f88f0" = "munaxa-control/api 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:0ae0db81a6c1eb07068f8bb330379664f15ec3d4cbcadc519cf968082da723a9" = "munaxa-control/migrate 744765d (run 45167349640): D-SSL Testing-only"
     "sha256:752fea31c1f0ac6dbcdffc0d5d1bfcd0348eb84e5f7008aad77f645275f64ca6" = "munaxa-control/portal 744765d (run 45167349640): D-SSL Testing-only"
@@ -67,6 +73,13 @@ locals {
     "sha256:2ea322011ab46b4d041ac3c4f35803835f39d1dfa7be282639f81f1485cb6be7" = "munaxa-work/api testing-ad96f98: D-SSL Testing-only"
     "sha256:6aee624db2573255b92f487d1e923dd2f3befa1c8266aaab8fac878c10f99517" = "munaxa-work/admin testing-ad96f98: D-SSL Testing-only"
     "sha256:ac693b0280c0a82a6923eea417817c70392e204daed3f7669ee13ee47fc1041a" = "munaxa-work/migrate testing-ad96f98: D-SSL Testing-only"
+
+    # Published 26 Nov 2026 by munaxa-school publish-images-testing.yml on c51dd62 (school#35 School
+    # exception, owner decision 26 Nov 21:30 UTC), pinned by the School pin
+    # (report 2026-11-26-school-testing). First School images on Testing.
+    "sha256:a6541698a5f58777c8f91464a1bca47be22669e0d2591845d6b3175693c94d03" = "munaxa-school/api testing-c51dd62: D-SSL Testing-only"
+    "sha256:b0ed1eff0fd914c04f1d2d5532599d0d9641305d39cab85f4fb49e0f9ef3dbe3" = "munaxa-school/admin testing-c51dd62-nonprod: D-SSL Testing-only"
+    "sha256:7aa8a73e581dccefacef01875bf4b85aafd3acb21738c3a59e7ba601d1c2e14a" = "munaxa-school/migrate testing-c51dd62: D-SSL Testing-only"
   }
 }
 
