@@ -60,6 +60,13 @@ locals {
     "sha256:62a563cb84a020372ddc3370693c6f8556e16a635641276de949f15ba45dd693" = "munaxa-docs/api testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
     "sha256:224bc621630dbc678b76439f6c3398245b2cdc9b2b5f3617c40e9f586a5153ee" = "munaxa-docs/web testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
     "sha256:b5afba103ac07e7786ac92df6fc2e7a67941f5e54a53a05d968deec183c8c5c5" = "munaxa-docs/migrate testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
+
+    # Published 26 Nov 2026 by munaxa-work publish-images-testing.yml after green main CI on ad96f98
+    # (work#61 Work exception, owner decision 26 Nov 12:35 UTC), pinned by the Work pin
+    # (report 2026-11-26-work-testing-like-docs). First Work images on Testing.
+    "sha256:2ea322011ab46b4d041ac3c4f35803835f39d1dfa7be282639f81f1485cb6be7" = "munaxa-work/api testing-ad96f98: D-SSL Testing-only"
+    "sha256:6aee624db2573255b92f487d1e923dd2f3befa1c8266aaab8fac878c10f99517" = "munaxa-work/admin testing-ad96f98: D-SSL Testing-only"
+    "sha256:ac693b0280c0a82a6923eea417817c70392e204daed3f7669ee13ee47fc1041a" = "munaxa-work/migrate testing-ad96f98: D-SSL Testing-only"
   }
 }
 

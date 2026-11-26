@@ -724,7 +724,6 @@ MANIFEST = {
             "volumes": []
         },
         "munaxa-nonprod-work-migrate": {
-            "pending": "MW-002: no Work migrate image digest or work-migrate secret version is pinned yet; discover skips this family and run refuses it until the pin PR sets image and version and removes this key",
             "executionRole": "munaxa-nonprod-work-migrate-execution",
             "taskRole": None,
             "task": {
@@ -739,13 +738,13 @@ MANIFEST = {
             "service": False,
             "containers": {
                 "work-migrate": {
-                    "image": "",
+                    "image": "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-work/migrate@sha256:ac693b0280c0a82a6923eea417817c70392e204daed3f7669ee13ee47fc1041a",
                     "secrets": {
                         "DATABASE_MIGRATION_URL": {
                             "form": "full",
                             "secret": "munaxa-nonprod/work-migrate",
                             "key": "DATABASE_MIGRATION_URL",
-                            "version": ""
+                            "version": "7e14f855-452c-44b1-98e1-78c5c8b77d50"
                         }
                     },
                     "environmentNames": [

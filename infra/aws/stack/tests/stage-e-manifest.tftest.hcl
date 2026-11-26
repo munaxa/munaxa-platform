@@ -105,6 +105,11 @@ run "stage_e_task_definitions_match_the_manifest" {
     values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-migrate-Ef34Gh" }
   }
   override_resource {
+    target          = aws_secretsmanager_secret.service["work-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/work-migrate-Ij56Kl" }
+  }
+  override_resource {
     target          = aws_iam_role.db_admin_execution
     override_during = plan
     values          = { arn = "arn:aws:iam::229251310592:role/munaxa-shared/munaxa-nonprod-db-admin-execution" }
@@ -142,6 +147,7 @@ run "stage_e_task_definitions_match_the_manifest" {
     images = {
       identity_api     = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity"].containers.identity.image
       identity_migrate = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity-migrate"].containers["identity-migrate"].image
+      work_migrate     = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers["work-migrate"].image
     }
     postgres_image        = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-db-admin"].containers["db-admin"].image
     valkey_image          = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-identity"].containers.valkey.image
@@ -149,6 +155,7 @@ run "stage_e_task_definitions_match_the_manifest" {
     secret_version_ids = {
       identity         = "80914756-68cd-420d-8094-0fd49afe3492"
       identity-migrate = "a3cc6622-df66-4787-bae7-83ccfec56ff4"
+      work-migrate     = jsondecode(file("envs/nonprod.stage-e-tasks.json")).families["munaxa-nonprod-work-migrate"].containers["work-migrate"].secrets.DATABASE_MIGRATION_URL.version
     }
     identity_security_config = {
       mfa_primary_kid      = "mfa-nonprod-2026-11"
@@ -172,6 +179,7 @@ run "stage_e_task_definitions_match_the_manifest" {
         "munaxa-nonprod-identity-bootstrap" = aws_ecs_task_definition.identity_bootstrap[0].container_definitions
         "munaxa-nonprod-identity-probe"     = aws_ecs_task_definition.identity_probe[0].container_definitions
         "munaxa-nonprod-identity"           = module.identity[0].task_definition_container_definitions
+        "munaxa-nonprod-work-migrate"       = module.migrate["work"].task_definition_container_definitions
         } : concat(
         [sort([for c in jsondecode(cd) : c.name]) == sort(keys(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers))],
         [for c in jsondecode(cd) : c.image == jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].image],
@@ -254,6 +262,7 @@ run "stage_e_task_definitions_match_the_manifest" {
         "munaxa-nonprod-identity-bootstrap" = aws_ecs_task_definition.identity_bootstrap[0].container_definitions
         "munaxa-nonprod-identity-probe"     = aws_ecs_task_definition.identity_probe[0].container_definitions
         "munaxa-nonprod-identity"           = module.identity[0].task_definition_container_definitions
+        "munaxa-nonprod-work-migrate"       = module.migrate["work"].task_definition_container_definitions
         } : [for c in jsondecode(cd) : concat(
           [jsonencode(sort([for e in try(c.environment, []) : e.name])) == jsonencode(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].environmentNames)],
           [for k in jsondecode(file("envs/nonprod.stage-e-tasks.json")).shapeKeys : contains(keys(c), k) == contains(keys(jsondecode(file("envs/nonprod.stage-e-tasks.json")).families[family].containers[c.name].shape), k)],
