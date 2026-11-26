@@ -117,6 +117,16 @@ identity_security_config = {
   mfa_privileged_roles = ["control-operator-admin", "control-operator-viewer"]
 }
 
+# Company sign-in (munaxa-identity#32, ADR-0007; munaxa-identity docs/runbooks/sso.md). Off until
+# the owner has registered Munaxa with Microsoft and/or Google and written the client secret(s)
+# into munaxa-nonprod/identity as IDENTITY_SSO_MICROSOFT_CLIENT_SECRET / IDENTITY_SSO_GOOGLE_CLIENT_SECRET,
+# and secret_version_ids.identity names that version. Then, in the PR that pins an Identity image
+# containing identity#32, uncomment with the real (public) client ids:
+# identity_sso_config = {
+#   microsoft_client_id = "<Entra Application (client) ID>"
+#   google_client_id    = "<…apps.googleusercontent.com>"
+# }
+
 # Work demo starter data (work-demo.tf): the run-only work-demo-account and work-demo-loader tasks.
 # Testing only; prod.tfvars never sets it.
 work_demo_data_enabled = true
