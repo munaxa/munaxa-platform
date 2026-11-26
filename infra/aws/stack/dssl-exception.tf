@@ -54,6 +54,12 @@ locals {
     "sha256:9f8f474ae77f6655da697dddaa8cd18fec80ab592fa5d45105ed168192bbcedf" = "munaxa-docs/api cec7bcc (run 45692480226): D-SSL Testing-only"
     "sha256:b01dd00693778ca361f29e1e14ed31c387e3f8602ebcd6c1a5b6797f8293a061" = "munaxa-docs/web cec7bcc (run 45692480226): D-SSL Testing-only"
     "sha256:e174393d907f6202fe8457970ad2997601043033cffe1b01367c316fdf7d3f07" = "munaxa-docs/migrate cec7bcc (run 45692480226): D-SSL Testing-only"
+    # Published 26 Nov 2026 by publish-images-testing.yml (run 45822198363; docs#189, #190, #191),
+    # pinned by the Docs re-pin (report 2026-11-26-docs-library-tree); the cec7bcc trio above is no
+    # longer pinned.
+    "sha256:62a563cb84a020372ddc3370693c6f8556e16a635641276de949f15ba45dd693" = "munaxa-docs/api testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
+    "sha256:224bc621630dbc678b76439f6c3398245b2cdc9b2b5f3617c40e9f586a5153ee" = "munaxa-docs/web testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
+    "sha256:b5afba103ac07e7786ac92df6fc2e7a67941f5e54a53a05d968deec183c8c5c5" = "munaxa-docs/migrate testing-75cdcc3 (run 45822198363): D-SSL Testing-only"
   }
 }
 

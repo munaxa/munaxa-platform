@@ -1,13 +1,29 @@
 {
   "root": "stack-nonprod",
-  "intent": "IDENTITY RE-PIN (26 Nov 2026, report 2026-11-25-control-login-redesign file 01): Identity api and migrate at 7641300 (testing-7641300, run 45815404306; identity#31 gives the sign-in, MFA and password pages their own Content-Security-Policy so browsers apply the styles and mark), published under the Testing-only OpenSSL exception D-SSL-2026-11 and listed in dssl-exception.tf = the four task definitions that run the Identity images replaced (new revisions). Services stay off. No create, no destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
+  "intent": "COMBINED RE-PIN (26 Nov 2026). (1) Identity (report 2026-11-25-control-login-redesign file 01): Identity api and migrate at 7641300 (testing-7641300, run 45815404306; identity#31 gives the sign-in, MFA and password pages their own Content-Security-Policy so browsers apply the styles and mark). (2) Docs (report 2026-11-26-docs-library-tree): Docs api, web and migrate at 75cdcc3 (testing-75cdcc3, run 45822198363; docs#189 libraries tree and remembered folder, docs#190 approver decision keys, docs#191 Check in from the library). All published under the Testing-only OpenSSL exception D-SSL-2026-11 and listed in dssl-exception.tf = the eight task definitions that run those images replaced (new revisions). Services stay off. No create, no destroy, no ECS service, ALB, network, database, KMS, secret, DNS or production change.",
   "changes": [
+    {
+      "address": "aws_ecs_task_definition.docs_provision[0]",
+      "actions": ["delete", "create"]
+    },
     {
       "address": "aws_ecs_task_definition.identity_bootstrap[0]",
       "actions": ["delete", "create"]
     },
     {
       "address": "aws_ecs_task_definition.identity_probe[0]",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "module.docs_api[0].aws_ecs_task_definition.this",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "module.docs_migrate[0].aws_ecs_task_definition.this",
+      "actions": ["delete", "create"]
+    },
+    {
+      "address": "module.docs_web[0].aws_ecs_task_definition.this",
       "actions": ["delete", "create"]
     },
     {
