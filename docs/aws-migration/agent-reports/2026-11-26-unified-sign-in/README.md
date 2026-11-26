@@ -33,7 +33,7 @@ Control, Docs and School.
 | munaxa-school | #32 | `e5e4a79` | School signs in through Identity, safe account linking |
 | munaxa-platform | #203 | see index | Stack wiring for School sign-in (`school_identity_sign_in`) |
 
-Security reviews (independent reviewer, report in platform#200 and on each PR): no Critical or
+Security reviews (independent reviewer, `2026-11-26-identity-sso-review/` from platform#200, and on each PR): no Critical or
 High finding remained at merge. Medium findings were fixed before merge:
 
 - identity#32 M-1: Entra guest accounts could bypass the tenant check. Fixed.
