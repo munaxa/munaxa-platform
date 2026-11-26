@@ -433,6 +433,86 @@ variable "identity_security_config" {
   }
 }
 
+# Company sign-in (munaxa-identity#32, ADR-0007; munaxa-identity docs/runbooks/sso.md). Optional:
+#
+#   null (default)  Identity runs with IDENTITY_SSO unset (its default, disabled: the routes 404),
+#                   and the identity bundle contract is unchanged.
+#   set             IDENTITY_SSO=enabled and each given client id as a plain variable; the identity
+#                   bundle gains IDENTITY_SSO_MICROSOFT_CLIENT_SECRET and/or
+#                   IDENTITY_SSO_GOOGLE_CLIENT_SECRET for exactly the providers given.
+#
+# Client ids are public (they appear in every sign-in URL); the secrets never appear here. Set it in
+# the reviewed PR that pins an Identity image containing identity#32, after the owner has written the
+# secret(s) into the bundle and secret_version_ids.identity names that version: ECS refuses to start
+# a task whose secret names a JSON key the bundle version does not hold.
+variable "identity_sso_config" {
+  description = "Company sign-in (Microsoft Entra / Google) client ids, or null for off. The client secrets live only in the <env>/identity bundle."
+  type = object({
+    microsoft_client_id = optional(string, "")
+    google_client_id    = optional(string, "")
+  })
+  default = null
+
+  validation {
+    condition     = var.identity_sso_config == null || try(var.identity_sso_config.microsoft_client_id != "" || var.identity_sso_config.google_client_id != "", false)
+    error_message = "identity_sso_config names at least one provider's client id; use null to leave company sign-in off."
+  }
+
+  # Company sign-in exists only in images built after the hardening (identity#32 builds on #7-#14),
+  # which also need the MFA contract. Release 5277d71 would ignore the variables silently.
+  validation {
+    condition     = var.identity_sso_config == null || var.identity_security_config != null
+    error_message = "identity_sso_config needs identity_security_config: only a hardened Identity image has company sign-in."
+  }
+
+  validation {
+    condition     = var.identity_sso_config == null || try(var.identity_sso_config.microsoft_client_id == "" || can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.identity_sso_config.microsoft_client_id)), false)
+    error_message = "identity_sso_config.microsoft_client_id is the Entra Application (client) ID: a lower-case GUID."
+  }
+
+  validation {
+    condition     = var.identity_sso_config == null || try(var.identity_sso_config.google_client_id == "" || can(regex("^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$", var.identity_sso_config.google_client_id)), false)
+    error_message = "identity_sso_config.google_client_id is a Google OAuth client id ending in .apps.googleusercontent.com."
+  }
+}
+
+variable "identity_oidc_clients" {
+  description = "Identity as the OpenID Connect provider for other Munaxa products (munaxa-identity ADR-0008): one entry per relying party (for example one per Docs organisation), each bound to one Identity organisation key. Empty leaves the provider off. The client secrets live only in the <env>/identity bundle (IDENTITY_OIDC_CLIENT_SECRETS)."
+  type = list(object({
+    client_id     = string
+    organisation  = string
+    redirect_uris = list(string)
+  }))
+  default = []
+
+  validation {
+    condition     = alltrue([for c in var.identity_oidc_clients : can(regex("^[a-z0-9][a-z0-9-]{2,63}$", c.client_id))])
+    error_message = "identity_oidc_clients client_id is 3-64 characters of a-z, 0-9 and -."
+  }
+
+  validation {
+    condition     = alltrue([for c in var.identity_oidc_clients : can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$", c.organisation))])
+    error_message = "identity_oidc_clients organisation is an Identity organisation key."
+  }
+
+  # Production Identity refuses anything else at boot; refusing it here keeps a plan from shipping it.
+  validation {
+    condition     = alltrue([for c in var.identity_oidc_clients : length(c.redirect_uris) > 0 && alltrue([for u in c.redirect_uris : can(regex("^https://[a-z0-9.-]+(:[0-9]+)?(/[^#?\\s|;]*)?$", u))])])
+    error_message = "identity_oidc_clients redirect_uris are one or more https URLs without a query, fragment, space, '|' or ';'."
+  }
+
+  validation {
+    condition     = length(distinct([for c in var.identity_oidc_clients : c.client_id])) == length(var.identity_oidc_clients)
+    error_message = "identity_oidc_clients lists a client_id twice."
+  }
+
+  # The provider exists only in images built after identity#33, which also need the MFA contract.
+  validation {
+    condition     = length(var.identity_oidc_clients) == 0 || var.identity_security_config != null
+    error_message = "identity_oidc_clients needs identity_security_config: only a hardened Identity image is an OIDC provider."
+  }
+}
+
 variable "identity_public_keys" {
   description = "Identity's public signing keys as JSON [{kid, publicKey}], for Work (PLATFORM_AUTH_PUBLIC_KEYS) and Control (OPERATOR_AUTH_PUBLIC_KEYS). Public."
   type        = string

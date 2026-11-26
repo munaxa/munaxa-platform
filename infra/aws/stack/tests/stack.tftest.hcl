@@ -1614,3 +1614,233 @@ run "aw01_a_role_key_with_a_comma_is_refused" {
   }
   expect_failures = [var.identity_security_config]
 }
+
+# --- Company sign-in (identity_sso_config; munaxa-identity#32, ADR-0007) -------------------------
+#
+# Null leaves the hardened contract above unchanged. Set, Identity gets IDENTITY_SSO=enabled and the
+# public client id of each configured provider, and reads exactly that provider's client secret from
+# its bundle, pinned. A provider not configured adds neither a variable nor a bundle key.
+
+run "sso_microsoft_only_adds_its_id_and_its_secret_and_nothing_for_google" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
+  }
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity-migrate"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-migrate-GhIjKl" }
+  }
+
+  variables {
+    db_bootstrap_products = ["identity"]
+    secret_version_ids    = { identity = "00000000-0000-4000-8000-000000000003" }
+    images = {
+      identity_api     = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      identity_migrate = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/migrate@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_sso_config      = { microsoft_client_id = "0a1b2c3d-1111-4222-8333-444455556666" }
+  }
+
+  assert {
+    condition     = local.secret_keys["identity"] == ["DATABASE_URL", "IDENTITY_SIGNING_PRIVATE_KEY", "IDENTITY_SIGNING_SECRET", "REDIS_URL", "REDIS_PASSWORD", "MFA_ENCRYPTION_KEYS", "IDENTITY_SSO_MICROSOFT_CLIENT_SECRET"]
+    error_message = "The identity bundle contract gains the Microsoft client secret and nothing for Google."
+  }
+  assert {
+    condition = {
+      for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.name => s.valueFrom
+    }["IDENTITY_SSO_MICROSOFT_CLIENT_SECRET"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:IDENTITY_SSO_MICROSOFT_CLIENT_SECRET::00000000-0000-4000-8000-000000000003"
+    error_message = "Identity reads the Microsoft client secret from its own bundle, pinned to the version."
+  }
+  assert {
+    condition = {
+      for e in jsondecode(module.identity[0].task_definition_container_definitions)[0].environment : e.name => e.value
+      if startswith(e.name, "IDENTITY_SSO")
+      } == {
+      IDENTITY_SSO                     = "enabled"
+      IDENTITY_SSO_MICROSOFT_CLIENT_ID = "0a1b2c3d-1111-4222-8333-444455556666"
+    }
+    error_message = "The plain environment gains IDENTITY_SSO=enabled and the Microsoft client id only."
+  }
+  assert {
+    condition     = !strcontains(module.identity[0].task_definition_container_definitions, "GOOGLE")
+    error_message = "A provider that is not configured adds nothing to the task definition."
+  }
+}
+
+run "sso_both_providers" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
+  }
+
+  variables {
+    db_bootstrap_products = ["identity"]
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_sso_config = {
+      microsoft_client_id = "0a1b2c3d-1111-4222-8333-444455556666"
+      google_client_id    = "123456789012-abcdefghijklmnopqrstuv.apps.googleusercontent.com"
+    }
+  }
+
+  assert {
+    condition     = slice(local.secret_keys["identity"], 6, 8) == ["IDENTITY_SSO_MICROSOFT_CLIENT_SECRET", "IDENTITY_SSO_GOOGLE_CLIENT_SECRET"]
+    error_message = "Both client secrets join the identity bundle contract."
+  }
+  assert {
+    condition = {
+      for e in jsondecode(module.identity[0].task_definition_container_definitions)[0].environment : e.name => e.value
+    }["IDENTITY_SSO_GOOGLE_CLIENT_ID"] == "123456789012-abcdefghijklmnopqrstuv.apps.googleusercontent.com"
+    error_message = "The Google client id is a plain variable."
+  }
+}
+
+run "sso_needs_the_hardened_identity_contract" {
+  command = plan
+  variables {
+    identity_sso_config = { microsoft_client_id = "0a1b2c3d-1111-4222-8333-444455556666" }
+  }
+  expect_failures = [var.identity_sso_config]
+}
+
+run "sso_refuses_no_provider" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_sso_config      = {}
+  }
+  expect_failures = [var.identity_sso_config]
+}
+
+run "sso_refuses_a_microsoft_id_that_is_not_a_guid" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_sso_config      = { microsoft_client_id = "contoso.onmicrosoft.com" }
+  }
+  expect_failures = [var.identity_sso_config]
+}
+
+run "sso_refuses_a_google_id_of_the_wrong_shape" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_sso_config      = { google_client_id = "GOCSPX-looks-like-a-secret" }
+  }
+  expect_failures = [var.identity_sso_config]
+}
+
+# --- Identity as an OIDC provider (identity_oidc_clients; munaxa-identity#33, ADR-0008) -----------
+#
+# Empty leaves everything above unchanged. Set, Identity gets IDENTITY_OIDC_PROVIDER=enabled and the
+# public client list in its own `id|organisation|uri uri;...` form, reads IDENTITY_OIDC_CLIENT_SECRETS
+# from its bundle, pinned, and the Docs API may call the Identity host.
+
+run "oidc_provider_off_by_default_adds_nothing" {
+  command = plan
+
+  assert {
+    condition     = !contains(local.identity_secret_keys, "IDENTITY_OIDC_CLIENT_SECRETS") && length(local.identity_oidc_environment) == 0
+    error_message = "With no clients the identity contract and environment are unchanged."
+  }
+  assert {
+    condition     = !contains(split(",", local.docs_outbound_http_allowlist), var.hosts.identity)
+    error_message = "With no clients Docs may not call the Identity host."
+  }
+}
+
+run "oidc_provider_with_clients" {
+  command = plan
+
+  override_resource {
+    target          = aws_secretsmanager_secret.service["identity"]
+    override_during = plan
+    values          = { arn = "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf" }
+  }
+
+  variables {
+    db_bootstrap_products = ["identity"]
+    secret_version_ids    = { identity = "00000000-0000-4000-8000-000000000003" }
+    images = {
+      identity_api = "229251310592.dkr.ecr.eu-central-1.amazonaws.com/munaxa-identity/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients = [
+      { client_id = "docs-munaxa-group", organisation = "munaxa-group", redirect_uris = ["https://docs.test.munaxa.com/auth/federation/callback"] },
+      { client_id = "school-acme", organisation = "acme", redirect_uris = ["https://school.test.munaxa.com/a", "https://school.test.munaxa.com/b"] },
+    ]
+  }
+
+  assert {
+    condition     = local.secret_keys["identity"][length(local.secret_keys["identity"]) - 1] == "IDENTITY_OIDC_CLIENT_SECRETS"
+    error_message = "The client secrets join the identity bundle contract."
+  }
+  assert {
+    condition = {
+      for s in jsondecode(module.identity[0].task_definition_container_definitions)[0].secrets : s.name => s.valueFrom
+    }["IDENTITY_OIDC_CLIENT_SECRETS"] == "arn:aws:secretsmanager:eu-central-1:229251310592:secret:munaxa-nonprod/identity-AbCdEf:IDENTITY_OIDC_CLIENT_SECRETS::00000000-0000-4000-8000-000000000003"
+    error_message = "Identity reads the client secrets from its own bundle, pinned to the version."
+  }
+  assert {
+    condition = {
+      for e in jsondecode(module.identity[0].task_definition_container_definitions)[0].environment : e.name => e.value
+      if startswith(e.name, "IDENTITY_OIDC")
+      } == {
+      IDENTITY_OIDC_PROVIDER = "enabled"
+      IDENTITY_OIDC_CLIENTS  = "docs-munaxa-group|munaxa-group|https://docs.test.munaxa.com/auth/federation/callback;school-acme|acme|https://school.test.munaxa.com/a https://school.test.munaxa.com/b"
+    }
+    error_message = "The plain environment gains the switch and the client list in Identity's format."
+  }
+  assert {
+    condition     = contains(split(",", local.docs_outbound_http_allowlist), var.hosts.identity)
+    error_message = "Docs may call the Identity host for discovery, keys and the token endpoint."
+  }
+}
+
+run "oidc_provider_needs_the_hardened_identity_contract" {
+  command = plan
+  variables {
+    identity_oidc_clients = [{ client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/auth/federation/callback"] }]
+  }
+  expect_failures = [var.identity_oidc_clients]
+}
+
+run "oidc_provider_refuses_http_redirect" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients    = [{ client_id = "docs-acme", organisation = "acme", redirect_uris = ["http://docs.test.munaxa.com/cb"] }]
+  }
+  expect_failures = [var.identity_oidc_clients]
+}
+
+run "oidc_provider_refuses_a_separator_in_a_redirect" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients    = [{ client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/cb;evil|x"] }]
+  }
+  expect_failures = [var.identity_oidc_clients]
+}
+
+run "oidc_provider_refuses_a_duplicate_or_malformed_client" {
+  command = plan
+  variables {
+    identity_security_config = { mfa_primary_kid = "nonprod-2026-11", mfa_policy = "off" }
+    identity_oidc_clients = [
+      { client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/cb"] },
+      { client_id = "docs-acme", organisation = "acme", redirect_uris = ["https://docs.test.munaxa.com/cb"] },
+    ]
+  }
+  expect_failures = [var.identity_oidc_clients]
+}
