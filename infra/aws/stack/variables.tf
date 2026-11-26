@@ -433,6 +433,49 @@ variable "identity_security_config" {
   }
 }
 
+# Company sign-in (munaxa-identity#32, ADR-0007; munaxa-identity docs/runbooks/sso.md). Optional:
+#
+#   null (default)  Identity runs with IDENTITY_SSO unset (its default, disabled: the routes 404),
+#                   and the identity bundle contract is unchanged.
+#   set             IDENTITY_SSO=enabled and each given client id as a plain variable; the identity
+#                   bundle gains IDENTITY_SSO_MICROSOFT_CLIENT_SECRET and/or
+#                   IDENTITY_SSO_GOOGLE_CLIENT_SECRET for exactly the providers given.
+#
+# Client ids are public (they appear in every sign-in URL); the secrets never appear here. Set it in
+# the reviewed PR that pins an Identity image containing identity#32, after the owner has written the
+# secret(s) into the bundle and secret_version_ids.identity names that version: ECS refuses to start
+# a task whose secret names a JSON key the bundle version does not hold.
+variable "identity_sso_config" {
+  description = "Company sign-in (Microsoft Entra / Google) client ids, or null for off. The client secrets live only in the <env>/identity bundle."
+  type = object({
+    microsoft_client_id = optional(string, "")
+    google_client_id    = optional(string, "")
+  })
+  default = null
+
+  validation {
+    condition     = var.identity_sso_config == null || try(var.identity_sso_config.microsoft_client_id != "" || var.identity_sso_config.google_client_id != "", false)
+    error_message = "identity_sso_config names at least one provider's client id; use null to leave company sign-in off."
+  }
+
+  # Company sign-in exists only in images built after the hardening (identity#32 builds on #7-#14),
+  # which also need the MFA contract. Release 5277d71 would ignore the variables silently.
+  validation {
+    condition     = var.identity_sso_config == null || var.identity_security_config != null
+    error_message = "identity_sso_config needs identity_security_config: only a hardened Identity image has company sign-in."
+  }
+
+  validation {
+    condition     = var.identity_sso_config == null || try(var.identity_sso_config.microsoft_client_id == "" || can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.identity_sso_config.microsoft_client_id)), false)
+    error_message = "identity_sso_config.microsoft_client_id is the Entra Application (client) ID: a lower-case GUID."
+  }
+
+  validation {
+    condition     = var.identity_sso_config == null || try(var.identity_sso_config.google_client_id == "" || can(regex("^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$", var.identity_sso_config.google_client_id)), false)
+    error_message = "identity_sso_config.google_client_id is a Google OAuth client id ending in .apps.googleusercontent.com."
+  }
+}
+
 variable "identity_public_keys" {
   description = "Identity's public signing keys as JSON [{kid, publicKey}], for Work (PLATFORM_AUTH_PUBLIC_KEYS) and Control (OPERATOR_AUTH_PUBLIC_KEYS). Public."
   type        = string

@@ -152,6 +152,8 @@ resource "aws_db_instance" "main" {
 # |                          | the sidecar's password; production: rediss://:<token>@<cache        |
 # |                          | primary endpoint>:6379, the cache's AUTH token, identity-cache.tf)  |
 # |                          | + MFA_ENCRYPTION_KEYS (only with identity_security_config, AW-01)   |
+# |                          | + IDENTITY_SSO_MICROSOFT_CLIENT_SECRET, IDENTITY_SSO_GOOGLE_CLIENT_  |
+# |                          |   SECRET (each only for a provider in identity_sso_config)          |
 # | <env>/control-api        | DATABASE_URL                                                        |
 # | <env>/work-api           | DATABASE_URL, PII_MATCH_SECRET, CONTROL_PLANE_TOKEN                 |
 # | <env>/school-api         | DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET,                |
@@ -171,6 +173,9 @@ locals {
   identity_secret_keys = concat(
     ["DATABASE_URL", "IDENTITY_SIGNING_PRIVATE_KEY", "IDENTITY_SIGNING_SECRET", "REDIS_URL", "REDIS_PASSWORD"],
     var.identity_security_config == null ? [] : ["MFA_ENCRYPTION_KEYS"],
+    # Company sign-in client secrets (identity_sso_config): one key per configured provider only.
+    try(var.identity_sso_config.microsoft_client_id, "") == "" ? [] : ["IDENTITY_SSO_MICROSOFT_CLIENT_SECRET"],
+    try(var.identity_sso_config.google_client_id, "") == "" ? [] : ["IDENTITY_SSO_GOOGLE_CLIENT_SECRET"],
   )
 
   secret_keys = merge(local.docs_enabled ? {

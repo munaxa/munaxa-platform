@@ -112,6 +112,16 @@ locals {
   )
 }
 
+# Company sign-in (identity_sso_config, munaxa-identity ADR-0007): the switch and the public client
+# ids. The secrets are bundle keys (data.tf). Null adds nothing, so the environment is unchanged.
+locals {
+  identity_sso_environment = var.identity_sso_config == null ? {} : merge(
+    { IDENTITY_SSO = "enabled" },
+    var.identity_sso_config.microsoft_client_id == "" ? {} : { IDENTITY_SSO_MICROSOFT_CLIENT_ID = var.identity_sso_config.microsoft_client_id },
+    var.identity_sso_config.google_client_id == "" ? {} : { IDENTITY_SSO_GOOGLE_CLIENT_ID = var.identity_sso_config.google_client_id },
+  )
+}
+
 module "identity" {
   source = "../modules/service"
   count  = local.defined.identity_api ? 1 : 0
@@ -150,7 +160,7 @@ module "identity" {
     # The ALB is the one proxy in front of Identity; without it every client shares the ALB's
     # address and so one per-IP login limiter (identity#2).
     TRUST_PROXY_HOPS = "1"
-  }, local.identity_security_environment)
+  }, local.identity_security_environment, local.identity_sso_environment)
   secret_arn = aws_secretsmanager_secret.service["identity"].arn
   # local.identity_secret_keys (data.tf): MFA_ENCRYPTION_KEYS joins only with identity_security_config.
   secret_keys       = local.secret_keys["identity"]
