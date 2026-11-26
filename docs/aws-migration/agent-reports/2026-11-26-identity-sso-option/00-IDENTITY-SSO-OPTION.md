@@ -14,7 +14,7 @@ Repositories read at: munaxa-identity `7641300`, munaxa-platform `2cd99e3`, muna
 
 **Proposal:** add "Sign in with Microsoft" and "Sign in with Google" to Munaxa Identity once, as an **optional per-company setting**. Normal Munaxa passwords keep working for companies that do not opt in, and at least one local administrator stays as a fallback for companies that do. Work and Control need **no change**: they trust Munaxa Identity's tokens, not the method used to sign in.
 
-**Effort (estimate, not measured):** about **2 weeks** of implementation and review for the first phase in the repository (Identity only), plus owner steps later (create the Microsoft and Google app registrations, one secret each in AWS, then a deploy). Section 6 has the breakdown.
+**Effort (estimate, not measured):** about **2 weeks** of implementation and review for the first phase in the repository (Identity only), plus owner steps later (create the Microsoft and Google app registrations, one secret each in AWS, then a deploy). Section 4 has the breakdown.
 
 ## 2. Evidence: what exists today
 
