@@ -21,12 +21,17 @@ review rounds: no Critical, High or Medium findings open.
 | --- | --- | --- |
 | munaxa-identity#34 | `email_verified` is true only for a checked address (company directory, used recovery link, or `operator-cli account-email-verified`); closes identity#33 L-2 | merged `101ef90` |
 | munaxa-school#33 | `STAFF_PASSWORD_SIGN_IN` (`disabled` in production, `emergency`, `enabled`): staff passwords refused after the password is proved; parents/students keep them; administrators need Identity `acr: mfa` at linking and every sign-in; password-confirmed link offer removed | merged `c86c8b9` |
-| munaxa-docs#193 | `PASSWORD_SIGN_IN`: per tenant, passwords refused once its Munaxa sign-in (federation) is on; `emergency` admits a TENANT_ADMIN with a confirmed Docs authenticator; federation links/creates only on `email_verified: true`; MFA roles need a second factor, also on the provisioning-race path | open, review clean (see below) |
-| munaxa-platform#204 | Terraform: Docs and School switch staff passwords off once Identity has their client; `password_sign_in_emergency` (default false) for an Identity outage; 78 stack tests | open, review clean |
-| munaxa-school#34 | (1) Platform Console, platform billing/webhooks/tenant-database API, console host split and `db:seed:platform-owner` removed; `school:provision` adds a school and a password-less SchoolAdmin (dry run by default, idempotent). (2) Teacher app: system browser + app PKCE; School returns a sealed refresh-token hand-off in the URL fragment, redeemed once at `POST /auth/identity/app-session` | open, review clean after `f0eb991` |
+| munaxa-docs#193 | `PASSWORD_SIGN_IN`: per tenant, passwords refused once its Munaxa sign-in (federation) is on; `emergency` admits a TENANT_ADMIN with a confirmed Docs authenticator; federation links/creates only on `email_verified: true`; MFA roles need a second factor, also on the provisioning-race path | merged `0fdb7af` |
+| munaxa-platform#204 | Terraform: Docs and School switch staff passwords off once Identity has their client; `password_sign_in_emergency` (default false) for an Identity outage; 78 stack tests | merged `afd28b0` |
+| munaxa-school#34 | (1) Platform Console, platform billing/webhooks/tenant-database API, console host split and `db:seed:platform-owner` removed; `school:provision` adds a school and a password-less SchoolAdmin (dry run by default, idempotent). (2) Teacher app: system browser + app PKCE; School returns a sealed refresh-token hand-off in the URL fragment, redeemed once at `POST /auth/identity/app-session` | merged `c0bd075` |
 
 Merges follow the standing rule (required checks green, no Critical/High). School's Images check is
-red on main too (OpenSSL 3.5.9 Highs, waits for 3.5.10).
+red on main too (OpenSSL 3.5.9 Highs, waits for 3.5.10). Platform's Accessibility check failed on #204 and
+on main `cd85933` (a Terraform-only commit) alike and passed on re-run: flaky, not from this change.
+
+School Testing (separate thread, platform#207): `munaxa-nonprod/identity-oidc-clients` is created by the
+operator inside AWS, not by Terraform. When Docs federation goes live, its client secret goes into a
+new version of that same secret together with the School value, in one AWS-side step.
 
 ## Security reviews
 
