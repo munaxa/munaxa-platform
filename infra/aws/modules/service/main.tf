@@ -32,8 +32,10 @@ locals {
   secret_refs = concat(
     [for key in var.secret_keys : { name = key, valueFrom = "${var.secret_arn}:${key}::${var.secret_version_id}" }],
     [for name, key in var.secret_aliases : { name = name, valueFrom = "${var.secret_arn}:${key}::${var.secret_version_id}" }],
+    [for e in var.extra_secrets : { name = e.name, valueFrom = "${e.secret_arn}:${e.key}::${e.version_id}" }],
   )
-  reads_secret    = length(var.secret_keys) + length(var.secret_aliases) > 0
+  reads_secret    = length(var.secret_keys) + length(var.secret_aliases) + length(var.extra_secrets) > 0
+  secret_arns     = distinct(concat(length(var.secret_keys) + length(var.secret_aliases) > 0 ? [var.secret_arn] : [], [for e in var.extra_secrets : coalesce(e.policy_arn, e.secret_arn)]))
   no_capabilities = { capabilities = { add = [], drop = ["ALL"] } }
   route_map       = { for r in var.routes : tostring(r.priority) => r }
 }
@@ -91,7 +93,7 @@ data "aws_iam_policy_document" "execution" {
     content {
       sid       = "ReadOwnSecretBundle"
       actions   = ["secretsmanager:GetSecretValue"]
-      resources = [var.secret_arn]
+      resources = local.secret_arns
     }
   }
   dynamic "statement" {

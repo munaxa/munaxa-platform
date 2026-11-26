@@ -56,6 +56,11 @@ output "execution_role_grants" {
   }
 }
 
+output "execution_role_secret_arns" {
+  description = "Every secret ARN the execution role may read (for plan tests): the bundle when a bundle key is used, and each extra_secrets ARN."
+  value       = local.secret_arns
+}
+
 output "service_deployment" {
   description = "The ECS service's deployment settings, desired count and security groups (for plan tests). Null without a service."
   value = var.create_service ? {

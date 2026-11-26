@@ -88,6 +88,20 @@ variable "secret_aliases" {
   default     = {}
 }
 
+variable "extra_secrets" {
+  description = "Environment variables read from a secret other than the bundle (each pinned to its own version; empty version: the current one). The execution role may read only these ARNs and the bundle, encrypted with secrets_kms_key_arn."
+  type = list(object({
+    name       = string
+    secret_arn = string
+    key        = string
+    version_id = string
+    # The ARN the execution role may read, when secret_arn is a name-only (partial) ARN of a secret
+    # created outside Terraform: "<partial ARN>-??????". Null: secret_arn itself.
+    policy_arn = optional(string)
+  }))
+  default = []
+}
+
 variable "secret_version_id" {
   description = "Pins every secret reference to one bundle version (empty: the current version)."
   type        = string

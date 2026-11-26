@@ -477,7 +477,7 @@ variable "identity_sso_config" {
 }
 
 variable "identity_oidc_clients" {
-  description = "Identity as the OpenID Connect provider for other Munaxa products (munaxa-identity ADR-0008): one entry per relying party (for example one per Docs organisation), each bound to one Identity organisation key. Empty leaves the provider off. The client secrets live only in the <env>/identity bundle (IDENTITY_OIDC_CLIENT_SECRETS)."
+  description = "Identity as the OpenID Connect provider for other Munaxa products (munaxa-identity ADR-0008): one entry per relying party (for example one per Docs organisation), each bound to one Identity organisation key. Empty leaves the provider off. The client secrets live only in their own secret <env>/identity-oidc-clients (IDENTITY_OIDC_CLIENT_SECRETS, data.tf), never in the identity bundle."
   type = list(object({
     client_id     = string
     organisation  = string
